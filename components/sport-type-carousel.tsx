@@ -55,24 +55,24 @@ export function SportTypeCarousel({ sports, country, dateDisplay }: SportTypeCar
 
   return (
     <div className="relative group">
-      {/* Left Button */}
+      {/* Left Button - Hidden on mobile */}
       {canScrollLeft && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute left-0 top-[37%] -translate-y-1/2 -translate-x-1/2 z-10 bg-white shadow-md rounded-full w-8 h-8 md:w-10 md:h-10 hover:bg-gray-50 border flex"
+          className="hidden md:flex absolute left-0 top-[37%] -translate-y-1/2 -translate-x-1/2 z-10 bg-white shadow-md rounded-full w-8 h-8 md:w-10 md:h-10 hover:bg-gray-50 border"
           onClick={() => scroll('left')}
         >
           <ChevronLeft className="h-4 w-4 md:h-6 md:w-6 text-gray-700" />
         </Button>
       )}
 
-      {/* Right Button */}
+      {/* Right Button - Hidden on mobile */}
       {canScrollRight && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-0 top-[37%] -translate-y-1/2 translate-x-1/2 z-10 bg-white shadow-md rounded-full w-8 h-8 md:w-10 md:h-10 hover:bg-gray-50 border flex"
+          className="hidden md:flex absolute right-0 top-[37%] -translate-y-1/2 translate-x-1/2 z-10 bg-white shadow-md rounded-full w-8 h-8 md:w-10 md:h-10 hover:bg-gray-50 border"
           onClick={() => scroll('right')}
         >
           <ChevronRight className="h-4 w-4 md:h-6 md:w-6 text-gray-700" />

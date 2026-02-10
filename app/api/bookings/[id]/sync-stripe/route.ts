@@ -279,10 +279,15 @@ export async function POST(
     }
 
     // Update booking status to confirmed
-    const { error: updateError } = await supabase
+    const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
-      .update({ status: 'confirmed' })
+      .update({ 
+        status: 'confirmed',
+        updated_at: new Date().toISOString() // Force updated_at to change
+      })
       .eq('id', bookingId)
+      .select()
+      .single()
 
     if (updateError) {
       console.error('Error updating booking status:', updateError)
@@ -292,7 +297,24 @@ export async function POST(
       )
     }
 
-    console.log(`✅ Booking status synced to confirmed: ${bookingId}`)
+    // Verify the update actually happened by re-querying
+    const { data: verifiedBooking, error: verifyError } = await supabase
+      .from('bookings')
+      .select('status, updated_at')
+      .eq('id', bookingId)
+      .single()
+
+    if (verifyError) {
+      console.error('Error verifying booking update:', verifyError)
+    } else {
+      console.log(`✅ Booking status synced to confirmed: ${bookingId}`)
+      console.log(`   Verified status: ${verifiedBooking?.status}`)
+      console.log(`   Verified timestamp: ${verifiedBooking?.updated_at}`)
+      
+      if (verifiedBooking?.status !== 'confirmed') {
+        console.error(`❌ WARNING: Status update may have failed. Expected 'confirmed', got '${verifiedBooking?.status}'`)
+      }
+    }
 
     // Get payment method details for email
     let cardLast4: string | undefined

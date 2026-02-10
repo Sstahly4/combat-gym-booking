@@ -169,23 +169,39 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
         throw new Error(data.error || 'Failed to sync with Stripe')
       }
 
+      console.log('Sync response:', data)
+      
       if (data.already_confirmed) {
         alert('Booking is already confirmed. Status is in sync with Stripe.')
         // Still refresh to ensure UI is up to date
         await fetchBookingDetails(true)
-        if (onRefresh) onRefresh()
-      } else if (data.synced || data.status_updated) {
-        alert(`✅ Booking status synced! ${data.email_sent ? 'Confirmation email sent.' : 'Email not sent (no guest email).'}`)
-        // Force refresh booking details with a small delay to ensure DB is updated
-        setTimeout(async () => {
-          await fetchBookingDetails(true)
-          // Refresh the booking list in admin dashboard
+        // Force refresh with delay to ensure DB is updated
+        setTimeout(() => {
           if (onRefresh) onRefresh()
         }, 500)
+      } else if (data.synced || data.status_updated) {
+        console.log('✅ Sync successful, status should be updated to confirmed')
+        alert(`✅ Booking status synced! ${data.email_sent ? 'Confirmation email sent.' : 'Email not sent (no guest email).'}`)
+        // Force refresh booking details immediately
+        await fetchBookingDetails(true)
+        // Refresh the booking list in admin dashboard with delay to ensure DB is updated
+        setTimeout(() => {
+          if (onRefresh) {
+            console.log('Refreshing booking list...')
+            onRefresh()
+            // Also refresh modal data again after list refresh
+            setTimeout(() => {
+              console.log('Refreshing modal data again...')
+              fetchBookingDetails(true)
+            }, 500)
+          }
+        }, 1000)
       } else {
+        console.log('❌ Sync failed:', data)
         alert(`Payment not captured in Stripe yet. Status: ${data.stripe_status}${data.message ? ` - ${data.message}` : ''}`)
         // Still refresh to show current status
         await fetchBookingDetails(true)
+        if (onRefresh) onRefresh()
       }
     } catch (err: any) {
       console.error('Error syncing with Stripe:', err)

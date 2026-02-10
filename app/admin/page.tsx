@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [pendingGyms, setPendingGyms] = useState<Gym[]>([])
   const [unverifiedGyms, setUnverifiedGyms] = useState<Gym[]>([])
   const [recentBookings, setRecentBookings] = useState<Booking[]>([])
+  const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0)
   const [allGyms, setAllGyms] = useState<Gym[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -67,6 +68,11 @@ export default function AdminPage() {
       setError(null)
 
       const supabase = createClient()
+      
+      // If refreshing, add a small delay to ensure DB has updated
+      if (showRefresh) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
       
       // Fetch all data in parallel for better performance
       const [gymsResult, draftGymsResult, approvedGymsResult, bookingsResult] = await Promise.allSettled([
@@ -122,7 +128,10 @@ export default function AdminPage() {
         if (bookingsError) {
           console.error('Error fetching bookings:', bookingsError)
         }
-        setRecentBookings(bookings || [])
+        // Force update state even if data appears the same (to trigger re-render)
+        setRecentBookings(bookings ? [...bookings] : [])
+        // Force re-render by updating key
+        setBookingsRefreshKey(prev => prev + 1)
       }
 
       // Check for any rejected promises
@@ -761,7 +770,7 @@ WHERE id = '${user.id}';`}
             <div className="space-y-4">
               {recentBookings.map(booking => (
                 <Card 
-                  key={booking.id}
+                  key={`${booking.id}-${bookingsRefreshKey}`}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => setSelectedBookingId(booking.id)}
                 >

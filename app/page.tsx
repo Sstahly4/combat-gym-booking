@@ -399,8 +399,8 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
           </div>
         </section>
 
-        {/* Mobile-only feature shortcuts (Booking.com-style break section) */}
-        <section className="order-[45] md:hidden pt-0 pb-4 bg-white">
+        {/* Mobile-only feature shortcuts (Booking.com-style break section) - Hidden on mobile */}
+        <section className="order-[45] hidden md:block pt-0 pb-4 bg-white">
           <div className="max-w-6xl mx-auto px-4">
             <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
               <Link
@@ -484,8 +484,8 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
         </section>
       </div>
 
-      {/* Training Holidays */}
-      <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+      {/* Training Holidays - Hidden on mobile */}
+      <section className="hidden md:block pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Training Holidays</h2>
           <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Combine training with vacation in stunning locations</p>
@@ -493,8 +493,8 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
         </div>
       </section>
 
-      {/* Beginner-Friendly Camps */}
-      <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+      {/* Beginner-Friendly Camps - Hidden on mobile */}
+      <section className="hidden md:block pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Beginner-Friendly Camps</h2>
           <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Perfect for those starting their combat sports journey</p>
