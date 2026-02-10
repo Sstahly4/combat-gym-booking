@@ -227,15 +227,45 @@ export async function POST(
       }
     }
 
-    // At this point, paymentIntent should be succeeded
+    // At this point, paymentIntent should be succeeded OR have a successful captured charge
+    // For manually captured payments, the payment intent might still be 'requires_capture' 
+    // but the charge will be captured and succeeded
     if (paymentIntent.status !== 'succeeded' && !hasSuccessfulCharge) {
-      return NextResponse.json({
-        synced: false,
-        stripe_status: paymentIntent.status,
-        booking_status: booking.status,
-        payment_intent_id: paymentIntent.id,
-        message: `Payment intent status is ${paymentIntent.status}, not succeeded.`
-      })
+      // Double-check by listing all charges for this payment intent
+      try {
+        const allCharges = await stripe.charges.list({
+          payment_intent: paymentIntent.id,
+          limit: 10,
+        })
+        
+        const successfulCapturedCharge = allCharges.data.find(charge => 
+          charge.status === 'succeeded' && charge.captured === true
+        )
+        
+        if (successfulCapturedCharge) {
+          console.log(`✅ Found successful captured charge: ${successfulCapturedCharge.id}`)
+          hasSuccessfulCharge = true
+          charges = [successfulCapturedCharge]
+        } else {
+          return NextResponse.json({
+            synced: false,
+            stripe_status: paymentIntent.status,
+            booking_status: booking.status,
+            payment_intent_id: paymentIntent.id,
+            charges_checked: allCharges.data.length,
+            message: `Payment intent status is ${paymentIntent.status} and no successful captured charge found. If you manually captured this payment, please verify the payment intent ID in Stripe matches the one stored in the booking.`
+          })
+        }
+      } catch (chargeListError) {
+        console.error('Error listing charges:', chargeListError)
+        return NextResponse.json({
+          synced: false,
+          stripe_status: paymentIntent.status,
+          booking_status: booking.status,
+          payment_intent_id: paymentIntent.id,
+          message: `Payment intent status is ${paymentIntent.status}, not succeeded. Error checking charges: ${chargeListError}`
+        })
+      }
     }
 
     // Payment is succeeded in Stripe, update booking if needed

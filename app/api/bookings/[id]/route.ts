@@ -11,6 +11,7 @@ export async function GET(
     const bookingId = params.id
 
     // Get booking with all related data
+    // Force fresh data by not using cache
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -30,7 +31,14 @@ export async function GET(
       }, { status: 404 })
     }
 
-    return NextResponse.json(booking)
+    // Return with no-cache headers to ensure fresh data
+    return NextResponse.json(booking, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
   } catch (error: any) {
     console.error('Error fetching booking:', error)
     return NextResponse.json(

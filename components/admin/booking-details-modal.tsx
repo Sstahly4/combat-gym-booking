@@ -38,14 +38,21 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
     }
   }, [isOpen, bookingId])
 
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = async (forceRefresh = false) => {
     if (!bookingId) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`)
+      // Add cache-busting query param to force fresh data
+      const url = `/api/bookings/${bookingId}${forceRefresh ? `?t=${Date.now()}` : ''}`
+      const response = await fetch(url, {
+        cache: 'no-store', // Ensure we get fresh data
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -164,14 +171,21 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
 
       if (data.already_confirmed) {
         alert('Booking is already confirmed. Status is in sync with Stripe.')
-      } else if (data.synced) {
-        alert(`✅ Booking status synced! ${data.email_sent ? 'Confirmation email sent.' : 'Email not sent (no guest email).'}`)
-        // Refresh booking details
-        await fetchBookingDetails()
-        // Refresh the booking list in admin dashboard
+        // Still refresh to ensure UI is up to date
+        await fetchBookingDetails(true)
         if (onRefresh) onRefresh()
+      } else if (data.synced || data.status_updated) {
+        alert(`✅ Booking status synced! ${data.email_sent ? 'Confirmation email sent.' : 'Email not sent (no guest email).'}`)
+        // Force refresh booking details with a small delay to ensure DB is updated
+        setTimeout(async () => {
+          await fetchBookingDetails(true)
+          // Refresh the booking list in admin dashboard
+          if (onRefresh) onRefresh()
+        }, 500)
       } else {
-        alert(`Payment not captured in Stripe yet. Status: ${data.stripe_status}`)
+        alert(`Payment not captured in Stripe yet. Status: ${data.stripe_status}${data.message ? ` - ${data.message}` : ''}`)
+        // Still refresh to show current status
+        await fetchBookingDetails(true)
       }
     } catch (err: any) {
       console.error('Error syncing with Stripe:', err)
@@ -206,7 +220,7 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
           <div className="py-12 text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-600">{error}</p>
-            <Button onClick={fetchBookingDetails} className="mt-4">Retry</Button>
+            <Button onClick={() => fetchBookingDetails()} className="mt-4">Retry</Button>
           </div>
         )}
 
