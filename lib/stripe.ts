@@ -12,7 +12,7 @@ if (!stripeSecretKey || stripeSecretKey.includes('your_stripe') || stripeSecretK
 
 export const stripe = stripeSecretKey && !stripeSecretKey.includes('your_stripe') && !stripeSecretKey.includes('your_str')
   ? new Stripe(stripeSecretKey, {
-      apiVersion: '2024-11-20.acacia',
+      apiVersion: '2023-10-16',
     })
   : null
 

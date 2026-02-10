@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-export default function StripeConnectPage() {
+function StripeConnectPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
@@ -108,5 +108,13 @@ export default function StripeConnectPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function StripeConnectPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <StripeConnectPageContent />
+    </Suspense>
   )
 }

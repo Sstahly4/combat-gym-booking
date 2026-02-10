@@ -117,22 +117,47 @@ export async function POST(
     console.log(`🔍 Retrieving payment intent: ${booking.stripe_payment_intent_id}`)
     let paymentIntent = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id)
     
+    // Get charges for this payment intent
+    let charges: any[] = []
+    let hasSuccessfulCharge = false
+    
+    if (paymentIntent.latest_charge) {
+      try {
+        const chargeId = typeof paymentIntent.latest_charge === 'string' 
+          ? paymentIntent.latest_charge 
+          : paymentIntent.latest_charge.id
+        const charge = await stripe.charges.retrieve(chargeId)
+        charges = [charge]
+        hasSuccessfulCharge = charge.status === 'succeeded' && charge.captured === true
+      } catch (chargeError) {
+        console.error('Error retrieving charge:', chargeError)
+        // Try listing charges instead
+        try {
+          const chargesList = await stripe.charges.list({
+            payment_intent: paymentIntent.id,
+            limit: 10,
+          })
+          charges = chargesList.data
+          hasSuccessfulCharge = charges.some(charge => 
+            charge.status === 'succeeded' && charge.captured === true
+          )
+        } catch (listError) {
+          console.error('Error listing charges:', listError)
+        }
+      }
+    }
+    
     console.log(`📊 Payment Intent Details:`)
     console.log(`   ID: ${paymentIntent.id}`)
     console.log(`   Status: ${paymentIntent.status}`)
     console.log(`   Amount: ${paymentIntent.amount}`)
     console.log(`   Currency: ${paymentIntent.currency}`)
     console.log(`   Created: ${new Date(paymentIntent.created * 1000).toISOString()}`)
-    console.log(`   Charges: ${paymentIntent.charges?.data?.length || 0}`)
-    if (paymentIntent.charges?.data?.[0]) {
-      console.log(`   Charge Status: ${paymentIntent.charges.data[0].status}`)
-      console.log(`   Charge Captured: ${paymentIntent.charges.data[0].captured}`)
+    console.log(`   Charges: ${charges.length}`)
+    if (charges[0]) {
+      console.log(`   Charge Status: ${charges[0].status}`)
+      console.log(`   Charge Captured: ${charges[0].captured}`)
     }
-
-    // Check if payment is succeeded OR if there's a successful charge
-    const hasSuccessfulCharge = paymentIntent.charges?.data?.some(charge => 
-      charge.status === 'succeeded' && charge.captured === true
-    )
 
     // If current payment intent is not succeeded, try to find a succeeded one
     if (paymentIntent.status !== 'succeeded' && !hasSuccessfulCharge) {
@@ -160,8 +185,25 @@ export async function POST(
             .update({ stripe_payment_intent_id: succeededIntent.id })
             .eq('id', bookingId)
           
-          // Use the succeeded payment intent
-          paymentIntent = succeededIntent
+          // Retrieve the succeeded payment intent to get full details
+          paymentIntent = await stripe.paymentIntents.retrieve(succeededIntent.id)
+          
+          // Also get charges for the new payment intent
+          charges = []
+          hasSuccessfulCharge = false
+          if (paymentIntent.latest_charge) {
+            try {
+              const chargeId = typeof paymentIntent.latest_charge === 'string' 
+                ? paymentIntent.latest_charge 
+                : paymentIntent.latest_charge.id
+              const charge = await stripe.charges.retrieve(chargeId)
+              charges = [charge]
+              hasSuccessfulCharge = charge.status === 'succeeded' && charge.captured === true
+            } catch (chargeError) {
+              console.error('Error retrieving charge:', chargeError)
+            }
+          }
+          
           console.log(`✅ Now using payment intent: ${paymentIntent.id} with status: ${paymentIntent.status}`)
         } else {
           return NextResponse.json({
@@ -229,8 +271,8 @@ export async function POST(
 
     try {
       // Get charge date from payment intent
-      if (paymentIntent.charges?.data?.[0]?.created) {
-        chargeDate = new Date(paymentIntent.charges.data[0].created * 1000).toISOString()
+      if (charges[0]?.created) {
+        chargeDate = new Date(charges[0].created * 1000).toISOString()
       }
 
       // Get payment method details if available

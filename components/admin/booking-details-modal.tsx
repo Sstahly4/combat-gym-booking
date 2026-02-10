@@ -279,18 +279,6 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                       </div>
                     </div>
                   )}
-                  {booking.gym.phone && (
-                    <div>
-                      <span className="text-gray-600">Phone:</span>
-                      <div className="text-sm">{booking.gym.phone}</div>
-                    </div>
-                  )}
-                  {booking.gym.email && (
-                    <div>
-                      <span className="text-gray-600">Email:</span>
-                      <div className="text-sm">{booking.gym.email}</div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}

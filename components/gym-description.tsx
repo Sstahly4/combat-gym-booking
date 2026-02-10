@@ -68,7 +68,7 @@ export function GymDescription({ gymName, description, landmarksText, amenities,
       </div>
       
       {/* Facilities - Integrated with description */}
-      <FacilitiesList amenities={amenities} disciplines={disciplines} />
+      <FacilitiesList amenities={amenities} disciplines={disciplines || []} />
     </div>
   )
 }

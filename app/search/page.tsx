@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -62,7 +62,7 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams()
   const [gyms, setGyms] = useState<GymWithImages[]>([])
   const [loading, setLoading] = useState(true)
@@ -551,5 +551,13 @@ export default function SearchPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SearchPageContent />
+    </Suspense>
   )
 }

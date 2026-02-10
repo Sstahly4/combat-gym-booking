@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
       .from('bookings')
       .select(`
         *,
-        gym:gyms(name),
-        package:packages(name),
+        gym:gyms(name, country, currency),
+        package:packages(name, meal_plan_details),
         variant:package_variants(name)
       `)
       .eq('id', booking.id)
@@ -77,14 +77,20 @@ export async function POST(request: NextRequest) {
     const magicLink = `${request.nextUrl.origin}/bookings/access/${token}`
     
     await sendUserConfirmationEmail({
-      bookingReference: booking.booking_reference || booking.id,
+      bookingReference: fullBooking.booking_reference || fullBooking.id,
+      bookingPin: fullBooking.booking_pin || 'N/A',
       guestName: fullBooking.guest_name || 'Guest',
-      guestEmail: booking.guest_email || email,
+      guestEmail: fullBooking.guest_email || email,
       gymName: gym?.name || 'Your Booking',
+      gymCountry: gym?.country || '',
       startDate: fullBooking.start_date,
       endDate: fullBooking.end_date,
       packageName: package_?.name,
       variantName: variant?.name,
+      totalPrice: fullBooking.total_price || 0,
+      currency: gym?.currency || 'USD',
+      paymentDate: new Date().toISOString(), // Use current date as fallback
+      mealPlanDetails: package_?.meal_plan_details || null,
       magicLink,
     })
     

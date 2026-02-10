@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
 
-export default function BookingSummaryPage() {
+function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
@@ -538,7 +538,10 @@ export default function BookingSummaryPage() {
               } else if (package_.includes_accommodation) {
                 points.push("Accommodation is included in your booking.")
               }
-            } else if (package_.includes_meals || package_.type === 'all_inclusive') {
+            }
+            
+            // Meal info (for all_inclusive or training packages with meals)
+            if (package_.includes_meals || package_.type === 'all_inclusive') {
               if (package_.meal_plan_details?.description) {
                 points.push(package_.meal_plan_details.description)
               } else if (package_.meal_plan_details?.meals_per_day) {
@@ -1496,5 +1499,13 @@ export default function BookingSummaryPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function BookingSummaryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <BookingSummaryPageContent />
+    </Suspense>
   )
 }

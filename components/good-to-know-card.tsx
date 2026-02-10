@@ -53,7 +53,10 @@ export function GoodToKnowCard({ package_, variant, checkin, checkout }: GoodToK
       // Package has accommodation but no variant selected
       points.push("Accommodation is included in your booking.")
     }
-  } else if (package_.includes_meals || package_.type === 'all_inclusive') {
+  }
+  
+  // Meal info (for all_inclusive or training packages with meals)
+  if (package_.includes_meals || package_.type === 'all_inclusive') {
     if (package_.meal_plan_details) {
       const mealDetails = package_.meal_plan_details
       

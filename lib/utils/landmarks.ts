@@ -198,7 +198,7 @@ export async function getNearbyLandmarks(
             if (!name || /[^\x00-\x7F]/.test(name)) {
               // Try to get English name from display_name (usually first part)
               const displayParts = item.display_name?.split(',') || []
-              name = displayParts.find(part => /^[a-zA-Z0-9\s\-'"]+$/.test(part.trim())) || displayParts[0] || 'Nearby attraction'
+              name = displayParts.find((part: string) => /^[a-zA-Z0-9\s\-'"]+$/.test(part.trim())) || displayParts[0] || 'Nearby attraction'
             }
             
             // Clean up the name

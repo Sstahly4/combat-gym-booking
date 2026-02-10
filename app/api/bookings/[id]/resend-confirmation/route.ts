@@ -68,11 +68,33 @@ export async function POST(
 
     if (booking.stripe_payment_intent_id && stripe) {
       try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id)
+        // Retrieve payment intent with expanded charges
+        const paymentIntent = await stripe.paymentIntents.retrieve(
+          booking.stripe_payment_intent_id,
+          { expand: ['charges.data'] }
+        )
         
         // Get charge date from payment intent
-        if (paymentIntent.charges?.data?.[0]?.created) {
-          chargeDate = new Date(paymentIntent.charges.data[0].created * 1000).toISOString()
+        // Charges are available as a list, need to retrieve separately if not expanded
+        if (paymentIntent.latest_charge) {
+          const chargeId = typeof paymentIntent.latest_charge === 'string' 
+            ? paymentIntent.latest_charge 
+            : paymentIntent.latest_charge.id
+          
+          try {
+            const charge = await stripe.charges.retrieve(chargeId)
+            if (charge.created) {
+              chargeDate = new Date(charge.created * 1000).toISOString()
+            }
+          } catch (chargeError) {
+            // If charge retrieval fails, use payment intent created date
+            if (paymentIntent.created) {
+              chargeDate = new Date(paymentIntent.created * 1000).toISOString()
+            }
+          }
+        } else if (paymentIntent.created) {
+          // Fallback to payment intent created date
+          chargeDate = new Date(paymentIntent.created * 1000).toISOString()
         }
 
         // Get payment method details if available
