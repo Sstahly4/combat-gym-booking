@@ -97,6 +97,10 @@ STRIPE_WEBHOOK_SECRET=whsec_...  # From Stripe Dashboard → Webhooks
 # Google Maps
 NEXT_PUBLIC_GOOGLE_MAPS_KEY=your_google_maps_key
 
+# Currency Conversion (No API key needed - uses exchangerate-api.com free tier)
+# Rates are automatically fetched and cached for 1 hour
+# Free tier: 1,500 requests/month (plenty for most use cases)
+
 # Resend (Email)
 RESEND_API_KEY=re_...
 RESEND_FROM_EMAIL=noreply@yourdomain.com  # Use your verified domain

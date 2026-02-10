@@ -9,12 +9,13 @@ interface CurrencyContextType {
   setSelectedCurrency: (currency: Currency) => void
   convertPrice: (amount: number, fromCurrency: string) => number
   formatPrice: (amount: number, currency?: string) => string
+  ratesLoading: boolean
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined)
 
-// Basic exchange rates (for MVP - in production, use a real API)
-const EXCHANGE_RATES: Record<string, number> = {
+// Fallback exchange rates (used if API fails)
+const FALLBACK_RATES: Record<string, number> = {
   USD: 1,
   THB: 35.5, // Thai Baht
   AUD: 1.52,
@@ -56,14 +57,46 @@ const CURRENCIES = [
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [selectedCurrency, setSelectedCurrencyState] = useState<Currency>('USD')
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(FALLBACK_RATES)
+  const [ratesLoading, setRatesLoading] = useState(true)
+
+  // Fetch exchange rates on mount
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const response = await fetch('/api/currency/rates')
+        const data = await response.json()
+        
+        if (data.success && data.rates) {
+          setExchangeRates(data.rates)
+        } else {
+          // Use fallback if API fails
+          setExchangeRates(FALLBACK_RATES)
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rates:', error)
+        // Use fallback rates
+        setExchangeRates(FALLBACK_RATES)
+      } finally {
+        setRatesLoading(false)
+      }
+    }
+
+    fetchRates()
+
+    // Refresh rates every hour
+    const interval = setInterval(fetchRates, 3600000) // 1 hour
+
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     // Load from localStorage
     const saved = localStorage.getItem('selectedCurrency')
-    if (saved && EXCHANGE_RATES[saved]) {
+    if (saved && (exchangeRates[saved] || FALLBACK_RATES[saved])) {
       setSelectedCurrencyState(saved)
     }
-  }, [])
+  }, [exchangeRates])
 
   const setSelectedCurrency = (currency: Currency) => {
     setSelectedCurrencyState(currency)
@@ -71,12 +104,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }
 
   const convertPrice = (amount: number, fromCurrency: string): number => {
-    if (!fromCurrency || !EXCHANGE_RATES[fromCurrency]) return amount
+    if (!fromCurrency || !exchangeRates[fromCurrency]) return amount
     if (selectedCurrency === fromCurrency) return amount
 
     // Convert to USD first, then to target currency
-    const usdAmount = amount / EXCHANGE_RATES[fromCurrency]
-    const targetAmount = usdAmount * EXCHANGE_RATES[selectedCurrency]
+    const usdAmount = amount / exchangeRates[fromCurrency]
+    const targetAmount = usdAmount * exchangeRates[selectedCurrency]
     
     return Math.round(targetAmount * 100) / 100 // Round to 2 decimals
   }
@@ -88,7 +121,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CurrencyContext.Provider value={{ selectedCurrency, setSelectedCurrency, convertPrice, formatPrice }}>
+    <CurrencyContext.Provider value={{ 
+      selectedCurrency, 
+      setSelectedCurrency, 
+      convertPrice, 
+      formatPrice,
+      ratesLoading 
+    }}>
       {children}
     </CurrencyContext.Provider>
   )
