@@ -166,6 +166,7 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('Sync error response:', data)
         throw new Error(data.error || 'Failed to sync with Stripe')
       }
 
@@ -206,6 +207,13 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
     } catch (err: any) {
       console.error('Error syncing with Stripe:', err)
       alert(`Failed to sync with Stripe: ${err.message}`)
+      // Always refresh UI even on error to reflect current DB/Stripe state
+      await fetchBookingDetails(true)
+      if (onRefresh) {
+        setTimeout(() => {
+          onRefresh()
+        }, 500)
+      }
     } finally {
       setSyncing(false)
     }

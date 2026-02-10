@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { sendBookingConfirmedEmail } from '@/lib/email'
 
@@ -12,21 +13,26 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Use the auth-bound client to verify caller is an admin
+    const supabaseAuth = await createClient()
+    const { data: { user } } = await supabaseAuth.auth.getUser()
 
-    // Only admin can sync
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.role !== 'admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { data: profile } = await supabaseAuth
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Use admin client (service role) for booking reads/updates to bypass RLS
+    const supabase = createAdminClient()
 
     const bookingId = params.id
 
@@ -291,8 +297,18 @@ export async function POST(
 
     if (updateError) {
       console.error('Error updating booking status:', updateError)
+      console.error('Update error details:', {
+        code: updateError.code,
+        message: updateError.message,
+        details: (updateError as any).details,
+        hint: (updateError as any).hint,
+      })
       return NextResponse.json(
-        { error: 'Failed to update booking status' },
+        { 
+          error: 'Failed to update booking status',
+          details: updateError.message,
+          code: updateError.code,
+        },
         { status: 500 }
       )
     }
