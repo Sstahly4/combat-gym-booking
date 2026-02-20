@@ -26,7 +26,7 @@ export function Navbar() {
   }
 
   return (
-    <nav className="bg-[#003580] text-white">
+    <nav className="sticky top-0 z-50 bg-[#003580] text-white">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="text-xl md:text-2xl font-bold tracking-tight">

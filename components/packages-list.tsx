@@ -47,6 +47,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
   const isValidDuration = duration > 0
 
+  // Extend stay handler — sets checkout to checkin + minStay days
+  const handleExtendStay = (minStayDays: number) => {
+    if (!checkin) return
+    const start = new Date(checkin)
+    const newCheckout = new Date(start.getTime() + minStayDays * 24 * 60 * 60 * 1000)
+    setCheckout(newCheckout.toISOString().split('T')[0])
+    // Close variant modal if open so user sees updated dates
+    setVariantsModalOpen(false)
+  }
+
   const handleSelectPackage = (pkg: Package) => {
     // If package has variants, open modal instead of selecting directly
     if (pkg.variants && pkg.variants.length > 0) {
@@ -143,7 +153,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       ) : (
         <div className="grid gap-4">
           {sortedPackages.map(pkg => {
-            // Get base prices (cheapest variant or base price)
+            // Get base prices (for legacy packages) or use new pricing structure
             let basePrices = {
               daily: pkg.price_per_day,
               weekly: pkg.price_per_week,
@@ -151,20 +161,31 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
             }
 
             // If variants exist, use the cheapest one for "starting from"
+            // Always fall back to base package prices if the variant field is null
             if (pkg.variants && pkg.variants.length > 0) {
-              // For accommodation packages, compare weekly prices; for training, compare daily
-              const compareKey = pkg.type === 'training' ? 'price_per_day' : 'price_per_week'
+              const getComparePrice = (v: PackageVariant) => {
+                if (pkg.type === 'training') return v.price_per_day ?? pkg.price_per_day ?? Infinity
+                return v.price_per_week ?? pkg.price_per_week ?? v.price_per_month ?? pkg.price_per_month ?? Infinity
+              }
               const cheapest = pkg.variants.reduce((prev, curr) => {
-                const prevPrice = prev[compareKey] || Infinity
-                const currPrice = curr[compareKey] || Infinity
-                return currPrice < prevPrice ? curr : prev
+                return getComparePrice(curr) < getComparePrice(prev) ? curr : prev
               })
               basePrices = {
-                daily: cheapest.price_per_day,
-                weekly: cheapest.price_per_week,
-                monthly: cheapest.price_per_month
+                daily: cheapest.price_per_day ?? pkg.price_per_day,
+                weekly: cheapest.price_per_week ?? pkg.price_per_week,
+                monthly: cheapest.price_per_month ?? pkg.price_per_month
               }
             }
+
+            // Ghost state: check if min stay is met
+            const minStay = pkg.min_stay_days ?? (pkg.type === 'training' ? 1 : 7)
+            const meetsMinStay = !isValidDuration || duration >= minStay
+            const nightsToUnlock = isValidDuration ? Math.max(0, minStay - duration) : 0
+            const isGhosted = isValidDuration && !meetsMinStay
+
+            // Compute anchor price for ghost state — try weekly → monthly → daily, never $0
+            const anchorPrice = basePrices.weekly || basePrices.monthly || basePrices.daily || 0
+            const anchorLabel = basePrices.weekly ? 'week' : basePrices.monthly ? 'month' : 'day'
 
             // Calculate price based on package type and billing units
             // For Training Only: if dates are NOT user-selected (auto-defaulted), show per session pricing
@@ -210,8 +231,12 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
             return (
               <Card 
                 key={pkg.id} 
-                className={`transition-all border-2 cursor-pointer hover:shadow-xl overflow-hidden ${
-                  isSelected ? 'border-[#003580] bg-blue-50/20 shadow-lg' : 'border-gray-200 hover:border-[#003580]/50 bg-white'
+                className={`transition-all border-2 overflow-hidden ${
+                  isGhosted 
+                    ? 'border-gray-200 bg-gray-50/50 opacity-80' 
+                    : isSelected 
+                      ? 'border-[#003580] bg-blue-50/20 shadow-lg cursor-pointer hover:shadow-xl' 
+                      : 'border-gray-200 hover:border-[#003580]/50 bg-white cursor-pointer hover:shadow-xl'
                 }`}
               >
                 <CardContent className="p-0">
@@ -269,30 +294,50 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                     
                     {/* Bottom: Price and Button */}
                     <div className="border-t border-gray-200 pt-3 mt-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="text-[10px] text-gray-500 mb-0.5">
-                            {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${duration} ${pkg.type === 'training' ? (duration === 1 ? 'session' : 'sessions') : (duration === 1 ? 'day' : 'days')}` : (pkg.type === 'training' ? '1 session' : '1 week')}
+                      {isGhosted ? (
+                        /* Ghost State — Mobile */
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-bold text-gray-500 mt-1">
+                              From {formatPrice(convertPrice(anchorPrice, gym.currency))}
+                              <span className="text-[10px] font-normal text-gray-400 ml-1">/ {anchorLabel}</span>
+                            </div>
                           </div>
-                          <div className="text-lg font-bold text-[#003580]">
-                            {formatPrice(convertPrice(priceInfo.price, gym.currency))}
-                          </div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">
-                            Includes taxes and charges
-                          </div>
+                          <Button 
+                            variant="outline"
+                            className="min-w-[100px] h-9 font-semibold text-xs border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white"
+                            onClick={() => handleExtendStay(minStay)}
+                          >
+                            Extend {nightsToUnlock} {nightsToUnlock === 1 ? 'day' : 'days'}
+                          </Button>
                         </div>
-                        <Button 
-                          variant={isSelected ? "default" : "outline"}
-                          className={`min-w-[100px] h-9 font-semibold text-xs ${
-                            isSelected 
-                              ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
-                              : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
-                          }`}
-                          onClick={() => handleSelectPackage(pkg)}
-                        >
-                          {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose' : 'Reserve')}
-                        </Button>
-                      </div>
+                      ) : (
+                        /* Normal State — Mobile */
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="text-[10px] text-gray-500 mb-0.5">
+                              {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${duration} ${pkg.type === 'training' ? (duration === 1 ? 'session' : 'sessions') : (duration === 1 ? 'day' : 'days')}` : (pkg.type === 'training' ? '1 session' : '1 week')}
+                            </div>
+                            <div className="text-lg font-bold text-[#003580]">
+                              {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              Includes taxes and charges
+                            </div>
+                          </div>
+                          <Button 
+                            variant={isSelected ? "default" : "outline"}
+                            className={`min-w-[100px] h-9 font-semibold text-xs ${
+                              isSelected 
+                                ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
+                                : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
+                            }`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose' : 'Reserve')}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -382,9 +427,29 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                     </div>
 
                     {/* Pricing Section - Right Side - Desktop only */}
-                    <div className="hidden md:flex w-full lg:w-64 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 bg-gray-50 lg:bg-white p-4 md:p-6 flex-col justify-center items-center lg:items-end">
+                    <div className={`hidden md:flex w-full lg:w-64 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 p-4 md:p-6 flex-col justify-center items-center lg:items-end ${
+                      isGhosted ? 'bg-gray-50' : 'bg-gray-50 lg:bg-white'
+                    }`}>
                       <div className="w-full text-center lg:text-right">
-                      {pkg.type === 'training' && shouldShowPerSession ? (
+                      {isGhosted ? (
+                        /* Ghost State — Desktop */
+                        <>
+                          <div className="text-gray-500 text-xs mb-1 mt-2">Starts at</div>
+                          <div className="text-xl font-bold text-gray-500 mb-1">
+                            {formatPrice(convertPrice(anchorPrice, gym.currency))}
+                          </div>
+                          <div className="text-xs text-gray-400 mb-4">
+                            / {anchorLabel}
+                          </div>
+                          <Button 
+                            variant="outline"
+                            className="w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white"
+                            onClick={() => handleExtendStay(minStay)}
+                          >
+                            Extend {nightsToUnlock} {nightsToUnlock === 1 ? 'day' : 'days'}
+                          </Button>
+                        </>
+                      ) : pkg.type === 'training' && shouldShowPerSession ? (
                         // Training Only with no user-selected dates: show per session
                         <>
                           <div className="text-[10px] md:text-xs text-gray-500 mb-1">Starting from</div>
@@ -407,9 +472,6 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                             <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
                               Total for {duration} {pkg.type === 'training' ? (duration === 1 ? 'session' : 'sessions') : (duration === 1 ? 'day' : 'days')}
                             </div>
-                            {pkg.type !== 'training' && duration < 7 && (
-                              <div className="text-[10px] md:text-xs text-orange-600 mb-3 md:mb-4 font-medium">Minimum stay: 1 week</div>
-                            )}
                         </>
                       ) : (
                         // No dates selected (accommodation packages)
@@ -421,23 +483,25 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                             <div className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
                               per {pkg.type === 'training' ? 'session' : 'week'}
                           </div>
-                          {pkg.type !== 'training' && (
-                              <div className="text-[10px] md:text-xs text-orange-600 mb-3 md:mb-4 font-medium">Minimum stay: 1 week</div>
+                          {minStay > 1 && (
+                              <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4 font-medium">Min. stay: {minStay} days</div>
                           )}
                         </>
                       )}
                       
-                      <Button 
-                        variant={isSelected ? "default" : "outline"}
-                          className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${
-                          isSelected 
-                              ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
-                              : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
-                        }`}
-                        onClick={() => handleSelectPackage(pkg)}
-                      >
-                          {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose Room' : 'Select Package')}
-                      </Button>
+                      {!isGhosted && (
+                        <Button 
+                          variant={isSelected ? "default" : "outline"}
+                            className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${
+                            isSelected 
+                                ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
+                                : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
+                          }`}
+                          onClick={() => handleSelectPackage(pkg)}
+                        >
+                            {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose Room' : 'Select Package')}
+                        </Button>
+                      )}
                       </div>
                     </div>
                   </div>
@@ -486,6 +550,12 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
           <div className="flex-1 overflow-y-auto pr-2 mt-4">
             <div className="grid gap-6">
             {activePackage?.variants?.map(variant => {
+               // Ghost state for variant modal
+               const modalMinStay = activePackage.min_stay_days ?? (activePackage.type === 'training' ? 1 : 7)
+               const modalMeetsMinStay = !isValidDuration || duration >= modalMinStay
+               const modalNightsToUnlock = isValidDuration ? Math.max(0, modalMinStay - duration) : 0
+               const modalIsGhosted = isValidDuration && !modalMeetsMinStay
+
                const variantPriceInfo = isValidDuration 
                  ? calculatePackagePrice(duration, activePackage.type, {
                      daily: variant.price_per_day,
@@ -608,35 +678,63 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                     
                         {/* Bottom Section - Pricing & Action */}
                         <div className="pt-4 border-t flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                          <div className="flex-1">
-                            <div className="text-xs text-green-600 font-medium mb-2">
-                         <Check className="w-3 h-3 inline mr-1" />
-                         Free cancellation
-                       </div>
-                            <div className="text-xs text-gray-500">
-                              Includes taxes and charges
-                            </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-2xl font-bold text-gray-900 mb-1">
-                              {formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}
-                            </div>
-                            <div className="text-xs text-gray-500 mb-3">
-                            {isValidDuration 
-                              ? `Total for ${variantPriceInfo.durationLabel}`
-                              : `/ ${activePackage.type === 'training' ? 'session' : variantPriceInfo.unit}`
-                            }
-                            {activePackage.type !== 'training' && duration < 7 && isValidDuration && (
-                                <span className="text-orange-600 block mt-1">(Min. 1 week)</span>
-                            )}
-                            </div>
-                            <Button 
-                              onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
-                              className="bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold px-6 py-2.5"
-                            >
-                              I'll reserve
-                            </Button>
-                          </div>
+                          {modalIsGhosted ? (
+                            /* Ghost State — Variant */
+                            <>
+                              <div className="flex-1">
+                                <div className="text-xs text-gray-500 mt-2">
+                                  Min. stay: {modalMinStay} days
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-gray-400 text-xs mb-1">Starts at</div>
+                                <div className="text-xl font-bold text-gray-500 mb-2">
+                                  {formatPrice(convertPrice(
+                                    variant.price_per_week ?? activePackage.price_per_week ?? variant.price_per_month ?? activePackage.price_per_month ?? variant.price_per_day ?? activePackage.price_per_day ?? 0,
+                                    gym.currency
+                                  ))}
+                                  <span className="text-xs font-normal text-gray-400 ml-1">/ {(variant.price_per_week ?? activePackage.price_per_week) ? 'week' : (variant.price_per_month ?? activePackage.price_per_month) ? 'month' : 'day'}</span>
+                                </div>
+                                <Button 
+                                  variant="outline"
+                                  className="border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white font-semibold px-6 py-2.5"
+                                  onClick={() => handleExtendStay(modalMinStay)}
+                                >
+                                  Extend {modalNightsToUnlock} {modalNightsToUnlock === 1 ? 'day' : 'days'}
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            /* Normal State — Variant */
+                            <>
+                              <div className="flex-1">
+                                <div className="text-xs text-green-600 font-medium mb-2">
+                                  <Check className="w-3 h-3 inline mr-1" />
+                                  Free cancellation
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Includes taxes and charges
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-2xl font-bold text-gray-900 mb-1">
+                                  {formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}
+                                </div>
+                                <div className="text-xs text-gray-500 mb-3">
+                                  {isValidDuration 
+                                    ? `Total for ${variantPriceInfo.durationLabel}`
+                                    : `/ ${activePackage.type === 'training' ? 'session' : variantPriceInfo.unit}`
+                                  }
+                                </div>
+                                <Button 
+                                  onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
+                                  className="bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold px-6 py-2.5"
+                                >
+                                  I'll reserve
+                                </Button>
+                              </div>
+                            </>
+                          )}
                        </div>
                     </div>
                   </div>

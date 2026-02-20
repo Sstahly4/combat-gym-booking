@@ -28,22 +28,28 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
   const [selectedFilter, setSelectedFilter] = useState('train-stay')
 
   // Filter gyms based on selected filter
+  // Data arrives pre-sorted by rating (highest first) from the server
   const filterGyms = () => {
     if (!gyms || gyms.length === 0) return []
 
+    const hasValidPackages = (gym: any) =>
+      gym.packages && Array.isArray(gym.packages) && gym.packages.length > 0
+
     switch (selectedFilter) {
       case 'all-inclusive':
-        // Only gyms with all_inclusive packages
+        // Gyms with all_inclusive packages
         return gyms.filter((gym: any) => {
-          if (!gym.packages || !Array.isArray(gym.packages) || gym.packages.length === 0) return false
-          return gym.packages.some((pkg: any) => pkg.type === 'all_inclusive')
+          if (!hasValidPackages(gym)) return false
+          return gym.packages.some((pkg: any) =>
+            pkg.type === 'all_inclusive' || pkg.includes_meals === true
+          )
         })
       
       case 'train-stay':
-        // Gyms with accommodation packages (type = 'accommodation' OR includes_accommodation = true)
+        // Gyms with accommodation packages
         return gyms.filter((gym: any) => {
-          if (!gym.packages || !Array.isArray(gym.packages) || gym.packages.length === 0) return false
-          return gym.packages.some((pkg: any) => 
+          if (!hasValidPackages(gym)) return false
+          return gym.packages.some((pkg: any) =>
             pkg.type === 'accommodation' || pkg.includes_accommodation === true
           )
         })
@@ -64,11 +70,9 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
         )
       
       case 'beginner':
-        // For now, show all gyms (can be enhanced later with package attributes)
         return gyms
       
       case 'hardcore':
-        // For now, show all gyms (can be enhanced later with package attributes)
         return gyms
       
       default:
@@ -78,19 +82,7 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
 
   const filteredGyms = filterGyms()
   
-  // Debug: Log filtered results
-  useEffect(() => {
-    if (filteredGyms.length === 0 && gyms.length > 0) {
-      console.log('TripPlanner: No gyms found for filter', selectedFilter, {
-        totalGyms: gyms.length,
-        sampleGym: gyms[0],
-        hasPackages: gyms[0]?.packages,
-        packagesCount: gyms[0]?.packages?.length
-      })
-    }
-  }, [filteredGyms.length, selectedFilter, gyms.length])
-  
-  const displayGyms = filteredGyms.length > 0 ? filteredGyms.slice(0, 8) : gyms.slice(0, 8) // Fallback to all gyms if filter returns nothing
+  const displayGyms = filteredGyms.length > 0 ? filteredGyms.slice(0, 10) : gyms.slice(0, 10) // Fallback to all gyms if filter returns nothing
 
   const checkScroll = () => {
     if (scrollRef.current) {

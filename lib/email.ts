@@ -870,3 +870,281 @@ If you have any questions, please contact us using your booking reference: ${dat
 
   return true
 }
+
+interface BookingRequestAcceptedEmailData {
+  bookingReference: string
+  guestName: string
+  guestEmail: string
+  gymName: string
+  startDate: string
+  endDate: string
+  totalPrice: number
+  currency: string
+  paymentLink: string
+}
+
+/**
+ * Send email when gym accepts a booking request
+ * Transitions: pending → gym_confirmed
+ */
+export async function sendBookingRequestAcceptedEmail(data: BookingRequestAcceptedEmailData): Promise<boolean> {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    })
+  }
+
+  const checkInDate = formatDate(data.startDate)
+  const checkOutDate = formatDate(data.endDate)
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Request Accepted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: #003580; color: white; padding: 20px; text-align: center;">
+    <h1 style="margin: 0;">CombatBooking.com</h1>
+  </div>
+  
+  <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0;">
+    <h2 style="color: #003580; margin-top: 0;">Great news! Your booking request has been accepted</h2>
+    <p style="font-size: 18px; font-weight: bold; color: #28a745;">Booking Reference: ${data.bookingReference}</p>
+  </div>
+
+  <div style="padding: 20px;">
+    <p>Hi ${data.guestName},</p>
+    
+    <p>Great news! <strong>${data.gymName}</strong> has accepted your booking request.</p>
+    
+    <div style="background-color: #e7f3ff; border-left: 4px solid #003580; padding: 15px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #003580;">Next Step: Complete Your Payment</h3>
+      <p style="margin-bottom: 10px;">To secure your booking, please complete payment within 48 hours:</p>
+      <a href="${data.paymentLink}" style="display: inline-block; background-color: #003580; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 10px;">Complete Payment</a>
+    </div>
+
+    <h3 style="color: #003580;">Booking Details</h3>
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Check-in:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${checkInDate}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Check-out:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${checkOutDate}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Price:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${data.currency} ${data.totalPrice.toFixed(2)}</strong></td>
+      </tr>
+    </table>
+
+    <p style="color: #666; font-size: 14px; margin-top: 30px;">
+      <strong>Important:</strong> Your booking is not confirmed until payment is completed. 
+      If payment is not completed within 48 hours, your request may be cancelled.
+    </p>
+
+    <p>If you have any questions, please contact us using your booking reference: ${data.bookingReference}</p>
+
+    <p>Best regards,<br>The CombatBooking.com Team</p>
+  </div>
+
+  <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin-top: 20px; font-size: 12px; color: #666;">
+    <p>© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.</p>
+  </div>
+</body>
+</html>
+  `.trim()
+
+  const textContent = `
+CombatBooking.com
+Booking Request Accepted - ${data.bookingReference}
+
+Hi ${data.guestName},
+
+Great news! ${data.gymName} has accepted your booking request.
+
+NEXT STEP: Complete Your Payment
+To secure your booking, please complete payment within 48 hours:
+${data.paymentLink}
+
+Booking Details:
+- Check-in: ${checkInDate}
+- Check-out: ${checkOutDate}
+- Total Price: ${data.currency} ${data.totalPrice.toFixed(2)}
+
+IMPORTANT: Your booking is not confirmed until payment is completed. 
+If payment is not completed within 48 hours, your request may be cancelled.
+
+If you have any questions, please contact us using your booking reference: ${data.bookingReference}
+
+Best regards,
+The CombatBooking.com Team
+
+© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
+  `.trim()
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [data.guestEmail],
+          subject: `Booking Request Accepted - ${data.bookingReference}`,
+          html: htmlContent,
+          text: textContent,
+        }),
+      })
+
+      if (res.ok) {
+        console.log(`✅ Request accepted email sent to ${data.guestEmail}`)
+        return true
+      }
+
+      const errText = await res.text()
+      console.error('❌ Resend request accepted email failed:', res.status, errText)
+    } catch (error) {
+      console.error('❌ Failed to send request accepted email via Resend:', error)
+    }
+  }
+
+  console.log(`\n📧 REQUEST ACCEPTED EMAIL (would send to ${data.guestEmail}):`)
+  console.log(textContent)
+  console.log('\n')
+
+  return true
+}
+
+interface BookingRequestDeclinedEmailData {
+  bookingReference: string
+  guestName: string
+  guestEmail: string
+  gymName: string
+  reason: string
+}
+
+/**
+ * Send email when gym declines a booking request
+ * Transitions: pending → declined
+ */
+export async function sendBookingRequestDeclinedEmail(data: BookingRequestDeclinedEmailData): Promise<boolean> {
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Request Declined</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: #003580; color: white; padding: 20px; text-align: center;">
+    <h1 style="margin: 0;">CombatBooking.com</h1>
+  </div>
+  
+  <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
+    <h2 style="color: #856404; margin-top: 0;">Booking Request Update</h2>
+    <p style="font-size: 18px; font-weight: bold; color: #856404;">Booking Reference: ${data.bookingReference}</p>
+  </div>
+
+  <div style="padding: 20px;">
+    <p>Hi ${data.guestName},</p>
+    
+    <p>We're sorry to inform you that <strong>${data.gymName}</strong> is unable to accommodate your booking request at this time.</p>
+    
+    <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0;"><strong>Reason:</strong></p>
+      <p style="margin-top: 5px;">${data.reason}</p>
+    </div>
+
+    <p>We understand this is disappointing. We encourage you to:</p>
+    <ul>
+      <li>Browse other available gyms on our platform</li>
+      <li>Try different dates if your schedule is flexible</li>
+      <li>Contact us if you need assistance finding alternatives</li>
+    </ul>
+
+    <p>If you have any questions, please contact us using your booking reference: ${data.bookingReference}</p>
+
+    <p>Best regards,<br>The CombatBooking.com Team</p>
+  </div>
+
+  <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin-top: 20px; font-size: 12px; color: #666;">
+    <p>© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.</p>
+  </div>
+</body>
+</html>
+  `.trim()
+
+  const textContent = `
+CombatBooking.com
+Booking Request Declined - ${data.bookingReference}
+
+Hi ${data.guestName},
+
+We're sorry to inform you that ${data.gymName} is unable to accommodate your booking request at this time.
+
+Reason:
+${data.reason}
+
+We understand this is disappointing. We encourage you to:
+- Browse other available gyms on our platform
+- Try different dates if your schedule is flexible
+- Contact us if you need assistance finding alternatives
+
+If you have any questions, please contact us using your booking reference: ${data.bookingReference}
+
+Best regards,
+The CombatBooking.com Team
+
+© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
+  `.trim()
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [data.guestEmail],
+          subject: `Booking Request Update - ${data.bookingReference}`,
+          html: htmlContent,
+          text: textContent,
+        }),
+      })
+
+      if (res.ok) {
+        console.log(`✅ Request declined email sent to ${data.guestEmail}`)
+        return true
+      }
+
+      const errText = await res.text()
+      console.error('❌ Resend request declined email failed:', res.status, errText)
+    } catch (error) {
+      console.error('❌ Failed to send request declined email via Resend:', error)
+    }
+  }
+
+  console.log(`\n📧 REQUEST DECLINED EMAIL (would send to ${data.guestEmail}):`)
+  console.log(textContent)
+  console.log('\n')
+
+  return true
+}

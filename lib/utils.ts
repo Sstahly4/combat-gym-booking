@@ -24,8 +24,8 @@ export function calculateEstimatedPrice(
 
 /**
  * Calculate price based on package type and billing units
- * Training Only: per day
- * Training + Accommodation / All Inclusive: per week (minimum 1 week, rounded up)
+ * Training: billed per day (displayed as per session)
+ * Accommodation & All-Inclusive: billed per week (rounded up), with monthly breakpoint at 28+ days
  */
 export function calculatePackagePrice(
   durationDays: number,

@@ -102,16 +102,31 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Found booking: ${booking.id} (${booking.booking_reference || booking.id})`)
 
-      // Only update if not already confirmed (idempotency)
-      if (booking.status === 'confirmed') {
-        console.log('ℹ️  Booking already confirmed, skipping update')
+      // Handle status update based on current status
+      // For Request-to-Book flow: gym_confirmed → paid
+      // For legacy flow: pending_confirmation → confirmed
+      let newStatus = 'confirmed'
+      if (booking.status === 'gym_confirmed') {
+        newStatus = 'paid' // Request-to-Book: payment captured after gym confirmed
+      } else if (booking.status === 'confirmed' || booking.status === 'paid') {
+        console.log('ℹ️  Booking already confirmed/paid, skipping update')
         return NextResponse.json({ received: true, already_confirmed: true })
       }
 
-      // Update booking status to confirmed
+      // Update booking status
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Set payment_captured_at for Request-to-Book flow
+      if (newStatus === 'paid') {
+        updateData.payment_captured_at = new Date().toISOString()
+      }
+
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({ status: 'confirmed' })
+        .update(updateData)
         .eq('id', booking.id)
 
       if (updateError) {

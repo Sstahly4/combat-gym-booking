@@ -42,8 +42,7 @@ async function getGyms(limit: number = 10) {
   const { data } = await supabase
     .from('gyms')
     .select('*, images:gym_images(url, order)')
-    .eq('verification_status', 'verified') // Only verified gyms
-    .eq('status', 'approved')
+    .in('verification_status', ['verified', 'trusted'])
     .limit(limit) 
   
   // Sort images by order for each gym
@@ -58,18 +57,18 @@ async function getGyms(limit: number = 10) {
   return await attachReviewStats(data || [])
 }
 
-async function getGymsWithPackages(limit: number = 20) {
+async function getGymsWithPackages() {
   const supabase = await createClient()
+  // Fetch ALL verified/trusted gyms with packages — no limit so tab filters have the full pool
+  // verification_status is the authoritative field (verified = live, trusted = proven)
   const { data } = await supabase
     .from('gyms')
     .select(`
       *,
       images:gym_images(url, order),
-      packages(id, type, includes_accommodation, name, description)
+      packages(id, type, includes_accommodation, includes_meals, name, description, offer_type)
     `)
-    .eq('verification_status', 'verified') // Only verified gyms
-    .eq('status', 'approved')
-    .limit(limit)
+    .in('verification_status', ['verified', 'trusted'])
   
   // Sort images by order for each gym
   if (data) {
@@ -80,18 +79,23 @@ async function getGymsWithPackages(limit: number = 20) {
     })
   }
   
-  return await attachReviewStats(data || [])
+  // Attach review stats then sort by rating (highest first)
+  const withReviews = await attachReviewStats(data || [])
+  return withReviews.sort((a: any, b: any) => {
+    if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
+    if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
+    return a.name.localeCompare(b.name)
+  })
 }
 
 async function getTopRatedGyms(limit: number = 10) {
   const supabase = await createClient()
   
-  // Fetch all verified gyms with images
+  // Fetch all verified/trusted gyms with images
   const { data: allGyms } = await supabase
     .from('gyms')
     .select('*, images:gym_images(url, order)')
-    .eq('verification_status', 'verified') // Only verified gyms
-    .eq('status', 'approved')
+    .in('verification_status', ['verified', 'trusted'])
   
   if (!allGyms) return []
   
@@ -181,7 +185,7 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
   // Fetch gyms for all carousels in parallel for better performance
   const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts] = await Promise.all([
     getGyms(20),
-    getGymsWithPackages(20),
+    getGymsWithPackages(),
     getTopRatedGyms(10),
     getGymCountsByDiscipline()
   ])

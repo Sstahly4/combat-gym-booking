@@ -71,6 +71,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gym is not approved for bookings' }, { status: 400 })
     }
 
+    // Check package booking_mode if package_id is provided
+    let bookingMode: 'request_to_book' | 'instant' = 'request_to_book' // Default to request-to-book
+    if (package_id) {
+      const { data: packageData } = await supabase
+        .from('packages')
+        .select('booking_mode')
+        .eq('id', package_id)
+        .single()
+      
+      if (packageData?.booking_mode) {
+        bookingMode = packageData.booking_mode as 'request_to_book' | 'instant'
+      }
+    }
+
     // Generate booking reference and PIN
     let bookingReference = generateBookingReference()
     let bookingPin = generateBookingPin()
@@ -89,6 +103,12 @@ export async function POST(request: NextRequest) {
       attempts++
     }
 
+    // Determine initial status based on booking mode
+    // Request-to-Book: Start as 'pending' (no payment intent yet)
+    // Instant: Start as 'pending_payment' (create payment intent immediately)
+    const initialStatus = bookingMode === 'request_to_book' ? 'pending' : 'pending_payment'
+    const requestSubmittedAt = bookingMode === 'request_to_book' ? new Date().toISOString() : null
+
     // Create booking (guest or authenticated)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -104,7 +124,8 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         total_price,
         platform_fee,
-        status: 'pending_payment', // Will change to pending_confirmation after payment authorization
+        status: initialStatus,
+        request_submitted_at: requestSubmittedAt,
         guest_email: guest_email || null,
         guest_phone: guest_phone || null,
         guest_name: guest_name || null,

@@ -37,7 +37,14 @@ function SignUpForm() {
     })
 
     if (signUpError) {
-      setError(signUpError.message)
+      // Handle specific error cases
+      if (signUpError.message.includes('rate limit') || signUpError.message.includes('email rate limit')) {
+        setError('Email rate limit exceeded. This is a Supabase email service limit. Please configure Resend SMTP in Supabase settings to use your Resend account instead. See SUPABASE_EMAIL_SETUP.md for instructions.')
+      } else if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
+        setError('An account with this email already exists. Please sign in instead.')
+      } else {
+        setError(signUpError.message)
+      }
       setLoading(false)
       return
     }
@@ -46,28 +53,42 @@ function SignUpForm() {
       // Determine role
       const role = intent === 'owner' ? 'owner' : 'fighter'
 
-      // Create/update profile with proper conflict handling
-      // The trigger creates a profile with role='fighter', so we upsert to update it
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: data.user.id,
-          role: role,
-          full_name: fullName,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
+      // Wait a moment for the trigger to create the profile
+      // This handles the race condition where trigger might not have completed yet
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Use API route to update profile (more reliable than client-side upsert)
+      // This avoids RLS issues and handles race conditions better
+      try {
+        const response = await fetch('/api/auth/update-profile-role', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            role,
+            full_name: fullName,
+          }),
         })
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError)
-        setError('Failed to create profile. Please try again.')
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('Profile update error:', errorData)
+          setError(`Failed to create profile: ${errorData.error || 'Unknown error'}. Please try again or contact support.`)
+          setLoading(false)
+          return
+        }
+      } catch (fetchError: any) {
+        console.error('Profile update request error:', fetchError)
+        setError('Failed to create profile. Please try again or contact support.')
         setLoading(false)
         return
       }
 
       // Check if email verification is required
       // Supabase may require email confirmation depending on project settings
+      // Note: Even if email confirmation fails due to rate limits, we still create the account
+      // The user can verify their email later
       if (data.user.email_confirmed_at) {
         // Email already confirmed, proceed
         if (role === 'owner') {
@@ -76,11 +97,10 @@ function SignUpForm() {
           router.push('/')
         }
       } else {
-        // Email verification required
+        // Email verification required but may not have been sent due to rate limits
+        // Still allow user to proceed - they can verify email later
         if (role === 'owner') {
-          // Show message that they need to verify email
-          setError(null)
-          // Still redirect but onboarding page will check verification
+          // Redirect to onboarding - they can verify email later if needed
           router.push('/manage/onboarding?verify_email=true')
         } else {
           router.push('/?verify_email=true')
@@ -88,7 +108,8 @@ function SignUpForm() {
       }
     } else {
       // User creation failed or email confirmation required
-      setError('Please check your email to confirm your account before continuing.')
+      // This might happen if email confirmation is required but rate limited
+      setError('Account created but email confirmation may be delayed due to rate limits. Please check your email in a few minutes, or contact support if you need immediate assistance.')
       setLoading(false)
     }
   }

@@ -43,9 +43,11 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
     price_per_day: '',
     price_per_week: '',
     price_per_month: '',
+    currency: currency || 'USD',
     includes_accommodation: false,
     accommodation_name: '',
     includes_meals: false,
+    min_stay_days: '7',
     cancellation_policy_days: '',
     meal_plan_details: {
       breakfast: false,
@@ -163,9 +165,11 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       price_per_day: '',
       price_per_week: '',
       price_per_month: '',
+      currency: currency || 'USD',
       includes_accommodation: false,
       accommodation_name: '',
       includes_meals: false,
+      min_stay_days: '7',
       cancellation_policy_days: '',
       meal_plan_details: {
         breakfast: false,
@@ -194,9 +198,11 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       price_per_day: pkg.price_per_day?.toString() || '',
       price_per_week: pkg.price_per_week?.toString() || '',
       price_per_month: pkg.price_per_month?.toString() || '',
+      currency: pkg.currency || currency || 'USD',
       includes_accommodation: pkg.includes_accommodation,
       accommodation_name: pkg.accommodation_name || '',
       includes_meals: pkg.includes_meals,
+      min_stay_days: pkg.min_stay_days?.toString() || (pkg.type === 'training' ? '1' : '7'),
       cancellation_policy_days: pkg.cancellation_policy_days?.toString() || '',
       meal_plan_details: pkg.meal_plan_details ? {
         breakfast: pkg.meal_plan_details.breakfast ?? false,
@@ -405,18 +411,28 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       description: formData.meal_plan_details.description || undefined,
     } : null
 
+      // Map legacy type to canonical offer_type (required by DB constraint)
+      const offerTypeMap: Record<string, string> = {
+        training: 'TYPE_TRAINING_ONLY',
+        accommodation: 'TYPE_TRAINING_ACCOM',
+        all_inclusive: 'TYPE_ALL_INCLUSIVE',
+      }
+
       const payload = {
         gym_id: currentGymId,
       name: formData.name,
       description: formData.description || null,
       sport: formData.sport,
       type: formData.type,
+      offer_type: offerTypeMap[formData.type] || 'TYPE_TRAINING_ONLY',
       price_per_day: formData.price_per_day ? parseFloat(formData.price_per_day) : null,
       price_per_week: formData.price_per_week ? parseFloat(formData.price_per_week) : null,
       price_per_month: formData.price_per_month ? parseFloat(formData.price_per_month) : null,
+      currency: formData.currency || currency || 'USD',
       includes_accommodation: formData.type !== 'training', // Auto-set based on type
       accommodation_name: formData.type !== 'training' ? formData.accommodation_name : null,
       includes_meals: formData.type === 'all_inclusive' || formData.includes_meals,
+      min_stay_days: formData.min_stay_days ? parseInt(formData.min_stay_days) : (formData.type === 'training' ? 1 : 7),
       cancellation_policy_days: formData.cancellation_policy_days ? parseInt(formData.cancellation_policy_days) : null,
       meal_plan_details: mealPlanDetails,
         image: imageUrl,
@@ -538,11 +554,11 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                   ) : (
                     <div className="font-bold text-[#003580]">
                       {pkg.price_per_month ? (
-                        <div>{pkg.price_per_month} {currency} /mo</div>
+                        <div>{pkg.price_per_month} {pkg.currency || currency} /mo</div>
                       ) : pkg.price_per_week ? (
-                        <div>{pkg.price_per_week} {currency} /wk</div>
+                        <div>{pkg.price_per_week} {pkg.currency || currency} /wk</div>
                       ) : (
-                        <div>{pkg.price_per_day} {currency} /day</div>
+                        <div>{pkg.price_per_day} {pkg.currency || currency} /day</div>
                       )}
                     </div>
                   )}
@@ -599,25 +615,45 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                 <Label>Offer Type *</Label>
                 <Select 
                   value={formData.type}
-                  onChange={e => setFormData({...formData, type: e.target.value as any})}
+                  onChange={e => {
+                    const newType = e.target.value as 'training' | 'accommodation' | 'all_inclusive'
+                    setFormData({
+                      ...formData, 
+                      type: newType,
+                      // Auto-set min stay: 1 day for training, 7 days for accommodation/all-inclusive
+                      min_stay_days: newType === 'training' ? '1' : '7',
+                    })
+                  }}
                 >
                   {PACKAGE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </Select>
               </div>
               
-              {(formData.type === 'training') && (
-                 <div className="space-y-2">
-                  <Label>Base Price (Training Only)</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Monthly Price"
-                      type="number" 
-                      value={formData.price_per_month}
-                      onChange={e => setFormData({...formData, price_per_month: e.target.value})}
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Currency *</Label>
+                <Select 
+                  value={formData.currency}
+                  onChange={e => setFormData({...formData, currency: e.target.value})}
+                >
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="THB">THB - Thai Baht</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="AUD">AUD - Australian Dollar</option>
+                  <option value="IDR">IDR - Indonesian Rupiah</option>
+                  <option value="JPY">JPY - Japanese Yen</option>
+                  <option value="CNY">CNY - Chinese Yuan</option>
+                  <option value="SGD">SGD - Singapore Dollar</option>
+                  <option value="MYR">MYR - Malaysian Ringgit</option>
+                  <option value="NZD">NZD - New Zealand Dollar</option>
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="HKD">HKD - Hong Kong Dollar</option>
+                  <option value="INR">INR - Indian Rupee</option>
+                  <option value="KRW">KRW - South Korean Won</option>
+                  <option value="PHP">PHP - Philippine Peso</option>
+                  <option value="VND">VND - Vietnamese Dong</option>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -691,35 +727,60 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
               )}
             </div>
 
-            {/* Price Fields for Training Only */}
-            {formData.type === 'training' && (
-              <div className="grid md:grid-cols-3 gap-4 bg-white p-4 rounded border">
-                <div className="space-y-2">
-                  <Label>Price per Day</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.price_per_day}
-                    onChange={e => setFormData({...formData, price_per_day: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Price per Week</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.price_per_week}
-                    onChange={e => setFormData({...formData, price_per_week: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Price per Month</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.price_per_month}
-                    onChange={e => setFormData({...formData, price_per_month: e.target.value})}
-                  />
-                </div>
+            {/* Price Fields for All Package Types */}
+            <div className="grid md:grid-cols-3 gap-4 bg-white p-4 rounded border">
+              <div className="space-y-2">
+                <Label>Price per Day</Label>
+                <Input 
+                  type="number" 
+                  step="0.01"
+                  value={formData.price_per_day}
+                  onChange={e => setFormData({...formData, price_per_day: e.target.value})}
+                  placeholder="0.00"
+                />
               </div>
-            )}
+              <div className="space-y-2">
+                <Label>Price per Week</Label>
+                <Input 
+                  type="number" 
+                  step="0.01"
+                  value={formData.price_per_week}
+                  onChange={e => setFormData({...formData, price_per_week: e.target.value})}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Price per Month</Label>
+                <Input 
+                  type="number" 
+                  step="0.01"
+                  value={formData.price_per_month}
+                  onChange={e => setFormData({...formData, price_per_month: e.target.value})}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 -mt-2 px-4">
+              Set at least one price (day, week, or month). Prices are in {formData.currency}.
+            </p>
+
+            {/* Minimum Stay */}
+            <div className="space-y-2">
+              <Label>Minimum Stay (Days)</Label>
+              <Input 
+                type="number" 
+                min="1"
+                step="1"
+                placeholder={formData.type === 'training' ? '1' : '7'}
+                value={formData.min_stay_days}
+                onChange={e => setFormData({...formData, min_stay_days: e.target.value})}
+              />
+              <p className="text-xs text-gray-500">
+                {formData.type === 'training' 
+                  ? 'Minimum number of training sessions/days. Default: 1.' 
+                  : 'Minimum number of days for a booking. Default: 7 (1 week). Guests cannot book fewer days than this.'}
+              </p>
+            </div>
 
             {/* Cancellation Policy */}
             <div className="space-y-2">
@@ -845,22 +906,120 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                       <Input 
                         placeholder="Daily Price" 
                         type="number"
+                        step="0.01"
                         value={variantForm.price_per_day}
                         onChange={e => setVariantForm({...variantForm, price_per_day: e.target.value})}
                       />
                       <Input 
                         placeholder="Weekly Price" 
                         type="number"
+                        step="0.01"
                         value={variantForm.price_per_week}
                         onChange={e => setVariantForm({...variantForm, price_per_week: e.target.value})}
                       />
                       <Input 
                         placeholder="Monthly Price" 
                         type="number"
+                        step="0.01"
                         value={variantForm.price_per_month}
                         onChange={e => setVariantForm({...variantForm, price_per_month: e.target.value})}
                       />
                     </div>
+                    
+                    {/* Image Upload for Variants */}
+                    <div className="space-y-3 border-t pt-4">
+                      <div>
+                        <Label className="text-sm font-semibold">Accommodation Images</Label>
+                        <p className="text-xs text-muted-foreground mt-1 mb-3">
+                          Add up to 5 images of this accommodation option. Recommended: 800x600px or similar.
+                        </p>
+                        
+                        {/* File Upload */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#003580] transition-colors">
+                          <Input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple
+                            onChange={handleVariantImageUpload}
+                            className="hidden"
+                            id="variant-image-upload"
+                          />
+                          <label 
+                            htmlFor="variant-image-upload"
+                            className="cursor-pointer flex flex-col items-center gap-2"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-[#003580]/10 flex items-center justify-center">
+                              <Plus className="w-5 h-5 text-[#003580]" />
+                            </div>
+                            <div className="text-sm font-medium text-gray-700">
+                              {variantImages.length > 0 || existingVariantImages.length > 0 
+                                ? `Add more images (${variantImages.length + existingVariantImages.length}/5)` 
+                                : 'Click to upload images'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              PNG, JPG up to 5MB each (max 5 images)
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Image Previews */}
+                      {(existingVariantImages.length > 0 || variantImages.length > 0) && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Images ({existingVariantImages.length + variantImages.length}/5)
+                          </p>
+                          <div className="grid grid-cols-3 gap-3">
+                            {/* Existing Images */}
+                            {existingVariantImages.map((imgUrl, index) => (
+                              <div key={`existing-${index}`} className="relative group">
+                                <div className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                  <img 
+                                    src={imgUrl} 
+                                    alt={`Existing ${index + 1}`}
+                                    className="w-full h-full object-cover" 
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeExistingVariantImage(index)}
+                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  title="Remove image"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                            {/* New Images */}
+                            {variantImages.map((img, index) => (
+                              <div key={`new-${index}`} className="relative group">
+                                <div className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                  <img 
+                                    src={URL.createObjectURL(img)} 
+                                    alt={`New ${index + 1}`}
+                                    className="w-full h-full object-cover" 
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantImage(index)}
+                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  title="Remove image"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            {variantImages.length > 0 
+                              ? `${variantImages.length} new image(s) will be uploaded when you save.` 
+                              : 'These images are currently displayed for this accommodation option.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex justify-end gap-2">
                       <Button type="button" size="sm" variant="ghost" onClick={cancelVariantEdit}>Cancel</Button>
                       <Button type="button" size="sm" onClick={handleVariantSubmit}>Save Option</Button>
@@ -895,7 +1054,7 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                       <div className="flex-1 min-w-0">
                         <div className="font-medium">{v.name}</div>
                         <div className="text-muted-foreground text-xs mt-0.5">
-                          {v.price_per_month ? `${v.price_per_month} ${currency}/mo` : v.price_per_week ? `${v.price_per_week} ${currency}/wk` : v.price_per_day ? `${v.price_per_day} ${currency}/day` : 'No price set'}
+                          {v.price_per_month ? `${v.price_per_month} ${formData.currency || currency}/mo` : v.price_per_week ? `${v.price_per_week} ${formData.currency || currency}/wk` : v.price_per_day ? `${v.price_per_day} ${formData.currency || currency}/day` : 'No price set'}
                         </div>
                         {v.images && v.images.length > 0 ? (
                           <div className="text-[10px] text-green-600 mt-1">

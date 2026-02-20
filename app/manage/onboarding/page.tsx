@@ -217,10 +217,24 @@ function GymOnboardingForm() {
       }
 
       // Check email verification (important for production)
+      // But allow proceeding if email verification is delayed due to rate limits
       if (!user.email_confirmed_at) {
-        setError('Please verify your email address before creating a gym. Check your inbox for a confirmation email.')
-        setLoading(false)
-        return
+        // Check if this is a new signup (created in last 5 minutes)
+        const userCreatedAt = new Date(user.created_at)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+        const isNewSignup = userCreatedAt > fiveMinutesAgo
+        
+        if (isNewSignup) {
+          // New signup - email might be delayed due to rate limits
+          // Allow them to proceed but show a warning (non-blocking)
+          console.warn('Email verification pending for new signup - allowing gym creation to proceed')
+          // Continue with gym creation - don't block
+        } else {
+          // Older account - should have verified by now
+          setError('Please verify your email address before creating a gym. Check your inbox for a confirmation email, or contact support if you haven\'t received it.')
+          setLoading(false)
+          return
+        }
       }
 
       // Verify user has owner role

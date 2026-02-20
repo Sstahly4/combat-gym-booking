@@ -51,8 +51,9 @@ export function BookingSection({ gym }: { gym: Gym }) {
     : null
 
   const totalPrice = priceInfo?.price || 0
-  const showWeekWarning = selectedPackage && selectedPackage.type !== 'training' && duration < 7 && isValidDuration
-  const meetsMinimumStay = !selectedPackage || selectedPackage.type === 'training' || duration >= 7
+  const minStay = selectedPackage?.min_stay_days ?? (selectedPackage?.type === 'training' ? 1 : 7)
+  const showMinStayWarning = selectedPackage && duration < minStay && isValidDuration
+  const meetsMinimumStay = !selectedPackage || duration >= minStay
 
   return (
     <>
@@ -86,9 +87,9 @@ export function BookingSection({ gym }: { gym: Gym }) {
               </CardTitle>
               <CardDescription className="text-[#003580]/80 text-xs mt-1">
                  {selectedPackage.name}
-                 {showWeekWarning && (
+                 {showMinStayWarning && (
                    <span className="block text-orange-600 mt-1 font-medium">
-                     ⚠ Minimum stay: 1 week
+                     ⚠ Minimum stay: {minStay} {minStay === 1 ? 'day' : 'days'}
                    </span>
                  )}
               </CardDescription>
@@ -130,10 +131,10 @@ export function BookingSection({ gym }: { gym: Gym }) {
                </div>
             )}
             
-            {showWeekWarning && (
+            {showMinStayWarning && (
               <div className="flex items-center gap-2 p-3 bg-orange-50 text-orange-800 text-sm rounded-md mb-2">
                 <AlertCircle className="w-4 h-4" />
-                Accommodation packages require a minimum stay of 1 week
+                This package requires a minimum stay of {minStay} {minStay === 1 ? 'day' : 'days'}
               </div>
             )}
             

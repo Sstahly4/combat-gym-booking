@@ -151,7 +151,8 @@ function BookingSummaryPageContent() {
     : 0
 
   const isValidDuration = duration > 0
-  const meetsMinimumStay = !package_ || package_.type === 'training' || duration >= 7
+  const minStay = package_?.min_stay_days ?? (package_?.type === 'training' ? 1 : 7)
+  const meetsMinimumStay = !package_ || duration >= minStay
 
   // Calculate price
   const priceInfo = (package_ && isValidDuration)
@@ -180,7 +181,7 @@ function BookingSummaryPageContent() {
       return
     }
     if (!meetsMinimumStay) {
-      setError('Accommodation packages require a minimum stay of 1 week')
+      setError(`This package requires a minimum stay of ${minStay} ${minStay === 1 ? 'day' : 'days'}`)
       return
     }
     if (!discipline) {

@@ -11,8 +11,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Gym, GymImage } from '@/lib/types/database'
-import { PackageManager } from '@/components/manage/package-manager'
-import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { PackagesSection } from '@/components/manage/packages-section'
+import { GymEditSidebar } from '@/components/manage/gym-edit-sidebar'
+import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight, Menu, X as XIcon } from 'lucide-react'
 import Link from 'next/link'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
@@ -51,7 +52,6 @@ interface GymWithImages extends Gym {
   images: GymImage[]
   opening_hours?: any
   trainers?: any
-  accommodation_details?: any
   faq?: any
 }
 
@@ -65,6 +65,9 @@ function EditGymForm() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState('basic')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [amenitiesExpanded, setAmenitiesExpanded] = useState(false)
 
   // Form State
   const [disciplines, setDisciplines] = useState<string[]>([])
@@ -160,7 +163,6 @@ function EditGymForm() {
     sunday: [],
   })
   const [trainers, setTrainers] = useState<Array<{ name: string; discipline: string; experience: string }>>([])
-  const [accommodationDetails, setAccommodationDetails] = useState<Array<{ type: string; description: string }>>([])
   const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([])
 
   // Get cache key for this gym
@@ -179,7 +181,6 @@ function EditGymForm() {
         openingHours,
         trainingSchedule,
         trainers,
-        accommodationDetails,
         faq,
         // Note: newImages (File objects) can't be serialized, so we skip them
         timestamp: Date.now(),
@@ -215,7 +216,6 @@ function EditGymForm() {
       if (formState.openingHours) setOpeningHours(formState.openingHours)
       if (formState.trainingSchedule) setTrainingSchedule(formState.trainingSchedule)
       if (formState.trainers) setTrainers(formState.trainers)
-      if (formState.accommodationDetails) setAccommodationDetails(formState.accommodationDetails)
       if (formState.faq) setFaq(formState.faq)
 
       return true
@@ -237,7 +237,7 @@ function EditGymForm() {
   useEffect(() => {
     if (!gymId || loading) return
     saveFormState()
-  }, [disciplines, amenities, selectedCountry, openingHours, trainingSchedule, trainers, accommodationDetails, faq, gymId, loading])
+  }, [disciplines, amenities, selectedCountry, openingHours, trainingSchedule, trainers, faq, gymId, loading])
 
   // Warn user before leaving page with unsaved changes
   useEffect(() => {
@@ -302,7 +302,20 @@ function EditGymForm() {
       return
     }
 
-    setGym(data as any)
+    // Create a deep mutable copy to avoid readonly property errors
+    // Use structuredClone if available, otherwise JSON parse/stringify
+    const createMutableCopy = (obj: any): any => {
+      if (typeof structuredClone !== 'undefined') {
+        return structuredClone(obj)
+      }
+      return JSON.parse(JSON.stringify(obj))
+    }
+    
+    const mutableGym = createMutableCopy(data)
+    if (mutableGym.images) {
+      mutableGym.images = [...mutableGym.images]
+    }
+    setGym(mutableGym as any)
     
     // Try to restore cached form state first
     const hasCachedState = restoreFormState()
@@ -433,9 +446,6 @@ function EditGymForm() {
       if (data.trainers && Array.isArray(data.trainers)) {
         setTrainers(data.trainers)
       }
-      if (data.accommodation_details && Array.isArray(data.accommodation_details)) {
-        setAccommodationDetails(data.accommodation_details)
-      }
       if (data.faq && Array.isArray(data.faq)) {
         setFaq(data.faq)
       }
@@ -460,12 +470,8 @@ function EditGymForm() {
     })
   }
   
-  // Get sorted amenities entries (checked first, then alphabetically)
-  const sortedAmenities = Object.entries(amenities).sort(([a, aValue], [b, bValue]) => {
-    // Sort checked items first
-    if (aValue && !bValue) return -1
-    if (!aValue && bValue) return 1
-    // Then sort alphabetically
+  // Stable alphabetical sort - don't reorder when items are checked/unchecked
+  const sortedAmenities = Object.entries(amenities).sort(([a], [b]) => {
     return a.localeCompare(b)
   })
 
@@ -610,8 +616,15 @@ function EditGymForm() {
     // Update gym state with new images
     if (insertedImages && insertedImages.length > 0 && gym) {
       const updatedImages = [...(gym.images || []), ...insertedImages].sort((a, b) => (a.order || 0) - (b.order || 0))
+      // Create a new mutable object to avoid readonly property errors
+      const createMutableCopy = (obj: any): any => {
+        if (typeof structuredClone !== 'undefined') {
+          return structuredClone(obj)
+        }
+        return JSON.parse(JSON.stringify(obj))
+      }
       setGym({
-        ...gym,
+        ...createMutableCopy(gym),
         images: updatedImages
       })
       // Clear new images after successful upload
@@ -645,7 +658,17 @@ function EditGymForm() {
     }))
 
     // Update state immediately for UI feedback
-    setGym({ ...gym, images: updatedImages })
+    // Create a new mutable object to avoid readonly property errors
+    const createMutableCopy = (obj: any): any => {
+      if (typeof structuredClone !== 'undefined') {
+        return structuredClone(obj)
+      }
+      return JSON.parse(JSON.stringify(obj))
+    }
+    setGym({
+      ...createMutableCopy(gym),
+      images: updatedImages
+    })
 
     // Save to database
     const supabase = createClient()
@@ -685,20 +708,6 @@ function EditGymForm() {
     setTrainers(updated)
   }
 
-  const addAccommodationDetail = () => {
-    setAccommodationDetails([...accommodationDetails, { type: '', description: '' }])
-  }
-
-  const removeAccommodationDetail = (index: number) => {
-    setAccommodationDetails(accommodationDetails.filter((_, i) => i !== index))
-  }
-
-  const updateAccommodationDetail = (index: number, field: string, value: string) => {
-    const updated = [...accommodationDetails]
-    updated[index] = { ...updated[index], [field]: value }
-    setAccommodationDetails(updated)
-  }
-
   const addFaq = () => {
     setFaq([...faq, { question: '', answer: '' }])
   }
@@ -713,14 +722,23 @@ function EditGymForm() {
     setFaq(updated)
   }
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const handleSave = async (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) e.preventDefault()
     if (!gym) return
 
     setSaving(true)
+    setErrorMsg(null) // Clear any previous errors
     const supabase = createClient()
     
-    const formData = new FormData(e.currentTarget)
+    // Get form element - handle both direct form submission and programmatic submission
+    const formElement = e?.currentTarget || document.getElementById('edit-gym-form') as HTMLFormElement
+    if (!formElement) {
+      setErrorMsg('Form not found')
+      setSaving(false)
+      return
+    }
+    
+    const formData = new FormData(formElement)
     const updates = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -732,21 +750,20 @@ function EditGymForm() {
       price_per_day: parseFloat(formData.get('price_per_day') as string),
       price_per_week: formData.get('price_per_week') ? parseFloat(formData.get('price_per_week') as string) : null,
       currency: formData.get('currency') as string,
-      disciplines: disciplines,
-      amenities: amenities, // Save all amenities (true/false values)
+      disciplines: [...disciplines], // Create new array to avoid readonly issues
+      amenities: { ...amenities }, // Create new object to avoid readonly issues
       google_maps_link: formData.get('google_maps_link') as string || null,
       instagram_link: formData.get('instagram_link') as string || null,
       facebook_link: formData.get('facebook_link') as string || null,
-      opening_hours: openingHours,
+      opening_hours: { ...openingHours }, // Create new object to avoid readonly issues
       training_schedule: Object.fromEntries(
         Object.entries(trainingSchedule).map(([day, sessions]) => [
           day,
-          sessions.filter(s => s.time.trim() !== '') // Only save sessions with time
+          [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
         ])
       ),
-      trainers: trainers.filter(t => t.name && t.discipline),
-      accommodation_details: accommodationDetails.filter(a => a.type && a.description),
-      faq: faq.filter(f => f.question && f.answer),
+      trainers: [...trainers].filter(t => t.name && t.discipline), // Create new array
+      faq: [...faq].filter(f => f.question && f.answer), // Create new array
     }
 
     try {
@@ -784,7 +801,9 @@ function EditGymForm() {
       // Save current image order (in case images were reordered)
       if (gym.images && gym.images.length > 0) {
         const supabase = createClient()
-        const orderUpdates = gym.images.map((img, index) => ({
+        // Create a mutable copy of images array to avoid readonly errors
+        const imagesCopy = [...gym.images]
+        const orderUpdates = imagesCopy.map((img, index) => ({
           id: img.id,
           order: index
         }))
@@ -854,32 +873,100 @@ function EditGymForm() {
 
   if (!gym) return null
 
+  // Calculate section completion status
+  const sectionStatus = {
+    basic: { completed: !!(gym.name && gym.description && gym.price_per_day), required: true },
+    location: { completed: !!(gym.address && gym.city && selectedCountry), required: true },
+    images: { completed: !!(gym.images && gym.images.length > 0), required: true },
+    disciplines: { completed: disciplines.length > 0, required: true },
+    schedule: { completed: false, required: false },
+    trainers: { completed: trainers.length > 0, required: false },
+    faq: { completed: faq.length > 0, required: false },
+    packages: { completed: false, required: true },
+  }
+
+  // Scroll to section
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId)
+    const element = document.getElementById(`section-${sectionId}`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    setSidebarOpen(false) // Close mobile sidebar
+  }
+
   return (
-    <div className="min-h-screen bg-white py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="md:hidden sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3">
           <Link 
             href="/manage" 
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            <span className="text-sm font-medium">Back</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Gym Profile</h1>
-          <p className="text-gray-600">Update your gym information to attract more bookings</p>
+          <h1 className="text-lg font-bold text-gray-900">Edit Gym</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2"
+          >
+            {sidebarOpen ? <XIcon className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
         </div>
+      </div>
 
-        <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
+      <div className="flex">
+        {/* Sidebar Navigation - Fixed below navbar */}
+        <aside className={`
+          fixed top-16 md:top-16 left-0 h-[calc(100vh-4rem)] z-40 bg-white border-r border-gray-200
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          transition-transform duration-300 ease-in-out
+        `}>
+          <GymEditSidebar
+            activeSection={activeSection}
+            onSectionChange={scrollToSection}
+            sections={sectionStatus}
+          />
+        </aside>
+
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content - Add left margin on desktop to account for fixed sidebar */}
+        <main className="flex-1 min-w-0 md:ml-64">
+          <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
+            {/* Desktop Header */}
+            <div className="hidden md:block mb-8">
+              <Link 
+                href="/manage" 
+                className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Link>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Gym Profile</h1>
+              <p className="text-gray-600">Update your gym information to attract more bookings</p>
+            </div>
+
+            <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
           {/* Basic Information */}
-          <Card>
+          <Card id="section-basic" className="scroll-mt-6">
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
               <CardDescription>Tell us about your gym</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Gym Name *</Label>
+                <Label htmlFor="name">Gym Name <span className="text-red-500">*</span></Label>
                 <Input 
                   id="name" 
                   name="name" 
@@ -889,7 +976,7 @@ function EditGymForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id="description" 
                   name="description" 
@@ -903,18 +990,58 @@ function EditGymForm() {
                   A detailed description helps potential customers understand what makes your gym unique
                 </p>
               </div>
+
+              {/* Base Pricing - Moved here from separate section */}
+              <div className="pt-6 border-t space-y-4">
+                <div>
+                  <Label className="text-base font-semibold">Base Pricing</Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Base prices used for "Starting from" display. Detailed pricing is managed in Packages below.
+                  </p>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4 max-w-3xl">
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_day">Base Price per Day <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="price_per_day" 
+                      name="price_per_day" 
+                      type="number" 
+                      step="0.01" 
+                      defaultValue={gym.price_per_day} 
+                      required 
+                    />
+                    <p className="text-xs text-gray-500">Used for "Starting from" display</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_week">Base Price per Week (optional)</Label>
+                    <Input 
+                      id="price_per_week" 
+                      name="price_per_week" 
+                      type="number" 
+                      step="0.01" 
+                      defaultValue={gym.price_per_week || ''} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency <span className="text-red-500">*</span></Label>
+                    <Select name="currency" defaultValue={gym.currency} required>
+                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           {/* Location & Verification */}
-          <Card>
+          <Card id="section-location" className="scroll-mt-6">
             <CardHeader>
               <CardTitle>Location & Verification</CardTitle>
               <CardDescription>Help customers find and verify your gym</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="address">Full Address *</Label>
+                <Label htmlFor="address">Full Address <span className="text-red-500">*</span></Label>
                 <Input 
                   id="address" 
                   name="address" 
@@ -929,11 +1056,11 @@ function EditGymForm() {
               
               <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City *</Label>
+                  <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
                   <Input id="city" name="city" defaultValue={gym.city} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="country">Country *</Label>
+                  <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
                   <div className="relative">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1062,7 +1189,7 @@ function EditGymForm() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="google_maps_link">
-                    Google Maps Listing Link {profile?.role !== 'admin' && '*'}
+                    Google Maps Listing Link {profile?.role !== 'admin' && <span className="text-red-500">*</span>}
                   </Label>
                   <Input 
                     id="google_maps_link" 
@@ -1080,7 +1207,7 @@ function EditGymForm() {
                 <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                   <div className="space-y-2">
                     <Label htmlFor="instagram_link">
-                      Instagram Link {profile?.role !== 'admin' && '*'}
+                      Instagram Link {profile?.role !== 'admin' && <span className="text-red-500">*</span>}
                     </Label>
                     <Input 
                       id="instagram_link" 
@@ -1107,14 +1234,14 @@ function EditGymForm() {
           </Card>
 
           {/* Disciplines & Amenities */}
-          <Card>
+          <Card id="section-disciplines" className="scroll-mt-6">
             <CardHeader>
               <CardTitle>Disciplines & Amenities</CardTitle>
               <CardDescription>What do you offer?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
-                <Label>Disciplines Offered *</Label>
+                <Label>Disciplines Offered <span className="text-red-500">*</span></Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {DISCIPLINES.map(d => (
                     <label 
@@ -1134,17 +1261,40 @@ function EditGymForm() {
               </div>
 
               <div className="pt-4 border-t space-y-3">
-                <div>
-                  <Label>Amenities</Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select all that apply. More amenities help customers find what they're looking for.
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Amenities</Label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Select all that apply. More amenities help customers find what they're looking for.
+                    </p>
+                  </div>
+                  {sortedAmenities.length > 12 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
+                      className="text-xs text-[#003580] hover:text-[#003580]/80"
+                    >
+                      {amenitiesExpanded ? (
+                        <>
+                          <ChevronUp className="w-3 h-3 mr-1 inline" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3 h-3 mr-1 inline" />
+                          Show More ({sortedAmenities.length - 12} more)
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                  {sortedAmenities.map(([key, value]) => (
+                  {sortedAmenities.slice(0, amenitiesExpanded ? sortedAmenities.length : 12).map(([key, value]) => (
                     <label 
                       key={key} 
-                      className={`flex items-center gap-2.5 cursor-pointer p-2.5 rounded-md border transition-all ${
+                      className={`flex items-start gap-2.5 cursor-pointer p-2.5 rounded-md border transition-colors ${
                         value 
                           ? 'border-[#003580] bg-blue-50 shadow-sm' 
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -1154,9 +1304,9 @@ function EditGymForm() {
                         type="checkbox"
                         checked={value}
                         onChange={(e) => handleAmenityChange(key, e.target.checked)}
-                        className="rounded w-4 h-4 text-[#003580] focus:ring-2 focus:ring-[#003580] focus:ring-offset-1 cursor-pointer flex-shrink-0"
+                        className="rounded w-4 h-4 text-[#003580] focus:ring-2 focus:ring-[#003580] focus:ring-offset-1 cursor-pointer flex-shrink-0 mt-0.5"
                       />
-                      <span className="text-sm text-gray-700 capitalize leading-tight select-none">
+                      <span className="text-sm text-gray-700 capitalize leading-tight select-none flex-1">
                         {key.replace(/_/g, ' ')}
                       </span>
                     </label>
@@ -1167,7 +1317,7 @@ function EditGymForm() {
           </Card>
 
           {/* Images */}
-          <Card>
+          <Card id="section-images" className="scroll-mt-6">
             <CardHeader>
               <CardTitle>Images</CardTitle>
               <CardDescription>Upload up to 30 images. Drag to reorder - the first image is your main photo</CardDescription>
@@ -1274,7 +1424,7 @@ function EditGymForm() {
           </Card>
 
           {/* Additional Details - Optional but helpful */}
-          <Card>
+          <Card id="section-schedule" className="scroll-mt-6">
             <CardHeader>
               <CardTitle>Additional Details (Optional)</CardTitle>
               <CardDescription>More information helps customers make better decisions</CardDescription>
@@ -1387,7 +1537,7 @@ function EditGymForm() {
                                     <div key={sessionIndex} className="flex gap-2 items-start bg-white p-3 rounded border border-gray-200">
                                       <div className="flex-1 grid grid-cols-2 gap-2">
                                         <div className="space-y-1">
-                                          <Label className="text-xs text-gray-600">Time *</Label>
+                                          <Label className="text-xs text-gray-600">Time <span className="text-red-500">*</span></Label>
                                           <Input
                                             value={session.time}
                                             onChange={(e) => {
@@ -1438,89 +1588,68 @@ function EditGymForm() {
                 )}
               </div>
 
-              {/* Trainers */}
-              <div className="pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Trainers (optional)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addTrainer}>
-                    + Add Trainer
-                  </Button>
-                </div>
-                {trainers.map((trainer, index) => (
-                  <div key={index} className="grid md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg max-w-4xl">
-                    <Input
-                      placeholder="Trainer name"
-                      value={trainer.name}
-                      onChange={(e) => updateTrainer(index, 'name', e.target.value)}
-                    />
-                    <Input
-                      placeholder="Discipline"
-                      value={trainer.discipline}
-                      onChange={(e) => updateTrainer(index, 'discipline', e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Experience (e.g., 10 years)"
-                        value={trainer.experience}
-                        onChange={(e) => updateTrainer(index, 'experience', e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeTrainer(index)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            </CardContent>
+          </Card>
 
-              {/* Accommodation Details */}
-              <div className="pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Accommodation Details (optional)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addAccommodationDetail}>
-                    + Add Detail
-                  </Button>
-                </div>
-                {accommodationDetails.map((detail, index) => (
-                  <div key={index} className="grid md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg max-w-4xl">
+          {/* Trainers */}
+          <Card id="section-trainers" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle>Trainers</CardTitle>
+              <CardDescription>List your trainers and their expertise (optional)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Trainers (optional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addTrainer}>
+                  + Add Trainer
+                </Button>
+              </div>
+              {trainers.map((trainer, index) => (
+                <div key={index} className="grid md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg max-w-4xl">
+                  <Input
+                    placeholder="Trainer name"
+                    value={trainer.name}
+                    onChange={(e) => updateTrainer(index, 'name', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Discipline"
+                    value={trainer.discipline}
+                    onChange={(e) => updateTrainer(index, 'discipline', e.target.value)}
+                  />
+                  <div className="flex gap-2">
                     <Input
-                      placeholder="Type (e.g., Private Room)"
-                      value={detail.type}
-                      onChange={(e) => updateAccommodationDetail(index, 'type', e.target.value)}
-                    />
-                    <Textarea
-                      placeholder="Description"
-                      value={detail.description}
-                      onChange={(e) => updateAccommodationDetail(index, 'description', e.target.value)}
-                      rows={2}
-                      className="md:col-span-2"
+                      placeholder="Experience (e.g., 10 years)"
+                      value={trainer.experience}
+                      onChange={(e) => updateTrainer(index, 'experience', e.target.value)}
+                      className="flex-1"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => removeAccommodationDetail(index)}
-                      className="self-start"
+                      onClick={() => removeTrainer(index)}
                     >
                       Remove
                     </Button>
                   </div>
-                ))}
-              </div>
-
-              {/* FAQ */}
-              <div className="pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Frequently Asked Questions (optional)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFaq}>
-                    + Add Question
-                  </Button>
                 </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* FAQ */}
+          <Card id="section-faq" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle>Frequently Asked Questions</CardTitle>
+              <CardDescription>Add common questions and answers (optional)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Frequently Asked Questions (optional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addFaq}>
+                  + Add Question
+                </Button>
+              </div>
                 {faq.map((item, index) => (
                   <div key={index} className="p-4 bg-gray-50 rounded-lg space-y-3 max-w-4xl">
                     <Input
@@ -1548,105 +1677,53 @@ function EditGymForm() {
                     </div>
                   </div>
                 ))}
-              </div>
             </CardContent>
           </Card>
+            </form>
 
-          {/* Pricing */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Base Pricing</CardTitle>
-              <CardDescription>Base prices used for "Starting from" display. Detailed pricing is managed in Packages below.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-4 max-w-3xl">
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_day">Base Price per Day *</Label>
-                  <Input 
-                    id="price_per_day" 
-                    name="price_per_day" 
-                    type="number" 
-                    step="0.01" 
-                    defaultValue={gym.price_per_day} 
-                    required 
+            {/* Packages Section - Uses PackageManager with inline variant management */}
+            {gym && gym.id && (
+              <Card id="section-packages" className="scroll-mt-6 mt-6">
+                <CardHeader>
+                  <CardTitle>Packages & Offers</CardTitle>
+                  <CardDescription>
+                    Create and manage your training packages. Add room variants directly to packages for accommodation options.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PackagesSection 
+                    gymId={gym.id} 
+                    currency={gym.currency || 'USD'}
+                    isAdmin={profile?.role === 'admin'}
                   />
-                  <p className="text-xs text-gray-500">Used for "Starting from" display</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_week">Base Price per Week (optional)</Label>
-                  <Input 
-                    id="price_per_week" 
-                    name="price_per_week" 
-                    type="number" 
-                    step="0.01" 
-                    defaultValue={gym.price_per_week || ''} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency *</Label>
-                  <Select name="currency" defaultValue={gym.currency} required>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Packages Section - Outside main form to avoid nested forms, but visually above buttons */}
-        {gym && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Packages</CardTitle>
-              <CardDescription>Manage your training packages and accommodation options</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {gym.id ? (
-                <PackageManager 
-                  gymId={gym.id} 
-                  currency={gym.currency || 'USD'} 
-                  key={gym.id} 
-                />
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="text-sm text-yellow-800">
-                    Loading gym information... (Gym ID: {gym.id || 'undefined'})
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Action Buttons - Outside form but can trigger form submission */}
-        <div className="flex gap-4 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/manage')}
-            className="flex-1 md:flex-initial"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="button"
-            onClick={async (e) => {
-              e.preventDefault()
-              // Find the form and submit it programmatically
-              const form = document.getElementById('edit-gym-form') as HTMLFormElement
-              if (form) {
-                const formEvent = new Event('submit', { bubbles: true, cancelable: true }) as any
-                formEvent.target = form
-                formEvent.currentTarget = form
-                await handleSave(formEvent)
-              }
-            }}
-            disabled={saving}
-            className="flex-1 md:flex-initial bg-[#003580] hover:bg-[#003580]/90"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
+            {/* Action Buttons - Outside form but can trigger form submission */}
+            <div className="flex gap-4 pt-6 border-t mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push('/manage')}
+                className="flex-1 md:flex-initial"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="button"
+                onClick={async () => {
+                  // Call handleSave directly without event
+                  await handleSave()
+                }}
+                disabled={saving}
+                className="flex-1 md:flex-initial bg-[#003580] hover:bg-[#003580]/90"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   )
