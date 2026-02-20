@@ -34,3 +34,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal documentation (keep locally, don't push to GitHub)
+DEPLOYMENT_GUIDE.md
+DEPLOYMENT_CHECKLIST.md
+PRE_DEPLOYMENT_CHECKLIST.md
+MVP_REMOVAL_GUIDE.md
+SECURITY_ANALYSIS.md
+VERIFICATION_SYSTEM.md
+WEBHOOK_SETUP.md
+SUPABASE_EMAIL_SETUP.md
+PAYMENT_FLOW.md
