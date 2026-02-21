@@ -40,10 +40,14 @@ export function BookingSection({ gym }: { gym: Gym }) {
     : 0
 
   const isValidDuration = duration > 0
+  const pricingDuration =
+    selectedPackage && isValidDuration && (selectedPackage.type === 'training' || selectedPackage.type === 'all_inclusive')
+      ? duration + 1
+      : duration
 
   // Calculate Price for Selected Package (respects billing units)
   const priceInfo = (selectedPackage && isValidDuration)
-    ? calculatePackagePrice(duration, selectedPackage.type, {
+    ? calculatePackagePrice(pricingDuration, selectedPackage.type, {
         daily: selectedPackage.price_per_day,
         weekly: selectedPackage.price_per_week,
         monthly: selectedPackage.price_per_month

@@ -74,6 +74,14 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   }
 
   const isValidDuration = duration > 0
+  // Pricing vs display duration:
+  // - We compute `duration` as nights (checkout - checkin).
+  // - For training + all-inclusive we price by "days", which is nights + 1 (camp convention).
+  // - Accommodation stays priced/displayed off nights.
+  const getPricingDuration = (packageType: Package['type']) => {
+    if (!isValidDuration) return duration
+    return (packageType === 'training' || packageType === 'all_inclusive') ? (duration + 1) : duration
+  }
 
   // Extend stay handler — sets checkout to checkin + minStay days
   const handleExtendStay = (minStayDays: number) => {
@@ -221,7 +229,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
             const shouldShowPerSession = pkg.type === 'training' && !hasUserSelectedDates
             
             const priceInfo = (isValidDuration && !shouldShowPerSession)
-              ? calculatePackagePrice(duration, pkg.type, basePrices)
+              ? calculatePackagePrice(getPricingDuration(pkg.type), pkg.type, basePrices)
               : {
                   price: pkg.type === 'training' 
                     ? (basePrices.daily || 0)
@@ -230,6 +238,11 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   duration: pkg.type === 'training' ? 1 : 0,
                   durationLabel: pkg.type === 'training' ? '1 day' : ''
                 }
+
+            // Display "days" for training/all-inclusive as nights + 1 (to match pricing),
+            // otherwise keep using nights-based duration.
+            const displayedDays =
+              (pkg.type === 'training' || pkg.type === 'all_inclusive') ? getPricingDuration(pkg.type) : duration
 
             const isSelected = selectedPackage?.id === pkg.id && !selectedPackage.name.includes(' - ') // Simple check if base package selected
 
@@ -344,7 +357,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <div className="text-[10px] text-gray-500 mb-0.5">
-                            {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${duration} ${pkg.type === 'training' ? (duration === 1 ? 'day' : 'days') : (duration === 1 ? 'day' : 'days')}` : (pkg.type === 'training' ? '1 day' : '1 week')}
+                            {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${displayedDays} ${displayedDays === 1 ? 'day' : 'days'}` : (pkg.type === 'training' ? '1 day' : '1 week')}
                           </div>
                           <div className="text-lg font-bold text-[#003580]">
                             {formatPrice(convertPrice(priceInfo.price, gym.currency))}
@@ -498,7 +511,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                               {formatPrice(convertPrice(priceInfo.price, gym.currency))}
                             </div>
                             <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
-                              Total for {duration} {pkg.type === 'training' ? (duration === 1 ? 'day' : 'days') : (duration === 1 ? 'day' : 'days')}
+                              Total for {displayedDays} {displayedDays === 1 ? 'day' : 'days'}
                             </div>
                         </>
                       ) : (
@@ -601,7 +614,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   (variant.price_per_month ?? activePackage.price_per_month) ? 'month' : 'day'
 
                 const variantPriceInfo = isValidDuration
-                  ? calculatePackagePrice(duration, activePackage.type, {
+                  ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
                       daily: variant.price_per_day,
                       weekly: variant.price_per_week,
                       monthly: variant.price_per_month
@@ -823,7 +836,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                const modalIsGhosted = isValidDuration && !modalMeetsMinStay
 
                const variantPriceInfo = isValidDuration 
-                 ? calculatePackagePrice(duration, activePackage.type, {
+                 ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
                      daily: variant.price_per_day,
                      weekly: variant.price_per_week,
                      monthly: variant.price_per_month

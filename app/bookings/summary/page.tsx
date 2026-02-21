@@ -153,10 +153,14 @@ function BookingSummaryPageContent() {
   const isValidDuration = duration > 0
   const minStay = package_?.min_stay_days ?? (package_?.type === 'training' ? 1 : 7)
   const meetsMinimumStay = !package_ || duration >= minStay
+  const pricingDuration =
+    package_ && isValidDuration && (package_.type === 'training' || package_.type === 'all_inclusive')
+      ? duration + 1
+      : duration
 
   // Calculate price
   const priceInfo = (package_ && isValidDuration)
-    ? calculatePackagePrice(duration, package_.type, {
+    ? calculatePackagePrice(pricingDuration, package_.type, {
         daily: variant ? variant.price_per_day : package_.price_per_day,
         weekly: variant ? variant.price_per_week : package_.price_per_week,
         monthly: variant ? variant.price_per_month : package_.price_per_month
@@ -425,12 +429,9 @@ function BookingSummaryPageContent() {
               {duration} {duration === 1 ? 'night' : 'nights'}, {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
             </div>
             {package_ && (
-              <div className="font-semibold text-sm mt-1">
-                {package_.type === 'training' && `1 x ${package_.name}`}
-                {package_.type === 'accommodation' && variant && `1 x ${variant.name}`}
-                {package_.type === 'accommodation' && !variant && '1 x Training + Accommodation'}
-                {package_.type === 'all_inclusive' && variant && `1 x ${variant.name}`}
-                {package_.type === 'all_inclusive' && !variant && '1 x All Inclusive'}
+              <div className="font-semibold text-sm mt-1 space-y-0.5">
+                <div>1 x {package_.name}</div>
+                {variant && <div>1 x {variant.name}</div>}
               </div>
             )}
           </div>
@@ -447,7 +448,7 @@ function BookingSummaryPageContent() {
                     {package_.type === 'training' && (
                       <div className="flex justify-between">
                         <span className="text-gray-700">
-                          Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                          {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
                         </span>
                         <span className="font-medium text-gray-900">
                           {formatPrice(convertPrice(totalPrice, gym.currency))}
@@ -458,7 +459,7 @@ function BookingSummaryPageContent() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-gray-700">
-                            Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                            Training package ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
                           </span>
                           <span className="font-medium text-gray-900">
                             {formatPrice(convertPrice(Math.round(totalPrice * 0.6), gym.currency))}
@@ -466,7 +467,7 @@ function BookingSummaryPageContent() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-700">
-                            Accommodation ({duration} {duration === 1 ? 'night' : 'nights'})
+                            {variant ? variant.name : 'Accommodation'} ({duration} {duration === 1 ? 'night' : 'nights'})
                           </span>
                           <span className="font-medium text-gray-900">
                             {formatPrice(convertPrice(Math.round(totalPrice * 0.4), gym.currency))}
@@ -1041,13 +1042,7 @@ function BookingSummaryPageContent() {
                   <div className="text-xs text-gray-500 mb-1">You selected</div>
                   <div className="font-semibold">
                     {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
-                    {package_ && (
-                      <>
-                        {package_.type === 'training' && ` • ${package_.name}`}
-                        {package_.type === 'accommodation' && ` • Training + Accommodation`}
-                        {package_.type === 'all_inclusive' && ` • All Inclusive`}
-                      </>
-                    )}
+                    {package_ && ` • ${package_.name}`}
                     {variant && ` • ${variant.name}`}
                   </div>
                 </div>
@@ -1073,7 +1068,7 @@ function BookingSummaryPageContent() {
                       {package_.type === 'training' && (
                       <div className="flex justify-between">
                           <span className="text-gray-700">
-                            Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                            {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
                         </span>
                           <span className="font-medium text-gray-900">
                           {formatPrice(convertPrice(totalPrice, gym.currency))}
@@ -1086,7 +1081,7 @@ function BookingSummaryPageContent() {
                         <>
                           <div className="flex justify-between">
                             <span className="text-gray-700">
-                              Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                              {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
                             </span>
                             <span className="font-medium text-gray-900">
                               {formatPrice(convertPrice(Math.round(totalPrice * 0.6), gym.currency))}
@@ -1094,7 +1089,7 @@ function BookingSummaryPageContent() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-700">
-                              Accommodation ({duration} {duration === 1 ? 'night' : 'nights'})
+                              {variant ? variant.name : 'Accommodation'} ({duration} {duration === 1 ? 'night' : 'nights'})
                             </span>
                             <span className="font-medium text-gray-900">
                               {formatPrice(convertPrice(Math.round(totalPrice * 0.4), gym.currency))}
