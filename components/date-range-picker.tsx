@@ -82,13 +82,13 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
   }
 
   const getDisplayText = () => {
-    // Always show dates - use defaults if not provided
+    // Always show dates - use defaults if not provided (1 day default)
     const today = new Date()
-    const nextDay = new Date(today)
-    nextDay.setDate(today.getDate() + 2)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
     
     const displayCheckin = checkinDate || today
-    const displayCheckout = checkoutDate || nextDay
+    const displayCheckout = checkoutDate || tomorrow
     
     return `${formatDisplayDate(displayCheckin)} - ${formatDisplayDate(displayCheckout)}`
   }

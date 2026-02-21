@@ -41,17 +41,10 @@ export function BookingProvider({
 
   const defaults = getDefaultDates()
 
-  // Initialise state — URL params take priority, then fall back to defaults.
-  // Session-stored dates are loaded after mount via useEffect to avoid SSR
-  // hydration mismatches.
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
-  const [checkin,  setCheckinState]  = useState(initialCheckin  || defaults.checkin)
-  const [checkout, setCheckoutState] = useState(initialCheckout || defaults.checkout)
-  const [guestCount, setGuestCount]  = useState(1)
-
-  // On mount: if no URL params were provided (homepage), restore from sessionStorage.
-  useEffect(() => {
-    if (!initialCheckin && !initialCheckout) {
+  // Helper to safely read from sessionStorage (client-side only)
+  const getSessionDates = () => {
+    if (typeof window === 'undefined') return null
+    try {
       const savedCheckin  = sessionStorage.getItem(SESSION_CHECKIN)
       const savedCheckout = sessionStorage.getItem(SESSION_CHECKOUT)
       if (savedCheckin && savedCheckout) {
@@ -60,13 +53,26 @@ export function BookingProvider({
         today.setHours(0, 0, 0, 0)
         const checkinDate = new Date(savedCheckin + 'T00:00:00')
         if (checkinDate >= today) {
-          setCheckinState(savedCheckin)
-          setCheckoutState(savedCheckout)
+          return { checkin: savedCheckin, checkout: savedCheckout }
         }
       }
+    } catch (e) {
+      // sessionStorage might be disabled or unavailable
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    return null
+  }
+
+  // Initialise state — URL params take priority, then sessionStorage, then defaults.
+  // Check sessionStorage synchronously on client to avoid flash of default dates.
+  const sessionDates = getSessionDates()
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [checkin,  setCheckinState]  = useState(
+    initialCheckin  || (sessionDates?.checkin) || defaults.checkin
+  )
+  const [checkout, setCheckoutState] = useState(
+    initialCheckout || (sessionDates?.checkout) || defaults.checkout
+  )
+  const [guestCount, setGuestCount]  = useState(1)
 
   // When URL params are provided (gym detail page), also persist them so the
   // homepage shows those dates if the user navigates back.
