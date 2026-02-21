@@ -284,13 +284,41 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
 
     const imagesToSave = [...existingVariantImages, ...uploadedUrls]
 
+    // Parse prices (and optionally derive a daily price from weekly/monthly if not provided).
+    // This prevents overcharging on "month + a few extra days" stays when daily is missing.
+    const parsedWeek = variantForm.price_per_week ? parseFloat(variantForm.price_per_week) : null
+    const parsedMonth = variantForm.price_per_month ? parseFloat(variantForm.price_per_month) : null
+    let parsedDay = variantForm.price_per_day ? parseFloat(variantForm.price_per_day) : null
+
+    // Currency-aware rounding:
+    // - Most currencies: 2 decimals
+    // - 0-decimal currencies (common): round to whole units
+    const priceCurrency = formData.currency || currency || 'USD'
+    const roundPrice = (value: number) => {
+      const zeroDecimal = new Set(['THB', 'JPY', 'VND', 'IDR', 'KRW'])
+      const decimals = zeroDecimal.has(priceCurrency) ? 0 : 2
+      const factor = Math.pow(10, decimals)
+      return Math.round(value * factor) / factor
+    }
+
+    // Auto-derive daily if missing/invalid
+    if (parsedDay === null || !Number.isFinite(parsedDay) || parsedDay <= 0) {
+      if (parsedWeek && Number.isFinite(parsedWeek) && parsedWeek > 0) {
+        parsedDay = roundPrice(parsedWeek / 7)
+      } else if (parsedMonth && Number.isFinite(parsedMonth) && parsedMonth > 0) {
+        parsedDay = roundPrice(parsedMonth / 30)
+      } else {
+        parsedDay = null
+      }
+    }
+
     const payload = {
       package_id: editingId,
       name: variantForm.name,
       description: variantForm.description || null,
-      price_per_day: variantForm.price_per_day ? parseFloat(variantForm.price_per_day) : null,
-      price_per_week: variantForm.price_per_week ? parseFloat(variantForm.price_per_week) : null,
-      price_per_month: variantForm.price_per_month ? parseFloat(variantForm.price_per_month) : null,
+      price_per_day: parsedDay,
+      price_per_week: parsedWeek,
+      price_per_month: parsedMonth,
       room_type: variantForm.room_type || null,
       images: imagesToSave,
     }

@@ -32,9 +32,14 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // If payment already authorized/confirmed, don't create another intent.
-    if (booking.status !== 'pending_payment') {
-      return NextResponse.json({ error: 'Booking already processed' }, { status: 400 })
+    // Only allow creating/retrieving a PaymentIntent for bookings that haven't been processed yet.
+    // Note: `create` defaults request-to-book to `pending`, but the payment page still needs to work.
+    const allowedStatuses = new Set(['pending', 'pending_payment'])
+    if (!allowedStatuses.has(booking.status)) {
+      return NextResponse.json(
+        { error: 'Booking already processed', details: `status=${booking.status}` },
+        { status: 400 }
+      )
     }
 
     const gym = booking.gym as any
@@ -82,11 +87,11 @@ export async function POST(
       },
     })
 
-    // Update booking with payment intent ID
-    // Status stays as pending_payment until payment is authorized
+    // Update booking with payment intent ID.
+    // Ensure status is `pending_payment` so subsequent loads don't get blocked.
     await supabase
       .from('bookings')
-      .update({ stripe_payment_intent_id: paymentIntent.id })
+      .update({ stripe_payment_intent_id: paymentIntent.id, status: 'pending_payment' })
       .eq('id', bookingId)
 
     return NextResponse.json({
