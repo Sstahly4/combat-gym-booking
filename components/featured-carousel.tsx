@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/lib/contexts/currency-context'
+import { useBooking } from '@/lib/contexts/booking-context'
 
 interface FeaturedCarouselProps {
   gyms: any[]
@@ -17,6 +18,7 @@ export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
   const { convertPrice, formatPrice } = useCurrency()
+  const { checkin, checkout } = useBooking()
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -133,7 +135,7 @@ export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
         {gyms.map((gym: any) => (
           <Link 
             key={gym.id} 
-            href={`/gyms/${gym.id}`} 
+            href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className="min-w-[calc(50%-12px)] md:min-w-[calc(25%-12px)] snap-start"

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { Search } from 'lucide-react'
 import { DateRangePicker } from '@/components/date-range-picker'
+import { useBooking } from '@/lib/contexts/booking-context'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const PLACEHOLDERS = [
@@ -69,20 +70,9 @@ export function SearchForm() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   
-  // Auto-select default dates (today to 2 days from today)
-  const getDefaultDates = () => {
-    const today = new Date()
-    const nextDay = new Date(today)
-    nextDay.setDate(today.getDate() + 2)
-    return {
-      checkin: today.toISOString().split('T')[0],
-      checkout: nextDay.toISOString().split('T')[0]
-    }
-  }
-  
-  const defaultDates = getDefaultDates()
-  const [checkin, setCheckin] = useState(defaultDates.checkin)
-  const [checkout, setCheckout] = useState(defaultDates.checkout)
+  // Use shared booking context for dates so gym card links stay in sync
+  const { checkin, setCheckin, checkout, setCheckout } = useBooking()
+
   const [displayedPlaceholder, setDisplayedPlaceholder] = useState(PLACEHOLDERS[0])
   const placeholderIndexRef = useRef(0)
   const typeIntervalRef = useRef<NodeJS.Timeout | null>(null)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type TouchEvent } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { format, addDays, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isBefore, isAfter, startOfWeek, endOfWeek } from 'date-fns'
 
@@ -20,6 +20,35 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
   const [hoverDate, setHoverDate] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const isMobileRef = useRef(false)
+
+  // Swipe logic for mobile bottom sheet
+  const [sheetTranslateY, setSheetTranslateY] = useState(0)
+  const sheetStartY = useRef(0)
+  const sheetIsDragging = useRef(false)
+
+  const handleSheetTouchStart = (e: TouchEvent) => {
+    sheetStartY.current = e.touches[0].clientY
+    sheetIsDragging.current = true
+  }
+
+  const handleSheetTouchMove = (e: TouchEvent) => {
+    if (!sheetIsDragging.current) return
+    const currentY = e.touches[0].clientY
+    const diffY = currentY - sheetStartY.current
+    if (diffY > 0) {
+      setSheetTranslateY(diffY)
+    }
+  }
+
+  const handleSheetTouchEnd = () => {
+    if (!sheetIsDragging.current) return
+    sheetIsDragging.current = false
+    if (sheetTranslateY > 100) {
+      setIsOpen(false)
+      if (forceOpen && onClose) onClose()
+    }
+    setSheetTranslateY(0)
+  }
 
   // Close on outside click
   useEffect(() => {
@@ -207,40 +236,52 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
       {/* Calendar Popup */}
       {(isOpen || forceOpen) && (
         <>
-          {/* Backdrop - Show backdrop for normal use, not when forceOpen (modal handles its own backdrop) */}
-          {!forceOpen && (
-          <button
-            type="button"
-            aria-label="Close date picker"
-            className="fixed inset-0 bg-black/40 z-40 md:hidden"
-            onClick={() => setIsOpen(false)}
-          />
-          )}
-
-          {/* Mobile Bottom Sheet - Same design as homepage */}
-          <div className="fixed inset-x-0 bottom-0 z-[60] md:hidden animate-slide-up bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 pointer-events-auto">
+          {/* ─── MOBILE: Slide-up bottom sheet (md:hidden) ───────────────────── */}
+          <div className="md:hidden">
+            {/* Backdrop - only when not forced open */}
             {!forceOpen && (
-            <div className="px-4 pt-4 pb-3 border-b border-gray-200 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-gray-900">Select dates</div>
-                <div className="text-xs text-gray-600 mt-0.5">
-                  Tap a date to auto-select 1 night
-                </div>
-              </div>
-              <button
-                type="button"
+              <div
+                className="fixed inset-0 bg-black/50 z-[60]"
                 onClick={() => setIsOpen(false)}
-                className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
-                aria-label="Close"
-              >
-                <span className="sr-only">Close</span>
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
+              />
             )}
 
+            {/* Sheet */}
+            <div
+              className="fixed inset-x-0 bottom-0 z-[70] animate-slide-up bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] transition-transform duration-100 ease-out will-change-transform"
+              style={{ transform: `translateY(${sheetTranslateY}px)` }}
+            >
+            {/* Header Area (Draggable) */}
+            <div
+              className="flex-shrink-0 touch-none"
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
+            >
+              <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+              </div>
+
+              {!forceOpen && (
+                <div className="px-4 pt-2 pb-3 border-b border-gray-100 flex items-start justify-between gap-3 cursor-grab active:cursor-grabbing">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-bold text-gray-900 leading-tight">Select dates</h2>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">Tap check-in then check-out date</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 -mr-1 rounded-full hover:bg-gray-100 active:bg-gray-200 flex-shrink-0"
+                    aria-label="Close"
+                  >
+                    <X className="w-6 h-6 text-gray-600" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Weekday header */}
-            <div className="px-4 pt-3">
+            <div className="px-4 pt-3 flex-shrink-0">
               <div className="grid grid-cols-7 gap-1">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
                   <div key={d} className="text-[11px] font-medium text-gray-500 text-center py-1">
@@ -251,7 +292,7 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
             </div>
 
             {/* Scrollable months */}
-            <div className="px-4 pb-4 max-h-[72vh] overflow-y-auto">
+            <div className="px-4 pb-4 overflow-y-auto flex-1">
               {mobileMonths.map((m) => {
                 const days = getDaysForMonth(m, 0) // Sunday start for mobile (matches Booking.com)
                 return (
@@ -302,7 +343,7 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
             </div>
 
             {/* Bottom actions */}
-            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
               <div className="text-xs text-gray-600">
                 {checkinDate && checkoutDate ? (
                   <span>
@@ -339,7 +380,8 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
                 </button>
               </div>
             </div>
-          </div>
+            </div>{/* end Sheet */}
+          </div>{/* end md:hidden */}
 
           {/* Desktop Popup */}
           <div className={`hidden md:block ${forceOpen ? 'relative' : 'md:absolute md:top-full md:left-0 md:mt-2'} bg-white rounded-lg ${forceOpen ? 'shadow-sm' : 'shadow-2xl'} border border-gray-200 ${forceOpen ? '' : 'z-50'} p-6 ${forceOpen ? 'w-full' : 'w-[680px]'} max-w-[calc(100vw-2rem)]`}>

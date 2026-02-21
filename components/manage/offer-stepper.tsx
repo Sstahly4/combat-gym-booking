@@ -439,51 +439,51 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
 
               {/* Pricing - day/week/month rates */}
               <div className="border-t pt-4 space-y-4">
-                <div>
+                    <div>
                   <Label>Price per Day ({packageCurrency}) {selectedOfferType === 'TYPE_TRAINING_ONLY' ? <span className="text-red-500">*</span> : <span className="text-gray-400">(Optional)</span>}</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                      <Input
+                        type="number"
+                        step="0.01"
                     value={pricePerDay}
                     onChange={e => setPricePerDay(e.target.value)}
-                    placeholder="0.00"
+                        placeholder="0.00"
                     required={selectedOfferType === 'TYPE_TRAINING_ONLY'}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
                     {selectedOfferType === 'TYPE_TRAINING_ONLY' 
                       ? 'Per-session rate for drop-in training.' 
                       : 'Optional base daily rate for display purposes.'}
-                  </p>
-                </div>
-                
-                <div>
+                      </p>
+                    </div>
+                    
+                    <div>
                   <Label>Price per Week ({packageCurrency}) {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? <span className="text-red-500">*</span> : <span className="text-gray-400">(Optional)</span>}</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                      <Input
+                        type="number"
+                        step="0.01"
                     value={pricePerWeek}
                     onChange={e => setPricePerWeek(e.target.value)}
-                    placeholder="0.00"
+                        placeholder="0.00"
                     required={selectedOfferType !== 'TYPE_TRAINING_ONLY'}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
                     Total price for a 7-day stay. This is the base rate for booking calculations.
-                  </p>
-                </div>
-                
-                <div>
+                      </p>
+                    </div>
+                    
+                    <div>
                   <Label>Price per Month ({packageCurrency}) <span className="text-gray-400">(Optional)</span></Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                      <Input
+                        type="number"
+                        step="0.01"
                     value={pricePerMonth}
                     onChange={e => setPricePerMonth(e.target.value)}
-                    placeholder="0.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
                     Optional. Discounted rate for 30-day stays.
-                  </p>
-                </div>
+                      </p>
+                    </div>
                 
                 {selectedOfferType !== 'TYPE_TRAINING_ONLY' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

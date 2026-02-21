@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useBooking } from '@/lib/contexts/booking-context'
 
 interface TripPlannerProps {
   gyms: any[]
@@ -26,6 +27,7 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState('train-stay')
+  const { checkin, checkout } = useBooking()
 
   // Filter gyms based on selected filter
   // Data arrives pre-sorted by rating (highest first) from the server
@@ -49,7 +51,7 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
         // Gyms with accommodation packages
         return gyms.filter((gym: any) => {
           if (!hasValidPackages(gym)) return false
-          return gym.packages.some((pkg: any) =>
+          return gym.packages.some((pkg: any) => 
             pkg.type === 'accommodation' || pkg.includes_accommodation === true
           )
         })
@@ -181,7 +183,9 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
             {displayGyms.map((gym) => (
               <Link
                 key={gym.id}
-                href={`/gyms/${gym.id}`}
+                href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="min-w-[calc(50%-12px)] md:min-w-[calc(20%-12.8px)] max-w-[calc(50%-12px)] md:max-w-[calc(20%-12.8px)] snap-start flex-shrink-0"
               >
                 <div className="cursor-pointer hover:shadow-md transition-shadow">

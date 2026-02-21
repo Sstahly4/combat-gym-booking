@@ -75,7 +75,7 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
         We shift the strip with translateX so the browser never unmounts/remounts
         images and can composite the animation on the GPU.
       */}
-      <div
+      <div 
         className="flex h-full"
         style={{
           width: `${images.length * 100}%`,
@@ -93,16 +93,16 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
               key={image.url}
               className="relative flex-shrink-0 cursor-pointer"
               style={{ width: `${100 / images.length}%` }}
-            >
-              <Image
+      >
+        <Image
                 src={image.url}
                 alt={`${gymName} ${idx + 1}`}
-                fill
-                className="object-cover"
-                sizes="100vw"
+          fill
+          className="object-cover"
+          sizes="100vw"
                 priority={shouldPrioritize}
                 loading={shouldPrioritize ? 'eager' : 'lazy'}
-              />
+        />
             </div>
           )
         })}

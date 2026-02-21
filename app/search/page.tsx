@@ -426,7 +426,12 @@ function SearchPageContent() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {gyms.map(gym => (
-                  <Link key={gym.id} href={`/gyms/${gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`}>
+                  <Link 
+                    key={gym.id} 
+                    href={`/gyms/${gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden">
                       {/* Mobile: horizontal card. Desktop: vertical card. */}
                       <div className="flex md:block">

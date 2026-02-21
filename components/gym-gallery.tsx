@@ -67,38 +67,38 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
         {/* Secondary image */}
         {images.length > 1 && (
           <div className="hidden md:block col-span-1 row-span-1 relative hover:opacity-95 transition-opacity">
-            <Image
-              src={images[1].url}
-              alt={`${gymName} 2`}
-              fill
-              className="object-cover"
+              <Image
+                src={images[1].url}
+                alt={`${gymName} 2`}
+                fill
+                className="object-cover"
               sizes="33vw"
               priority
-            />
+              />
           </div>
         )}
-
+        
         {/* Tertiary image with "+N photos" overlay */}
         {images.length > 2 && (
           <div className="hidden md:block col-span-1 row-span-1 relative hover:opacity-95 transition-opacity">
-            <div className="relative w-full h-full">
-              <Image
-                src={images[2].url}
-                alt={`${gymName} 3`}
-                fill
-                className="object-cover"
+              <div className="relative w-full h-full">
+                <Image
+                  src={images[2].url}
+                  alt={`${gymName} 3`}
+                  fill
+                  className="object-cover"
                 sizes="33vw"
                 priority
-              />
-              {images.length > 3 && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-base md:text-lg z-10">
-                  +{images.length - 3} photos
-                </div>
-              )}
-            </div>
+                />
+                {images.length > 3 && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-base md:text-lg z-10">
+                    +{images.length - 3} photos
+                  </div>
+                )}
+              </div>
           </div>
         )}
-
+        
         {/* Mobile: photo count badge */}
         {images.length > 1 && (
           <div className="md:hidden absolute bottom-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium z-10">
@@ -115,7 +115,7 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
         >
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Close */}
-            <button
+            <button 
               onClick={() => setOpen(false)}
               className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
             >
@@ -124,14 +124,14 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
 
             {/* Prev */}
             {images.length > 1 && (
-              <button
-                onClick={prevImage}
-                className="absolute left-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
-              >
-                <ChevronLeft className="w-8 h-8" />
-              </button>
+            <button 
+              onClick={prevImage}
+              className="absolute left-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
             )}
-
+            
             {/* Current image */}
             <Image
               src={images[currentIndex].url}
@@ -145,12 +145,12 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
 
             {/* Next */}
             {images.length > 1 && (
-              <button
-                onClick={nextImage}
-                className="absolute right-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
-              >
-                <ChevronRight className="w-8 h-8" />
-              </button>
+            <button 
+              onClick={nextImage}
+              className="absolute right-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
             )}
 
             {/* Counter */}

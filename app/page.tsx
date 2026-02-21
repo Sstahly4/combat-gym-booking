@@ -6,6 +6,7 @@ import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
 import { SearchForm } from '@/components/search-form'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
+import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
 
 async function attachReviewStats(gyms: any[]) {
@@ -277,6 +278,7 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
   ]
 
   return (
+    <BookingProvider>
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
       <div className="bg-[#003580] text-white pt-8 pb-8 md:pt-16 md:pb-16 relative">
@@ -525,5 +527,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
         </div>
       </section>
     </main>
+    </BookingProvider>
   )
 }

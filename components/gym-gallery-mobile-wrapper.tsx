@@ -45,8 +45,8 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
 
   return (
     <>
-      <GymGalleryMobile
-        images={images}
+      <GymGalleryMobile 
+        images={images} 
         gymName={gymName}
         onImageClick={handleImageClick}
       />
@@ -59,7 +59,7 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
         >
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Close */}
-            <button
+            <button 
               onClick={() => setLightboxOpen(false)}
               className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
             >
@@ -69,14 +69,14 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
             {/* Navigation */}
             {images.length > 1 && (
               <>
-                <button
+                <button 
                   onClick={prevImage}
                   className="absolute left-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
                 >
                   <ChevronLeft className="w-8 h-8" />
                 </button>
-
-                <button
+                
+                <button 
                   onClick={nextImage}
                   className="absolute right-4 z-50 p-3 bg-black/50 text-white rounded-full hover:bg-black/70"
                 >
@@ -84,7 +84,7 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
                 </button>
               </>
             )}
-
+            
             {/* Current image */}
             <Image
               src={images[currentIndex].url}
