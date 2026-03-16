@@ -8,7 +8,7 @@ import { useBooking } from '@/lib/contexts/booking-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
-import { Check, BedDouble, ChevronLeft, ChevronRight, Home, Wifi, Car, Droplets, UtensilsCrossed, Users, Shield, Clock, Building2, Dumbbell, Thermometer, Waves, X } from 'lucide-react'
+import { Check, BedDouble, ChevronLeft, ChevronRight, Home, Wifi, Car, Droplets, UtensilsCrossed, Users, Shield, Clock, Building2, Dumbbell, Thermometer, Waves, X, Ticket, Calendar } from 'lucide-react'
 import Image from 'next/image'
 
 export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym & { images?: GymImage[] } }) {
@@ -94,88 +94,101 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   }
 
   const handleSelectPackage = (pkg: Package) => {
-    // If package has variants, open modal instead of selecting directly
+    // If package has variants (room options or ticket tiers), open modal instead of selecting directly
     if (pkg.variants && pkg.variants.length > 0) {
       setActivePackage(pkg)
       setVariantsModalOpen(true)
-    } else {
-      // Training-only packages: navigate directly to summary
-      setSelectedPackage(pkg)
-      
-      // For Training Only packages, default to 1 day if dates are not set or are at default 7-day range
-      let finalCheckin = checkin
-      let finalCheckout = checkout
-      
-      if (pkg.type === 'training') {
-        const today = new Date()
-        const tomorrow = new Date(today)
-        tomorrow.setDate(today.getDate() + 1)
-        
-        // If no dates set, set to 1 day (today to tomorrow)
-        if (!checkin || !checkout) {
-          finalCheckin = today.toISOString().split('T')[0]
-          finalCheckout = tomorrow.toISOString().split('T')[0]
-          setCheckin(finalCheckin)
-          setCheckout(finalCheckout)
-        } else {
-          const currentDuration = Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
-          // If duration is 7 days (likely default), change to 1 day
-          if (currentDuration === 7) {
-            finalCheckout = new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            setCheckout(finalCheckout)
-          }
-        }
-      }
-      
+      return
+    }
+
+    setSelectedPackage(pkg)
+
+    // For one-time events: use the event date as checkin/checkout
+    if (pkg.offer_type === 'TYPE_ONE_TIME_EVENT') {
+      const eventStart = pkg.event_date ? pkg.event_date.split('T')[0] : checkin
+      const eventEnd = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (eventStart || checkout)
       const params = new URLSearchParams({
         gymId: gym.id,
         packageId: pkg.id,
-        checkin: finalCheckin || '',
-        checkout: finalCheckout || '',
+        checkin: eventStart || '',
+        checkout: eventEnd || eventStart || '',
       })
       router.push(`/bookings/summary?${params.toString()}`)
+      return
     }
+
+    // Training-only packages: default to 1 day if dates are at default 7-day range
+    let finalCheckin = checkin
+    let finalCheckout = checkout
+
+    if (pkg.type === 'training') {
+      const today = new Date()
+      const tomorrow = new Date(today)
+      tomorrow.setDate(today.getDate() + 1)
+
+      if (!checkin || !checkout) {
+        finalCheckin = today.toISOString().split('T')[0]
+        finalCheckout = tomorrow.toISOString().split('T')[0]
+        setCheckin(finalCheckin)
+        setCheckout(finalCheckout)
+      } else {
+        const currentDuration = Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
+        if (currentDuration === 7) {
+          finalCheckout = new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          setCheckout(finalCheckout)
+        }
+      }
+    }
+
+    const params = new URLSearchParams({
+      gymId: gym.id,
+      packageId: pkg.id,
+      checkin: finalCheckin || '',
+      checkout: finalCheckout || '',
+    })
+    router.push(`/bookings/summary?${params.toString()}`)
   }
 
   const handleSelectVariant = (pkg: Package, variant: PackageVariant) => {
-    // Construct a "virtual" package that combines the base package info with variant pricing/name
     const variantPackage = {
       ...pkg,
-      id: pkg.id, // Keep original ID for backend but maybe we need to pass variant_id separately
+      id: pkg.id,
       name: `${pkg.name} - ${variant.name}`,
       price_per_day: variant.price_per_day,
       price_per_week: variant.price_per_week,
       price_per_month: variant.price_per_month,
       accommodation_name: variant.name,
-      // Store the actual variant ID for booking context if needed (we might need to update context type)
     } as Package & { variant_id?: string; variant_name?: string }
-    
-    // We need to pass the variant ID to the context/booking modal
-    // For now, let's attach it as a custom property that our context/modal can read
-    // This is a bit of a hack, ideally we update the context type
+
     variantPackage.variant_id = variant.id
     variantPackage.variant_name = variant.name
-    
+
     setSelectedPackage(variantPackage)
     setVariantsModalOpen(false)
-    
-    // Navigate to booking summary page (Booking.com style)
-    // Pass gym ID, package, variant, and dates as URL params
+
+    // For one-time events, use event dates as checkin/checkout
+    let finalCheckin = checkin
+    let finalCheckout = checkout
+    if (pkg.offer_type === 'TYPE_ONE_TIME_EVENT') {
+      finalCheckin = pkg.event_date ? pkg.event_date.split('T')[0] : checkin
+      finalCheckout = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (finalCheckin || checkout)
+    }
+
     const params = new URLSearchParams({
       gymId: gym.id,
       packageId: pkg.id,
       variantId: variant.id,
-      checkin: checkin || '',
-      checkout: checkout || '',
+      checkin: finalCheckin || '',
+      checkout: finalCheckout || finalCheckin || '',
     })
     router.push(`/bookings/summary?${params.toString()}`)
   }
 
-  // Sort packages: Training Only first, then others
+  // Sort: one-time events first, then training-only, then everything else
   const sortedPackages = [...packages].sort((a, b) => {
-    if (a.type === 'training' && b.type !== 'training') return -1
-    if (a.type !== 'training' && b.type === 'training') return 1
-    return 0
+    const rank = (p: Package) =>
+      p.offer_type === 'TYPE_ONE_TIME_EVENT' ? 0 : p.type === 'training' ? 1 : 2
+    return rank(a) - rank(b)
   })
 
   return (
@@ -189,6 +202,18 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       ) : (
         <div className="grid gap-4">
           {sortedPackages.map(pkg => {
+            // One-time events completely bypass all date/duration/ghost logic
+            const isEvent = pkg.offer_type === 'TYPE_ONE_TIME_EVENT'
+
+            // For events: find cheapest ticket tier price (stored in price_per_day on variants)
+            const eventTicketPrice = isEvent
+              ? (pkg.variants && pkg.variants.length > 0
+                  ? pkg.variants.reduce((min, v) => Math.min(min, v.price_per_day ?? Infinity), Infinity) === Infinity
+                    ? pkg.price_per_day ?? 0
+                    : pkg.variants.reduce((min, v) => Math.min(min, v.price_per_day ?? Infinity), Infinity)
+                  : pkg.price_per_day ?? 0)
+              : null
+
             // Get base prices (for legacy packages) or use new pricing structure
             let basePrices = {
               daily: pkg.price_per_day,
@@ -196,9 +221,8 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
               monthly: pkg.price_per_month
             }
 
-            // If variants exist, use the cheapest one for "starting from"
-            // Always fall back to base package prices if the variant field is null
-            if (pkg.variants && pkg.variants.length > 0) {
+            // If variants exist, use the cheapest one for "starting from" (non-event types only)
+            if (!isEvent && pkg.variants && pkg.variants.length > 0) {
               const getComparePrice = (v: PackageVariant) => {
                 if (pkg.type === 'training') return v.price_per_day ?? pkg.price_per_day ?? Infinity
                 return v.price_per_week ?? pkg.price_per_week ?? v.price_per_month ?? pkg.price_per_month ?? Infinity
@@ -213,31 +237,32 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
               }
             }
 
-            // Ghost state: check if min stay is met
+            // Ghost state: only applies to non-event packages
             const minStay = pkg.min_stay_days ?? (pkg.type === 'training' ? 1 : 7)
             const meetsMinStay = !isValidDuration || duration >= minStay
             const nightsToUnlock = isValidDuration ? Math.max(0, minStay - duration) : 0
-            const isGhosted = isValidDuration && !meetsMinStay
+            const isGhosted = !isEvent && isValidDuration && !meetsMinStay
 
             // Compute anchor price for ghost state — try weekly → monthly → daily, never $0
             const anchorPrice = basePrices.weekly || basePrices.monthly || basePrices.daily || 0
             const anchorLabel = basePrices.weekly ? 'week' : basePrices.monthly ? 'month' : 'day'
 
-            // Calculate price based on package type and billing units
+            // Calculate price based on package type and billing units (non-event only)
             // For Training Only: if dates are NOT user-selected (auto-defaulted), show per day pricing
-            // Otherwise, calculate based on actual duration
-            const shouldShowPerSession = pkg.type === 'training' && !hasUserSelectedDates
-            
-            const priceInfo = (isValidDuration && !shouldShowPerSession)
-              ? calculatePackagePrice(getPricingDuration(pkg.type), pkg.type, basePrices)
-              : {
-                  price: pkg.type === 'training' 
-                    ? (basePrices.daily || 0)
-                    : (basePrices.weekly || 0),
-                  unit: pkg.type === 'training' ? 'day' as const : 'week' as const,
-                  duration: pkg.type === 'training' ? 1 : 0,
-                  durationLabel: pkg.type === 'training' ? '1 day' : ''
-                }
+            const shouldShowPerSession = !isEvent && pkg.type === 'training' && !hasUserSelectedDates
+
+            const priceInfo = isEvent
+              ? { price: eventTicketPrice ?? 0, unit: 'day' as const, duration: 1, durationLabel: '1 ticket' }
+              : (isValidDuration && !shouldShowPerSession)
+                ? calculatePackagePrice(getPricingDuration(pkg.type), pkg.type, basePrices)
+                : {
+                    price: pkg.type === 'training'
+                      ? (basePrices.daily || 0)
+                      : (basePrices.weekly || 0),
+                    unit: pkg.type === 'training' ? 'day' as const : 'week' as const,
+                    duration: pkg.type === 'training' ? 1 : 0,
+                    durationLabel: pkg.type === 'training' ? '1 day' : ''
+                  }
 
             // Display "days" for training/all-inclusive as nights + 1 (to match pricing),
             // otherwise keep using nights-based duration.
@@ -335,7 +360,33 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                     
                     {/* Bottom: Price and Button */}
                     <div className="border-t border-gray-200 pt-3 mt-3">
-                      {isGhosted ? (
+                      {isEvent ? (
+                        /* One-Time Event — Mobile */
+                        <div className="flex items-center justify-between">
+                          <div>
+                            {pkg.event_date && (
+                              <div className="flex items-center gap-1 text-[10px] text-amber-600 font-medium mb-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(pkg.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            )}
+                            <div className="text-[10px] text-gray-500 mb-0.5">
+                              {pkg.variants?.length ? 'Tickets from' : 'Ticket price'}
+                            </div>
+                            <div className="text-lg font-bold text-[#003580]">
+                              {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                            </div>
+                            <div className="text-[10px] text-gray-500">per ticket · excl. fees</div>
+                          </div>
+                          <Button
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`min-w-[100px] h-9 font-semibold text-xs ${isSelected ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'}`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : pkg.variants?.length ? 'Get Tickets' : 'Book Now'}
+                          </Button>
+                        </div>
+                      ) : isGhosted ? (
                         /* Ghost State — Mobile */
                         <div className="flex items-center justify-between">
                           <div>
@@ -354,30 +405,30 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         </div>
                       ) : (
                         /* Normal State — Mobile */
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <div className="text-[10px] text-gray-500 mb-0.5">
-                            {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${displayedDays} ${displayedDays === 1 ? 'day' : 'days'}` : (pkg.type === 'training' ? '1 day' : '1 week')}
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="text-[10px] text-gray-500 mb-0.5">
+                              {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${displayedDays} ${displayedDays === 1 ? 'day' : 'days'}` : (pkg.type === 'training' ? '1 day' : '1 week')}
+                            </div>
+                            <div className="text-lg font-bold text-[#003580]">
+                              {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              Includes taxes and charges
+                            </div>
                           </div>
-                          <div className="text-lg font-bold text-[#003580]">
-                            {formatPrice(convertPrice(priceInfo.price, gym.currency))}
-                          </div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">
-                            Includes taxes and charges
-                          </div>
+                          <Button 
+                            variant={isSelected ? "default" : "outline"}
+                            className={`min-w-[100px] h-9 font-semibold text-xs ${
+                              isSelected 
+                                ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
+                                : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
+                            }`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : pkg.variants?.length ? 'Choose' : 'Reserve'}
+                          </Button>
                         </div>
-                        <Button 
-                          variant={isSelected ? "default" : "outline"}
-                          className={`min-w-[100px] h-9 font-semibold text-xs ${
-                            isSelected 
-                              ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' 
-                              : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'
-                          }`}
-                          onClick={() => handleSelectPackage(pkg)}
-                        >
-                          {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose' : 'Reserve')}
-                        </Button>
-                      </div>
                       )}
                     </div>
                   </div>
@@ -472,7 +523,37 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       isGhosted ? 'bg-gray-50' : 'bg-gray-50 lg:bg-white'
                     }`}>
                       <div className="w-full text-center lg:text-right">
-                      {isGhosted ? (
+                      {isEvent ? (
+                        /* One-Time Event — Desktop */
+                        <>
+                          {pkg.event_date && (
+                            <div className="flex items-center justify-end gap-1.5 text-xs text-amber-700 font-medium mb-2">
+                              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>{new Date(pkg.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </div>
+                          )}
+                          <div className="text-[10px] md:text-xs text-gray-500 mb-1">
+                            {pkg.variants?.length ? 'Tickets from' : 'Ticket price'}
+                          </div>
+                          <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
+                            {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                          </div>
+                          <div className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">per ticket · excl. fees</div>
+                          {pkg.max_attendees && (
+                            <div className="flex items-center justify-end gap-1 text-[10px] text-gray-500 mb-3">
+                              <Users className="w-3 h-3" />
+                              <span>{pkg.max_attendees} spots</span>
+                            </div>
+                          )}
+                          <Button
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${isSelected ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'}`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : pkg.variants?.length ? 'Get Tickets' : 'Book Now'}
+                          </Button>
+                        </>
+                      ) : isGhosted ? (
                         /* Ghost State — Desktop */
                         <>
                           <div className="text-gray-500 text-xs mb-1 mt-2">Starts at</div>
@@ -494,43 +575,41 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         // Training Only with no user-selected dates: show per day
                         <>
                           <div className="text-[10px] md:text-xs text-gray-500 mb-1">Starting from</div>
-                            <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
+                          <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
                             {formatPrice(convertPrice(priceInfo.price, gym.currency))}
-                            </div>
-                            <div className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
-                              per day
                           </div>
+                          <div className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">per day</div>
                         </>
                       ) : isValidDuration ? (
                         // User has selected dates: show total for those dates
                         <>
                           <div className="text-[10px] md:text-xs text-gray-500 mb-1">
                             {pkg.variants?.length ? 'From' : 'Price for'} {priceInfo.durationLabel}
-                            </div>
-                            <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
-                              {formatPrice(convertPrice(priceInfo.price, gym.currency))}
-                            </div>
-                            <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
-                              Total for {displayedDays} {displayedDays === 1 ? 'day' : 'days'}
-                            </div>
+                          </div>
+                          <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
+                            {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                          </div>
+                          <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
+                            Total for {displayedDays} {displayedDays === 1 ? 'day' : 'days'}
+                          </div>
                         </>
                       ) : (
                         // No dates selected (accommodation packages)
                         <>
-                           <div className="text-[10px] md:text-xs text-gray-500 mb-1">Starting from</div>
-                            <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
+                          <div className="text-[10px] md:text-xs text-gray-500 mb-1">Starting from</div>
+                          <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
                             {formatPrice(convertPrice(priceInfo.price, gym.currency))}
-                            </div>
-                            <div className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
-                              per {pkg.type === 'training' ? 'day' : 'week'}
+                          </div>
+                          <div className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
+                            per {pkg.type === 'training' ? 'day' : 'week'}
                           </div>
                           {minStay > 1 && (
-                              <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4 font-medium">Min. stay: {minStay} days</div>
+                            <div className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4 font-medium">Min. stay: {minStay} days</div>
                           )}
                         </>
                       )}
-                      
-                      {!isGhosted && (
+
+                      {!isEvent && !isGhosted && (
                       <Button 
                         variant={isSelected ? "default" : "outline"}
                           className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${
@@ -540,7 +619,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         }`}
                         onClick={() => handleSelectPackage(pkg)}
                       >
-                          {isSelected ? 'Selected' : (pkg.variants?.length ? 'Choose Room' : 'Select Package')}
+                          {isSelected ? 'Selected' : pkg.variants?.length ? 'Choose Room' : 'Select Package'}
                       </Button>
                       )}
                       </div>
@@ -566,460 +645,669 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
           {/* Sheet */}
           <div 
-            className="fixed inset-x-0 bottom-0 z-50 animate-slide-up bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] transition-transform duration-100 ease-out will-change-transform"
+            className="fixed inset-x-0 bottom-0 z-50 animate-slide-up bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[90dvh] transition-transform duration-100 ease-out will-change-transform"
             style={{ transform: `translateY(${sheetTranslateY}px)` }}
           >
-            {/* Draggable Header Section */}
-            <div
-              className="flex-shrink-0 touch-none"
-              onTouchStart={handleSheetTouchStart}
-              onTouchMove={handleSheetTouchMove}
-              onTouchEnd={handleSheetTouchEnd}
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
-                <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
-              </div>
-
-              {/* Header */}
-              <div className="px-4 pt-2 pb-3 border-b border-gray-100 flex items-start justify-between gap-3 cursor-grab active:cursor-grabbing">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium text-[#003580] uppercase tracking-wide mb-0.5">Choose your room</p>
-                  <h2 className="text-base font-bold text-gray-900 leading-tight line-clamp-1">{activePackage?.name}</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setVariantsModalOpen(false)}
-                  className="p-2 -mr-1 rounded-full hover:bg-gray-100 active:bg-gray-200 flex-shrink-0"
-                  aria-label="Close"
+            {activePackage?.offer_type === 'TYPE_ONE_TIME_EVENT' ? (
+              /* ══ EVENT SHEET ══════════════════════════════════════════════════ */
+              <>
+                {/* Draggable zone — image hero flush to top */}
+                <div
+                  className="flex-shrink-0 touch-none"
+                  onTouchStart={handleSheetTouchStart}
+                  onTouchMove={handleSheetTouchMove}
+                  onTouchEnd={handleSheetTouchEnd}
                 >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable variant list */}
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-4 pb-6">
-              {activePackage?.variants?.map(variant => {
-                const modalMinStay = activePackage.min_stay_days ?? (activePackage.type === 'training' ? 1 : 7)
-                const modalNightsToUnlock = isValidDuration ? Math.max(0, modalMinStay - duration) : 0
-                const modalIsGhosted = isValidDuration && duration < modalMinStay
-
-                const variantAnchorPrice =
-                  variant.price_per_week ?? activePackage.price_per_week ??
-                  variant.price_per_month ?? activePackage.price_per_month ??
-                  variant.price_per_day ?? activePackage.price_per_day ?? 0
-                const variantAnchorUnit =
-                  (variant.price_per_week ?? activePackage.price_per_week) ? 'week' :
-                  (variant.price_per_month ?? activePackage.price_per_month) ? 'month' : 'day'
-
-                const variantPriceInfo = isValidDuration
-                  ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
-                      daily: variant.price_per_day,
-                      weekly: variant.price_per_week,
-                      monthly: variant.price_per_month
-                    })
-                  : {
-                      price: activePackage.type === 'training'
-                        ? (variant.price_per_day || 0)
-                        : (variant.price_per_week || 0),
-                      unit: activePackage.type === 'training' ? 'day' as const : 'week' as const,
-                      duration: 0,
-                      durationLabel: ''
-                    }
-
-                const images = variant.images || []
-                const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
-
-                const mobileAmenities = Object.entries(gym.amenities || {})
-                  .filter(([key, value]) => value && ['wifi', 'air_conditioning', 'parking', 'showers'].includes(key))
-                  .slice(0, 4)
-                const amenityLabels: Record<string, string> = {
-                  wifi: 'Free WiFi', air_conditioning: 'Air con',
-                  parking: 'Parking', showers: 'Showers',
-                }
-                const amenityIcons: Record<string, JSX.Element> = {
-                  wifi: <Wifi className="w-3.5 h-3.5" />,
-                  air_conditioning: <Thermometer className="w-3.5 h-3.5" />,
-                  parking: <Car className="w-3.5 h-3.5" />,
-                  showers: <Droplets className="w-3.5 h-3.5" />,
-                }
-
-                return (
-                  <div
-                    key={variant.id}
-                    className={`rounded-xl border overflow-hidden bg-white shadow-sm ${
-                      modalIsGhosted ? 'border-gray-200 opacity-80' : 'border-gray-200'
-                    }`}
-                  >
-                    {/* Variant image */}
-                    {images.length > 0 ? (
-                      <div className="relative h-44 bg-gray-100">
-                        <img
-                          src={images[currentImageIndex]}
-                          alt={variant.name}
-                          className="w-full h-full object-cover"
-                        />
-                        {images.length > 1 && (
-                          <>
-                            <button
-                              onClick={(e) => prevImage(variant.id, images.length, e)}
-                              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => nextImage(variant.id, images.length, e)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                            {/* Image counter pill */}
-                            <div className="absolute bottom-2 right-2 bg-gray-900/70 text-white text-[10px] font-medium px-2 py-0.5 rounded-md backdrop-blur-sm">
-                              {currentImageIndex + 1} / {images.length}
-                            </div>
-                          </>
-                        )}
+                  {activePackage.image ? (
+                    /* Image edge-to-edge, drag handle + close overlaid */
+                    <div className="relative w-full h-48 rounded-t-2xl overflow-hidden">
+                      <img src={activePackage.image} alt={activePackage.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                      {/* Drag handle on top of image */}
+                      <div className="absolute top-3 inset-x-0 flex justify-center">
+                        <div className="w-10 h-1 bg-white/60 rounded-full" />
                       </div>
-                    ) : (
-                      <div className="h-28 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <BedDouble className="w-10 h-10 text-gray-400" />
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="p-4">
-                      {/* Variant name */}
-                      <h3 className="font-bold text-[15px] text-gray-900 mb-1">{variant.name}</h3>
-
-                      {/* Description */}
-                      {variant.description && (
-                        <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">
-                          {variant.description}
-                        </p>
-                      )}
-
-                      {/* Amenity chips */}
-                      {mobileAmenities.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          {mobileAmenities.map(([key]) => (
-                            <span key={key} className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
-                              {amenityIcons[key]}
-                              {amenityLabels[key] || key}
-                            </span>
-                          ))}
-                          <span className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
-                            <Check className="w-3.5 h-3.5 text-green-600" />
-                            Private bathroom
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Divider */}
-                      <div className="border-t border-gray-100 pt-3 mt-1">
-                        {modalIsGhosted ? (
-                          /* Ghost state — mobile variant */
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-[10px] text-gray-500 mb-0.5">Starts at</p>
-                              <p className="text-base font-bold text-gray-500">
-                                {formatPrice(convertPrice(variantAnchorPrice, gym.currency))}
-                                <span className="text-[10px] font-normal text-gray-400 ml-1">/ {variantAnchorUnit}</span>
-                              </p>
-                            </div>
-                            <Button
-                              variant="outline"
-                              className="h-9 px-4 text-xs font-semibold border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white rounded-lg"
-                              onClick={() => handleExtendStay(modalMinStay)}
-                            >
-                              Extend {modalNightsToUnlock} {modalNightsToUnlock === 1 ? 'day' : 'days'}
-                            </Button>
-                          </div>
-                        ) : (
-                          /* Normal state — mobile variant */
-                          <>
-                            <div className="flex items-end justify-between mb-3">
-                              <div>
-                                <p className="text-[10px] text-gray-500 mb-0.5">
-                                  {isValidDuration ? `Total for ${variantPriceInfo.durationLabel}` : `Starting from`}
-                                </p>
-                                <p className="text-xl font-bold text-[#003580]">
-                                  {formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}
-                                </p>
-                                {!isValidDuration && (
-                                  <p className="text-[10px] text-gray-500 mt-0.5">/ {variantAnchorUnit}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] text-green-600 font-medium">
-                                  <Check className="w-3 h-3 inline mr-0.5" />
-                                  Free cancellation
-                                </p>
-                                <p className="text-[10px] text-gray-400 mt-0.5">Incl. taxes & fees</p>
-                              </div>
-                            </div>
-                            <Button
-                              className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-bold text-sm rounded-lg"
-                              onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
-                            >
-                              Reserve this room
-                            </Button>
-                          </>
-                        )}
+                      {/* Close button */}
+                      <button
+                        type="button"
+                        onClick={() => setVariantsModalOpen(false)}
+                        className="absolute top-3 right-3 p-1.5 bg-black/35 hover:bg-black/55 rounded-full text-white backdrop-blur-sm"
+                        aria-label="Close"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      {/* Event badge + name overlaid on image bottom */}
+                      <div className="absolute bottom-0 inset-x-0 px-4 pb-4">
+                        <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-2">
+                          <Ticket className="w-2.5 h-2.5" /> One-Time Event
+                        </span>
+                        <h2 className="text-lg font-bold text-white leading-tight drop-shadow">{activePackage.name}</h2>
                       </div>
                     </div>
+                  ) : (
+                    /* No image — amber gradient header, drag handle + close overlaid */
+                    <div className="relative rounded-t-2xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-400 px-4 pb-4 pt-8">
+                      <div className="absolute top-3 inset-x-0 flex justify-center">
+                        <div className="w-10 h-1 bg-white/50 rounded-full" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setVariantsModalOpen(false)}
+                        className="absolute top-3 right-3 p-1.5 bg-black/20 hover:bg-black/35 rounded-full text-white"
+                        aria-label="Close"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <span className="inline-flex items-center gap-1 bg-white/20 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-2">
+                        <Ticket className="w-2.5 h-2.5" /> One-Time Event
+                      </span>
+                      <h2 className="text-base font-bold text-white leading-tight">{activePackage.name}</h2>
+                    </div>
+                  )}
+
+                  {/* Date / capacity row — fixed below image, still draggable */}
+                  <div className="px-4 pt-3 pb-3 border-b border-gray-100">
+                    {activePackage.event_date && (
+                      <div className="flex items-center gap-1.5 text-sm text-amber-600 font-medium">
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          {new Date(activePackage.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          {(() => {
+                            const d = new Date(activePackage.event_date)
+                            const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0
+                            return hasTime ? ` · ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''
+                          })()}
+                          {activePackage.event_end_date && (() => {
+                            const end = new Date(activePackage.event_end_date)
+                            const start = new Date(activePackage.event_date)
+                            const hasTime = end.getHours() !== 0 || end.getMinutes() !== 0
+                            const sameDay = start.toDateString() === end.toDateString()
+                            if (sameDay && hasTime) return ` – ${end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+                            return ` – ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                    {activePackage.max_attendees && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1.5">
+                        <Users className="w-3 h-3 flex-shrink-0" />
+                        <span>{activePackage.max_attendees} total capacity</span>
+                      </div>
+                    )}
                   </div>
-                )
-              })}
+                </div>
+
+                {/* Scrollable body — description + ticket tiers */}
+                <div className="overflow-y-auto flex-1 pb-6">
+                  {/* Description with show more/less */}
+                  {activePackage.description && (() => {
+                    const CHAR_LIMIT = 160
+                    const isExpanded = expandedDescriptions[activePackage.id]
+                    const needsTruncation = activePackage.description.length > CHAR_LIMIT
+                    const visibleText = !isExpanded && needsTruncation
+                      ? activePackage.description.slice(0, CHAR_LIMIT).trimEnd()
+                      : activePackage.description
+                    const paragraphs = visibleText.split(/\n+/).map(p => p.trim()).filter(Boolean)
+                    return (
+                      <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+                        <div className="text-sm text-gray-600 leading-relaxed">
+                          {paragraphs.map((para, i) => (
+                            <p key={i} className={i < paragraphs.length - 1 ? 'mb-2' : ''}>
+                              {para}{!isExpanded && needsTruncation && i === paragraphs.length - 1 && '…'}
+                            </p>
+                          ))}
+                        </div>
+                        {needsTruncation && (
+                          <button
+                            className="text-[#003580] font-medium text-sm mt-2 hover:underline"
+                            onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: !isExpanded }))}
+                          >
+                            {isExpanded ? 'Show less' : 'Show more'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  {/* Ticket tiers */}
+                  <div className="px-4 pt-4 space-y-3">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">Select your ticket</p>
+                    <div className="space-y-3">
+                  {activePackage?.variants?.map(variant => {
+                    const ticketPrice = variant.price_per_day ?? 0
+                    return (
+                      <div key={variant.id} className="border border-gray-200 rounded-xl bg-white p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Ticket className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                          <h3 className="font-bold text-[15px] text-gray-900">{variant.name}</h3>
+                        </div>
+                        {variant.description && (
+                          <p className="text-xs text-gray-500 leading-relaxed mt-1 mb-2">{variant.description}</p>
+                        )}
+                        <div className="flex items-center justify-between mt-3 mb-2">
+                          <div>
+                            <p className="text-xl font-bold text-[#003580]">
+                              {formatPrice(convertPrice(ticketPrice, gym.currency))}
+                            </p>
+                            <p className="text-[10px] text-gray-400">per ticket · excl. fees</p>
+                          </div>
+                          {variant.capacity && (
+                            <div className="flex items-center gap-1 text-xs text-gray-400">
+                              <Users className="w-3 h-3" />
+                              <span>{variant.capacity} spots</span>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-bold text-sm rounded-lg"
+                          onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
+                        >
+                          Get This Ticket
+                        </Button>
+                      </div>
+                    )
+                  })}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ══ ROOM SHEET ═══════════════════════════════════════════ */
+              <>
+                {/* Draggable header */}
+                <div className="flex-shrink-0 touch-none" onTouchStart={handleSheetTouchStart} onTouchMove={handleSheetTouchMove} onTouchEnd={handleSheetTouchEnd}>
+                  <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+                    <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                  </div>
+                  <div className="px-4 pt-2 pb-3 border-b border-gray-100 flex items-start justify-between gap-3 cursor-grab active:cursor-grabbing">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-[#003580] uppercase tracking-wide mb-0.5">Choose your room</p>
+                      <h2 className="text-base font-bold text-gray-900 leading-tight line-clamp-1">{activePackage?.name}</h2>
+                    </div>
+                    <button type="button" onClick={() => setVariantsModalOpen(false)} className="p-2 -mr-1 rounded-full hover:bg-gray-100 active:bg-gray-200 flex-shrink-0" aria-label="Close">
+                      <X className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+                {/* Scrollable room list */}
+                <div className="overflow-y-auto flex-1 px-4 py-3 pb-6">
+                <div className="space-y-4">
+                  {activePackage?.variants?.map(variant => {
+                    const modalMinStay = activePackage.min_stay_days ?? (activePackage.type === 'training' ? 1 : 7)
+                    const modalNightsToUnlock = isValidDuration ? Math.max(0, modalMinStay - duration) : 0
+                    const modalIsGhosted = isValidDuration && duration < modalMinStay
+
+                    const variantAnchorPrice =
+                      variant.price_per_week ?? activePackage.price_per_week ??
+                      variant.price_per_month ?? activePackage.price_per_month ??
+                      variant.price_per_day ?? activePackage.price_per_day ?? 0
+                    const variantAnchorUnit =
+                      (variant.price_per_week ?? activePackage.price_per_week) ? 'week' :
+                      (variant.price_per_month ?? activePackage.price_per_month) ? 'month' : 'day'
+
+                    const variantPriceInfo = isValidDuration
+                      ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
+                          daily: variant.price_per_day,
+                          weekly: variant.price_per_week,
+                          monthly: variant.price_per_month
+                        })
+                      : {
+                          price: activePackage.type === 'training'
+                            ? (variant.price_per_day || 0)
+                            : (variant.price_per_week || 0),
+                          unit: activePackage.type === 'training' ? 'day' as const : 'week' as const,
+                          duration: 0,
+                          durationLabel: ''
+                        }
+
+                    const images = variant.images || []
+                    const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
+
+                    const mobileAmenities = Object.entries(gym.amenities || {})
+                      .filter(([key, value]) => value && ['wifi', 'air_conditioning', 'parking', 'showers'].includes(key))
+                      .slice(0, 4)
+                    const amenityLabels: Record<string, string> = {
+                      wifi: 'Free WiFi', air_conditioning: 'Air con',
+                      parking: 'Parking', showers: 'Showers',
+                    }
+                    const amenityIcons: Record<string, JSX.Element> = {
+                      wifi: <Wifi className="w-3.5 h-3.5" />,
+                      air_conditioning: <Thermometer className="w-3.5 h-3.5" />,
+                      parking: <Car className="w-3.5 h-3.5" />,
+                      showers: <Droplets className="w-3.5 h-3.5" />,
+                    }
+
+                    return (
+                      <div
+                        key={variant.id}
+                        className={`rounded-xl border overflow-hidden bg-white shadow-sm ${
+                          modalIsGhosted ? 'border-gray-200 opacity-80' : 'border-gray-200'
+                        }`}
+                      >
+                        {images.length > 0 ? (
+                          <div className="relative h-44 bg-gray-100">
+                            <img src={images[currentImageIndex]} alt={variant.name} className="w-full h-full object-cover" />
+                            {images.length > 1 && (
+                              <>
+                                <button onClick={(e) => prevImage(variant.id, images.length, e)} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md">
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button onClick={(e) => nextImage(variant.id, images.length, e)} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md">
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                                <div className="absolute bottom-2 right-2 bg-gray-900/70 text-white text-[10px] font-medium px-2 py-0.5 rounded-md backdrop-blur-sm">
+                                  {currentImageIndex + 1} / {images.length}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-28 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <BedDouble className="w-10 h-10 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <h3 className="font-bold text-[15px] text-gray-900 mb-1">{variant.name}</h3>
+                          {variant.description && (
+                            <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">{variant.description}</p>
+                          )}
+                          {mobileAmenities.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {mobileAmenities.map(([key]) => (
+                                <span key={key} className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
+                                  {amenityIcons[key]}{amenityLabels[key] || key}
+                                </span>
+                              ))}
+                              <span className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
+                                <Check className="w-3.5 h-3.5 text-green-600" />Private bathroom
+                              </span>
+                            </div>
+                          )}
+                          <div className="border-t border-gray-100 pt-3 mt-1">
+                            {modalIsGhosted ? (
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-[10px] text-gray-500 mb-0.5">Starts at</p>
+                                  <p className="text-base font-bold text-gray-500">
+                                    {formatPrice(convertPrice(variantAnchorPrice, gym.currency))}
+                                    <span className="text-[10px] font-normal text-gray-400 ml-1">/ {variantAnchorUnit}</span>
+                                  </p>
+                                </div>
+                                <Button variant="outline" className="h-9 px-4 text-xs font-semibold border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white rounded-lg" onClick={() => handleExtendStay(modalMinStay)}>
+                                  Extend {modalNightsToUnlock} {modalNightsToUnlock === 1 ? 'day' : 'days'}
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-end justify-between mb-3">
+                                  <div>
+                                    <p className="text-[10px] text-gray-500 mb-0.5">
+                                      {isValidDuration ? `Total for ${variantPriceInfo.durationLabel}` : `Starting from`}
+                                    </p>
+                                    <p className="text-xl font-bold text-[#003580]">
+                                      {formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}
+                                    </p>
+                                    {!isValidDuration && <p className="text-[10px] text-gray-500 mt-0.5">/ {variantAnchorUnit}</p>}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] text-green-600 font-medium"><Check className="w-3 h-3 inline mr-0.5" />Free cancellation</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">Incl. taxes & fees</p>
+                                  </div>
+                                </div>
+                                <Button className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-bold text-sm rounded-lg" onClick={() => activePackage && handleSelectVariant(activePackage, variant)}>
+                                  Reserve this room
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── DESKTOP: Ticket modal (events) — rich event detail + ticket tiers ── */}
+      {variantsModalOpen && activePackage?.offer_type === 'TYPE_ONE_TIME_EVENT' && (
+        <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setVariantsModalOpen(false)} />
+          <div className="relative z-50 w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col bg-white rounded-2xl shadow-2xl mx-4">
+
+            {/* Hero image or amber gradient header */}
+            {activePackage.image ? (
+              <div className="relative w-full h-52 flex-shrink-0 overflow-hidden rounded-t-2xl">
+                <img src={activePackage.image} alt={activePackage.name} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                {/* Close button over image */}
+                <button
+                  onClick={() => setVariantsModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                {/* Event badge over image */}
+                <div className="absolute bottom-4 left-6">
+                  <span className="inline-flex items-center gap-1.5 bg-amber-500 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                    <Ticket className="w-3 h-3" /> One-Time Event
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="relative w-full h-28 flex-shrink-0 bg-gradient-to-r from-amber-500 to-orange-400 rounded-t-2xl flex items-center px-6">
+                <span className="inline-flex items-center gap-1.5 bg-white/20 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                  <Ticket className="w-3 h-3" /> One-Time Event
+                </span>
+                <button
+                  onClick={() => setVariantsModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto">
+
+              {/* Event info section */}
+              <div className="px-8 pt-6 pb-5 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900 leading-tight mb-3">{activePackage.name}</h2>
+
+                {/* Date / time row */}
+                {activePackage.event_date && (
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <Calendar className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-gray-700 font-medium">
+                      {new Date(activePackage.event_date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {/* Extract time portion if non-midnight */}
+                      {(() => {
+                        const d = new Date(activePackage.event_date)
+                        const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0
+                        return hasTime ? (
+                          <span className="ml-1 text-amber-700">
+                            {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        ) : null
+                      })()}
+                      {activePackage.event_end_date && (
+                        <span className="text-gray-500 font-normal ml-1">
+                          &rarr; {(() => {
+                            const end = new Date(activePackage.event_end_date)
+                            const hasTime = end.getHours() !== 0 || end.getMinutes() !== 0
+                            const sameDay = activePackage.event_date &&
+                              new Date(activePackage.event_date).toDateString() === end.toDateString()
+                            if (sameDay && hasTime) {
+                              return end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                            }
+                            return end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                              + (hasTime ? ` ${end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : '')
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Capacity row */}
+                {activePackage.max_attendees && (
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-600">{activePackage.max_attendees} total capacity</span>
+                  </div>
+                )}
+
+                {/* Description with paragraph spacing + show more/less */}
+                {activePackage.description && (() => {
+                  const CHAR_LIMIT = 300
+                  const isExpanded = expandedDescriptions[activePackage.id]
+                  const needsTruncation = activePackage.description.length > CHAR_LIMIT
+                  const visibleText = !isExpanded && needsTruncation
+                    ? activePackage.description.slice(0, CHAR_LIMIT).trimEnd()
+                    : activePackage.description
+
+                  // Split into paragraphs on single or double newlines
+                  const paragraphs = visibleText
+                    .split(/\n+/)
+                    .map(p => p.trim())
+                    .filter(Boolean)
+
+                  return (
+                    <div className="text-gray-600 text-[15px] leading-relaxed">
+                      {paragraphs.map((para, i) => (
+                        <p key={i} className={i < paragraphs.length - 1 ? 'mb-3' : ''}>
+                          {para}
+                          {/* append ellipsis on last visible paragraph when truncated */}
+                          {!isExpanded && needsTruncation && i === paragraphs.length - 1 && '…'}
+                        </p>
+                      ))}
+                      {needsTruncation && (
+                        <button
+                          className="text-[#003580] font-medium text-sm mt-2 hover:underline"
+                          onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: !isExpanded }))}
+                        >
+                          {isExpanded ? 'Show less' : 'Show more'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Ticket tiers section */}
+              <div className="px-8 pt-5 pb-6">
+                <h3 className="text-base font-bold text-gray-900 mb-4">Select your ticket</h3>
+                <div className="space-y-3">
+                  {activePackage.variants?.map(variant => {
+                    const ticketPrice = variant.price_per_day ?? 0
+                    return (
+                      <div
+                        key={variant.id}
+                        className="border border-gray-200 rounded-xl p-5 hover:border-amber-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Ticket className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                              <h4 className="font-bold text-base text-gray-900">{variant.name}</h4>
+                            </div>
+                            {variant.description && (
+                              <p className="text-sm text-gray-500 leading-relaxed mt-1">{variant.description}</p>
+                            )}
+                            {variant.capacity && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-2">
+                                <Users className="w-3 h-3" />
+                                <span>{variant.capacity} spots</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-2xl font-bold text-[#003580]">
+                              {formatPrice(convertPrice(ticketPrice, gym.currency))}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">per ticket</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">excl. fees</p>
+                          </div>
+                        </div>
+                        <Button
+                          className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-bold text-sm rounded-lg"
+                          onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
+                        >
+                          Get This Ticket
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── DESKTOP: Centered overlay (hidden on mobile) ───────────────────── */}
-      {variantsModalOpen && (
+      {/* ─── DESKTOP: Room modal (accommodation) — wide layout ───────────────── */}
+      {variantsModalOpen && activePackage?.offer_type !== 'TYPE_ONE_TIME_EVENT' && (
       <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center">
-        {/* Backdrop */}
         <div className="fixed inset-0 bg-black/50" onClick={() => setVariantsModalOpen(false)} />
-        {/* Panel */}
         <div className="relative z-50 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col bg-white rounded-lg shadow-2xl mx-4">
           <div className="pb-4 border-b px-6 pt-6 flex-shrink-0">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-semibold text-gray-900">{activePackage?.name}</h2>
                 <div className="text-base text-gray-600 mt-2">
-              {activePackage?.description ? (
-                <div>
-                  <span className={expandedDescriptions[activePackage.id] ? '' : 'line-clamp-2'}>
-                    {activePackage.description}
-                  </span>
-                  {activePackage.description.length > 150 && (
-                    !expandedDescriptions[activePackage.id] ? (
-                      <button
-                        onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: true }))}
-                        className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1"
-                      >
-                        See more
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: false }))}
-                        className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1"
-                      >
-                        See less
-                      </button>
-                    )
+                  {activePackage?.description ? (
+                    <div>
+                      <span className={expandedDescriptions[activePackage.id] ? '' : 'line-clamp-2'}>
+                        {activePackage.description}
+                      </span>
+                      {activePackage.description.length > 150 && (
+                        !expandedDescriptions[activePackage.id] ? (
+                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: true }))} className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1">See more</button>
+                        ) : (
+                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: false }))} className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1">See less</button>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    'Choose a room type for your package.'
                   )}
                 </div>
-              ) : (
-                'Choose a room type for your package.'
-              )}
-                </div>
               </div>
-              <button
-                onClick={() => setVariantsModalOpen(false)}
-                className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0 text-gray-500"
-                aria-label="Close"
-              >
+              <button onClick={() => setVariantsModalOpen(false)} className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0 text-gray-500" aria-label="Close">
                 <X className="w-6 h-6" />
               </button>
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="grid gap-6">
-            {activePackage?.variants?.map(variant => {
-               // Ghost state for variant modal
-               const modalMinStay = activePackage.min_stay_days ?? (activePackage.type === 'training' ? 1 : 7)
-               const modalMeetsMinStay = !isValidDuration || duration >= modalMinStay
-               const modalNightsToUnlock = isValidDuration ? Math.max(0, modalMinStay - duration) : 0
-               const modalIsGhosted = isValidDuration && !modalMeetsMinStay
+              {activePackage?.variants?.map(variant => {
+                const modalMinStay = activePackage.min_stay_days ?? (activePackage.type === 'training' ? 1 : 7)
+                const modalMeetsMinStay = !isValidDuration || duration >= modalMinStay
+                const modalNightsToUnlock = isValidDuration ? Math.max(0, modalMinStay - duration) : 0
+                const modalIsGhosted = isValidDuration && !modalMeetsMinStay
 
-               const variantPriceInfo = isValidDuration 
-                 ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
-                     daily: variant.price_per_day,
-                     weekly: variant.price_per_week,
-                     monthly: variant.price_per_month
-                   })
-                 : {
-                     price: activePackage.type === 'training' 
-                       ? (variant.price_per_day || 0)
-                       : (variant.price_per_week || 0),
-                     unit: activePackage.type === 'training' ? 'day' as const : 'week' as const,
-                     duration: 0,
-                     durationLabel: ''
-                   }
+                const variantPriceInfo = isValidDuration
+                  ? calculatePackagePrice(getPricingDuration(activePackage.type), activePackage.type, {
+                      daily: variant.price_per_day, weekly: variant.price_per_week, monthly: variant.price_per_month
+                    })
+                  : {
+                      price: activePackage.type === 'training' ? (variant.price_per_day || 0) : (variant.price_per_week || 0),
+                      unit: activePackage.type === 'training' ? 'day' as const : 'week' as const,
+                      duration: 0, durationLabel: ''
+                    }
 
-               const images = variant.images || []
-               const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
+                const images = variant.images || []
+                const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
 
-                // Helper function to get amenity icon (same as gym page)
-                const getAmenityIcon = (amenityKey: string) => {
+                const getAmenityIcon = (key: string) => {
                   const iconMap: Record<string, JSX.Element> = {
-                    wifi: <Wifi className="w-4 h-4 text-gray-700" />,
-                    parking: <Car className="w-4 h-4 text-gray-700" />,
-                    showers: <Droplets className="w-4 h-4 text-gray-700" />,
-                    accommodation: <Building2 className="w-4 h-4 text-gray-700" />,
-                    equipment: <Dumbbell className="w-4 h-4 text-gray-700" />,
-                    meals: <UtensilsCrossed className="w-4 h-4 text-gray-700" />,
-                    locker_room: <Users className="w-4 h-4 text-gray-700" />,
-                    security: <Shield className="w-4 h-4 text-gray-700" />,
+                    wifi: <Wifi className="w-4 h-4 text-gray-700" />, parking: <Car className="w-4 h-4 text-gray-700" />,
+                    showers: <Droplets className="w-4 h-4 text-gray-700" />, accommodation: <Building2 className="w-4 h-4 text-gray-700" />,
+                    equipment: <Dumbbell className="w-4 h-4 text-gray-700" />, meals: <UtensilsCrossed className="w-4 h-4 text-gray-700" />,
+                    locker_room: <Users className="w-4 h-4 text-gray-700" />, security: <Shield className="w-4 h-4 text-gray-700" />,
                     air_conditioning: <Clock className="w-4 h-4 text-gray-700" />,
                   }
-                  return iconMap[amenityKey] || <Check className="w-4 h-4 text-green-600" />
+                  return iconMap[key] || <Check className="w-4 h-4 text-green-600" />
                 }
 
-                // Get relevant amenities for display
                 const relevantAmenities = Object.entries(gym.amenities || {})
                   .filter(([key, value]) => value && ['wifi', 'air_conditioning', 'accommodation', 'parking', 'showers'].includes(key))
                   .slice(0, 8)
 
-               return (
+                return (
                   <div key={variant.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
                     <div className="flex flex-col lg:flex-row">
-                      {/* Image Gallery - Larger */}
                       <div className="w-full lg:w-80 h-64 lg:h-auto flex-shrink-0 bg-gray-100 relative group">
-                    {images.length > 0 ? (
-                      <>
-                        <img 
-                          src={images[currentImageIndex]} 
-                          alt={variant.name}
-                          className="w-full h-full object-cover"
-                        />
-                        {images.length > 1 && (
+                        {images.length > 0 ? (
                           <>
-                            <button 
-                              onClick={(e) => prevImage(variant.id, images.length, e)}
-                                  className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full shadow-md transition-opacity"
-                            >
+                            <img src={images[currentImageIndex]} alt={variant.name} className="w-full h-full object-cover" />
+                            {images.length > 1 && (
+                              <>
+                                <button onClick={(e) => prevImage(variant.id, images.length, e)} className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full shadow-md">
                                   <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={(e) => nextImage(variant.id, images.length, e)}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full shadow-md transition-opacity"
-                            >
+                                </button>
+                                <button onClick={(e) => nextImage(variant.id, images.length, e)} className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full shadow-md">
                                   <ChevronRight className="w-5 h-5" />
-                            </button>
+                                </button>
                                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                              {images.map((_, idx) => (
-                                <div 
-                                  key={idx} 
-                                      className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
-                                />
-                              ))}
-                            </div>
+                                  {images.map((_, idx) => (
+                                    <div key={idx} className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} />
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </>
-                        )}
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
                             <BedDouble className="w-12 h-12" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                      {/* Content Section */}
                       <div className="flex-1 p-6 flex flex-col">
                         <div className="flex-1">
                           <h4 className="font-semibold text-xl text-gray-900 mb-3">{variant.name}</h4>
-                          
-                          {variant.description && (
-                            <p className="text-gray-700 text-[15px] leading-relaxed mb-4">{variant.description}</p>
-                          )}
-
-                          {/* Amenities with Icons - Booking.com Style */}
+                          {variant.description && <p className="text-gray-700 text-[15px] leading-relaxed mb-4">{variant.description}</p>}
                           {relevantAmenities.length > 0 && (
                             <div className="mb-4">
                               <h5 className="text-sm font-semibold text-gray-900 mb-3">Room facilities</h5>
                               <div className="grid grid-cols-2 gap-y-2">
-                                {relevantAmenities.map(([key, _]) => {
-                                  const amenityName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                  return (
-                                    <div key={key} className="flex items-center gap-2 text-sm text-gray-700">
-                                      {getAmenityIcon(key)}
-                                      <span>{amenityName}</span>
-                                    </div>
-                                  )
-                                })}
-                                {/* Always show these for accommodation */}
-                                <div className="flex items-center gap-2 text-sm text-gray-700">
-                                  <Check className="w-4 h-4 text-green-600" />
-                                  <span>Private Bathroom</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-700">
-                                  <Check className="w-4 h-4 text-green-600" />
-                                  <span>Free WiFi</span>
-                                </div>
-                      </div>
+                                {relevantAmenities.map(([key]) => (
+                                  <div key={key} className="flex items-center gap-2 text-sm text-gray-700">
+                                    {getAmenityIcon(key)}
+                                    <span>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                  </div>
+                                ))}
+                                <div className="flex items-center gap-2 text-sm text-gray-700"><Check className="w-4 h-4 text-green-600" /><span>Private Bathroom</span></div>
+                                <div className="flex items-center gap-2 text-sm text-gray-700"><Check className="w-4 h-4 text-green-600" /><span>Free WiFi</span></div>
+                              </div>
                             </div>
                           )}
-                    </div>
-                    
-                        {/* Bottom Section - Pricing & Action */}
+                        </div>
                         <div className="pt-4 border-t flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                           {modalIsGhosted ? (
-                            /* Ghost State — Variant */
                             <>
-                              <div className="flex-1">
-                                <div className="text-xs text-gray-500 mt-2">
-                                  Min. stay: {modalMinStay} days
-                                </div>
-                              </div>
+                              <div className="flex-1"><div className="text-xs text-gray-500 mt-2">Min. stay: {modalMinStay} days</div></div>
                               <div className="text-right flex-shrink-0">
                                 <div className="text-gray-400 text-xs mb-1">Starts at</div>
                                 <div className="text-xl font-bold text-gray-500 mb-2">
-                                  {formatPrice(convertPrice(
-                                    variant.price_per_week ?? activePackage.price_per_week ?? variant.price_per_month ?? activePackage.price_per_month ?? variant.price_per_day ?? activePackage.price_per_day ?? 0,
-                                    gym.currency
-                                  ))}
-                                  <span className="text-xs font-normal text-gray-400 ml-1">/ {(variant.price_per_week ?? activePackage.price_per_week) ? 'week' : (variant.price_per_month ?? activePackage.price_per_month) ? 'month' : 'day'}</span>
+                                  {formatPrice(convertPrice(variant.price_per_week ?? activePackage.price_per_week ?? variant.price_per_month ?? activePackage.price_per_month ?? variant.price_per_day ?? activePackage.price_per_day ?? 0, gym.currency))}
+                                  <span className="text-xs font-normal text-gray-400 ml-1">/ {(variant.price_per_week ?? activePackage.price_per_week) ? 'week' : 'day'}</span>
                                 </div>
-                                <Button 
-                                  variant="outline"
-                                  className="border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white font-semibold px-6 py-2.5"
-                                  onClick={() => handleExtendStay(modalMinStay)}
-                                >
+                                <Button variant="outline" className="border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white font-semibold px-6 py-2.5" onClick={() => handleExtendStay(modalMinStay)}>
                                   Extend {modalNightsToUnlock} {modalNightsToUnlock === 1 ? 'day' : 'days'}
                                 </Button>
                               </div>
                             </>
                           ) : (
-                            /* Normal State — Variant */
                             <>
-                          <div className="flex-1">
-                            <div className="text-xs text-green-600 font-medium mb-2">
-                         <Check className="w-3 h-3 inline mr-1" />
-                         Free cancellation
-                       </div>
-                            <div className="text-xs text-gray-500">
-                              Includes taxes and charges
-                            </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-2xl font-bold text-gray-900 mb-1">
-                              {formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}
-                            </div>
-                            <div className="text-xs text-gray-500 mb-3">
-                            {isValidDuration 
-                              ? `Total for ${variantPriceInfo.durationLabel}`
-                              : `/ ${activePackage.type === 'training' ? 'day' : variantPriceInfo.unit}`
-                            }
-                            </div>
-                            <Button 
-                              onClick={() => activePackage && handleSelectVariant(activePackage, variant)}
-                              className="bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold px-6 py-2.5"
-                            >
-                              I'll reserve
-                            </Button>
-                          </div>
+                              <div className="flex-1">
+                                <div className="text-xs text-green-600 font-medium mb-2"><Check className="w-3 h-3 inline mr-1" />Free cancellation</div>
+                                <div className="text-xs text-gray-500">Includes taxes and charges</div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-2xl font-bold text-gray-900 mb-1">{formatPrice(convertPrice(variantPriceInfo.price, gym.currency))}</div>
+                                <div className="text-xs text-gray-500 mb-3">
+                                  {isValidDuration ? `Total for ${variantPriceInfo.durationLabel}` : `/ ${activePackage.type === 'training' ? 'day' : variantPriceInfo.unit}`}
+                                </div>
+                                <Button onClick={() => activePackage && handleSelectVariant(activePackage, variant)} className="bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold px-6 py-2.5">
+                                  I&apos;ll reserve
+                                </Button>
+                              </div>
                             </>
                           )}
-                       </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-               )
-            })}
+                )
+              })}
             </div>
           </div>
         </div>

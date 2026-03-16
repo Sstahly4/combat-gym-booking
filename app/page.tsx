@@ -67,7 +67,7 @@ async function getGymsWithPackages() {
     .select(`
       *,
       images:gym_images(url, order),
-      packages(id, type, includes_accommodation, includes_meals, name, description, offer_type)
+      packages(id, type, includes_accommodation, includes_meals, name, description, offer_type, event_date, event_end_date, max_attendees, price_per_day)
     `)
     .in('verification_status', ['verified', 'trusted'])
   

@@ -70,6 +70,7 @@ export type CanonicalOfferType =
   | 'TYPE_TRAINING_ACCOM'
   | 'TYPE_ALL_INCLUSIVE'
   | 'TYPE_CUSTOM_EXP'
+  | 'TYPE_ONE_TIME_EVENT'
 
 export interface Package {
   id: string
@@ -109,6 +110,11 @@ export interface Package {
       monthly?: number | null
       minStay?: number
     }
+    extras?: Array<{
+      label: string
+      type: 'percentage' | 'fixed'
+      value: string
+    }>
   } | null
   available_year_round?: boolean
   blackout_dates?: Array<{
@@ -119,6 +125,10 @@ export interface Package {
   booking_mode?: 'request_to_book' | 'instant'
   admin_override?: boolean
   admin_notes?: string
+  // One-time event fields
+  event_date?: string | null
+  event_end_date?: string | null
+  max_attendees?: number | null
   created_at: string
   updated_at: string
   variants?: PackageVariant[]
@@ -134,6 +144,8 @@ export interface PackageVariant {
   price_per_month: number | null
   room_type: 'private' | 'shared' | null
   images: string[]
+  // Used as ticket tier capacity for TYPE_ONE_TIME_EVENT packages
+  capacity: number | null
   created_at: string
   updated_at: string
 }

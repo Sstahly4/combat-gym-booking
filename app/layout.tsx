@@ -4,6 +4,7 @@ import "./globals.css"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { CurrencyProvider } from "@/lib/contexts/currency-context"
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           </main>
           <Footer />
         </CurrencyProvider>
+        <Analytics />
       </body>
     </html>
   )

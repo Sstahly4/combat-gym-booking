@@ -15,12 +15,15 @@ import {
   BedDouble, 
   UtensilsCrossed, 
   Calendar, 
-  DollarSign, 
   Eye,
   Check,
   X,
   Plus,
-  Trash2
+  Trash2,
+  Ticket,
+  Upload,
+  ImageIcon,
+  Users,
 } from 'lucide-react'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
@@ -54,6 +57,13 @@ const OFFER_TYPES = [
     description: 'Specialized camps, prep weeks, or fixed-date experiences.',
     icon: Calendar,
     color: 'orange',
+  },
+  {
+    id: 'TYPE_ONE_TIME_EVENT',
+    name: 'One-Time Event',
+    description: 'Seminars, workshops, or single events with ticket tiers and a fixed date.',
+    icon: Ticket,
+    color: 'amber',
   },
 ] as const
 
@@ -110,6 +120,35 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
   
   // Step 5: Review
   const [bookingMode, setBookingMode] = useState<'request_to_book' | 'instant'>('request_to_book')
+
+  // Image upload (all offer types)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
+
+  // One-time event specific state
+  const [eventDate, setEventDate] = useState('')
+  const [eventStartTime, setEventStartTime] = useState('')
+  const [eventEndDate, setEventEndDate] = useState('')
+  const [eventEndTime, setEventEndTime] = useState('')
+  const [maxAttendees, setMaxAttendees] = useState('')
+  const [ticketTiers, setTicketTiers] = useState<Array<{
+    id?: string
+    name: string
+    description: string
+    price: string
+    capacity: string
+  }>>([{ name: 'Standard', description: '', price: '', capacity: '' }])
+
+  // Pricing extras (VAT, booking fees, etc.) — stored in pricing_config.extras
+  const [pricingExtras, setPricingExtras] = useState<Array<{
+    label: string
+    type: 'percentage' | 'fixed'
+    value: string
+  }>>([])
+  const [newExtraLabel, setNewExtraLabel] = useState('')
+  const [newExtraType, setNewExtraType] = useState<'percentage' | 'fixed'>('percentage')
+  const [newExtraValue, setNewExtraValue] = useState('')
   
   const steps = [
     { id: 'type', label: 'Offer Type', number: 1 },
@@ -130,14 +169,49 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
       setAvailableYearRound(existingPackage.available_year_round ?? true)
       setBlackoutDates(existingPackage.blackout_dates || [])
       setBookingMode(existingPackage.booking_mode || 'request_to_book')
-      
+
       // Load pricing - day/week/month rates
       setPricePerDay(existingPackage.price_per_day?.toString() || '')
       setPricePerWeek(existingPackage.price_per_week?.toString() || '')
       setPricePerMonth(existingPackage.price_per_month?.toString() || '')
-      
-      // Load linked accommodations
-      loadLinkedAccommodations(existingPackage.id)
+
+      // Load existing image
+      if (existingPackage.image) {
+        setExistingImageUrl(existingPackage.image)
+        setImagePreviewUrl(existingPackage.image)
+      }
+
+      // Load pricing extras from pricing_config
+      if (existingPackage.pricing_config?.extras) {
+        setPricingExtras(existingPackage.pricing_config.extras)
+      }
+
+      // Load event-specific fields
+      if (existingPackage.offer_type === 'TYPE_ONE_TIME_EVENT') {
+        if (existingPackage.event_date) {
+          const [datePart, timePart] = existingPackage.event_date.split('T')
+          setEventDate(datePart || '')
+          setEventStartTime(timePart ? timePart.slice(0, 5) : '') // HH:MM
+        }
+        if (existingPackage.event_end_date) {
+          const [datePart, timePart] = existingPackage.event_end_date.split('T')
+          setEventEndDate(datePart || '')
+          setEventEndTime(timePart ? timePart.slice(0, 5) : '')
+        }
+        setMaxAttendees(existingPackage.max_attendees?.toString() || '')
+        if (existingPackage.variants && existingPackage.variants.length > 0) {
+          setTicketTiers(existingPackage.variants.map(v => ({
+            id: v.id,
+            name: v.name,
+            description: v.description || '',
+            price: v.price_per_day?.toString() || '',
+            capacity: v.capacity?.toString() || '',
+          })))
+        }
+      } else {
+        // Load linked accommodations for non-event types
+        loadLinkedAccommodations(existingPackage.id)
+      }
     }
   }, [existingPackage, currency])
   
@@ -200,27 +274,53 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
       alert('Please complete all required fields')
       return
     }
-    
+
     // Validate pricing based on offer type
-    if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
-      // Training-only: at least daily rate should be set
+    if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+      if (!eventDate) {
+        alert('Please set an event date.')
+        return
+      }
+      if (!ticketTiers.some(t => t.name.trim() && t.price)) {
+        alert('Please add at least one ticket tier with a price.')
+        return
+      }
+    } else if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
       if (!pricePerDay) {
         alert('Please enter a daily rate (price per session) for training-only packages.')
         return
       }
     } else {
-      // Training+Accommodation and All-Inclusive: require at least weekly rate
       if (!pricePerWeek) {
         alert('Please enter a weekly rate. This is required for price calculation.')
         return
       }
     }
-    
-    // Set min_stay_days based on offer type (training-only is always 1)
-    
+
     setSaving(true)
     const supabase = createClient()
-    
+
+    // Upload image if a new file was selected
+    let imageUrl: string | null = existingImageUrl
+
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop()
+      const fileName = `packages/${gymId}-${Date.now()}.${fileExt}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('gym-images')
+        .upload(fileName, imageFile, { upsert: true })
+
+      if (uploadError) {
+        console.error('Image upload error:', uploadError)
+        // Continue without image rather than blocking the save
+      } else if (uploadData) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('gym-images')
+          .getPublicUrl(fileName)
+        imageUrl = publicUrl
+      }
+    }
+
     // Build payload
     const payload: any = {
       gym_id: gymId,
@@ -229,68 +329,127 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
       sport,
       currency: packageCurrency,
       offer_type: selectedOfferType,
-      min_stay_days: selectedOfferType === 'TYPE_TRAINING_ONLY' ? 1 : minStayDays,
-      available_year_round: availableYearRound,
-      blackout_dates: blackoutDates.length > 0 ? blackoutDates : [],
       booking_mode: bookingMode,
-      // Set legacy type field for backward compatibility
+      image: imageUrl,
+      // Legacy type for backward compat
       type: selectedOfferType === 'TYPE_TRAINING_ONLY' ? 'training' :
             selectedOfferType === 'TYPE_TRAINING_ACCOM' ? 'accommodation' :
             selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? 'all_inclusive' : 'training',
       includes_accommodation: selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE',
       includes_meals: selectedOfferType === 'TYPE_ALL_INCLUSIVE',
-      // Set day/week/month rates
-      price_per_day: pricePerDay ? parseFloat(pricePerDay) : null,
-      price_per_week: pricePerWeek ? parseFloat(pricePerWeek) : null,
-      price_per_month: pricePerMonth ? parseFloat(pricePerMonth) : null,
     }
-    
+
+    // Helper to build a datetime string from separate date + time inputs
+    const buildDatetime = (date: string, time: string) => {
+      if (!date) return null
+      return time ? `${date}T${time}:00` : `${date}T00:00:00`
+    }
+
+    // Pricing extras stored in pricing_config.extras
+    const extrasPayload = pricingExtras.length > 0 ? pricingExtras : undefined
+
+    if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+      payload.min_stay_days = 1
+      payload.available_year_round = false
+      payload.blackout_dates = []
+      payload.event_date = buildDatetime(eventDate, eventStartTime)
+      payload.event_end_date = buildDatetime(eventEndDate, eventEndTime)
+      payload.max_attendees = maxAttendees ? parseInt(maxAttendees) : null
+      // Cheapest ticket tier price surfaces as price_per_day for list views
+      const prices = ticketTiers.map(t => parseFloat(t.price)).filter(p => !isNaN(p))
+      payload.price_per_day = prices.length > 0 ? Math.min(...prices) : null
+      payload.price_per_week = null
+      payload.price_per_month = null
+      payload.pricing_config = extrasPayload ? { mode: 'fixed', extras: extrasPayload } : null
+    } else {
+      payload.min_stay_days = selectedOfferType === 'TYPE_TRAINING_ONLY' ? 1 : minStayDays
+      payload.available_year_round = availableYearRound
+      payload.blackout_dates = blackoutDates.length > 0 ? blackoutDates : []
+      payload.price_per_day = pricePerDay ? parseFloat(pricePerDay) : null
+      payload.price_per_week = pricePerWeek ? parseFloat(pricePerWeek) : null
+      payload.price_per_month = pricePerMonth ? parseFloat(pricePerMonth) : null
+      payload.event_date = null
+      payload.event_end_date = null
+      payload.max_attendees = null
+      // Preserve existing pricing_config structure, just update extras
+      const existingConfig = existingPackage?.pricing_config || null
+      payload.pricing_config = extrasPayload
+        ? { ...(existingConfig || { mode: 'rate' }), extras: extrasPayload }
+        : existingConfig
+    }
+
     try {
       let packageId: string
-      
+
       if (existingPackage) {
         const { error } = await supabase
           .from('packages')
           .update(payload)
           .eq('id', existingPackage.id)
-        
+
         if (error) throw error
         packageId = existingPackage.id
-        
-        // Remove existing links
-        await supabase
-          .from('package_accommodations')
-          .delete()
-          .eq('package_id', packageId)
+
+        // Remove existing links / variants depending on type
+        if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+          await supabase.from('package_variants').delete().eq('package_id', packageId)
+        } else {
+          await supabase.from('package_accommodations').delete().eq('package_id', packageId)
+        }
       } else {
         const { error, data } = await supabase
           .from('packages')
           .insert(payload)
           .select()
           .single()
-        
+
         if (error) throw error
         packageId = data.id
       }
-      
-      // Link accommodations via package_accommodations table (for TRAINING_ACCOM and ALL_INCLUSIVE)
-      if (linkedAccommodationIds.length > 0 && (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE')) {
+
+      if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+        // Save ticket tiers as package_variants
+        const validTiers = ticketTiers.filter(t => t.name.trim() && t.price)
+        if (validTiers.length > 0) {
+          const variantRows = validTiers.map(t => ({
+            package_id: packageId,
+            name: t.name.trim(),
+            description: t.description.trim() || null,
+            price_per_day: parseFloat(t.price),
+            price_per_week: null,
+            price_per_month: null,
+            room_type: null,
+            images: [],
+            capacity: t.capacity ? parseInt(t.capacity) : null,
+          }))
+
+          const { error: variantError } = await supabase
+            .from('package_variants')
+            .insert(variantRows)
+
+          if (variantError) {
+            console.error('Error saving ticket tiers:', variantError)
+          }
+        }
+      } else if (
+        linkedAccommodationIds.length > 0 &&
+        (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE')
+      ) {
         const links = linkedAccommodationIds.map((accId, index) => ({
           package_id: packageId,
           accommodation_id: accId,
-          is_default: index === 0, // First one is default
+          is_default: index === 0,
         }))
-        
+
         const { error: linkError } = await supabase
           .from('package_accommodations')
           .insert(links)
-        
+
         if (linkError) {
           console.error('Error linking accommodations:', linkError)
-          // Don't fail the whole save, just log the error
         }
       }
-      
+
       onComplete()
     } catch (error: any) {
       alert(`Failed to save: ${error.message}`)
@@ -306,13 +465,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
       case 2:
         return name.trim() !== '' && sport !== ''
       case 3:
-        // For training-only, require daily rate; for others, require weekly rate
+        if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+          // Require event date and at least one complete ticket tier
+          return eventDate !== '' && ticketTiers.some(t => t.name.trim() !== '' && t.price !== '')
+        }
         if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
           return pricePerDay !== ''
         }
-        return pricePerWeek !== '' // At least weekly rate required for other types
+        return pricePerWeek !== ''
       case 4:
-        return true // Availability is optional
+        return true
       case 5:
         return true
       default:
@@ -371,16 +533,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
             <div>
               <h3 className="text-lg font-semibold mb-2">Basic Information</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Add how you advertise your gym — this helps guests find you.
+                Add how you advertise your offer — this helps guests find you.
               </p>
             </div>
             <div className="space-y-4">
               <div>
-                <Label>Package Name *</Label>
+                <Label>{selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'Event Name *' : 'Package Name *'}</Label>
                 <Input
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. 1 Month All-Inclusive Muay Thai"
+                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'e.g. BJJ Seminar with Gordon Ryan' : 'e.g. 1 Month All-Inclusive Muay Thai'}
                   required
                 />
               </div>
@@ -403,15 +565,212 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                 <Textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="What's included? e.g. 2x training per day, Sunday off..."
+                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'What will attendees learn or experience?' : 'What\'s included? e.g. 2x training per day, Sunday off...'}
                   rows={4}
                 />
+              </div>
+
+              {/* Cover Image Upload */}
+              <div>
+                <Label>Cover Image <span className="text-gray-400">(Optional)</span></Label>
+                <div className="mt-1">
+                  {imagePreviewUrl ? (
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Cover preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null)
+                          setImagePreviewUrl(null)
+                          setExistingImageUrl(null)
+                        }}
+                        className="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-1 shadow"
+                        aria-label="Remove image"
+                      >
+                        <X className="w-4 h-4 text-gray-700" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#003580] hover:bg-blue-50 transition-colors">
+                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600">Click to upload a cover image</span>
+                      <span className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setImageFile(file)
+                            setImagePreviewUrl(URL.createObjectURL(file))
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Shown on the package card. If not set, the gym&apos;s first gallery photo is used.
+                </p>
               </div>
             </div>
           </div>
         )
       
       case 3:
+        // ── One-Time Event: Event Dates + Ticket Tiers ───────────────────────
+        if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Event Dates & Tickets</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Set when the event takes place and define your ticket tiers with pricing.
+                </p>
+              </div>
+
+              {/* Event Dates & Times */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Start */}
+                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+                    <p className="text-sm font-medium text-gray-700">Start</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Date *</Label>
+                        <Input
+                          type="date"
+                          value={eventDate}
+                          onChange={e => setEventDate(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Start Time <span className="text-gray-400 text-xs">(Optional)</span></Label>
+                        <Input
+                          type="time"
+                          value={eventStartTime}
+                          onChange={e => setEventStartTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* End */}
+                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+                    <p className="text-sm font-medium text-gray-700">End <span className="text-xs text-gray-400 font-normal">(Optional — for multi-day or timed events)</span></p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>End Date</Label>
+                        <Input
+                          type="date"
+                          value={eventEndDate}
+                          onChange={e => setEventEndDate(e.target.value)}
+                          min={eventDate}
+                        />
+                      </div>
+                      <div>
+                        <Label>End Time <span className="text-gray-400 text-xs">(Optional)</span></Label>
+                        <Input
+                          type="time"
+                          value={eventEndTime}
+                          onChange={e => setEventEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ticket Tiers */}
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-semibold">Ticket Tiers *</Label>
+                    <p className="text-xs text-gray-500 mt-0.5">Add tiers like Standard, VIP, Early Bird, etc.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTicketTiers([...ticketTiers, { name: '', description: '', price: '', capacity: '' }])}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Tier
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {ticketTiers.map((tier, idx) => (
+                    <div key={idx} className="p-4 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Tier {idx + 1}</span>
+                        {ticketTiers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setTicketTiers(ticketTiers.filter((_, i) => i !== idx))}
+                            className="text-gray-400 hover:text-red-500"
+                            aria-label="Remove tier"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Tier Name *</Label>
+                          <Input
+                            value={tier.name}
+                            onChange={e => setTicketTiers(ticketTiers.map((t, i) => i === idx ? { ...t, name: e.target.value } : t))}
+                            placeholder="e.g. Standard, VIP"
+                          />
+                        </div>
+                        <div>
+                          <Label>Price ({packageCurrency}) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={tier.price}
+                            onChange={e => setTicketTiers(ticketTiers.map((t, i) => i === idx ? { ...t, price: e.target.value } : t))}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Description <span className="text-gray-400">(Optional)</span></Label>
+                          <Input
+                            value={tier.description}
+                            onChange={e => setTicketTiers(ticketTiers.map((t, i) => i === idx ? { ...t, description: e.target.value } : t))}
+                            placeholder="e.g. Includes mat access and gi"
+                          />
+                        </div>
+                        <div>
+                          <Label>Capacity <span className="text-gray-400">(Optional)</span></Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={tier.capacity}
+                            onChange={e => setTicketTiers(ticketTiers.map((t, i) => i === idx ? { ...t, capacity: e.target.value } : t))}
+                            placeholder="Unlimited"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        // ── All Other Types: Standard Pricing & Accommodation ────────────────
         return (
           <div className="space-y-6">
             <div>
@@ -541,6 +900,73 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
         )
       
       case 4:
+        // ── One-Time Event: Capacity & Booking Settings ──────────────────────
+        if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Capacity & Booking</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Optionally cap the total number of attendees and configure booking settings.
+                </p>
+              </div>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">Event scheduled</p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      {eventDate
+                        ? `${new Date(eventDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}${eventStartTime ? ` · ${eventStartTime}` : ''}`
+                        : '—'}
+                      {(eventEndDate && eventEndDate !== eventDate) && (
+                        <> &rarr; {new Date(eventEndDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}{eventEndTime ? ` · ${eventEndTime}` : ''}</>
+                      )}
+                      {(!eventEndDate || eventEndDate === eventDate) && eventEndTime && (
+                        <> &rarr; {eventEndTime}</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-gray-500" />
+                    Total Capacity <span className="text-gray-400 text-xs ml-1">(Optional)</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={maxAttendees}
+                    onChange={e => setMaxAttendees(e.target.value)}
+                    placeholder="Unlimited"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Set an overall cap across all ticket tiers. Leave blank for unlimited.
+                  </p>
+                </div>
+
+                {ticketTiers.some(t => t.capacity) && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Per-tier capacities also set:</strong>{' '}
+                      {ticketTiers
+                        .filter(t => t.capacity)
+                        .map(t => `${t.name || 'Tier'}: ${t.capacity}`)
+                        .join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        }
+
+        // ── All Other Types: Standard Availability ───────────────────────────
         return (
           <div className="space-y-6">
             <div>
@@ -564,7 +990,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                   Default to year-round availability. Use blackout dates below to exclude specific periods.
                 </p>
               </div>
-              
+
               <div className="border-t pt-4">
                 <Label className="mb-3 block">Blackout Dates</Label>
                 <p className="text-xs text-gray-600 mb-3">
@@ -651,39 +1077,196 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                     <span className="text-gray-600">Sport:</span>
                     <span className="font-medium">{sport}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Minimum Stay:</span>
-                    <span className="font-medium">{selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pricing:</span>
-                    <div className="text-right">
-                      {pricePerDay && (
-                        <div className="text-sm font-medium">/day: {packageCurrency} {parseFloat(pricePerDay).toLocaleString()}</div>
+                  {selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Event Start:</span>
+                        <span className="font-medium">
+                          {eventDate
+                            ? `${new Date(eventDate + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}${eventStartTime ? ` at ${eventStartTime}` : ''}`
+                            : '—'}
+                        </span>
+                      </div>
+                      {(eventEndDate || eventEndTime) && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Event End:</span>
+                          <span className="font-medium">
+                            {eventEndDate && eventEndDate !== eventDate
+                              ? `${new Date(eventEndDate + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}${eventEndTime ? ` at ${eventEndTime}` : ''}`
+                              : eventEndTime ? `Same day at ${eventEndTime}` : '—'}
+                          </span>
+                        </div>
                       )}
-                      {pricePerWeek && (
-                        <div className="text-sm font-medium">/week: {packageCurrency} {parseFloat(pricePerWeek).toLocaleString()}</div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ticket Tiers:</span>
+                        <span className="font-medium">{ticketTiers.filter(t => t.name && t.price).length}</span>
+                      </div>
+                      {ticketTiers.filter(t => t.name && t.price).map((t, i) => (
+                        <div key={i} className="flex justify-between text-xs ml-2">
+                          <span className="text-gray-500">{t.name}{t.capacity ? ` (${t.capacity} spots)` : ''}</span>
+                          <span className="font-medium">{packageCurrency} {parseFloat(t.price).toLocaleString()}</span>
+                        </div>
+                      ))}
+                      {maxAttendees && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total Capacity:</span>
+                          <span className="font-medium">{parseInt(maxAttendees).toLocaleString()} attendees</span>
+                        </div>
                       )}
-                      {pricePerMonth && (
-                        <div className="text-sm font-medium">/month: {packageCurrency} {parseFloat(pricePerMonth).toLocaleString()}</div>
+                      {pricingExtras.length > 0 && (
+                        <>
+                          <div className="flex justify-between pt-1 border-t mt-1">
+                            <span className="text-gray-600">Surcharges:</span>
+                            <span className="font-medium">{pricingExtras.length}</span>
+                          </div>
+                          {pricingExtras.map((e, i) => (
+                            <div key={i} className="flex justify-between text-xs ml-2">
+                              <span className="text-gray-500">{e.label}</span>
+                              <span className="font-medium">
+                                {e.type === 'percentage' ? `+${e.value}%` : `+${packageCurrency} ${parseFloat(e.value).toLocaleString()}`}
+                              </span>
+                            </div>
+                          ))}
+                        </>
                       )}
-                    </div>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Availability:</span>
-                    <span className="font-medium">
-                      {availableYearRound ? 'Year-round' : 'Limited'}
-                    </span>
-                  </div>
-                  {blackoutDates.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Blackout Dates:</span>
-                      <span className="font-medium">{blackoutDates.length}</span>
-                    </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Minimum Stay:</span>
+                        <span className="font-medium">{selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Pricing:</span>
+                        <div className="text-right">
+                          {pricePerDay && (
+                            <div className="text-sm font-medium">/day: {packageCurrency} {parseFloat(pricePerDay).toLocaleString()}</div>
+                          )}
+                          {pricePerWeek && (
+                            <div className="text-sm font-medium">/week: {packageCurrency} {parseFloat(pricePerWeek).toLocaleString()}</div>
+                          )}
+                          {pricePerMonth && (
+                            <div className="text-sm font-medium">/month: {packageCurrency} {parseFloat(pricePerMonth).toLocaleString()}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Availability:</span>
+                        <span className="font-medium">
+                          {availableYearRound ? 'Year-round' : 'Limited'}
+                        </span>
+                      </div>
+                      {blackoutDates.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Blackout Dates:</span>
+                          <span className="font-medium">{blackoutDates.length}</span>
+                        </div>
+                      )}
+                      {pricingExtras.length > 0 && (
+                        <>
+                          <div className="flex justify-between pt-1 border-t mt-1">
+                            <span className="text-gray-600">Surcharges:</span>
+                            <span className="font-medium">{pricingExtras.length}</span>
+                          </div>
+                          {pricingExtras.map((e, i) => (
+                            <div key={i} className="flex justify-between text-xs ml-2">
+                              <span className="text-gray-500">{e.label}</span>
+                              <span className="font-medium">
+                                {e.type === 'percentage' ? `+${e.value}%` : `+${packageCurrency} ${parseFloat(e.value).toLocaleString()}`}
+                              </span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
               
+              {/* Pricing Extras — VAT, fees, surcharges */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Pricing Extras & Surcharges</CardTitle>
+                  <CardDescription className="text-xs">
+                    Add taxes or fees that are applied on top of the base price (e.g. VAT, booking fee). Shown to guests at checkout.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {pricingExtras.map((extra, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{extra.label}</p>
+                        <p className="text-xs text-gray-500">
+                          {extra.type === 'percentage'
+                            ? `${extra.value}% of ticket price`
+                            : `${packageCurrency} ${parseFloat(extra.value || '0').toLocaleString()} fixed`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPricingExtras(pricingExtras.filter((_, i) => i !== idx))}
+                        className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                        aria-label="Remove"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add new extra inline form */}
+                  <div className="border border-dashed border-gray-300 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-medium text-gray-600">Add a charge</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        value={newExtraLabel}
+                        onChange={e => setNewExtraLabel(e.target.value)}
+                        placeholder="Label (e.g. VAT)"
+                        className="col-span-1"
+                      />
+                      <Select
+                        value={newExtraType}
+                        onChange={e => setNewExtraType(e.target.value as 'percentage' | 'fixed')}
+                        className="col-span-1"
+                      >
+                        <option value="percentage">% Percentage</option>
+                        <option value="fixed">Fixed Amount</option>
+                      </Select>
+                      <div className="flex gap-2 col-span-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={newExtraValue}
+                          onChange={e => setNewExtraValue(e.target.value)}
+                          placeholder={newExtraType === 'percentage' ? '20' : '5.00'}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!newExtraLabel.trim() || !newExtraValue}
+                          onClick={() => {
+                            if (!newExtraLabel.trim() || !newExtraValue) return
+                            setPricingExtras([...pricingExtras, {
+                              label: newExtraLabel.trim(),
+                              type: newExtraType,
+                              value: newExtraValue,
+                            }])
+                            setNewExtraLabel('')
+                            setNewExtraValue('')
+                          }}
+                          className="bg-[#003580] hover:bg-[#003580]/90 px-3"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                      Percentage charges are calculated on the base ticket/package price. Fixed amounts are added per booking.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div>
                 <Label>Booking Mode</Label>
                 <Select
@@ -709,6 +1292,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
   
   // Calculate preview pricing
   const getPreviewPrice = () => {
+    if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
+      const prices = ticketTiers.map(t => parseFloat(t.price)).filter(p => !isNaN(p) && p > 0)
+      if (prices.length === 0) return null
+      return {
+        amount: Math.min(...prices),
+        period: 'per ticket',
+        label: prices.length > 1 ? 'Tickets from' : 'Ticket price',
+      }
+    }
     if (selectedOfferType === 'TYPE_TRAINING_ONLY' && pricePerDay) {
       return { 
         amount: parseFloat(pricePerDay) || 0, 
@@ -744,9 +1336,13 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
 
     return (
       <div className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
-        {/* Package Image Placeholder */}
-        <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-          <Icon className="w-16 h-16 text-gray-400" />
+        {/* Cover Image — shows upload preview or placeholder */}
+        <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+          {imagePreviewUrl ? (
+            <img src={imagePreviewUrl} alt="Cover" className="w-full h-full object-cover" />
+          ) : (
+            <Icon className="w-16 h-16 text-gray-400" />
+          )}
         </div>
 
         <div className="p-4 space-y-3">
@@ -761,6 +1357,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                   selectedOfferType === 'TYPE_TRAINING_ONLY' ? 'bg-blue-100 text-blue-700' :
                   selectedOfferType === 'TYPE_TRAINING_ACCOM' ? 'bg-green-100 text-green-700' :
                   selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? 'bg-purple-100 text-purple-700' :
+                  selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'bg-amber-100 text-amber-700' :
                   'bg-orange-100 text-orange-700'
                 }`}>
                   {offerTypeInfo.name}
@@ -777,49 +1374,86 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
             </p>
           )}
 
-          {/* Includes */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {selectedOfferType !== 'TYPE_CUSTOM_EXP' && (
-              <div className="flex items-center gap-1 text-xs text-gray-600">
-                <Dumbbell className="w-3.5 h-3.5" />
-                <span>Training</span>
-              </div>
-            )}
-            {(selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') && (
-              <div className="flex items-center gap-1 text-xs text-gray-600">
-                <BedDouble className="w-3.5 h-3.5" />
-                <span>Accommodation</span>
-              </div>
-            )}
-            {selectedOfferType === 'TYPE_ALL_INCLUSIVE' && (
-              <div className="flex items-center gap-1 text-xs text-gray-600">
-                <UtensilsCrossed className="w-3.5 h-3.5" />
-                <span>Meals</span>
-              </div>
-            )}
-          </div>
-
-          {/* Minimum Stay & Pricing Info */}
-          <div className="pt-2 border-t">
-            <p className="text-xs text-gray-500 mb-1">Minimum Stay: {selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {pricePerDay && (
-                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
-                  /day: {packageCurrency} {parseFloat(pricePerDay).toLocaleString()}
-                </span>
+          {/* Includes / Event Info */}
+          {selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? (
+            <div className="pt-2 border-t space-y-1">
+              {eventDate && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-700 font-medium">
+                  <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    {new Date(eventDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {eventStartTime && ` · ${eventStartTime}`}
+                    {(eventEndDate && eventEndDate !== eventDate) && (
+                      <> &rarr; {new Date(eventEndDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}{eventEndTime && ` · ${eventEndTime}`}</>
+                    )}
+                    {(!eventEndDate || eventEndDate === eventDate) && eventEndTime && (
+                      <> &rarr; {eventEndTime}</>
+                    )}
+                  </span>
+                </div>
               )}
-              {pricePerWeek && (
-                <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
-                  /week: {packageCurrency} {parseFloat(pricePerWeek).toLocaleString()}
-                </span>
-              )}
-              {pricePerMonth && (
-                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
-                  /month: {packageCurrency} {parseFloat(pricePerMonth).toLocaleString()}
-                </span>
+              {ticketTiers.filter(t => t.name && t.price).map((t, i) => (
+                <div key={i} className="flex items-center justify-between text-xs text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <Ticket className="w-3.5 h-3.5 text-amber-500" />
+                    {t.name}{t.capacity ? ` · ${t.capacity} spots` : ''}
+                  </span>
+                  <span className="font-medium">{packageCurrency} {parseFloat(t.price).toLocaleString()}</span>
+                </div>
+              ))}
+              {maxAttendees && (
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Max {parseInt(maxAttendees).toLocaleString()} attendees</span>
+                </div>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 pt-2 border-t">
+              {selectedOfferType !== 'TYPE_CUSTOM_EXP' && (
+                <div className="flex items-center gap-1 text-xs text-gray-600">
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  <span>Training</span>
+                </div>
+              )}
+              {(selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') && (
+                <div className="flex items-center gap-1 text-xs text-gray-600">
+                  <BedDouble className="w-3.5 h-3.5" />
+                  <span>Accommodation</span>
+                </div>
+              )}
+              {selectedOfferType === 'TYPE_ALL_INCLUSIVE' && (
+                <div className="flex items-center gap-1 text-xs text-gray-600">
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>Meals</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Minimum Stay & Rate Tags (non-event types only) */}
+          {selectedOfferType !== 'TYPE_ONE_TIME_EVENT' && (
+            <div className="pt-2 border-t">
+              <p className="text-xs text-gray-500 mb-1">Minimum Stay: {selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {pricePerDay && (
+                  <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                    /day: {packageCurrency} {parseFloat(pricePerDay).toLocaleString()}
+                  </span>
+                )}
+                {pricePerWeek && (
+                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                    /week: {packageCurrency} {parseFloat(pricePerWeek).toLocaleString()}
+                  </span>
+                )}
+                {pricePerMonth && (
+                  <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                    /month: {packageCurrency} {parseFloat(pricePerMonth).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Pricing */}
           {previewPrice && (
@@ -831,35 +1465,38 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                 {packageCurrency} {previewPrice.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-[10px] text-gray-500 mt-0.5">
-                Includes taxes and charges
+                {selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'per ticket' : 'Includes taxes and charges'}
               </div>
             </div>
           )}
 
-          {/* Availability */}
+          {/* Availability / Event date line */}
           <div className="pt-2 border-t">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">Availability:</span>
-              <span className={`font-medium ${
-                availableYearRound ? 'text-green-600' : 'text-orange-600'
-              }`}>
-                {availableYearRound ? 'Year-round' : 'Limited'}
-              </span>
-            </div>
-            {blackoutDates.length > 0 && (
-              <div className="flex items-center justify-between text-xs mt-1">
-                <span className="text-gray-600">Blackout dates:</span>
-                <span className="text-orange-600">{blackoutDates.length}</span>
+            {selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? (
+              <div className="text-xs text-gray-600">
+                <span className="font-medium">Booking:</span>{' '}
+                {bookingMode === 'request_to_book' ? 'Request to Book' : 'Instant Confirmation'}
               </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">Availability:</span>
+                  <span className={`font-medium ${availableYearRound ? 'text-green-600' : 'text-orange-600'}`}>
+                    {availableYearRound ? 'Year-round' : 'Limited'}
+                  </span>
+                </div>
+                {blackoutDates.length > 0 && (
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-gray-600">Blackout dates:</span>
+                    <span className="text-orange-600">{blackoutDates.length}</span>
+                  </div>
+                )}
+                <div className="text-xs text-gray-600 mt-1">
+                  <span className="font-medium">Booking:</span>{' '}
+                  {bookingMode === 'request_to_book' ? 'Request to Book' : 'Instant Confirmation'}
+                </div>
+              </>
             )}
-          </div>
-
-          {/* Booking Mode */}
-          <div className="pt-2 border-t">
-            <div className="text-xs text-gray-600">
-              <span className="font-medium">Booking:</span>{' '}
-              {bookingMode === 'request_to_book' ? 'Request to Book' : 'Instant Confirmation'}
-            </div>
           </div>
         </div>
       </div>
