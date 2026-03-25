@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Plus,
   Minus,
+  X,
 } from 'lucide-react'
 import { useBooking } from '@/lib/contexts/booking-context'
 import {
@@ -63,6 +64,7 @@ const TIMELINE_OPTIONS = [
 ] as const
 
 type ActiveSlot = 'where' | 'when' | 'who' | null
+type MobilePanel = 'where' | 'when' | 'who'
 
 // ─── Guest Counter sub-component ─────────────────────────────────────────────
 
@@ -132,6 +134,10 @@ export function SearchBarRedesign({
   const [whereQuery, setWhereQuery] = useState(initialQuery)
   const [userHasSelectedDates, setUserHasSelectedDates] = useState(false)
 
+  // Mobile modal state
+  const [mobileModalOpen, setMobileModalOpen] = useState(false)
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('where')
+
   useEffect(() => {
     if (controlledCategory) setActiveCategory(controlledCategory)
   }, [controlledCategory])
@@ -148,8 +154,26 @@ export function SearchBarRedesign({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const whereInputRef = useRef<HTMLInputElement>(null)
+  const mobileWhereInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Close on outside click — containerRef = pill + dropdowns only; clicks propagate to target
+  // Lock body scroll when mobile modal is open
+  useEffect(() => {
+    if (mobileModalOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileModalOpen])
+
+  // Auto-focus mobile where input when panel opens
+  useEffect(() => {
+    if (mobileModalOpen && mobilePanel === 'where') {
+      setTimeout(() => mobileWhereInputRef.current?.focus(), 60)
+    }
+  }, [mobileModalOpen, mobilePanel])
+
+  // Close desktop dropdowns on outside click
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -162,7 +186,7 @@ export function SearchBarRedesign({
     }
   }, [activeSlot])
 
-  // ── Focus Where input when slot opens ────────────────────────────────────
+  // Focus desktop Where input when slot opens
   useEffect(() => {
     if (activeSlot === 'where') {
       setTimeout(() => whereInputRef.current?.focus(), 60)
@@ -187,6 +211,15 @@ export function SearchBarRedesign({
     if (infants > 0) parts.push(`${infants} infant${infants !== 1 ? 's' : ''}`)
     if (pets > 0) parts.push(`${pets} pet${pets !== 1 ? 's' : ''}`)
     return parts.join(', ')
+  }
+
+  const mobilePillSummary = () => {
+    const parts: string[] = []
+    if (whereQuery) parts.push(whereQuery)
+    if (checkinDate && checkoutDate) parts.push(whenDisplay())
+    const total = adults + children
+    if (total > 1) parts.push(`${total} guests`)
+    return parts.length > 0 ? parts.join(' · ') : 'Start your search'
   }
 
   // ── Calendar helpers ──────────────────────────────────────────────────────
@@ -267,7 +300,6 @@ export function SearchBarRedesign({
       setHoverDate(null)
       setSelectedTimeline('exact')
       setUserHasSelectedDates(true)
-      // Stay on date picker — no auto-advance to WHO
     }
   }
 
@@ -285,6 +317,21 @@ export function SearchBarRedesign({
     if (accommodationOnly) params.set('accommodation', 'true')
     router.push(`/search?${params.toString()}`)
     setActiveSlot(null)
+    setMobileModalOpen(false)
+  }
+
+  const handleClearAll = () => {
+    setWhereQuery('')
+    setCheckin('')
+    setCheckout('')
+    setHoverDate(null)
+    setAdults(1)
+    setChildren(0)
+    setInfants(0)
+    setPets(0)
+    setUserHasSelectedDates(false)
+    setSelectedTimeline('exact')
+    setMobilePanel('where')
   }
 
   // ── Slot toggle helper ────────────────────────────────────────────────────
@@ -292,7 +339,7 @@ export function SearchBarRedesign({
     setActiveSlot((prev) => (prev === slot ? null : slot))
   }
 
-  // ── Slot background classes — active slot white on gray pill, inactive follow pill
+  // ── Slot background classes
   const slotClass = (slot: ActiveSlot) =>
     `flex-1 min-w-0 flex flex-col text-left transition-all duration-200 rounded-full px-6 py-3.5 ${
       activeSlot === slot
@@ -302,7 +349,6 @@ export function SearchBarRedesign({
         : 'bg-transparent'
     }`
 
-  // Divider fades when either adjacent slot is active OR hovered
   const dividerClass = (left: ActiveSlot, right: ActiveSlot) =>
     `w-px h-5 bg-gray-200 flex-shrink-0 transition-opacity duration-150 ${
       activeSlot === left || activeSlot === right ||
@@ -311,10 +357,72 @@ export function SearchBarRedesign({
         : 'opacity-100'
     }`
 
+  // ── Day cell renderer (shared desktop + mobile) ───────────────────────────
+  const renderDayCell = (day: Date, month: Date, i: number) => {
+    const inCurrentMonth = isSameMonth(day, month)
+    const isStart = checkinDate ? isSameDay(day, checkinDate) : false
+    const isEnd = checkoutDate ? isSameDay(day, checkoutDate) : false
+    const inRange = isInRange(day)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const isDisabled = isBefore(day, today)
+    const isSelected = isStart || isEnd
+
+    const rangeBgClass =
+      inRange && isStart
+        ? 'bg-[linear-gradient(to_right,transparent_50%,#eff6ff_50%)]'
+        : inRange && isEnd
+          ? 'bg-[linear-gradient(to_right,#eff6ff_50%,transparent_50%)]'
+          : inRange
+            ? 'bg-blue-50'
+            : ''
+
+    return (
+      <div
+        key={i}
+        className={[
+          'w-full h-full flex items-center justify-center',
+          rangeBgClass,
+          !inCurrentMonth && 'invisible pointer-events-none',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <button
+          type="button"
+          disabled={isDisabled || !inCurrentMonth}
+          onClick={() => handleDateClick(day)}
+          onMouseEnter={() =>
+            !checkoutDate && inCurrentMonth && !isDisabled && setHoverDate(day)
+          }
+          className={[
+            'text-[14px] font-medium transition-colors flex items-center justify-center',
+            isSelected
+              ? 'w-10 h-10 rounded-full bg-[#003580] text-white hover:bg-[#003580]'
+              : 'w-full h-full min-w-0 min-h-0',
+            !inCurrentMonth ? 'invisible pointer-events-none' : '',
+            isDisabled
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'cursor-pointer',
+            inRange && !isSelected && 'text-[#003580]',
+            !inRange && !isSelected && !isDisabled
+              ? 'hover:bg-gray-100 rounded-full text-gray-800'
+              : '',
+            !inRange && !isSelected ? 'rounded-full' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {inCurrentMonth ? format(day, 'd') : ''}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full">
 
-      {/* ── Category Tabs (outside containerRef — clicking them closes dropdown) ── */}
+      {/* ── Category Tabs (desktop only, outside containerRef) ── */}
       <div className={`${showTabs ? 'hidden md:flex' : 'hidden'} justify-center items-center gap-10 mb-5`}>
         {CATEGORIES.map((cat) => (
           <button
@@ -328,7 +436,6 @@ export function SearchBarRedesign({
                 NEW
               </span>
             )}
-            {/* Icon to the left, enlarges on hover */}
             <span className="text-[30px] transition-transform duration-300 ease-out group-hover:scale-125 inline-block select-none leading-none">
               {cat.emoji}
             </span>
@@ -339,7 +446,6 @@ export function SearchBarRedesign({
             >
               {cat.label}
             </span>
-            {/* Active underline */}
             <span
               className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full transition-all duration-200 ${
                 activeCategory === cat.id ? 'bg-gray-900 opacity-100' : 'opacity-0'
@@ -349,8 +455,28 @@ export function SearchBarRedesign({
         ))}
       </div>
 
-      {/* ── Pill Search Bar + Dropdowns (containerRef = only this; category tabs = outside) ── */}
-      <div ref={containerRef} className="relative">
+      {/* ══════════════════════════════════════════════════════════
+          MOBILE: Slim pill trigger → opens full-screen modal
+          ══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => { setMobileModalOpen(true); setMobilePanel('where') }}
+          className={`w-full flex items-center gap-3 bg-white rounded-full px-4 py-3 text-left transition-shadow ${
+            yellowBorder
+              ? 'shadow-lg ring-[3px] ring-[#febb02]'
+              : 'shadow-md hover:shadow-lg ring-1 ring-gray-200'
+          }`}
+        >
+          <Search className="w-4 h-4 text-gray-500 flex-shrink-0" strokeWidth={2.5} />
+          <span className="flex-1 text-sm text-gray-400 truncate">{mobilePillSummary()}</span>
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          DESKTOP: Existing horizontal pill + dropdowns
+          ══════════════════════════════════════════════════════════ */}
+      <div ref={containerRef} className="relative hidden md:block">
         <div
           className={`relative flex items-center rounded-full transition-all duration-200 ${
             yellowBorder
@@ -374,7 +500,6 @@ export function SearchBarRedesign({
             </span>
           </button>
 
-          {/* Divider */}
           <div className={dividerClass('where', 'when')} />
 
           {/* WHEN */}
@@ -396,10 +521,9 @@ export function SearchBarRedesign({
             </span>
           </button>
 
-          {/* Divider */}
           <div className={dividerClass('when', 'who')} />
 
-          {/* WHO — identical flex-1 to WHERE and WHEN */}
+          {/* WHO */}
           <button
             type="button"
             onClick={() => toggleSlot('who')}
@@ -410,28 +534,26 @@ export function SearchBarRedesign({
             <span className="text-sm text-gray-400 mt-0.5">{guestDisplay()}</span>
           </button>
 
-          {/* Search Button — absolutely positioned so it takes zero flex space */}
+          {/* Search Button */}
           <button
             type="button"
             onClick={handleSearch}
             onMouseEnter={() => setHoveredSlot('who')}
             className={`absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white rounded-full transition-all duration-300 ease-out font-semibold ${
-              // On mobile keep icon-only so the WHO slot never gets clipped.
-              activeSlot ? 'p-3.5 md:px-5 md:py-3.5' : 'p-3.5'
+              activeSlot ? 'px-5 py-3.5' : 'p-3.5'
             }`}
           >
             <Search className="w-4 h-4 flex-shrink-0" strokeWidth={2.5} />
             {activeSlot && (
-              <span className="hidden md:inline text-sm whitespace-nowrap">Search</span>
+              <span className="text-sm whitespace-nowrap">Search</span>
             )}
           </button>
         </div>
 
-        {/* ── WHERE Dropdown ─────────────────────────────────────────────── */}
+        {/* WHERE Dropdown */}
         {activeSlot === 'where' && (
           <div className="absolute top-[calc(100%+10px)] left-0 w-1/2 min-w-[280px] bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
             <div className="p-5">
-              {/* Inline text input */}
               <input
                 ref={whereInputRef}
                 type="text"
@@ -486,7 +608,7 @@ export function SearchBarRedesign({
           </div>
         )}
 
-        {/* ── WHEN Dropdown — same width as the pill ────────────────────── */}
+        {/* WHEN Dropdown */}
         {activeSlot === 'when' && (
           <div className="absolute top-[calc(100%+10px)] left-0 right-0 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 p-8">
             <div className="grid grid-cols-2 gap-16">
@@ -523,7 +645,6 @@ export function SearchBarRedesign({
                         <div className="w-8" />
                       )}
                     </div>
-
                     <div className="grid grid-cols-7 mb-3">
                       {WEEK_DAYS.map((d) => (
                         <div key={d} className="text-xs font-medium text-gray-500 text-center py-1.5">
@@ -531,75 +652,13 @@ export function SearchBarRedesign({
                         </div>
                       ))}
                     </div>
-
                     <div className="grid grid-cols-7 auto-rows-[3.25rem]">
-                      {days.map((day, i) => {
-                        const inCurrentMonth = isSameMonth(day, month)
-                        const isStart = checkinDate ? isSameDay(day, checkinDate) : false
-                        const isEnd = checkoutDate ? isSameDay(day, checkoutDate) : false
-                        const inRange = isInRange(day)
-                        const today = new Date()
-                        today.setHours(0, 0, 0, 0)
-                        const isDisabled = isBefore(day, today)
-                        const isSelected = isStart || isEnd
-
-                        const rangeBgClass =
-                          inRange && isStart
-                            ? 'bg-[linear-gradient(to_right,transparent_50%,#eff6ff_50%)]'
-                            : inRange && isEnd
-                              ? 'bg-[linear-gradient(to_right,#eff6ff_50%,transparent_50%)]'
-                              : inRange
-                                ? 'bg-blue-50'
-                                : ''
-
-                        return (
-                          <div
-                            key={i}
-                            className={[
-                              'w-full h-full flex items-center justify-center',
-                              rangeBgClass,
-                              !inCurrentMonth && 'invisible pointer-events-none',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                          >
-                            <button
-                              type="button"
-                              disabled={isDisabled || !inCurrentMonth}
-                              onClick={() => handleDateClick(day)}
-                              onMouseEnter={() =>
-                                !checkoutDate && inCurrentMonth && !isDisabled && setHoverDate(day)
-                              }
-                              className={[
-                                'text-[14px] font-medium transition-colors flex items-center justify-center',
-                                isSelected
-                                  ? 'w-12 h-12 rounded-full bg-[#003580] text-white hover:bg-[#003580]'
-                                  : 'w-full h-full min-w-0 min-h-0',
-                                !inCurrentMonth ? 'invisible pointer-events-none' : '',
-                                isDisabled
-                                  ? 'text-gray-300 cursor-not-allowed'
-                                  : 'cursor-pointer',
-                                inRange && !isSelected && 'text-[#003580]',
-                                !inRange && !isSelected && !isDisabled
-                                  ? 'hover:bg-gray-100 rounded-full text-gray-800'
-                                  : '',
-                                !inRange && !isSelected ? 'rounded-full' : '',
-                              ]
-                                .filter(Boolean)
-                                .join(' ')}
-                            >
-                              {inCurrentMonth ? format(day, 'd') : ''}
-                            </button>
-                          </div>
-                        )
-                      })}
+                      {days.map((day, i) => renderDayCell(day, month, i))}
                     </div>
                   </div>
                 )
               })}
             </div>
-
-            {/* Timeline quick-select — white space above and below */}
             <div className="mt-4 pt-2.5 pb-2 flex flex-wrap gap-2">
               {TIMELINE_OPTIONS.map((opt) => (
                 <button
@@ -619,37 +678,246 @@ export function SearchBarRedesign({
           </div>
         )}
 
-        {/* ── WHO Dropdown ───────────────────────────────────────────────── */}
+        {/* WHO Dropdown */}
         {activeSlot === 'who' && (
           <div className="absolute top-[calc(100%+10px)] right-0 w-1/2 min-w-[280px] bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 p-6">
-            <GuestCounter
-              label="Adults"
-              subtitle="Ages 13 or above"
-              value={adults}
-              onChange={setAdults}
-              min={1}
-            />
-            <GuestCounter
-              label="Children"
-              subtitle="Ages 2–12"
-              value={children}
-              onChange={setChildren}
-            />
-            <GuestCounter
-              label="Infants"
-              subtitle="Under 2"
-              value={infants}
-              onChange={setInfants}
-            />
-            <GuestCounter
-              label="Pets"
-              subtitle="Bringing a service animal?"
-              value={pets}
-              onChange={setPets}
-            />
+            <GuestCounter label="Adults" subtitle="Ages 13 or above" value={adults} onChange={setAdults} min={1} />
+            <GuestCounter label="Children" subtitle="Ages 2–12" value={children} onChange={setChildren} />
+            <GuestCounter label="Infants" subtitle="Under 2" value={infants} onChange={setInfants} />
+            <GuestCounter label="Pets" subtitle="Bringing a service animal?" value={pets} onChange={setPets} />
           </div>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          MOBILE FULL-SCREEN SEARCH MODAL
+          ══════════════════════════════════════════════════════════ */}
+      {mobileModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-gray-50 flex flex-col md:hidden">
+
+          {/* Header */}
+          <div className="flex items-center px-4 pt-5 pb-3 bg-gray-50 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileModalOpen(false)}
+              className="p-2 -ml-2 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-gray-700" />
+            </button>
+            <span className="ml-2 text-sm font-semibold text-gray-900">
+              {CATEGORY_SUBTITLES[activeCategory] || 'Search gyms'}
+            </span>
+          </div>
+
+          {/* Scrollable panel area */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+
+            {/* ── WHERE card ── */}
+            <div
+              className={`bg-white rounded-2xl shadow-sm border transition-all ${
+                mobilePanel === 'where' ? 'border-gray-900' : 'border-gray-200'
+              }`}
+            >
+              <button
+                type="button"
+                className="w-full text-left px-5 py-4"
+                onClick={() => setMobilePanel('where')}
+              >
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Where</div>
+                <div className={`text-sm mt-0.5 font-medium ${whereQuery ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {whereQuery || 'Search destinations'}
+                </div>
+              </button>
+
+              {mobilePanel === 'where' && (
+                <div className="px-5 pb-5 border-t border-gray-100">
+                  {/* Search input */}
+                  <div className="flex items-center gap-2 mt-4 mb-4 border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50">
+                    <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <input
+                      ref={mobileWhereInputRef}
+                      type="text"
+                      value={whereQuery}
+                      onChange={(e) => setWhereQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setMobilePanel('when')
+                      }}
+                      placeholder="Search destinations"
+                      className="flex-1 text-sm text-gray-800 placeholder-gray-400 bg-transparent outline-none"
+                    />
+                    {whereQuery && (
+                      <button type="button" onClick={() => setWhereQuery('')} className="p-0.5">
+                        <X className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                    Suggested destinations
+                  </p>
+                  <div className="space-y-0.5">
+                    {SUGGESTED_DESTINATIONS.filter(
+                      (d) =>
+                        !whereQuery ||
+                        d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
+                        d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
+                    ).map((dest) => (
+                      <button
+                        key={dest.name}
+                        type="button"
+                        onClick={() => {
+                          setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                          setMobilePanel('when')
+                        }}
+                        className="flex items-center gap-3 w-full px-2 py-2.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          {dest.type === 'nearby' ? (
+                            <Navigation className="w-4 h-4 text-gray-600" />
+                          ) : (
+                            <MapPin className="w-4 h-4 text-gray-600" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-semibold text-gray-900">{dest.name}</div>
+                          <div className="text-xs text-gray-400">{dest.subtitle}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── WHEN card ── */}
+            <div
+              className={`bg-white rounded-2xl shadow-sm border transition-all ${
+                mobilePanel === 'when' ? 'border-gray-900' : 'border-gray-200'
+              }`}
+            >
+              <button
+                type="button"
+                className="w-full text-left px-5 py-4"
+                onClick={() => setMobilePanel('when')}
+              >
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">When</div>
+                <div className={`text-sm mt-0.5 font-medium ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {whenDisplay()}
+                </div>
+              </button>
+
+              {mobilePanel === 'when' && (
+                <div className="px-4 pb-5 border-t border-gray-100">
+                  {/* Timeline chips */}
+                  <div className="flex flex-wrap gap-2 py-4">
+                    {TIMELINE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleTimelineClick(opt)}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                          selectedTimeline === opt.id
+                            ? 'border-gray-900 text-gray-900 bg-gray-50 font-semibold'
+                            : 'border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Single month calendar */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                        className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {format(currentMonth, 'MMMM yyyy')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                        className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                        aria-label="Next month"
+                      >
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 mb-2">
+                      {WEEK_DAYS.map((d) => (
+                        <div key={d} className="text-xs font-medium text-gray-400 text-center py-1">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 auto-rows-[2.75rem]">
+                      {getDays(currentMonth).map((day, i) => renderDayCell(day, currentMonth, i))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── WHO card ── */}
+            <div
+              className={`bg-white rounded-2xl shadow-sm border transition-all ${
+                mobilePanel === 'who' ? 'border-gray-900' : 'border-gray-200'
+              }`}
+            >
+              <button
+                type="button"
+                className="w-full text-left px-5 py-4"
+                onClick={() => setMobilePanel('who')}
+              >
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Who</div>
+                <div className={`text-sm mt-0.5 font-medium ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {guestDisplay()}
+                </div>
+              </button>
+
+              {mobilePanel === 'who' && (
+                <div className="px-5 pb-2 border-t border-gray-100">
+                  <GuestCounter label="Adults" subtitle="Ages 13 or above" value={adults} onChange={setAdults} min={1} />
+                  <GuestCounter label="Children" subtitle="Ages 2–12" value={children} onChange={setChildren} />
+                  <GuestCounter label="Infants" subtitle="Under 2" value={infants} onChange={setInfants} />
+                  <GuestCounter label="Pets" subtitle="Bringing a service animal?" value={pets} onChange={setPets} />
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Sticky footer */}
+          <div className="flex-shrink-0 px-5 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-sm font-semibold text-gray-800 underline underline-offset-2"
+            >
+              Clear all
+            </button>
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all"
+            >
+              <Search className="w-4 h-4" strokeWidth={2.5} />
+              Search
+            </button>
+          </div>
+
+        </div>
+      )}
+
     </div>
   )
 }
