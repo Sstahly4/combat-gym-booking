@@ -36,14 +36,19 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
     }
     // Authenticated — read from DB
     const supabase = createClient()
-    supabase
-      .from('saved_gyms')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('gym_id', gymId)
-      .maybeSingle()
-      .then(({ data }) => setSaved(!!data))
-      .finally(() => setChecking(false))
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('saved_gyms')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('gym_id', gymId)
+          .maybeSingle()
+        setSaved(!!data)
+      } finally {
+        setChecking(false)
+      }
+    })()
   }, [user, authLoading, gymId])
 
   const toggle = () => {
@@ -68,31 +73,31 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
     // Authenticated: toggle in DB
     setToggling(true)
     const supabase = createClient()
-    if (saved) {
-      supabase
-        .from('saved_gyms')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('gym_id', gymId)
-        .then(({ error }) => {
+    ;(async () => {
+      try {
+        if (saved) {
+          const { error } = await supabase
+            .from('saved_gyms')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('gym_id', gymId)
           if (!error) {
             setSaved(false)
             onSaveChange?.(gymId, false)
           }
-        })
-        .finally(() => setToggling(false))
-    } else {
-      supabase
-        .from('saved_gyms')
-        .insert({ user_id: user.id, gym_id: gymId })
-        .then(({ error }) => {
+        } else {
+          const { error } = await supabase
+            .from('saved_gyms')
+            .insert({ user_id: user.id, gym_id: gymId })
           if (!error) {
             setSaved(true)
             onSaveChange?.(gymId, true)
           }
-        })
-        .finally(() => setToggling(false))
-    }
+        }
+      } finally {
+        setToggling(false)
+      }
+    })()
   }
 
   const handlePointerDown = (e: React.PointerEvent) => {
