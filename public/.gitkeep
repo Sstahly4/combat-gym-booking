@@ -1,0 +1,3 @@
+# Public directory for static assets
+# Files in this directory are served at the root URL
+# Example: public/logo.png → /logo.png
