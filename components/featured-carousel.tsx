@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { useBooking } from '@/lib/contexts/booking-context'
@@ -155,6 +156,7 @@ export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
                     No Image
                   </div>
                 )}
+                <SaveButton gymId={gym.id} />
               </div>
               <CardContent className="p-3 md:p-4 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-1">

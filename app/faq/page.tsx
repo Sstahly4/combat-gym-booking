@@ -151,7 +151,82 @@ const faqs: FAQItem[] = [
     question: 'Can I train multiple disciplines at one gym?',
     answer: 'Many gyms offer training in multiple disciplines. Check the gym\'s profile to see which disciplines they offer. Some packages include cross-training options, while others focus on a single discipline. Contact the gym directly or use our support page if you have specific training requirements.'
   },
-  // General
+  // Safety & Security (extra)
+  {
+    id: 'safety-7',
+    category: 'safety',
+    question: 'How is my personal data protected?',
+    answer: 'We take data privacy seriously. All personal information you provide is encrypted in transit using TLS and stored securely. We only share data with the gym you book with — and only the information they need to prepare for your stay (name, dates, experience level). We never sell your data to third parties. You can request a copy of your data or ask for it to be deleted at any time by contacting our support team. For full details, see our Privacy Policy.'
+  },
+  {
+    id: 'safety-8',
+    category: 'safety',
+    question: 'Is my payment information stored securely?',
+    answer: 'Yes. All payments are processed through our PCI-DSS compliant payment processor. We never store your full card number, CVV, or sensitive payment details on our servers. Your card details are tokenised by the payment processor, meaning even in the unlikely event of a data breach, your actual card information is protected. You\'ll see a familiar, secure checkout experience powered by industry-standard encryption.'
+  },
+  {
+    id: 'safety-9',
+    category: 'safety',
+    question: 'How do I know a gym is legitimate before I book?',
+    answer: 'Every gym on our platform goes through a verification process before being listed. This includes confirming business registration, verifying trainer credentials, reviewing facility photos and descriptions, and cross-checking reviews. Gyms must agree to our standards of conduct and maintain active insurance. We also monitor guest reviews and will remove gyms that receive consistent safety or quality complaints. Look for the verified badge on gym profiles for additional assurance.'
+  },
+  {
+    id: 'safety-10',
+    category: 'safety',
+    question: 'What happens if a gym closes or cancels after I\'ve booked?',
+    answer: 'If a gym cancels your booking or closes unexpectedly, you will receive a full refund — no questions asked. We will notify you immediately by email and provide a list of alternative gyms in the same area if available. In cases of sudden closure, we work directly with affected guests to resolve the situation as quickly as possible. Our support team is available to assist you with re-booking or processing your refund.'
+  },
+  // Bookings (extra)
+  {
+    id: 'booking-5',
+    category: 'bookings',
+    question: 'How long does a refund take?',
+    answer: 'Refunds are initiated as soon as a cancellation is confirmed. Depending on your bank or card provider, funds typically appear back in your account within 5–10 business days. For some cards or regions this may take slightly longer. You\'ll receive an email confirmation as soon as the refund has been processed on our end. If you haven\'t received your refund after 10 business days, please contact our support team with your booking reference.'
+  },
+  {
+    id: 'booking-6',
+    category: 'bookings',
+    question: 'What exactly is included in my booking?',
+    answer: 'Each package clearly lists what\'s included on the gym\'s profile page and in your confirmation email. This typically includes a set number of training sessions per day, any accommodation if the package is a "Train & Stay", and meals where specified. Anything not explicitly listed (e.g. airport transfers, personal equipment, extra sessions) is not included unless confirmed in writing with the gym. If you\'re unsure, contact the gym via our platform before booking.'
+  },
+  {
+    id: 'booking-7',
+    category: 'bookings',
+    question: 'Can I transfer or gift my booking to someone else?',
+    answer: 'Bookings are non-transferable in most cases as gyms prepare specifically for the guest named at checkout. If you need to make a name change or transfer to a training partner, please contact our support team as early as possible. Some gyms allow name changes with reasonable notice — we\'ll liaise with the gym on your behalf. Last-minute name changes may not be possible and standard cancellation terms may apply.'
+  },
+  {
+    id: 'booking-8',
+    category: 'bookings',
+    question: 'Will I receive a booking confirmation?',
+    answer: 'Yes. You\'ll receive two emails: first, a booking request confirmation immediately after checkout, and second, a booking confirmation once the gym approves availability (usually within 24–48 hours). Both emails will contain your booking reference number, PIN, full package details, and the gym\'s address and contact information. If you haven\'t received these emails, check your spam folder or contact support with your email address.'
+  },
+  // Gyms & Training (extra)
+  {
+    id: 'gym-4',
+    category: 'gyms',
+    question: 'What should I expect on my first day?',
+    answer: 'Most gyms will greet you on arrival, show you around the facility, and introduce you to your trainer. Expect an initial session where your trainer assesses your current fitness and skill level. This helps them tailor the training intensity to suit you. It\'s completely normal to feel out of your depth on day one — every fighter started somewhere. Arrive hydrated, don\'t train to exhaustion on day one, and communicate openly with your trainer about how you\'re feeling.'
+  },
+  {
+    id: 'gym-5',
+    category: 'gyms',
+    question: 'Is the training suitable for complete beginners?',
+    answer: 'Absolutely. Many gyms on our platform cater specifically to beginners and first-time visitors. Filter packages by experience level on the search page to find options that match you. Beginners will typically start with foundational technique, fitness conditioning, and pad work at a controlled pace. Never feel embarrassed to say you\'re new — great trainers adjust to every student. If you\'re unsure which package is right for you, contact our support team and we\'ll help you find the right fit.'
+  },
+  {
+    id: 'gym-6',
+    category: 'gyms',
+    question: 'What if I have dietary requirements or food allergies?',
+    answer: 'For packages that include meals or accommodation, always communicate your dietary requirements directly to the gym before arrival — ideally at the time of booking. Contact the gym through our platform or email them directly using the contact details in your confirmation. Most reputable gyms will do their best to accommodate common dietary needs (vegetarian, vegan, gluten-free, halal, etc.), but this should be confirmed in advance. We cannot guarantee dietary accommodation as this is managed by each individual gym.'
+  },
+  {
+    id: 'gym-7',
+    category: 'gyms',
+    question: 'How do I communicate with the gym before I arrive?',
+    answer: 'Once your booking is confirmed, the gym\'s contact details (email and sometimes phone or WhatsApp) are included in your confirmation email. You can reach out to them directly to discuss training goals, accommodation details, arrival times, equipment needs, and any other questions. For any issues with communication or if a gym is unresponsive, contact our support team and we\'ll assist you.'
+  },
+  // General (extra)
   {
     id: 'general-1',
     category: 'general',
@@ -162,13 +237,31 @@ const faqs: FAQItem[] = [
     id: 'general-2',
     category: 'general',
     question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit and debit cards through our secure payment processor. Your card is authorized at booking and charged only after the gym confirms availability. All transactions are encrypted and secure. We do not store your full card details on our servers.'
+    answer: 'We accept all major credit and debit cards (Visa, Mastercard, American Express) through our secure payment processor. Your card is authorised at booking and charged only after the gym confirms availability. All transactions are encrypted and secure. We do not store your full card details on our servers.'
   },
   {
     id: 'general-3',
     category: 'general',
     question: 'How do I contact customer support?',
-    answer: 'You can reach our support team through the "Get Support" page, available in the footer. Include your booking reference for faster assistance. We typically respond within 24 hours during business days. For urgent matters related to active bookings, please include "URGENT" in your subject line.'
+    answer: 'You can reach our support team through the "Get Support" page, available in the footer. Include your booking reference for faster assistance. We typically respond within 24 hours during business days. For urgent matters related to active bookings, please include "URGENT" in your message.'
+  },
+  {
+    id: 'general-4',
+    category: 'general',
+    question: 'Can I trust the reviews on the platform?',
+    answer: 'Yes — all reviews on CombatBooking.com are from verified guests who have completed a real, confirmed booking at that gym. We do not allow anonymous or unverified reviews. This means every rating and review you read reflects a genuine experience. We do not edit or filter reviews (except to remove content that violates our community guidelines). Gyms cannot pay to remove or suppress negative reviews.'
+  },
+  {
+    id: 'general-5',
+    category: 'general',
+    question: 'How do I create an account?',
+    answer: 'You can sign up using your Google account for one-click registration, or create an account with your email address and a password. An account is not required to make a booking — you can book as a guest and access your booking details using your reference number and PIN. However, creating an account lets you view all bookings in one place, save favourite gyms, and get faster checkout on future bookings.'
+  },
+  {
+    id: 'general-6',
+    category: 'general',
+    question: 'Does CombatBooking.com take a commission from gyms?',
+    answer: 'We charge gyms a small platform fee for bookings made through our platform. This allows us to keep the service free for users. The prices you see on gym packages are set by the gyms themselves — we do not inflate pricing. In fact, gyms can offer exclusive platform-only deals to attract more bookings. Our goal is to make quality combat sports training accessible to everyone.'
   },
 ]
 

@@ -20,7 +20,8 @@ import {
   FileText,
   Search,
   Filter,
-  X
+  X,
+  Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -40,6 +41,7 @@ export default function AdminPage() {
   const [pendingGyms, setPendingGyms] = useState<Gym[]>([])
   const [unverifiedGyms, setUnverifiedGyms] = useState<Gym[]>([])
   const [recentBookings, setRecentBookings] = useState<Booking[]>([])
+  const [offersCount, setOffersCount] = useState(0)
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0)
   const [allGyms, setAllGyms] = useState<Gym[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export default function AdminPage() {
       }
       
       // Fetch all data in parallel for better performance
-      const [gymsResult, draftGymsResult, approvedGymsResult, bookingsResult] = await Promise.allSettled([
+      const [gymsResult, draftGymsResult, approvedGymsResult, bookingsResult, offersResult] = await Promise.allSettled([
         supabase
           .from('gyms')
           .select('*')
@@ -95,7 +97,11 @@ export default function AdminPage() {
           .from('bookings')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(10),
+        supabase
+          .from('offers')
+          .select('id')
+          .order('created_at', { ascending: false })
       ])
 
       // Handle results
@@ -132,6 +138,14 @@ export default function AdminPage() {
         setRecentBookings(bookings ? [...bookings] : [])
         // Force re-render by updating key
         setBookingsRefreshKey(prev => prev + 1)
+      }
+
+      if (offersResult.status === 'fulfilled') {
+        const { data: offersData, error: offersError } = offersResult.value
+        if (offersError) {
+          console.error('Error fetching offers:', offersError)
+        }
+        setOffersCount(offersData ? offersData.length : 0)
       }
 
       // Check for any rejected promises
@@ -514,7 +528,7 @@ WHERE id = '${user.id}';`}
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.scrollTo({ top: document.getElementById('gym-verification')?.offsetTop || 0, behavior: 'smooth' })}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -563,6 +577,20 @@ WHERE id = '${user.id}';`}
               <p className="text-xs text-gray-500 mt-1">Approved gyms</p>
             </CardContent>
           </Card>
+          <Link href="/admin/offers" className="block">
+            <Card className="border-l-4 border-l-fuchsia-500 hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Offers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-fuchsia-600">{offersCount}</div>
+                <p className="text-xs text-gray-500 mt-1">Homepage promos</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Gym Verification Section */}

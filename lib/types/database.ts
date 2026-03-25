@@ -178,6 +178,20 @@ export interface PackageAccommodation {
   created_at: string
 }
 
+export interface Offer {
+  id: string
+  label: string
+  title: string
+  description: string
+  image_url: string | null
+  cta_text: string
+  cta_url: string
+  is_active: boolean
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Booking {
   id: string
   user_id: string | null  // Nullable for guest bookings

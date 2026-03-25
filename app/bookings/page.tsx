@@ -19,7 +19,6 @@ export default function MyBookingsPage() {
   const { convertPrice, formatPrice } = useCurrency()
   const [bookings, setBookings] = useState<(Booking & { gym: Gym, package?: Package, variant?: PackageVariant })[]>([])
   const [loading, setLoading] = useState(true)
-  const [showGuestAccess, setShowGuestAccess] = useState(false)
   const [guestReference, setGuestReference] = useState('')
   const [guestPin, setGuestPin] = useState('')
   const [guestLoading, setGuestLoading] = useState(false)
@@ -109,7 +108,6 @@ export default function MyBookingsPage() {
       
       setGuestReference('')
       setGuestPin('')
-      setShowGuestAccess(false)
     } catch (err: any) {
       setGuestError(err.message || 'Failed to access booking')
     } finally {
@@ -165,84 +163,101 @@ export default function MyBookingsPage() {
     )
   }
 
+  // Guest users with no bookings loaded yet → show the clean lookup form as the primary UI
+  if (!user && bookings.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Find your booking</h1>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Enter the booking reference and PIN from your confirmation email to view your booking.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <form onSubmit={handleGuestAccess} className="space-y-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="guest-reference" className="text-sm font-medium text-gray-700">
+                  Booking reference
+                </Label>
+                <Input
+                  id="guest-reference"
+                  type="text"
+                  value={guestReference}
+                  onChange={(e) => setGuestReference(e.target.value.toUpperCase())}
+                  placeholder="e.g. BK-A1B2C3"
+                  className="h-11 text-base"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="guest-pin" className="text-sm font-medium text-gray-700">
+                  PIN
+                </Label>
+                <Input
+                  id="guest-pin"
+                  type="text"
+                  value={guestPin}
+                  onChange={(e) => setGuestPin(e.target.value)}
+                  placeholder="e.g. 4829"
+                  className="h-11 text-base"
+                  required
+                />
+              </div>
+
+              {guestError && (
+                <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  {guestError}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-11 bg-[#003580] hover:bg-[#002d6b] text-white font-medium rounded-lg"
+                disabled={guestLoading}
+              >
+                {guestLoading ? 'Looking up booking…' : 'Find booking'}
+              </Button>
+            </form>
+          </div>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Have an account?{' '}
+            <Link href="/auth/signin?redirect=/bookings" className="text-[#003580] font-medium hover:underline">
+              Sign in
+            </Link>
+            {' '}to see all your bookings.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {user ? 'My Bookings' : 'Your Booking'}
+          </h1>
           {!user && (
-            <Button 
-              variant="outline" 
-              onClick={() => setShowGuestAccess(!showGuestAccess)}
+            <Button
+              variant="outline"
+              onClick={() => setBookings([])}
             >
-              {showGuestAccess ? 'Cancel' : 'Access Booking'}
+              Search again
             </Button>
           )}
         </div>
-
-        {/* Guest Access Form */}
-        {!user && showGuestAccess && (
-          <Card className="mb-6 border border-gray-300">
-            <CardHeader>
-              <CardTitle>Access Your Booking</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleGuestAccess} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="guest-reference">Booking Reference *</Label>
-                  <Input
-                    id="guest-reference"
-                    type="text"
-                    value={guestReference}
-                    onChange={(e) => setGuestReference(e.target.value.toUpperCase())}
-                    placeholder="BK-XXXX"
-                    required
-                  />
-                  <p className="text-xs text-gray-500">
-                    Found in your booking confirmation email
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="guest-pin">PIN *</Label>
-                  <Input
-                    id="guest-pin"
-                    type="text"
-                    value={guestPin}
-                    onChange={(e) => setGuestPin(e.target.value)}
-                    placeholder="Enter your booking PIN"
-                    required
-                  />
-                  <p className="text-xs text-gray-500">
-                    Found in your booking confirmation email
-                  </p>
-                </div>
-
-                {guestError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-                    {guestError}
-                  </div>
-                )}
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-[#003580] hover:bg-[#003580]/90 text-white"
-                  disabled={guestLoading}
-                >
-                  {guestLoading ? 'Accessing...' : 'Access Booking'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Bookings List */}
         {bookings.length === 0 ? (
           <Card className="border border-gray-300">
             <CardContent className="py-12 text-center">
-              <p className="text-gray-600 mb-4">
-                {user ? 'No bookings yet' : 'No bookings found. Access a booking using your reference and PIN above.'}
-              </p>
+              <p className="text-gray-600 mb-4">No bookings found.</p>
               <Link href="/search">
                 <Button className="bg-[#003580] hover:bg-[#003580]/90 text-white">
                   Browse Gyms

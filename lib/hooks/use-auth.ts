@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/lib/types/database'
+import { getGuestSaves, clearGuestSaves } from '@/lib/guest-saves'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -43,17 +44,37 @@ export function useAuth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
+        // On sign-in, sync any locally saved gyms to the DB
+        if (event === 'SIGNED_IN') {
+          syncGuestSaves(session.user.id)
+        }
       } else {
         setProfile(null)
         clearTimeout(timeoutId)
         setLoading(false)
       }
     })
+
+    async function syncGuestSaves(userId: string) {
+      const guestSaves = getGuestSaves()
+      if (guestSaves.length === 0) return
+      try {
+        await supabase
+          .from('saved_gyms')
+          .upsert(
+            guestSaves.map((gymId) => ({ user_id: userId, gym_id: gymId })),
+            { onConflict: 'user_id,gym_id', ignoreDuplicates: true }
+          )
+        clearGuestSaves()
+      } catch {
+        // Non-critical — guest saves remain in localStorage if sync fails
+      }
+    }
 
     async function fetchProfile(userId: string) {
       try {

@@ -7,6 +7,7 @@ import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper
 import { GymMap } from '@/components/gym-map'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ReserveButton } from '@/components/reserve-button'
+import { SaveButton } from '@/components/save-button'
 import { PropertyHighlightsCard } from '@/components/property-highlights-card'
 import { ReviewsLinkButton } from '@/components/reviews-link-button'
 import { ReviewCard } from '@/components/review-card'
@@ -247,8 +248,9 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                 {/* Mobile: Title and Reserve button inline */}
                 <div className="flex items-start justify-between gap-3 mb-2 md:mb-0">
                   <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight flex-1 min-w-0">{gym.name}</h1>
-                  {/* Reserve button - inline on mobile, separate on desktop */}
-                  <div className="md:hidden flex-shrink-0">
+                  {/* Save + Reserve - inline on mobile */}
+                  <div className="md:hidden flex-shrink-0 flex items-center gap-2">
+                    <SaveButton gymId={gym.id} inline />
                     <ReserveButton gym={gym} />
                   </div>
                 </div>
@@ -276,8 +278,9 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                 )}
               </div>
               
-              {/* Reserve button - Desktop only (mobile is inline above) */}
-              <div className="hidden md:flex flex-col items-end gap-3 flex-shrink-0">
+              {/* Save + Reserve - Desktop only (mobile is inline above) */}
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                <SaveButton gymId={gym.id} inline />
                 <ReserveButton gym={gym} />
               </div>
             </div>

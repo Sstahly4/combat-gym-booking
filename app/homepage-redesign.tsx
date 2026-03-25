@@ -1,19 +1,14 @@
-// ─── Homepage Toggle ──────────────────────────────────────────────────────────
-// Set to true to serve the redesign, false to serve the original.
-const USE_NEW_HOMEPAGE = true
-import HomepageRedesign from './homepage-redesign'
-// ─────────────────────────────────────────────────────────────────────────────
-
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { FeaturedCarousel } from '@/components/featured-carousel'
 import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
-import { SearchForm } from '@/components/search-form'
+import { HomepageHero } from '@/components/homepage-hero'
+import { OffersSection } from '@/components/offers-section'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
-import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
+import type { Offer } from '@/lib/types/database'
 
 async function attachReviewStats(gyms: any[]) {
   if (!gyms || gyms.length === 0) return gyms || []
@@ -52,7 +47,6 @@ async function getGyms(limit: number = 10) {
     .in('verification_status', ['verified', 'trusted'])
     .limit(limit) 
   
-  // Sort images by order for each gym
   if (data) {
     data.forEach((gym: any) => {
       if (gym.images && Array.isArray(gym.images)) {
@@ -66,8 +60,6 @@ async function getGyms(limit: number = 10) {
 
 async function getGymsWithPackages() {
   const supabase = await createClient()
-  // Fetch ALL verified/trusted gyms with packages — no limit so tab filters have the full pool
-  // verification_status is the authoritative field (verified = live, trusted = proven)
   const { data } = await supabase
     .from('gyms')
     .select(`
@@ -77,7 +69,6 @@ async function getGymsWithPackages() {
     `)
     .in('verification_status', ['verified', 'trusted'])
   
-  // Sort images by order for each gym
   if (data) {
     data.forEach((gym: any) => {
       if (gym.images && Array.isArray(gym.images)) {
@@ -86,7 +77,6 @@ async function getGymsWithPackages() {
     })
   }
   
-  // Attach review stats then sort by rating (highest first)
   const withReviews = await attachReviewStats(data || [])
   return withReviews.sort((a: any, b: any) => {
     if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
@@ -98,7 +88,6 @@ async function getGymsWithPackages() {
 async function getTopRatedGyms(limit: number = 10) {
   const supabase = await createClient()
   
-  // Fetch all verified/trusted gyms with images
   const { data: allGyms } = await supabase
     .from('gyms')
     .select('*, images:gym_images(url, order)')
@@ -106,19 +95,16 @@ async function getTopRatedGyms(limit: number = 10) {
   
   if (!allGyms) return []
   
-  // Sort images by order for each gym
   allGyms.forEach((gym: any) => {
     if (gym.images && Array.isArray(gym.images)) {
       gym.images.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
     }
   })
   
-  // Fetch all reviews (including manual reviews for MVP)
   const { data: allReviews } = await supabase
     .from('reviews')
     .select('gym_id, rating')
   
-  // Group reviews by gym_id and calculate averages
   const reviewsByGym: Record<string, number[]> = {}
   allReviews?.forEach((review: any) => {
     if (review.gym_id && review.rating) {
@@ -129,7 +115,6 @@ async function getTopRatedGyms(limit: number = 10) {
     }
   })
   
-  // Calculate ratings for each gym
   const gymsWithRatings = allGyms.map((gym: any) => {
     const ratings = reviewsByGym[gym.id] || []
     const averageRating = ratings.length > 0
@@ -144,7 +129,6 @@ async function getTopRatedGyms(limit: number = 10) {
     }
   })
   
-  // Sort by rating (highest first), then by review count, then by name
   const sorted = gymsWithRatings.sort((a: any, b: any) => {
     if (b.averageRating !== a.averageRating) {
       return b.averageRating - a.averageRating
@@ -163,7 +147,7 @@ async function getGymCountsByDiscipline() {
   const { data } = await supabase
     .from('gyms')
     .select('disciplines')
-    .eq('verification_status', 'verified') // Only verified gyms
+    .eq('verification_status', 'verified')
     .eq('status', 'approved')
   
   if (!data) return {}
@@ -188,18 +172,33 @@ async function getGymCountsByDiscipline() {
   return counts
 }
 
-export default async function Home({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
-  if (USE_NEW_HOMEPAGE) return <HomepageRedesign searchParams={searchParams} />
+async function getOffers() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('offers')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
 
-  // Fetch gyms for all carousels in parallel for better performance
-  const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts] = await Promise.all([
+  const now = new Date()
+
+  return (data || [])
+    .filter((offer: Offer) => {
+      if (!offer.expires_at) return true
+      return new Date(offer.expires_at) > now
+    })
+    .map((offer: Offer) => offer)
+}
+
+export default async function HomepageRedesign({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
+  const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers] = await Promise.all([
     getGyms(20),
     getGymsWithPackages(),
     getTopRatedGyms(10),
-    getGymCountsByDiscipline()
+    getGymCountsByDiscipline(),
+    getOffers()
   ])
   
-  // Format dates for display
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return ''
     const date = new Date(dateString + 'T00:00:00')
@@ -209,11 +208,9 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
     return `${day} ${month}`
   }
   
-  // Get dates from search params or use defaults
   const checkin = searchParams?.checkin || ''
   const checkout = searchParams?.checkout || ''
   
-  // Format date range string - always show dates (use defaults if not set)
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(today.getDate() + 1)
@@ -225,8 +222,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
   
   const dateDisplay = `${formatDateForDisplay(finalCheckin)}-${formatDateForDisplay(finalCheckout)}, 1 adult`
   
-  // Get the most common country from approved gyms for the "Browse by sport type" section
-  // Use cached data from allGyms to avoid extra query
   const countryCounts: Record<string, number> = {}
   allGyms?.forEach((gym: any) => {
     if (gym.country) {
@@ -238,7 +233,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
     countryCounts[a[0]] > countryCounts[b[0]] ? a : b, ['Thailand', 0]
   )[0] || 'Thailand'
   
-  // Sport images mapping
   const sportImages: Record<string, string> = {
     'Muay Thai': '/N-8427.jpeg.avif',
     'Boxing': '/e079bedfbf7e870f827b4fda7ce2132f.avif',
@@ -248,7 +242,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
     'Kickboxing': '/Superbon-Singha-Mawynn-Chingiz-Allazov-ONE-Fight-Night-6-1920X1280-62.jpg',
   }
   
-  // Filter disciplines that have at least 1 gym
   const availableSports = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
     .filter(sport => (disciplineCounts[sport] || 0) > 0)
     .map(sport => ({
@@ -288,31 +281,11 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
   return (
     <BookingProvider>
     <main className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="bg-[#003580] text-white pt-8 pb-8 md:pt-16 md:pb-16 relative">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl md:text-5xl font-bold mb-3 md:mb-4 tracking-tight">
-              Where’s Your Next Fight Camp?
-            </h1>
-            <p className="text-base md:text-2xl text-blue-50 font-light mb-4 md:mb-6">
-              Search for authentic Muay Thai, MMA, and BJJ gyms worldwide.
-            </p>
-            <Link href="/search">
-              <Button size="lg" className="bg-[#006ce4] hover:bg-[#006ce4]/90 text-white font-medium px-4 py-3 md:px-6 md:py-6 text-sm md:text-lg rounded-sm">
-                Book your dream camp
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+      <HomepageHero />
 
-      {/* Search Bar - Overlapping & Centered */}
-      <div className="max-w-6xl mx-auto px-4 -mt-4 md:-mt-8 relative z-10">
-        <SearchForm />
-      </div>
+      <OffersSection offers={offers} />
 
-      <div className="flex flex-col">
+      <div className="relative z-0 flex flex-col">
         {/* Popular Training Camps */}
         <section className="order-[50] md:order-[50] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
           <div className="max-w-6xl mx-auto px-4">
@@ -360,82 +333,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
           </div>
         </section>
 
-        {/* Mobile-only feature shortcuts (Booking.com-style break section) - Hidden on mobile */}
-        <section className="order-[45] hidden md:block pt-0 pb-4 bg-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-              <Link
-                href="/how-it-works"
-                className="flex items-center justify-between gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-4 h-4 text-[#003580] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 leading-snug">How it works</div>
-                    <div className="text-xs text-gray-600 leading-snug mt-0.5">
-                      Request a spot, get confirmation, then you’re set.
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-              </Link>
-
-              <div className="h-px bg-gray-200" />
-
-              <Link
-                href="/search"
-                className="flex items-center justify-between gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <SlidersHorizontal className="w-4 h-4 text-[#003580] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 leading-snug">Explore camps</div>
-                    <div className="text-xs text-gray-600 leading-snug mt-0.5">
-                      Compare locations, disciplines, and packages.
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-              </Link>
-
-              <div className="h-px bg-gray-200" />
-
-              <Link
-                href="/bookings"
-                className="flex items-center justify-between gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <CalendarDays className="w-4 h-4 text-[#003580] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 leading-snug">Your bookings</div>
-                    <div className="text-xs text-gray-600 leading-snug mt-0.5">
-                      Access your booking details anytime.
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-              </Link>
-
-              <div className="h-px bg-gray-200" />
-
-              <Link
-                href="/contact"
-                className="flex items-center justify-between gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <PhoneCall className="w-4 h-4 text-[#003580] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 leading-snug">Need help choosing?</div>
-                    <div className="text-xs text-gray-600 leading-snug mt-0.5">
-                      Tell us your goals — we’ll suggest great options.
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-              </Link>
-            </div>
-          </div>
-        </section>
 
         {/* Trip Planner */}
         <section className="order-[10] md:order-[10] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
