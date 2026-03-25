@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   Search,
@@ -8,9 +9,13 @@ import {
   Navigation,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Minus,
   X,
+  Dumbbell,
+  BedDouble,
+  GraduationCap,
 } from 'lucide-react'
 import { useBooking } from '@/lib/contexts/booking-context'
 import {
@@ -137,6 +142,20 @@ export function SearchBarRedesign({
   // Mobile modal state
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('where')
+  const [mounted, setMounted] = useState(false)
+  const [showAllDests, setShowAllDests] = useState(false)
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+
+  useEffect(() => { setMounted(true) }, [])
+
+  // Load recent searches from localStorage once mounted
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      const stored = localStorage.getItem('cb_recentSearches')
+      if (stored) setRecentSearches(JSON.parse(stored))
+    } catch {}
+  }, [mounted])
 
   useEffect(() => {
     if (controlledCategory) setActiveCategory(controlledCategory)
@@ -155,6 +174,8 @@ export function SearchBarRedesign({
   const containerRef = useRef<HTMLDivElement>(null)
   const whereInputRef = useRef<HTMLInputElement>(null)
   const mobileWhereInputRef = useRef<HTMLInputElement>(null)
+  const mobilePillRef = useRef<HTMLButtonElement>(null)
+  const [modalTop, setModalTop] = useState(0)
 
   // Lock body scroll when mobile modal is open
   useEffect(() => {
@@ -309,6 +330,12 @@ export function SearchBarRedesign({
     if (whereQuery) {
       params.set('query', whereQuery)
       params.set('location', whereQuery)
+      // Persist to recent searches
+      try {
+        const updated = [whereQuery, ...recentSearches.filter(s => s !== whereQuery)].slice(0, 3)
+        setRecentSearches(updated)
+        localStorage.setItem('cb_recentSearches', JSON.stringify(updated))
+      } catch {}
     }
     if (checkin) params.set('checkin', checkin)
     if (checkout) params.set('checkout', checkout)
@@ -460,16 +487,24 @@ export function SearchBarRedesign({
           ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         <button
+          ref={mobilePillRef}
           type="button"
-          onClick={() => { setMobileModalOpen(true); setMobilePanel('where') }}
-          className={`w-full flex items-center gap-3 bg-white rounded-full px-4 py-3 text-left transition-shadow ${
+          onClick={() => {
+            if (mobilePillRef.current) {
+              const rect = mobilePillRef.current.getBoundingClientRect()
+              setModalTop(Math.round(rect.bottom) + 8)
+            }
+            setMobileModalOpen(true)
+            setMobilePanel('where')
+          }}
+          className={`w-full flex items-center gap-3 bg-white rounded-full px-4 py-4 text-left transition-shadow ${
             yellowBorder
               ? 'shadow-lg ring-[3px] ring-[#febb02]'
               : 'shadow-md hover:shadow-lg ring-1 ring-gray-200'
           }`}
         >
           <Search className="w-4 h-4 text-gray-500 flex-shrink-0" strokeWidth={2.5} />
-          <span className="flex-1 text-sm text-gray-400 truncate">{mobilePillSummary()}</span>
+          <span className="flex-1 text-sm text-gray-400 truncate">Start your search</span>
         </button>
       </div>
 
@@ -690,133 +725,160 @@ export function SearchBarRedesign({
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          MOBILE FULL-SCREEN SEARCH MODAL
+          MOBILE FULL-SCREEN SEARCH MODAL — slides down from top
+          Rendered in a portal so parent transforms don't trap it.
           ══════════════════════════════════════════════════════════ */}
-      {mobileModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-gray-50 flex flex-col md:hidden">
+      {mobileModalOpen && mounted && createPortal(
+        <>
+          {/* Backdrop — covers the area above the modal, tap to close */}
+          <button
+            type="button"
+            aria-label="Close search"
+            className="fixed inset-0 z-[199] md:hidden"
+            style={{ bottom: 'auto', height: modalTop }}
+            onClick={() => setMobileModalOpen(false)}
+          />
 
-          {/* Header */}
-          <div className="flex items-center px-4 pt-5 pb-3 bg-gray-50 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setMobileModalOpen(false)}
-              className="p-2 -ml-2 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5 text-gray-700" />
-            </button>
-            <span className="ml-2 text-sm font-semibold text-gray-900">
-              {CATEGORY_SUBTITLES[activeCategory] || 'Search gyms'}
-            </span>
-          </div>
+          {/* Sheet — starts just below the pill, fills to bottom */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-[200] md:hidden animate-slide-down bg-gray-100 flex flex-col rounded-t-2xl shadow-2xl"
+            style={{ top: modalTop }}
+          >
 
-          {/* Scrollable panel area */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
 
-            {/* ── WHERE card ── */}
-            <div
-              className={`bg-white rounded-2xl shadow-sm border transition-all ${
-                mobilePanel === 'where' ? 'border-gray-900' : 'border-gray-200'
-              }`}
-            >
-              <button
-                type="button"
-                className="w-full text-left px-5 py-4"
-                onClick={() => setMobilePanel('where')}
-              >
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Where</div>
-                <div className={`text-sm mt-0.5 font-medium ${whereQuery ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {whereQuery || 'Search destinations'}
-                </div>
-              </button>
+            {/* ── Scrollable cards area ── */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
 
-              {mobilePanel === 'where' && (
-                <div className="px-5 pb-5 border-t border-gray-100">
+              {/* ══ WHERE card ══ */}
+              {mobilePanel === 'where' ? (
+                /* Expanded WHERE */
+                <div className="bg-white rounded-3xl shadow-sm p-5">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Where?</h2>
+
                   {/* Search input */}
-                  <div className="flex items-center gap-2 mt-4 mb-4 border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50">
-                    <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div className="flex items-center gap-3 border border-gray-300 rounded-xl px-4 py-3 mb-5">
+                    <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <input
                       ref={mobileWhereInputRef}
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') setMobilePanel('when')
-                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') setMobilePanel('when') }}
                       placeholder="Search destinations"
-                      className="flex-1 text-sm text-gray-800 placeholder-gray-400 bg-transparent outline-none"
+                      className="flex-1 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
                     />
                     {whereQuery && (
-                      <button type="button" onClick={() => setWhereQuery('')} className="p-0.5">
-                        <X className="w-3.5 h-3.5 text-gray-400" />
+                      <button type="button" onClick={() => setWhereQuery('')}>
+                        <X className="w-4 h-4 text-gray-400" />
                       </button>
                     )}
                   </div>
 
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                    Suggested destinations
-                  </p>
-                  <div className="space-y-0.5">
-                    {SUGGESTED_DESTINATIONS.filter(
-                      (d) =>
-                        !whereQuery ||
-                        d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
-                        d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
-                    ).map((dest) => (
+                  {/* Recent searches */}
+                  {recentSearches.length > 0 && !whereQuery && (
+                    <div className="mb-5">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">Recent searches</p>
+                      <div className="space-y-2">
+                        {recentSearches.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => { setWhereQuery(s); setMobilePanel('when') }}
+                            className="flex items-center gap-3 w-full text-left py-1 touch-manipulation"
+                          >
+                            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                              <MapPin className="w-5 h-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-gray-900">{s}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Suggested destinations */}
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 mb-3">Suggested destinations</p>
+                    <div className="space-y-2">
+                      {SUGGESTED_DESTINATIONS
+                        .filter((d) =>
+                          !whereQuery ||
+                          d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
+                          d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
+                        )
+                        .slice(0, showAllDests ? undefined : 2)
+                        .map((dest) => (
+                          <button
+                            key={dest.name}
+                            type="button"
+                            onClick={() => {
+                              setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                              setMobilePanel('when')
+                            }}
+                            className="flex items-center gap-3 w-full text-left py-1 touch-manipulation"
+                          >
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              dest.type === 'nearby' ? 'bg-blue-50' : 'bg-amber-50'
+                            }`}>
+                              {dest.type === 'nearby' ? (
+                                <Navigation className="w-5 h-5 text-blue-500" />
+                              ) : (
+                                <MapPin className="w-5 h-5 text-amber-600" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-gray-900">{dest.name}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">{dest.subtitle}</div>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+
+                    {/* Show more / less chevron */}
+                    {SUGGESTED_DESTINATIONS.filter((d) =>
+                      !whereQuery ||
+                      d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
+                      d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
+                    ).length > 2 && (
                       <button
-                        key={dest.name}
                         type="button"
-                        onClick={() => {
-                          setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
-                          setMobilePanel('when')
-                        }}
-                        className="flex items-center gap-3 w-full px-2 py-2.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                        onClick={() => setShowAllDests(v => !v)}
+                        className="w-full flex justify-center pt-3 pb-1 touch-manipulation"
+                        aria-label={showAllDests ? 'Show less' : 'Show more'}
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          {dest.type === 'nearby' ? (
-                            <Navigation className="w-4 h-4 text-gray-600" />
-                          ) : (
-                            <MapPin className="w-4 h-4 text-gray-600" />
-                          )}
-                        </div>
-                        <div className="text-left">
-                          <div className="text-sm font-semibold text-gray-900">{dest.name}</div>
-                          <div className="text-xs text-gray-400">{dest.subtitle}</div>
-                        </div>
+                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
                       </button>
-                    ))}
+                    )}
                   </div>
                 </div>
+              ) : (
+                /* Collapsed WHERE */
+                <button
+                  type="button"
+                  onClick={() => setMobilePanel('where')}
+                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                >
+                  <span className="text-sm text-gray-500 font-medium">Where</span>
+                  <span className="text-sm font-semibold text-gray-900">{whereQuery || 'Anywhere'}</span>
+                </button>
               )}
-            </div>
 
-            {/* ── WHEN card ── */}
-            <div
-              className={`bg-white rounded-2xl shadow-sm border transition-all ${
-                mobilePanel === 'when' ? 'border-gray-900' : 'border-gray-200'
-              }`}
-            >
-              <button
-                type="button"
-                className="w-full text-left px-5 py-4"
-                onClick={() => setMobilePanel('when')}
-              >
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">When</div>
-                <div className={`text-sm mt-0.5 font-medium ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {whenDisplay()}
-                </div>
-              </button>
+              {/* ══ WHEN card ══ */}
+              {mobilePanel === 'when' ? (
+                /* Expanded WHEN */
+                <div className="bg-white rounded-3xl shadow-sm p-5">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">When?</h2>
 
-              {mobilePanel === 'when' && (
-                <div className="px-4 pb-5 border-t border-gray-100">
                   {/* Timeline chips */}
-                  <div className="flex flex-wrap gap-2 py-4">
+                  <div className="flex flex-wrap gap-2 mb-5">
                     {TIMELINE_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
                         type="button"
                         onClick={() => handleTimelineClick(opt)}
-                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors touch-manipulation ${
                           selectedTimeline === opt.id
                             ? 'border-gray-900 text-gray-900 bg-gray-50 font-semibold'
                             : 'border-gray-200 text-gray-500'
@@ -827,95 +889,99 @@ export function SearchBarRedesign({
                     ))}
                   </div>
 
-                  {/* Single month calendar */}
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                        className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-                        aria-label="Previous month"
-                      >
-                        <ChevronLeft className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        {format(currentMonth, 'MMMM yyyy')}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                        className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-                        aria-label="Next month"
-                      >
-                        <ChevronRight className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 mb-2">
-                      {WEEK_DAYS.map((d) => (
-                        <div key={d} className="text-xs font-medium text-gray-400 text-center py-1">
-                          {d}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 auto-rows-[2.75rem]">
-                      {getDays(currentMonth).map((day, i) => renderDayCell(day, currentMonth, i))}
-                    </div>
+                  {/* Single-month calendar */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                      className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {format(currentMonth, 'MMMM yyyy')}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                      className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-7 mb-2">
+                    {WEEK_DAYS.map((d) => (
+                      <div key={d} className="text-xs font-medium text-gray-400 text-center py-1">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 auto-rows-[2.75rem]">
+                    {getDays(currentMonth).map((day, i) => renderDayCell(day, currentMonth, i))}
                   </div>
                 </div>
+              ) : (
+                /* Collapsed WHEN */
+                <button
+                  type="button"
+                  onClick={() => setMobilePanel('when')}
+                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                >
+                  <span className="text-sm text-gray-500 font-medium">When</span>
+                  <span className={`text-sm font-semibold ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {whenDisplay()}
+                  </span>
+                </button>
               )}
-            </div>
 
-            {/* ── WHO card ── */}
-            <div
-              className={`bg-white rounded-2xl shadow-sm border transition-all ${
-                mobilePanel === 'who' ? 'border-gray-900' : 'border-gray-200'
-              }`}
-            >
-              <button
-                type="button"
-                className="w-full text-left px-5 py-4"
-                onClick={() => setMobilePanel('who')}
-              >
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Who</div>
-                <div className={`text-sm mt-0.5 font-medium ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {guestDisplay()}
-                </div>
-              </button>
-
-              {mobilePanel === 'who' && (
-                <div className="px-5 pb-2 border-t border-gray-100">
+              {/* ══ WHO card ══ */}
+              {mobilePanel === 'who' ? (
+                /* Expanded WHO */
+                <div className="bg-white rounded-3xl shadow-sm p-5">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Who?</h2>
                   <GuestCounter label="Adults" subtitle="Ages 13 or above" value={adults} onChange={setAdults} min={1} />
                   <GuestCounter label="Children" subtitle="Ages 2–12" value={children} onChange={setChildren} />
                   <GuestCounter label="Infants" subtitle="Under 2" value={infants} onChange={setInfants} />
                   <GuestCounter label="Pets" subtitle="Bringing a service animal?" value={pets} onChange={setPets} />
                 </div>
+              ) : (
+                /* Collapsed WHO */
+                <button
+                  type="button"
+                  onClick={() => setMobilePanel('who')}
+                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                >
+                  <span className="text-sm text-gray-500 font-medium">Who</span>
+                  <span className={`text-sm font-semibold ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {guestDisplay()}
+                  </span>
+                </button>
               )}
+
+            </div>
+
+            {/* ── Sticky footer ── */}
+            <div className="flex-shrink-0 px-4 py-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-sm font-semibold text-gray-800 underline underline-offset-2 touch-manipulation"
+              >
+                Clear all
+              </button>
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all touch-manipulation"
+              >
+                <Search className="w-4 h-4" strokeWidth={2.5} />
+                Search
+              </button>
             </div>
 
           </div>
-
-          {/* Sticky footer */}
-          <div className="flex-shrink-0 px-5 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="text-sm font-semibold text-gray-800 underline underline-offset-2"
-            >
-              Clear all
-            </button>
-            <button
-              type="button"
-              onClick={handleSearch}
-              className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all"
-            >
-              <Search className="w-4 h-4" strokeWidth={2.5} />
-              Search
-            </button>
-          </div>
-
-        </div>
+        </>,
+        document.body
       )}
 
     </div>

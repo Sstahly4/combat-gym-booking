@@ -82,4 +82,17 @@
   .animate-slide-up {
     animation: slide-up 180ms ease-out;
   }
+  @keyframes slide-down {
+    from {
+      transform: translateY(-16px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .animate-slide-down {
+    animation: slide-down 200ms ease-out;
+  }
 }
