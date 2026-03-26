@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { createPublicClient } from '@/lib/supabase/public-server'
 import { unstable_cache } from 'next/cache'
 import { Button } from '@/components/ui/button'
+import { attachReviewStatsPublic } from '@/lib/reviews/attach-review-stats-public'
 import { FeaturedCarousel } from '@/components/featured-carousel'
 import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
@@ -11,35 +12,6 @@ import { OffersSection } from '@/components/offers-section'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
-
-async function attachReviewStats(gyms: any[]) {
-  if (!gyms || gyms.length === 0) return gyms || []
-  const supabase = createPublicClient()
-  const ids = gyms.map((g) => g.id).filter(Boolean)
-  if (ids.length === 0) return gyms
-
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('gym_id, rating')
-    .in('gym_id', ids)
-
-  const byGym: Record<string, number[]> = {}
-  reviews?.forEach((r: any) => {
-    if (!r?.gym_id || typeof r.rating !== 'number') return
-    if (!byGym[r.gym_id]) byGym[r.gym_id] = []
-    byGym[r.gym_id].push(r.rating)
-  })
-
-  return gyms.map((gym) => {
-    const ratings = byGym[gym.id] || []
-    const averageRating = ratings.length > 0 ? ratings.reduce((s, n) => s + n, 0) / ratings.length : 0
-    return {
-      ...gym,
-      averageRating,
-      reviewCount: ratings.length,
-    }
-  })
-}
 
 async function getGyms(limit: number = 10) {
   const supabase = createPublicClient()
@@ -57,7 +29,7 @@ async function getGyms(limit: number = 10) {
     })
   }
   
-  return await attachReviewStats(data || [])
+  return await attachReviewStatsPublic(data || [])
 }
 
 async function getGymsWithPackages() {
@@ -79,7 +51,7 @@ async function getGymsWithPackages() {
     })
   }
   
-  const withReviews = await attachReviewStats(data || [])
+  const withReviews = await attachReviewStatsPublic(data || [])
   return withReviews.sort((a: any, b: any) => {
     if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
     if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount

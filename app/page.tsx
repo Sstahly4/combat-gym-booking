@@ -16,35 +16,7 @@ import { SearchForm } from '@/components/search-form'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
-
-async function attachReviewStats(gyms: any[]) {
-  if (!gyms || gyms.length === 0) return gyms || []
-  const supabase = await createClient()
-  const ids = gyms.map((g) => g.id).filter(Boolean)
-  if (ids.length === 0) return gyms
-
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('gym_id, rating')
-    .in('gym_id', ids)
-
-  const byGym: Record<string, number[]> = {}
-  reviews?.forEach((r: any) => {
-    if (!r?.gym_id || typeof r.rating !== 'number') return
-    if (!byGym[r.gym_id]) byGym[r.gym_id] = []
-    byGym[r.gym_id].push(r.rating)
-  })
-
-  return gyms.map((gym) => {
-    const ratings = byGym[gym.id] || []
-    const averageRating = ratings.length > 0 ? ratings.reduce((s, n) => s + n, 0) / ratings.length : 0
-    return {
-      ...gym,
-      averageRating,
-      reviewCount: ratings.length,
-    }
-  })
-}
+import { attachReviewStats } from '@/lib/reviews/attach-review-stats'
 
 async function getGyms(limit: number = 10) {
   const supabase = await createClient()
