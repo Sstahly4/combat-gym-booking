@@ -4,15 +4,9 @@ import { useState } from 'react'
 import { Dumbbell, BedDouble, GraduationCap } from 'lucide-react'
 
 const CATEGORIES = [
-<<<<<<< HEAD
-  { id: 'gyms',     label: 'Gyms',         Icon: Dumbbell },
-  { id: 'train-stay',    label: 'Train & Stay', Icon: BedDouble },
-  { id: 'seminars', label: 'Seminars',     Icon: GraduationCap, isNew: true },
-=======
   { id: 'gyms', label: 'Gyms', Icon: Dumbbell },
   { id: 'train-stay', label: 'Train & Stay', Icon: BedDouble },
   { id: 'seminars', label: 'Seminars', Icon: GraduationCap, isNew: true },
->>>>>>> origin/mobile-model
 ]
 
 export function CategoryTabs({

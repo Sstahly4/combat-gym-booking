@@ -52,17 +52,10 @@ const SUGGESTED_DESTINATIONS = [
 ]
 
 const CATEGORIES = [
-<<<<<<< HEAD
-  { id: 'gyms', label: 'Gyms', emoji: '🥊' },
-  { id: 'train-stay', label: 'Train & Stay', emoji: '🏨' },
-  { id: 'seminars', label: 'Seminars', emoji: '🎓', isNew: true },
-]
-=======
   { id: 'gyms', label: 'Gyms', emoji: '🥊', Icon: Dumbbell, isNew: false },
   { id: 'train-stay', label: 'Train & Stay', emoji: '🏨', Icon: BedDouble, isNew: false },
   { id: 'seminars', label: 'Seminars', emoji: '🎓', isNew: true, Icon: GraduationCap },
 ] as const
->>>>>>> origin/mobile-model
 
 const WEEK_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
@@ -129,21 +122,15 @@ export function SearchBarRedesign({
   activeCategory: controlledCategory,
   accommodationOnly = false,
   initialQuery = '',
-<<<<<<< HEAD
-=======
   onCategoryChange,
->>>>>>> origin/mobile-model
 }: {
   showTabs?: boolean
   yellowBorder?: boolean
   activeCategory?: 'gyms' | 'train-stay' | 'seminars'
   accommodationOnly?: boolean
   initialQuery?: string
-<<<<<<< HEAD
-=======
   /** Sync category with parent (e.g. homepage / search page tabs) when changed from the mobile modal */
   onCategoryChange?: (category: 'gyms' | 'train-stay' | 'seminars') => void
->>>>>>> origin/mobile-model
 }) {
   const router = useRouter()
   const { checkin, setCheckin, checkout, setCheckout } = useBooking()
@@ -190,11 +177,6 @@ export function SearchBarRedesign({
   const containerRef = useRef<HTMLDivElement>(null)
   const whereInputRef = useRef<HTMLInputElement>(null)
   const mobileWhereInputRef = useRef<HTMLInputElement>(null)
-<<<<<<< HEAD
-  const mobilePillRef = useRef<HTMLButtonElement>(null)
-  const [modalTop, setModalTop] = useState(0)
-=======
->>>>>>> origin/mobile-model
 
   // Lock body scroll when mobile modal is open
   useEffect(() => {
@@ -474,13 +456,6 @@ export function SearchBarRedesign({
           <button
             key={cat.id}
             type="button"
-<<<<<<< HEAD
-            onClick={() => setActiveCategory(cat.id as 'gyms' | 'train-stay' | 'seminars')}
-            className="relative flex items-center gap-2 pb-2.5 group"
-          >
-            {cat.isNew && (
-              <span className="absolute -top-1.5 -right-5 bg-[#008489] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-=======
             onClick={() => {
               const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
               setActiveCategory(id)
@@ -490,7 +465,6 @@ export function SearchBarRedesign({
           >
             {cat.isNew && (
               <span className="absolute -top-1.5 -right-5 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
->>>>>>> origin/mobile-model
                 NEW
               </span>
             )}
@@ -518,18 +492,8 @@ export function SearchBarRedesign({
           ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         <button
-<<<<<<< HEAD
-          ref={mobilePillRef}
           type="button"
           onClick={() => {
-            if (mobilePillRef.current) {
-              const rect = mobilePillRef.current.getBoundingClientRect()
-              setModalTop(Math.round(rect.bottom) + 8)
-            }
-=======
-          type="button"
-          onClick={() => {
->>>>>>> origin/mobile-model
             setMobileModalOpen(true)
             setMobilePanel('where')
           }}
@@ -765,27 +729,6 @@ export function SearchBarRedesign({
           Rendered in a portal so parent transforms don't trap it.
           ══════════════════════════════════════════════════════════ */}
       {mobileModalOpen && mounted && createPortal(
-<<<<<<< HEAD
-        <>
-          {/* Backdrop — covers the area above the modal, tap to close */}
-          <button
-            type="button"
-            aria-label="Close search"
-            className="fixed inset-0 z-[199] md:hidden"
-            style={{ bottom: 'auto', height: modalTop }}
-            onClick={() => setMobileModalOpen(false)}
-          />
-
-          {/* Sheet — starts just below the pill, fills to bottom */}
-          <div
-            className="fixed inset-x-0 bottom-0 z-[200] md:hidden animate-slide-down bg-gray-100 flex flex-col rounded-t-2xl shadow-2xl"
-            style={{ top: modalTop }}
-          >
-
-
-            {/* ── Scrollable cards area ── */}
-            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-=======
         <div className="fixed inset-0 z-[200] md:hidden flex flex-col bg-gray-100 animate-slide-down">
           {/* Header: safe-area top padding, category tabs, close control */}
           <div className="relative flex-shrink-0 px-4 pt-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] pb-4">
@@ -844,16 +787,11 @@ export function SearchBarRedesign({
 
           {/* ── Scrollable cards area ── */}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
->>>>>>> origin/mobile-model
 
               {/* ══ WHERE card ══ */}
               {mobilePanel === 'where' ? (
                 /* Expanded WHERE */
-<<<<<<< HEAD
-                <div className="bg-white rounded-3xl shadow-sm p-5">
-=======
                 <div className="bg-white rounded-3xl shadow-sm px-5 pt-5 pb-3">
->>>>>>> origin/mobile-model
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">Where?</h2>
 
                   {/* Search input */}
@@ -943,16 +881,6 @@ export function SearchBarRedesign({
                       d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
                       d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
                     ).length > 2 && (
-<<<<<<< HEAD
-                      <button
-                        type="button"
-                        onClick={() => setShowAllDests(v => !v)}
-                        className="w-full flex justify-center pt-3 pb-1 touch-manipulation"
-                        aria-label={showAllDests ? 'Show less' : 'Show more'}
-                      >
-                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
-                      </button>
-=======
                       <div className="mt-3 pt-3">
                         <div className="h-px w-full bg-gray-200" aria-hidden />
                         <button
@@ -964,7 +892,6 @@ export function SearchBarRedesign({
                           <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
                         </button>
                       </div>
->>>>>>> origin/mobile-model
                     )}
                   </div>
                 </div>
@@ -1073,31 +1000,6 @@ export function SearchBarRedesign({
                 </button>
               )}
 
-<<<<<<< HEAD
-            </div>
-
-            {/* ── Sticky footer ── */}
-            <div className="flex-shrink-0 px-4 py-4 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleClearAll}
-                className="text-sm font-semibold text-gray-800 underline underline-offset-2 touch-manipulation"
-              >
-                Clear all
-              </button>
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all touch-manipulation"
-              >
-                <Search className="w-4 h-4" strokeWidth={2.5} />
-                Search
-              </button>
-            </div>
-
-          </div>
-        </>,
-=======
           </div>
 
           {/* ── Sticky footer ── */}
@@ -1119,7 +1021,6 @@ export function SearchBarRedesign({
             </button>
           </div>
         </div>,
->>>>>>> origin/mobile-model
         document.body
       )}
 

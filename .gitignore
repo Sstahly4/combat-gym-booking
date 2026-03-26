@@ -1,21 +1,3 @@
-<<<<<<< HEAD
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-=======
 # dependencies
 node_modules
 .pnp
@@ -32,28 +14,30 @@ out
 # debug
 npm-debug.log*
 pnpm-debug.log*
->>>>>>> origin/mobile-model
 
 # misc
 .DS_Store
 *.pem
-<<<<<<< HEAD
+.vercel
 
-# debug
+# typescript
+next-env.d.ts
+*.tsbuildinfo
+
+# debugging
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
+# env
 .env
+.env*.local
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# next.js build output
+.next
+out
+build
+coverage
 
 # Internal documentation (keep locally, don't push to GitHub)
 DEPLOYMENT_GUIDE.md
@@ -65,11 +49,4 @@ VERIFICATION_SYSTEM.md
 WEBHOOK_SETUP.md
 SUPABASE_EMAIL_SETUP.md
 PAYMENT_FLOW.md
-AI_CONTEXT.md 
-=======
-.vercel
-
-# typescript
-next-env.d.ts
-*.tsbuildinfo
->>>>>>> origin/mobile-model
+AI_CONTEXT.md

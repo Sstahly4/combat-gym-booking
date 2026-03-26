@@ -1,14 +1,4 @@
-// ─── Homepage Toggle ──────────────────────────────────────────────────────────
-// Set to true to serve the redesign, false to serve the original.
-const USE_NEW_HOMEPAGE = true
 import HomepageRedesign from './homepage-redesign'
-// ─────────────────────────────────────────────────────────────────────────────
-
-<<<<<<< HEAD
-=======
-export const revalidate = 300
-
->>>>>>> origin/mobile-model
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -19,39 +9,13 @@ import { SearchForm } from '@/components/search-form'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
-<<<<<<< HEAD
-
-async function attachReviewStats(gyms: any[]) {
-  if (!gyms || gyms.length === 0) return gyms || []
-  const supabase = await createClient()
-  const ids = gyms.map((g) => g.id).filter(Boolean)
-  if (ids.length === 0) return gyms
-
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('gym_id, rating')
-    .in('gym_id', ids)
-
-  const byGym: Record<string, number[]> = {}
-  reviews?.forEach((r: any) => {
-    if (!r?.gym_id || typeof r.rating !== 'number') return
-    if (!byGym[r.gym_id]) byGym[r.gym_id] = []
-    byGym[r.gym_id].push(r.rating)
-  })
-
-  return gyms.map((gym) => {
-    const ratings = byGym[gym.id] || []
-    const averageRating = ratings.length > 0 ? ratings.reduce((s, n) => s + n, 0) / ratings.length : 0
-    return {
-      ...gym,
-      averageRating,
-      reviewCount: ratings.length,
-    }
-  })
-}
-=======
 import { attachReviewStats } from '@/lib/reviews/attach-review-stats'
->>>>>>> origin/mobile-model
+
+// ─── Homepage Toggle ──────────────────────────────────────────────────────────
+// Set to true to serve the redesign, false to serve the original.
+const USE_NEW_HOMEPAGE = true
+
+export const revalidate = 300
 
 async function getGyms(limit: number = 10) {
   const supabase = await createClient()
