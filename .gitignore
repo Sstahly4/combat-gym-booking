@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -14,10 +15,29 @@
 
 # production
 /build
+=======
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# next.js
+.next
+out
+
+# env
+.env
+.env*.local
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+>>>>>>> origin/mobile-model
 
 # misc
 .DS_Store
 *.pem
+<<<<<<< HEAD
 
 # debug
 npm-debug.log*
@@ -46,3 +66,10 @@ WEBHOOK_SETUP.md
 SUPABASE_EMAIL_SETUP.md
 PAYMENT_FLOW.md
 AI_CONTEXT.md 
+=======
+.vercel
+
+# typescript
+next-env.d.ts
+*.tsbuildinfo
+>>>>>>> origin/mobile-model

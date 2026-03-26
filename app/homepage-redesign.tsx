@@ -1,6 +1,14 @@
 import Link from 'next/link'
+<<<<<<< HEAD
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+=======
+import Image from 'next/image'
+import { createPublicClient } from '@/lib/supabase/public-server'
+import { unstable_cache } from 'next/cache'
+import { Button } from '@/components/ui/button'
+import { attachReviewStatsPublic } from '@/lib/reviews/attach-review-stats-public'
+>>>>>>> origin/mobile-model
 import { FeaturedCarousel } from '@/components/featured-carousel'
 import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
@@ -10,6 +18,7 @@ import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
 
+<<<<<<< HEAD
 async function attachReviewStats(gyms: any[]) {
   if (!gyms || gyms.length === 0) return gyms || []
   const supabase = await createClient()
@@ -41,6 +50,10 @@ async function attachReviewStats(gyms: any[]) {
 
 async function getGyms(limit: number = 10) {
   const supabase = await createClient()
+=======
+async function getGyms(limit: number = 10) {
+  const supabase = createPublicClient()
+>>>>>>> origin/mobile-model
   const { data } = await supabase
     .from('gyms')
     .select('*, images:gym_images(url, order)')
@@ -55,11 +68,19 @@ async function getGyms(limit: number = 10) {
     })
   }
   
+<<<<<<< HEAD
   return await attachReviewStats(data || [])
 }
 
 async function getGymsWithPackages() {
   const supabase = await createClient()
+=======
+  return await attachReviewStatsPublic(data || [])
+}
+
+async function getGymsWithPackages() {
+  const supabase = createPublicClient()
+>>>>>>> origin/mobile-model
   const { data } = await supabase
     .from('gyms')
     .select(`
@@ -77,7 +98,11 @@ async function getGymsWithPackages() {
     })
   }
   
+<<<<<<< HEAD
   const withReviews = await attachReviewStats(data || [])
+=======
+  const withReviews = await attachReviewStatsPublic(data || [])
+>>>>>>> origin/mobile-model
   return withReviews.sort((a: any, b: any) => {
     if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
     if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
@@ -86,7 +111,11 @@ async function getGymsWithPackages() {
 }
 
 async function getTopRatedGyms(limit: number = 10) {
+<<<<<<< HEAD
   const supabase = await createClient()
+=======
+  const supabase = createPublicClient()
+>>>>>>> origin/mobile-model
   
   const { data: allGyms } = await supabase
     .from('gyms')
@@ -143,7 +172,11 @@ async function getTopRatedGyms(limit: number = 10) {
 }
 
 async function getGymCountsByDiscipline() {
+<<<<<<< HEAD
   const supabase = await createClient()
+=======
+  const supabase = createPublicClient()
+>>>>>>> origin/mobile-model
   const { data } = await supabase
     .from('gyms')
     .select('disciplines')
@@ -173,7 +206,11 @@ async function getGymCountsByDiscipline() {
 }
 
 async function getOffers() {
+<<<<<<< HEAD
   const supabase = await createClient()
+=======
+  const supabase = createPublicClient()
+>>>>>>> origin/mobile-model
   const { data } = await supabase
     .from('offers')
     .select('*')
@@ -190,6 +227,7 @@ async function getOffers() {
     .map((offer: Offer) => offer)
 }
 
+<<<<<<< HEAD
 export default async function HomepageRedesign({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
   const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers] = await Promise.all([
     getGyms(20),
@@ -198,6 +236,26 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
     getGymCountsByDiscipline(),
     getOffers()
   ])
+=======
+const getHomepageDataCached = unstable_cache(
+  async () => {
+    const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers] = await Promise.all([
+      getGyms(20),
+      getGymsWithPackages(),
+      getTopRatedGyms(10),
+      getGymCountsByDiscipline(),
+      getOffers(),
+    ])
+
+    return { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers }
+  },
+  ['homepage-redesign-data-v1'],
+  { revalidate: 300 }
+)
+
+export default async function HomepageRedesign({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
+  const { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers } = await getHomepageDataCached()
+>>>>>>> origin/mobile-model
   
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return ''
@@ -359,10 +417,19 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                   href={`/search?location=${encodeURIComponent(city.name)}`} 
                   className="col-span-3 relative h-64 group cursor-pointer overflow-hidden rounded-lg shadow-sm"
                 >
+<<<<<<< HEAD
                   <img 
                     src={city.image} 
                     alt={city.name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+=======
+                  <Image
+                    src={city.image}
+                    alt={city.name}
+                    fill
+                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+>>>>>>> origin/mobile-model
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">
@@ -377,10 +444,19 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                   href={`/search?location=${encodeURIComponent(city.name)}`} 
                   className="col-span-2 relative h-64 group cursor-pointer overflow-hidden rounded-lg shadow-sm"
                 >
+<<<<<<< HEAD
                   <img 
                     src={city.image} 
                     alt={city.name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+=======
+                  <Image
+                    src={city.image}
+                    alt={city.name}
+                    fill
+                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 33vw, 22vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+>>>>>>> origin/mobile-model
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">

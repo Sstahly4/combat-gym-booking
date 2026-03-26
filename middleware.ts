@@ -37,6 +37,14 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+<<<<<<< HEAD
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+=======
+    '/dashboard/:path*',
+    '/manage/:path*',
+    '/admin/:path*',
+    '/saved/:path*',
+    '/bookings/:path*',
+>>>>>>> origin/mobile-model
   ],
 }

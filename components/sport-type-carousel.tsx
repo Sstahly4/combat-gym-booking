@@ -2,6 +2,10 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
+import Image from 'next/image'
+>>>>>>> origin/mobile-model
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -92,11 +96,21 @@ export function SportTypeCarousel({ sports, country, dateDisplay }: SportTypeCar
             className="min-w-[calc(50%-12px)] md:min-w-[calc(25%-12px)] max-w-[calc(50%-12px)] md:max-w-[calc(25%-12px)] snap-start flex-shrink-0"
           >
             <div className="cursor-pointer hover:shadow-md transition-shadow">
+<<<<<<< HEAD
               <div className="w-full aspect-[5/4] rounded-lg overflow-hidden mb-2">
                 <img
                   src={sport.image}
                   alt={sport.name}
                   className="w-full h-full object-cover"
+=======
+              <div className="relative w-full aspect-[5/4] rounded-lg overflow-hidden mb-2">
+                <Image
+                  src={sport.image}
+                  alt={sport.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover"
+>>>>>>> origin/mobile-model
                 />
               </div>
               <h3 className="font-semibold text-xs md:text-sm text-gray-900 mb-0.5">{sport.name}</h3>

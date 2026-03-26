@@ -1,4 +1,8 @@
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
+import Image from 'next/image'
+>>>>>>> origin/mobile-model
 import type { Offer } from '@/lib/types/database'
 
 interface OffersSectionProps {
@@ -61,10 +65,19 @@ export function OffersSection({ offers }: OffersSectionProps) {
 
                 <div className="w-24 h-24 md:w-28 md:h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 self-center">
                   {image ? (
+<<<<<<< HEAD
                     // Using a plain image keeps the card lightweight and matches the existing app style.
                     <img
                       src={image}
                       alt={offer.title}
+=======
+                    <Image
+                      src={image}
+                      alt={offer.title}
+                      width={112}
+                      height={112}
+                      sizes="(max-width: 768px) 96px, 112px"
+>>>>>>> origin/mobile-model
                       className="w-full h-full object-cover"
                     />
                   ) : (

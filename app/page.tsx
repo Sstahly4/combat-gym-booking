@@ -4,6 +4,11 @@ const USE_NEW_HOMEPAGE = true
 import HomepageRedesign from './homepage-redesign'
 // ─────────────────────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
+=======
+export const revalidate = 300
+
+>>>>>>> origin/mobile-model
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -14,6 +19,7 @@ import { SearchForm } from '@/components/search-form'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
+<<<<<<< HEAD
 
 async function attachReviewStats(gyms: any[]) {
   if (!gyms || gyms.length === 0) return gyms || []
@@ -43,6 +49,9 @@ async function attachReviewStats(gyms: any[]) {
     }
   })
 }
+=======
+import { attachReviewStats } from '@/lib/reviews/attach-review-stats'
+>>>>>>> origin/mobile-model
 
 async function getGyms(limit: number = 10) {
   const supabase = await createClient()

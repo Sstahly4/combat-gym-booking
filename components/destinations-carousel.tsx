@@ -2,6 +2,10 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
+import Image from 'next/image'
+>>>>>>> origin/mobile-model
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -91,10 +95,19 @@ export function DestinationsCarousel({ destinations }: DestinationsCarouselProps
           >
             <div className="cursor-pointer hover:shadow-md transition-shadow">
               <div className="w-full aspect-square rounded-lg overflow-hidden mb-2 relative bg-gray-200">
+<<<<<<< HEAD
                 <img
                   src={city.image}
                   alt={city.name}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+=======
+                <Image
+                  src={city.image}
+                  alt={city.name}
+                  fill
+                  sizes="(max-width: 768px) 29vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+>>>>>>> origin/mobile-model
                 />
                 <div className="absolute top-2 left-2 text-white drop-shadow-md">
                   <span className="text-[10px] font-semibold bg-black/30 rounded px-1.5 py-0.5">

@@ -2,6 +2,10 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
+import Image from 'next/image'
+>>>>>>> origin/mobile-model
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBooking } from '@/lib/contexts/booking-context'
@@ -189,12 +193,23 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
                 className="min-w-[calc(50%-12px)] md:min-w-[calc(20%-12.8px)] max-w-[calc(50%-12px)] md:max-w-[calc(20%-12.8px)] snap-start flex-shrink-0"
               >
                 <div className="cursor-pointer hover:shadow-md transition-shadow">
+<<<<<<< HEAD
                 <div className="w-full aspect-[4/3] rounded-lg overflow-hidden mb-2">
                   {gym.images && gym.images.length > 0 ? (
                     <img
                       src={gym.images[0].url}
                       alt={gym.name}
                       className="w-full h-full object-cover"
+=======
+                <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-2">
+                  {gym.images && gym.images.length > 0 ? (
+                    <Image
+                      src={gym.images[0].url}
+                      alt={gym.name}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 20vw"
+                      className="object-cover"
+>>>>>>> origin/mobile-model
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs md:text-sm">

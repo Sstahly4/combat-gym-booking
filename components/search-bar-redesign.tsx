@@ -52,10 +52,17 @@ const SUGGESTED_DESTINATIONS = [
 ]
 
 const CATEGORIES = [
+<<<<<<< HEAD
   { id: 'gyms', label: 'Gyms', emoji: '🥊' },
   { id: 'train-stay', label: 'Train & Stay', emoji: '🏨' },
   { id: 'seminars', label: 'Seminars', emoji: '🎓', isNew: true },
 ]
+=======
+  { id: 'gyms', label: 'Gyms', emoji: '🥊', Icon: Dumbbell, isNew: false },
+  { id: 'train-stay', label: 'Train & Stay', emoji: '🏨', Icon: BedDouble, isNew: false },
+  { id: 'seminars', label: 'Seminars', emoji: '🎓', isNew: true, Icon: GraduationCap },
+] as const
+>>>>>>> origin/mobile-model
 
 const WEEK_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
@@ -122,12 +129,21 @@ export function SearchBarRedesign({
   activeCategory: controlledCategory,
   accommodationOnly = false,
   initialQuery = '',
+<<<<<<< HEAD
+=======
+  onCategoryChange,
+>>>>>>> origin/mobile-model
 }: {
   showTabs?: boolean
   yellowBorder?: boolean
   activeCategory?: 'gyms' | 'train-stay' | 'seminars'
   accommodationOnly?: boolean
   initialQuery?: string
+<<<<<<< HEAD
+=======
+  /** Sync category with parent (e.g. homepage / search page tabs) when changed from the mobile modal */
+  onCategoryChange?: (category: 'gyms' | 'train-stay' | 'seminars') => void
+>>>>>>> origin/mobile-model
 }) {
   const router = useRouter()
   const { checkin, setCheckin, checkout, setCheckout } = useBooking()
@@ -174,8 +190,11 @@ export function SearchBarRedesign({
   const containerRef = useRef<HTMLDivElement>(null)
   const whereInputRef = useRef<HTMLInputElement>(null)
   const mobileWhereInputRef = useRef<HTMLInputElement>(null)
+<<<<<<< HEAD
   const mobilePillRef = useRef<HTMLButtonElement>(null)
   const [modalTop, setModalTop] = useState(0)
+=======
+>>>>>>> origin/mobile-model
 
   // Lock body scroll when mobile modal is open
   useEffect(() => {
@@ -455,11 +474,23 @@ export function SearchBarRedesign({
           <button
             key={cat.id}
             type="button"
+<<<<<<< HEAD
             onClick={() => setActiveCategory(cat.id as 'gyms' | 'train-stay' | 'seminars')}
             className="relative flex items-center gap-2 pb-2.5 group"
           >
             {cat.isNew && (
               <span className="absolute -top-1.5 -right-5 bg-[#008489] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+=======
+            onClick={() => {
+              const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
+              setActiveCategory(id)
+              onCategoryChange?.(id)
+            }}
+            className="relative flex items-center gap-2 pb-2.5 group"
+          >
+            {cat.isNew && (
+              <span className="absolute -top-1.5 -right-5 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+>>>>>>> origin/mobile-model
                 NEW
               </span>
             )}
@@ -487,6 +518,7 @@ export function SearchBarRedesign({
           ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         <button
+<<<<<<< HEAD
           ref={mobilePillRef}
           type="button"
           onClick={() => {
@@ -494,6 +526,10 @@ export function SearchBarRedesign({
               const rect = mobilePillRef.current.getBoundingClientRect()
               setModalTop(Math.round(rect.bottom) + 8)
             }
+=======
+          type="button"
+          onClick={() => {
+>>>>>>> origin/mobile-model
             setMobileModalOpen(true)
             setMobilePanel('where')
           }}
@@ -729,6 +765,7 @@ export function SearchBarRedesign({
           Rendered in a portal so parent transforms don't trap it.
           ══════════════════════════════════════════════════════════ */}
       {mobileModalOpen && mounted && createPortal(
+<<<<<<< HEAD
         <>
           {/* Backdrop — covers the area above the modal, tap to close */}
           <button
@@ -748,11 +785,75 @@ export function SearchBarRedesign({
 
             {/* ── Scrollable cards area ── */}
             <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+=======
+        <div className="fixed inset-0 z-[200] md:hidden flex flex-col bg-gray-100 animate-slide-down">
+          {/* Header: safe-area top padding, category tabs, close control */}
+          <div className="relative flex-shrink-0 px-4 pt-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] pb-4">
+            <button
+              type="button"
+              aria-label="Close search"
+              onClick={() => setMobileModalOpen(false)}
+              className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
+            >
+              <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
+            </button>
+            <nav
+              className="flex justify-center gap-5 sm:gap-9 px-12"
+              aria-label="Search category"
+            >
+              {CATEGORIES.map((cat) => {
+                const CatIcon = cat.Icon
+                const isActive = activeCategory === cat.id
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
+                      setActiveCategory(id)
+                      onCategoryChange?.(id)
+                    }}
+                    className="relative flex min-w-0 flex-col items-center gap-1.5 pb-2.5 pt-1"
+                  >
+                    {cat.isNew && (
+                      <span className="absolute -top-0.5 right-0 translate-x-1/2 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                        NEW
+                      </span>
+                    )}
+                    <CatIcon
+                      className={`w-8 h-8 flex-shrink-0 ${isActive ? 'text-gray-900' : 'text-gray-500'}`}
+                      strokeWidth={1.85}
+                    />
+                    <span
+                      className={`text-sm font-medium tracking-tight whitespace-nowrap ${
+                        isActive ? 'text-gray-900' : 'text-gray-500'
+                      }`}
+                    >
+                      {cat.label}
+                    </span>
+                    <span
+                      className={`absolute bottom-0 left-1/2 h-[3px] w-10 max-w-full -translate-x-1/2 rounded-full transition-opacity ${
+                        isActive ? 'bg-gray-900 opacity-100' : 'opacity-0'
+                      }`}
+                    />
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
+
+          {/* ── Scrollable cards area ── */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
+>>>>>>> origin/mobile-model
 
               {/* ══ WHERE card ══ */}
               {mobilePanel === 'where' ? (
                 /* Expanded WHERE */
+<<<<<<< HEAD
                 <div className="bg-white rounded-3xl shadow-sm p-5">
+=======
+                <div className="bg-white rounded-3xl shadow-sm px-5 pt-5 pb-3">
+>>>>>>> origin/mobile-model
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">Where?</h2>
 
                   {/* Search input */}
@@ -842,6 +943,7 @@ export function SearchBarRedesign({
                       d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
                       d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
                     ).length > 2 && (
+<<<<<<< HEAD
                       <button
                         type="button"
                         onClick={() => setShowAllDests(v => !v)}
@@ -850,6 +952,19 @@ export function SearchBarRedesign({
                       >
                         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
                       </button>
+=======
+                      <div className="mt-3 pt-3">
+                        <div className="h-px w-full bg-gray-200" aria-hidden />
+                        <button
+                          type="button"
+                          onClick={() => setShowAllDests(v => !v)}
+                          className="w-full flex justify-center pt-2 pb-0 touch-manipulation"
+                          aria-label={showAllDests ? 'Show less' : 'Show more'}
+                        >
+                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+>>>>>>> origin/mobile-model
                     )}
                   </div>
                 </div>
@@ -958,6 +1073,7 @@ export function SearchBarRedesign({
                 </button>
               )}
 
+<<<<<<< HEAD
             </div>
 
             {/* ── Sticky footer ── */}
@@ -981,6 +1097,29 @@ export function SearchBarRedesign({
 
           </div>
         </>,
+=======
+          </div>
+
+          {/* ── Sticky footer ── */}
+          <div className="flex-shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between border-t border-gray-200/80 bg-gray-100">
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-sm font-semibold text-gray-800 underline underline-offset-2 touch-manipulation"
+            >
+              Clear all
+            </button>
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all touch-manipulation"
+            >
+              <Search className="w-4 h-4" strokeWidth={2.5} />
+              Search
+            </button>
+          </div>
+        </div>,
+>>>>>>> origin/mobile-model
         document.body
       )}
 

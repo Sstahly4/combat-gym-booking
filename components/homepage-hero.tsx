@@ -43,6 +43,10 @@ export function HomepageHero() {
               yellowBorder={true}
               activeCategory={category}
               accommodationOnly={showCampsWithAccommodation}
+<<<<<<< HEAD
+=======
+              onCategoryChange={setCategory}
+>>>>>>> origin/mobile-model
             />
           </div>
         </div>

@@ -649,6 +649,10 @@ function SearchPageContent() {
                 yellowBorder={true}
                 activeCategory={category}
                 initialQuery={filters.location}
+<<<<<<< HEAD
+=======
+                onCategoryChange={setCategory}
+>>>>>>> origin/mobile-model
               />
             </div>
           </div>
