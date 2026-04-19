@@ -8,7 +8,34 @@ import { useBooking } from '@/lib/contexts/booking-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
-import { Check, BedDouble, ChevronLeft, ChevronRight, Home, Wifi, Car, Droplets, UtensilsCrossed, Users, Shield, Clock, Building2, Dumbbell, Thermometer, Waves, X, Ticket, Calendar } from 'lucide-react'
+import {
+  Check,
+  BedDouble,
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Wifi,
+  Car,
+  Droplets,
+  UtensilsCrossed,
+  Users,
+  Shield,
+  Clock,
+  Building2,
+  Dumbbell,
+  Thermometer,
+  Waves,
+  X,
+  Ticket,
+  Calendar,
+  Package as PackageIcon,
+  Target,
+  UserRound,
+  Weight,
+  Activity,
+  CircleDot,
+} from 'lucide-react'
+import { GYM_AMENITY_ORDER, labelGymAmenity } from '@/lib/constants/gym-amenities'
 import Image from 'next/image'
 
 export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym & { images?: GymImage[] } }) {
@@ -284,15 +311,18 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                 swimming_pool: <Waves className="w-3.5 h-3.5 text-gray-600" />,
                 parking: <Car className="w-3.5 h-3.5 text-gray-600" />,
                 showers: <Droplets className="w-3.5 h-3.5 text-gray-600" />,
+                group_classes: <Users className="w-3.5 h-3.5 text-gray-600" />,
+                private_classes: <UserRound className="w-3.5 h-3.5 text-gray-600" />,
+                heavy_bags: <CircleDot className="w-3.5 h-3.5 text-gray-600" />,
+                rental_equipment: <PackageIcon className="w-3.5 h-3.5 text-gray-600" />,
+                boxing_ring: <Target className="w-3.5 h-3.5 text-gray-600" />,
+                free_weights: <Weight className="w-3.5 h-3.5 text-gray-600" />,
+                cardio_equipment: <Activity className="w-3.5 h-3.5 text-gray-600" />,
               }
               return iconMap[key] || <Check className="w-3.5 h-3.5 text-gray-600" />
             }
 
-            // Get active amenities for mobile display (limit to 4-5 most relevant)
-            const activeAmenities = Object.entries(gym.amenities || {})
-              .filter(([_, value]) => value)
-              .slice(0, 5)
-              .map(([key]) => key)
+            const activeAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 5)
 
             return (
               <Card 
@@ -863,18 +893,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                     const images = variant.images || []
                     const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
 
-                    const mobileAmenities = Object.entries(gym.amenities || {})
-                      .filter(([key, value]) => value && ['wifi', 'air_conditioning', 'parking', 'showers'].includes(key))
-                      .slice(0, 4)
-                    const amenityLabels: Record<string, string> = {
-                      wifi: 'Free WiFi', air_conditioning: 'Air con',
-                      parking: 'Parking', showers: 'Showers',
-                    }
+                    const mobileAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 4)
                     const amenityIcons: Record<string, JSX.Element> = {
                       wifi: <Wifi className="w-3.5 h-3.5" />,
                       air_conditioning: <Thermometer className="w-3.5 h-3.5" />,
                       parking: <Car className="w-3.5 h-3.5" />,
                       showers: <Droplets className="w-3.5 h-3.5" />,
+                      group_classes: <Users className="w-3.5 h-3.5" />,
+                      private_classes: <UserRound className="w-3.5 h-3.5" />,
+                      heavy_bags: <CircleDot className="w-3.5 h-3.5" />,
+                      rental_equipment: <PackageIcon className="w-3.5 h-3.5" />,
                     }
 
                     return (
@@ -913,9 +941,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                           )}
                           {mobileAmenities.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mb-3">
-                              {mobileAmenities.map(([key]) => (
+                              {mobileAmenities.map((key) => (
                                 <span key={key} className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
-                                  {amenityIcons[key]}{amenityLabels[key] || key}
+                                  {amenityIcons[key] ?? <Check className="w-3.5 h-3.5" />}
+                                  {labelGymAmenity(key)}
                                 </span>
                               ))}
                               <span className="flex items-center gap-1 text-[11px] text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
@@ -1208,18 +1237,25 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
                 const getAmenityIcon = (key: string) => {
                   const iconMap: Record<string, JSX.Element> = {
-                    wifi: <Wifi className="w-4 h-4 text-gray-700" />, parking: <Car className="w-4 h-4 text-gray-700" />,
-                    showers: <Droplets className="w-4 h-4 text-gray-700" />, accommodation: <Building2 className="w-4 h-4 text-gray-700" />,
-                    equipment: <Dumbbell className="w-4 h-4 text-gray-700" />, meals: <UtensilsCrossed className="w-4 h-4 text-gray-700" />,
-                    locker_room: <Users className="w-4 h-4 text-gray-700" />, security: <Shield className="w-4 h-4 text-gray-700" />,
-                    air_conditioning: <Clock className="w-4 h-4 text-gray-700" />,
+                    wifi: <Wifi className="w-4 h-4 text-gray-700" />,
+                    parking: <Car className="w-4 h-4 text-gray-700" />,
+                    showers: <Droplets className="w-4 h-4 text-gray-700" />,
+                    accommodation: <Building2 className="w-4 h-4 text-gray-700" />,
+                    meals: <UtensilsCrossed className="w-4 h-4 text-gray-700" />,
+                    locker_room: <Users className="w-4 h-4 text-gray-700" />,
+                    security: <Shield className="w-4 h-4 text-gray-700" />,
+                    air_conditioning: <Thermometer className="w-4 h-4 text-gray-700" />,
+                    group_classes: <Users className="w-4 h-4 text-gray-700" />,
+                    private_classes: <UserRound className="w-4 h-4 text-gray-700" />,
+                    heavy_bags: <CircleDot className="w-4 h-4 text-gray-700" />,
+                    rental_equipment: <PackageIcon className="w-4 h-4 text-gray-700" />,
+                    boxing_ring: <Target className="w-4 h-4 text-gray-700" />,
+                    free_weights: <Weight className="w-4 h-4 text-gray-700" />,
                   }
                   return iconMap[key] || <Check className="w-4 h-4 text-green-600" />
                 }
 
-                const relevantAmenities = Object.entries(gym.amenities || {})
-                  .filter(([key, value]) => value && ['wifi', 'air_conditioning', 'accommodation', 'parking', 'showers'].includes(key))
-                  .slice(0, 8)
+                const relevantAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 8)
 
                 return (
                   <div key={variant.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
@@ -1258,10 +1294,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                             <div className="mb-4">
                               <h5 className="text-sm font-semibold text-gray-900 mb-3">Room facilities</h5>
                               <div className="grid grid-cols-2 gap-y-2">
-                                {relevantAmenities.map(([key]) => (
+                                {relevantAmenities.map((key) => (
                                   <div key={key} className="flex items-center gap-2 text-sm text-gray-700">
                                     {getAmenityIcon(key)}
-                                    <span>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                    <span>{labelGymAmenity(key)}</span>
                                   </div>
                                 ))}
                                 <div className="flex items-center gap-2 text-sm text-gray-700"><Check className="w-4 h-4 text-green-600" /><span>Private Bathroom</span></div>

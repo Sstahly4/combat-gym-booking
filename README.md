@@ -42,6 +42,10 @@ A Next.js web application for booking combat sports training camps, inspired by 
    # App
    NEXT_PUBLIC_APP_URL=http://localhost:3000
    PLATFORM_COMMISSION_RATE=0.15
+
+   # Gym claim links (admin → pre-listed gym handoff; migration 044). Required in production.
+   # Generate once: openssl rand -hex 32 — do not rotate after issuing links.
+   CLAIM_TOKEN_PEPPER=
    ```
 
 3. **Set up Supabase**:
@@ -58,6 +62,20 @@ A Next.js web application for booking combat sports training camps, inspired by 
    ```bash
    npm run dev
    ```
+
+## Production checklist (hosting env)
+
+Apply all Supabase migrations (including `043_owner_portal_hardening.sql`, `044_gym_claim_tokens.sql`) to the live project — **committing SQL to git does not apply it**; use `supabase db push`, the CLI, or the SQL editor.
+
+Set at minimum:
+
+| Variable | Notes |
+|----------|--------|
+| `NEXT_PUBLIC_APP_URL` | Canonical site origin (e.g. `https://combatbooking.com`). Used when building gym claim URLs and other absolute links so they are not tied to a random request host. |
+| `CLAIM_TOKEN_PEPPER` | **Required in production** for gym claim links: random string **≥ 32 characters** (e.g. output of `openssl rand -hex 32`). Mixed into SHA-256 of claim tokens. **Do not change after links are issued** — rotation invalidates outstanding URLs. If unset in production, generating or redeeming claim links returns HTTP 503 / a safe error page. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Already required for admin APIs and webhooks; keep server-only. |
+
+Local/dev may omit `CLAIM_TOKEN_PEPPER` (tokens still work; hashes use an empty pepper — fine for local testing only).
 
 ## Database Schema
 

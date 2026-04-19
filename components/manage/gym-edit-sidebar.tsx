@@ -46,6 +46,49 @@ const SIDEBAR_SECTIONS: SidebarItem[] = [
   { id: 'packages', label: 'Packages', icon: Package, required: true },
 ]
 
+/** Horizontal section tabs for edit gym (single manage sidebar — no second fixed column). */
+export function GymEditSectionTabs({ activeSection, onSectionChange, sections }: GymEditSidebarProps) {
+  return (
+    <div className="mb-6 -mx-1">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        {SIDEBAR_SECTIONS.map((section) => {
+          const Icon = section.icon
+          const sectionData = sections[section.id] || { completed: false, required: false }
+          const isActive = activeSection === section.id
+          return (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => onSectionChange(section.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs sm:text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-[#003580] bg-[#003580] text-white shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              )}
+            >
+              <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-white' : 'text-gray-500')} />
+              <span className="whitespace-nowrap">{section.label}</span>
+              {sectionData.completed ? (
+                <CheckCircle2 className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-white' : 'text-green-600')} />
+              ) : section.required ? (
+                <Circle className={cn('h-3 w-3 shrink-0', isActive ? 'text-white/60' : 'text-gray-300')} />
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-3 text-xs text-gray-500">
+        Required complete:{' '}
+        <span className="font-medium text-gray-700">
+          {Object.values(sections).filter((s) => s.required && s.completed).length} /{' '}
+          {Object.values(sections).filter((s) => s.required).length}
+        </span>
+      </p>
+    </div>
+  )
+}
+
 export function GymEditSidebar({ activeSection, onSectionChange, sections }: GymEditSidebarProps) {
   return (
     <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-white h-screen overflow-y-auto">

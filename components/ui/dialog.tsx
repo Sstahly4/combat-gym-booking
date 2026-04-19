@@ -6,19 +6,21 @@ interface DialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   children: React.ReactNode
+  /** Stack above other overlays (e.g. onboarding packages panel at z-[100]). */
+  stackClassName?: string
 }
 
-const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
+const Dialog = ({ open, onOpenChange, children, stackClassName = 'z-[100]' }: DialogProps) => {
   if (!open) return null
 
   const content = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className={cn('fixed inset-0 flex items-center justify-center p-4', stackClassName)}>
       <div
-        className="fixed inset-0 bg-black/50"
+        className={cn('fixed inset-0 bg-black/50', stackClassName)}
         onClick={() => onOpenChange?.(false)}
         aria-hidden
       />
-      <div className="relative z-[100]">{children}</div>
+      <div className={cn('relative', stackClassName)}>{children}</div>
     </div>
   )
 

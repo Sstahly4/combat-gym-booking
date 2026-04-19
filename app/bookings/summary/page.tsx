@@ -15,6 +15,7 @@ import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { ArrowLeft, MapPin, Calendar, Users, AlertCircle, Dumbbell, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
+import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
@@ -511,24 +512,13 @@ function BookingSummaryPageContent() {
             // Always add payment info as first point
             points.push("No payment needed now. You'll pay when the gym confirms your booking.")
             
-            // Cancellation policy
-            if (package_.cancellation_policy_days && checkin) {
-              const checkinDate = new Date(checkin + 'T00:00:00')
-              const cancellationDate = new Date(checkinDate)
-              cancellationDate.setDate(cancellationDate.getDate() - package_.cancellation_policy_days)
-              const today = new Date()
-              const canCancel = cancellationDate > today
-              
-              if (canCancel) {
-                const formattedDate = cancellationDate.toLocaleDateString('en-GB', { 
-                  day: 'numeric', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })
-                points.push(`Stay flexible: You can cancel for free before ${formattedDate}, so lock in this great price today.`)
-              } else {
-                points.push(`Stay flexible: Free cancellation available up to ${package_.cancellation_policy_days} days before check-in.`)
-              }
+            const { goodToKnowBullet } = getCancellationMarketingLines({
+              startDate: checkin,
+              packageCancellationPolicyDays: package_.cancellation_policy_days,
+              gymPolicyTone: gym?.cancellation_policy_tone ?? null,
+            })
+            if (goodToKnowBullet) {
+              points.push(goodToKnowBullet)
             }
             
             // Third point - Accommodation or meal info
@@ -636,12 +626,19 @@ function BookingSummaryPageContent() {
                 <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <span>Booking Guarantee</span>
               </div>
-              {package_.cancellation_policy_days && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Free cancellation up to {package_.cancellation_policy_days} days before check-in</span>
-                </div>
-              )}
+              {(() => {
+                const { safetyPoliciesLine } = getCancellationMarketingLines({
+                  startDate: checkin,
+                  packageCancellationPolicyDays: package_.cancellation_policy_days,
+                  gymPolicyTone: gym?.cancellation_policy_tone ?? null,
+                })
+                return safetyPoliciesLine ? (
+                  <div className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>{safetyPoliciesLine}</span>
+                  </div>
+                ) : null
+              })()}
               <div className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <span>Secure payment processing</span>
@@ -1306,6 +1303,7 @@ function BookingSummaryPageContent() {
                 variant={variant}
                 checkin={checkin}
                 checkout={checkout}
+                gymPolicyTone={gym?.cancellation_policy_tone ?? null}
               />
             )}
 

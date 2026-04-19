@@ -55,7 +55,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/auth/signup?intent=owner" className="text-gray-600 hover:text-[#003580]">
+                <Link href="/owners" className="text-gray-600 hover:text-[#003580]">
                   Add Your Gym
                 </Link>
               </li>
@@ -94,7 +94,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/manage/onboarding" className="text-gray-600 hover:text-[#003580]">
+                <Link href="/owners" className="text-gray-600 hover:text-[#003580]">
                   Register Gym
                 </Link>
               </li>

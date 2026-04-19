@@ -257,7 +257,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="relative aspect-[4/3] w-full">
               <Image
-                src="/tjj8r5ovjts8nhqjhkqc.avif"
+                src="/training-center-1.avif"
                 alt="Training session visual from Thailand camp guide"
                 fill
                 className="object-cover"
@@ -357,7 +357,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="relative aspect-[4/3] w-full">
               <Image
-                src="https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&w=1400&q=80"
+                src="/481020258.avif"
                 alt="Muay Thai training pads and gloves"
                 fill
                 className="object-cover"

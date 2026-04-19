@@ -1,13 +1,11 @@
+import type { CancellationPolicySnapshot } from '@/lib/booking/cancellation-policy'
+
 export type UserRole = 'fighter' | 'owner' | 'admin'
+/** Listing accountability: role of the account holder at the property (not the same as user `role`). */
+export type AccountHolderPropertyRole = 'owner' | 'manager' | 'authorised_operator'
 export type GymStatus = 'pending' | 'approved' | 'rejected'
 export type VerificationStatus = 'draft' | 'verified' | 'trusted'
-// Booking Status Types
-// Legacy statuses (for backward compatibility)
-export type LegacyBookingStatus = 'pending_payment' | 'pending_confirmation' | 'awaiting_approval' | 'confirmed' | 'declined' | 'cancelled'
-// New Request-to-Book statuses (standardized marketplace)
-export type RequestToBookStatus = 'pending' | 'gym_confirmed' | 'paid' | 'completed'
-// Combined type
-export type BookingStatus = LegacyBookingStatus | RequestToBookStatus
+export type BookingStatus = 'pending' | 'confirmed' | 'paid' | 'completed' | 'declined' | 'cancelled'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export interface Profile {
@@ -15,6 +13,32 @@ export interface Profile {
   role: UserRole
   full_name: string | null
   avatar_url: string | null
+  /** Legal identity for disputes / ops (not necessarily the gym trading name). */
+  legal_first_name: string | null
+  legal_last_name: string | null
+  /** Direct mobile for the account holder (not gym reception). */
+  account_holder_phone: string | null
+  role_at_property: AccountHolderPropertyRole | null
+  country_of_residence: string | null
+  /** Owner email toggles (see lib/manage/owner-notification-prefs). */
+  owner_notification_prefs?: {
+    email_bookings: boolean
+    email_cancellations: boolean
+    email_payouts: boolean
+    email_security: boolean
+    email_marketing: boolean
+  } | null
+  /** BCP-47 tag for UI localization (e.g. en, en-AU, th). */
+  preferred_language?: string | null
+  /** Recovery / backup contact email (not auth). */
+  backup_email?: string | null
+  /** True for synthetic owner accounts created by an admin to back a pre-listed
+   *  gym. Cleared once the real owner finishes the claim flow (sets email). */
+  placeholder_account?: boolean
+  /** False until a placeholder owner sets their own password via /api/manage/account/complete-claim. */
+  claim_password_set?: boolean
+  /** Original synthetic email for the placeholder account (kept for reference). */
+  placeholder_email?: string | null
   created_at: string
   updated_at: string
 }
@@ -24,10 +48,13 @@ export interface Gym {
   owner_id: string
   status: GymStatus
   verification_status: VerificationStatus
+  is_live: boolean
   name: string
   description: string | null
   city: string
   country: string
+  /** Owner-indicated: gym offers bookable accommodation */
+  offers_accommodation?: boolean
   address: string | null
   latitude: number | null
   longitude: number | null
@@ -44,7 +71,20 @@ export interface Gym {
   meals_price_per_month: number | null
   currency: string
   stripe_account_id: string | null
+  /** Tier label for cancellation copy; numeric window is on packages.cancellation_policy_days */
+  cancellation_policy_tone?: 'flexible' | 'moderate' | 'strict'
   stripe_connect_verified: boolean
+  /** Stripe Connect Account.charges_enabled (from account.updated) */
+  stripe_charges_enabled?: boolean | null
+  /** Stripe Connect Account.payouts_enabled */
+  stripe_payouts_enabled?: boolean | null
+  /** Stripe Connect Account.details_submitted */
+  stripe_details_submitted?: boolean | null
+  stripe_requirements_currently_due?: string[] | null
+  stripe_requirements_pending_verification?: string[] | null
+  stripe_disabled_reason?: string | null
+  last_stripe_account_sync_at?: string | null
+  payout_disabled_notified_at?: string | null
   google_maps_link: string | null
   instagram_link: string | null
   facebook_link: string | null
@@ -52,6 +92,42 @@ export interface Gym {
   verified_at: string | null
   trusted_at: string | null
   nearby_attractions?: Array<{ name: string; distance: number }> | null
+  /** IANA timezone for schedules and reports. */
+  timezone?: string | null
+  /** Public reception / front-desk phone shown on listing (not owner personal phone). */
+  public_contact_phone?: string | null
+  /** Default spots per day used by the owner availability calendar (NULL = unconfigured). */
+  default_daily_capacity?: number | null
+  created_at: string
+  updated_at: string
+}
+
+/** Sparse per-date availability override (owner calendar). See migration 041. */
+export interface GymDailyAvailability {
+  gym_id: string
+  date: string
+  capacity_override: number | null
+  price_override: number | null
+  is_closed: boolean
+  min_stay_override: number | null
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type GymPromotionKind = 'early_bird' | 'last_minute' | 'long_stay' | 'custom'
+
+export interface GymPromotion {
+  id: string
+  gym_id: string
+  kind: GymPromotionKind
+  title: string
+  description: string | null
+  discount_percent: number
+  starts_at: string | null
+  ends_at: string | null
+  min_nights: number | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -211,6 +287,8 @@ export interface Booking {
   total_price: number
   platform_fee: number
   stripe_payment_intent_id: string | null
+  /** Policy agreed at checkout (deadline, refund %, tone) — matches PaymentIntent metadata */
+  cancellation_policy_snapshot?: CancellationPolicySnapshot | null
   guest_email: string | null
   guest_phone: string | null
   guest_name: string | null
@@ -225,8 +303,55 @@ export interface Review {
   booking_id: string | null // Nullable for manual reviews (MVP only)
   rating: number
   comment: string | null
+  owner_reply?: string | null
+  owner_replied_at?: string | null
+  owner_replied_by?: string | null
   created_at: string
   manual_review?: boolean // MVP only - remove before shipping
   gym_id?: string // For manual reviews (MVP only)
   reviewer_name?: string | null // MVP only - for manual reviews
+}
+
+export type OwnerOnboardingSessionState = 'in_progress' | 'completed' | 'abandoned'
+
+export interface OwnerOnboardingSession {
+  id: string
+  owner_id: string
+  gym_id: string | null
+  state: OwnerOnboardingSessionState
+  started_at: string
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OwnerOnboardingStep {
+  id: string
+  session_id: string
+  step_key: string
+  completed_at: string | null
+  metadata: Record<string, any>
+  created_at: string
+  updated_at: string
+}
+
+export interface OwnerInviteToken {
+  id: string
+  token: string
+  gym_id: string | null
+  email: string
+  expires_at: string
+  used_at: string | null
+  used_by: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SecurityEvent {
+  id: string
+  user_id: string
+  event_type: string
+  metadata: Record<string, any>
+  created_at: string
 }

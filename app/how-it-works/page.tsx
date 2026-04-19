@@ -129,7 +129,7 @@ export default function HowItWorksPage() {
                   <span>Get paid securely through our platform</span>
                 </li>
               </ul>
-              <Link href="/auth/signup?intent=owner">
+              <Link href="/owners">
                 <button className="mt-6 w-full bg-[#003580] text-white py-2 px-4 rounded-lg hover:bg-[#003580]/90 transition-colors text-sm font-medium">
                   List Your Gym
                 </button>

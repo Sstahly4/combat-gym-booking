@@ -11,9 +11,7 @@ if (!stripeSecretKey || stripeSecretKey.includes('your_stripe') || stripeSecretK
 }
 
 export const stripe = stripeSecretKey && !stripeSecretKey.includes('your_stripe') && !stripeSecretKey.includes('your_str')
-  ? new Stripe(stripeSecretKey, {
-      apiVersion: '2023-10-16',
-    })
+  ? new Stripe(stripeSecretKey)
   : null
 
 export const PLATFORM_COMMISSION_RATE = parseFloat(

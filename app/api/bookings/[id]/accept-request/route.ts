@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingRequestAcceptedEmail } from '@/lib/email'
+import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 
 /**
  * Accept a booking request (Gym Owner Action)
- * Transitions: pending → gym_confirmed
+ * Transitions: pending → confirmed
  * This means the gym has accepted the request and is ready to capture payment
  */
 export async function POST(
@@ -13,19 +14,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabaseAuth = await createClient()
-    const { data: { user } } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
+    const ownerAccess = await getOwnerAccessContext()
+    if (ownerAccess.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    // Check if user is gym owner or admin
-    const { data: profile } = await supabaseAuth
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    let userId = ownerAccess.userId
+    let isAdmin = false
+    if (ownerAccess.status !== 'ok') {
+      const authClient = await createClient()
+      const { data: profile } = await authClient
+        .from('profiles')
+        .select('role')
+        .eq('id', ownerAccess.userId)
+        .single()
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      isAdmin = true
+      userId = ownerAccess.userId
+    }
 
     const bookingId = params.id
 
@@ -49,7 +56,7 @@ export async function POST(
     const gym = booking.gym as any
 
     // Verify user is gym owner or admin
-    if (profile?.role !== 'admin' && gym.owner_id !== user.id) {
+    if (!isAdmin && gym.owner_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -61,11 +68,11 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Update booking status to gym_confirmed
+    // Update booking status to confirmed
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
-        status: 'gym_confirmed',
+        status: 'confirmed',
         gym_confirmed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -101,7 +108,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      status: 'gym_confirmed',
+      status: 'confirmed',
       message: 'Booking request accepted. Guest will be notified to complete payment.'
     })
   } catch (error: any) {

@@ -1,223 +1,258 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CheckCircle2, XCircle, Loader2, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
+import { CheckCircle2, Loader2, ExternalLink, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { Gym } from '@/lib/types/database'
+import { cn } from '@/lib/utils'
 
 interface VerificationChecklistProps {
   gym: Gym
+}
+
+type Step = {
+  id: string
+  title: string
+  description: string
+  done: boolean
+  loading?: boolean
+  actionLabel: string
+  href?: string
+  externalHref?: string
 }
 
 export function VerificationChecklist({ gym }: VerificationChecklistProps) {
   const [stripeStatus, setStripeStatus] = useState<{
     verified: boolean
     has_account: boolean
-    details: any
+    details: unknown
   } | null>(null)
   const [loadingStripe, setLoadingStripe] = useState(true)
 
   useEffect(() => {
-    checkStripeStatus()
+    const checkStripeStatus = async () => {
+      try {
+        const response = await fetch(`/api/gyms/${gym.id}/check-stripe-status`)
+        const data = await response.json()
+        setStripeStatus(data)
+      } catch (error) {
+        console.error('Error checking Stripe status:', error)
+      } finally {
+        setLoadingStripe(false)
+      }
+    }
+    void checkStripeStatus()
   }, [gym.id])
 
-  const checkStripeStatus = async () => {
-    try {
-      const response = await fetch(`/api/gyms/${gym.id}/check-stripe-status`)
-      const data = await response.json()
-      setStripeStatus(data)
-    } catch (error) {
-      console.error('Error checking Stripe status:', error)
-    } finally {
-      setLoadingStripe(false)
-    }
-  }
+  const requirements = useMemo(
+    () => ({
+      googleMaps: !!gym.google_maps_link,
+      socialMedia: !!(gym.instagram_link || gym.facebook_link),
+      stripeConnect: stripeStatus?.verified || false,
+      adminApproved: gym.admin_approved || false,
+    }),
+    [gym.google_maps_link, gym.instagram_link, gym.facebook_link, gym.admin_approved, stripeStatus?.verified]
+  )
 
-  const requirements = {
-    googleMaps: !!gym.google_maps_link,
-    socialMedia: !!(gym.instagram_link || gym.facebook_link),
-    stripeConnect: stripeStatus?.verified || false,
-    adminApproved: gym.admin_approved || false,
-  }
-
-  const allMet = Object.values(requirements).every(v => v === true)
   const verificationStatus = gym.verification_status
+  const completedCount = Object.values(requirements).filter(Boolean).length
+  const totalSteps = 4
+  const progressPct = Math.round((completedCount / totalSteps) * 100)
+
+  const steps: Step[] = useMemo(
+    () => [
+      {
+        id: 'maps',
+        title: 'Google Maps link',
+        description: requirements.googleMaps
+          ? 'Your location link is on file.'
+          : 'Add a public Google Maps URL so travelers can find you.',
+        done: requirements.googleMaps,
+        actionLabel: requirements.googleMaps ? 'View map' : 'Add in Edit gym',
+        externalHref: requirements.googleMaps ? gym.google_maps_link! : undefined,
+        href: !requirements.googleMaps ? `/manage/gym/edit?id=${gym.id}&section=basic` : undefined,
+      },
+      {
+        id: 'social',
+        title: 'Instagram or Facebook',
+        description: requirements.socialMedia
+          ? 'At least one social profile is linked.'
+          : 'Link Instagram or Facebook so we can verify your gym’s presence.',
+        done: requirements.socialMedia,
+        actionLabel: requirements.socialMedia ? 'Open profile' : 'Add in Edit gym',
+        externalHref:
+          gym.instagram_link || gym.facebook_link
+            ? gym.instagram_link || gym.facebook_link || undefined
+            : undefined,
+        href: !requirements.socialMedia ? `/manage/gym/edit?id=${gym.id}&section=basic` : undefined,
+      },
+      {
+        id: 'stripe',
+        title: 'Stripe Connect',
+        description: loadingStripe
+          ? 'Checking Stripe…'
+          : requirements.stripeConnect
+            ? 'Payouts and charges are set up.'
+            : stripeStatus?.has_account
+              ? 'Finish identity and bank details in Stripe.'
+              : 'Connect Stripe to receive payments from bookings.',
+        done: requirements.stripeConnect,
+        loading: loadingStripe,
+        actionLabel: requirements.stripeConnect ? 'Open Stripe setup' : 'Set up Stripe',
+        href: '/manage/stripe-connect',
+      },
+      {
+        id: 'admin',
+        title: 'Platform approval',
+        description: requirements.adminApproved
+          ? 'Your gym has been approved to appear in search.'
+          : 'After the steps above, our team reviews your listing. No action needed unless we contact you.',
+        done: requirements.adminApproved,
+        actionLabel: 'Learn more',
+        href: '/manage/help',
+      },
+    ],
+    [gym.id, gym.google_maps_link, gym.instagram_link, gym.facebook_link, loadingStripe, requirements, stripeStatus?.has_account]
+  )
+
+  const statusBadge = () => {
+    if (verificationStatus === 'verified') {
+      return (
+        <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200/80">
+          Live
+        </span>
+      )
+    }
+    if (verificationStatus === 'trusted') {
+      return (
+        <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
+          Trusted
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+        In progress
+      </span>
+    )
+  }
 
   return (
-    <Card className="border-2">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Verification Status</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-            verificationStatus === 'verified' ? 'bg-green-100 text-green-800' :
-            verificationStatus === 'trusted' ? 'bg-blue-100 text-blue-800' :
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-            {verificationStatus === 'verified' ? '✓ Verified' :
-             verificationStatus === 'trusted' ? '⭐ Trusted' :
-             'Draft'}
-          </span>
-        </CardTitle>
-        <CardDescription>
-          {verificationStatus === 'draft' 
-            ? 'Complete all requirements to make your gym visible and bookable'
-            : verificationStatus === 'verified'
-            ? 'Your gym is live and bookable!'
-            : 'Your gym has proven track record'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Requirements Checklist */}
-        <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700 mb-2">Verification Requirements:</div>
-          
-          {/* Google Maps */}
-          <div className="flex items-start gap-3">
-            {requirements.googleMaps ? (
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Google Maps Listing</div>
-              <div className="text-xs text-gray-600">
-                {requirements.googleMaps ? (
-                  <a href={gym.google_maps_link!} target="_blank" rel="noopener noreferrer" className="text-[#003580] hover:underline inline-flex items-center gap-1">
-                    View listing <ExternalLink className="w-3 h-3" />
-                  </a>
-                ) : (
-                  'Add Google Maps link in gym settings'
-                )}
-              </div>
+    <div className="space-y-6">
+      <Card className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold text-gray-900">Get your gym verified</CardTitle>
+              <CardDescription className="mt-1 text-sm text-gray-600">
+                Complete each step below. You’ll see progress here until your listing is live.
+              </CardDescription>
+            </div>
+            {statusBadge()}
+          </div>
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between text-xs font-medium text-gray-600">
+              <span>
+                Progress: {completedCount} of {totalSteps}
+              </span>
+              <span>{progressPct}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+              <div
+                className="h-full rounded-full bg-[#003580] transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
           </div>
-
-          {/* Social Media */}
-          <div className="flex items-start gap-3">
-            {requirements.socialMedia ? (
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Instagram or Facebook</div>
-              <div className="text-xs text-gray-600">
-                {requirements.socialMedia ? (
-                  <div className="flex gap-2">
-                    {gym.instagram_link && (
-                      <a href={gym.instagram_link} target="_blank" rel="noopener noreferrer" className="text-[#003580] hover:underline inline-flex items-center gap-1">
-                        Instagram <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                    {gym.facebook_link && (
-                      <a href={gym.facebook_link} target="_blank" rel="noopener noreferrer" className="text-[#003580] hover:underline inline-flex items-center gap-1">
-                        Facebook <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-6">
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              className={cn(
+                'flex gap-4 rounded-lg border p-4 transition-colors',
+                step.done ? 'border-emerald-200/80 bg-emerald-50/30' : 'border-gray-200 bg-white hover:border-gray-300'
+              )}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-gray-700">
+                {step.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+                ) : step.loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" aria-hidden />
                 ) : (
-                  'Add Instagram or Facebook link in gym settings'
+                  <span>{index + 1}</span>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Stripe Connect */}
-          <div className="flex items-start gap-3">
-            {loadingStripe ? (
-              <Loader2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5 animate-spin" />
-            ) : requirements.stripeConnect ? (
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Stripe Connect (KYC + Bank Account)</div>
-              <div className="text-xs text-gray-600">
-                {loadingStripe ? (
-                  'Checking status...'
-                ) : requirements.stripeConnect ? (
-                  'Fully verified and ready to receive payments'
-                ) : stripeStatus?.has_account ? (
-                  'Account created but not fully verified. Complete KYC and add bank account.'
-                ) : (
-                  'Set up Stripe Connect to receive payments'
-                )}
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-gray-900">{step.title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{step.description}</p>
+                <div className="mt-3">
+                  {step.loading ? (
+                    <span className="text-sm text-gray-400">Checking…</span>
+                  ) : step.externalHref ? (
+                    <a
+                      href={step.externalHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-[#003580] hover:underline"
+                    >
+                      {step.actionLabel}
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : step.href ? (
+                    <Link
+                      href={step.href}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-[#003580] hover:underline"
+                    >
+                      {step.actionLabel}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
+          ))}
+        </CardContent>
+      </Card>
 
-          {/* Admin Approval */}
-          <div className="flex items-start gap-3">
-            {requirements.adminApproved ? (
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Admin Approval</div>
-              <div className="text-xs text-gray-600">
-                {requirements.adminApproved 
-                  ? 'Approved by admin'
-                  : 'Pending admin review. This happens automatically once other requirements are met.'}
-              </div>
-            </div>
+      {verificationStatus === 'draft' && (
+        <div className="rounded-lg border border-gray-200 bg-slate-50 p-4 text-sm text-gray-700">
+          <p className="font-medium text-gray-900">
+            {completedCount === totalSteps ? 'Ready for review' : 'Still in draft'}
+          </p>
+          <p className="mt-1 text-gray-600">
+            {completedCount === totalSteps
+              ? 'All checklist items are done. We’ll review and approve your gym for search when ready.'
+              : 'Finish the numbered steps above. Use Edit gym and Stripe Connect where linked.'}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="border-gray-300 bg-white">
+              <Link href={`/manage/gym/edit?id=${gym.id}`}>Edit gym profile</Link>
+            </Button>
+            {!gym.stripe_account_id ? (
+              <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
+                <Link href="/manage/stripe-connect">Stripe Connect</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
+      )}
 
-        {/* Status Message */}
-        {verificationStatus === 'draft' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 font-medium mb-1">Your gym is in Draft mode</p>
-            <p className="text-xs text-yellow-700">
-              {allMet 
-                ? 'All requirements met! Waiting for admin approval to go live.'
-                : 'Complete all requirements above to make your gym visible and bookable.'}
-            </p>
-          </div>
-        )}
+      {verificationStatus === 'verified' && (
+        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/40 p-4 text-sm text-emerald-950">
+          <p className="font-medium">Your gym is live in search</p>
+          <p className="mt-1 text-emerald-900/90">Travelers can discover and book your packages.</p>
+        </div>
+      )}
 
-        {verificationStatus === 'verified' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800 font-medium mb-1">✓ Your gym is live!</p>
-            <p className="text-xs text-green-700">
-              Your gym is visible in search results and can receive bookings.
-            </p>
-          </div>
-        )}
-
-        {verificationStatus === 'trusted' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 font-medium mb-1">⭐ Trusted Gym Badge</p>
-            <p className="text-xs text-blue-700">
-              Your gym has proven track record with completed bookings and good ratings.
-            </p>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {verificationStatus === 'draft' && (
-          <div className="flex gap-2 pt-2 border-t">
-            {!gym.stripe_account_id && (
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => window.location.href = '/manage/stripe-connect'}
-              >
-                Set Up Stripe Connect
-              </Button>
-            )}
-            <Button 
-              variant="outline" 
-              className="flex-1"
-              onClick={() => window.location.href = `/manage/gym/edit?id=${gym.id}`}
-            >
-              Update Gym Info
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {verificationStatus === 'trusted' && (
+        <div className="rounded-lg border border-gray-200 bg-slate-50 p-4 text-sm text-gray-800">
+          <p className="font-medium text-gray-900">Trusted gym</p>
+          <p className="mt-1 text-gray-600">Strong history of completed bookings and ratings.</p>
+        </div>
+      )}
+    </div>
   )
 }

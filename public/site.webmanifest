@@ -1,0 +1,21 @@
+{
+  "name": "CombatBooking.com",
+  "short_name": "CombatBooking",
+  "icons": [
+    {
+      "src": "/favicon-512x512-rounded.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "theme_color": "#2563eb",
+  "background_color": "#2563eb",
+  "display": "standalone"
+}

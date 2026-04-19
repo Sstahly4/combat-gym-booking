@@ -885,7 +885,7 @@ interface BookingRequestAcceptedEmailData {
 
 /**
  * Send email when gym accepts a booking request
- * Transitions: pending → gym_confirmed
+ * Transitions: pending -> confirmed
  */
 export async function sendBookingRequestAcceptedEmail(data: BookingRequestAcceptedEmailData): Promise<boolean> {
   const formatDate = (dateString: string) => {
@@ -1146,5 +1146,66 @@ The CombatBooking.com Team
   console.log(textContent)
   console.log('\n')
 
+  return true
+}
+
+export async function sendOwnerPayoutDisabledEmail(data: {
+  ownerEmail: string
+  gymName: string
+  stripeAccountId: string
+  disabledReason?: string | null
+  requirementsDue?: string[]
+}): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const due =
+    data.requirementsDue && data.requirementsDue.length > 0
+      ? data.requirementsDue.join(', ')
+      : 'None listed'
+  const reason = data.disabledReason?.trim() || 'Not specified by Stripe'
+
+  const text = `
+Payouts paused for ${data.gymName}
+
+Stripe has disabled payouts for your connected account (${data.stripeAccountId}).
+
+Reason (Stripe): ${reason}
+Outstanding requirements: ${due}
+
+Open your owner portal to finish Stripe Connect setup:
+${appUrl}/manage/stripe-connect
+
+If you did not change your bank or account details, contact support.
+
+© ${new Date().getFullYear()} CombatBooking.com
+  `.trim()
+
+  if (process.env.RESEND_API_KEY && data.ownerEmail) {
+    try {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [data.ownerEmail],
+          subject: `Action required: payouts paused — ${data.gymName}`,
+          text,
+        }),
+      })
+      if (res.ok) {
+        console.log(`✅ Payout-disabled email sent to ${data.ownerEmail}`)
+        return true
+      }
+      const errText = await res.text()
+      console.error('❌ Resend payout-disabled email failed:', res.status, errText)
+    } catch (error) {
+      console.error('❌ Failed to send payout-disabled email:', error)
+    }
+  }
+
+  console.log(`\n📧 PAYOUT DISABLED EMAIL (would send to ${data.ownerEmail}):\n${text}\n`)
   return true
 }

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
-import { sendBookingConfirmedEmail } from '@/lib/email'
+import { sendBookingConfirmedEmail, sendOwnerPayoutDisabledEmail } from '@/lib/email'
+import { normalizeOwnerNotificationPrefs } from '@/lib/manage/owner-notification-prefs'
 
 // Disable body parsing, we need the raw body for webhook signature verification
 export const runtime = 'nodejs'
@@ -102,14 +104,10 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Found booking: ${booking.id} (${booking.booking_reference || booking.id})`)
 
-      // Handle status update based on current status
-      // For Request-to-Book flow: gym_confirmed → paid
-      // For legacy flow: pending_confirmation → confirmed
-      let newStatus = 'confirmed'
-      if (booking.status === 'gym_confirmed') {
-        newStatus = 'paid' // Request-to-Book: payment captured after gym confirmed
-      } else if (booking.status === 'confirmed' || booking.status === 'paid') {
-        console.log('ℹ️  Booking already confirmed/paid, skipping update')
+      // Canonical model: payment_intent.succeeded means funds captured -> `paid`.
+      const newStatus = 'paid'
+      if (booking.status === 'paid' || booking.status === 'completed') {
+        console.log('ℹ️  Booking already paid/completed, skipping update')
         return NextResponse.json({ received: true, already_confirmed: true })
       }
 
@@ -137,7 +135,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log(`✅ Booking status updated to confirmed: ${booking.id}`)
+      console.log(`✅ Booking status updated to paid: ${booking.id}`)
 
       // Get payment method details for email
       let cardLast4: string | undefined
@@ -260,7 +258,234 @@ export async function POST(request: NextRequest) {
     }
     }
 
-    // Handle other event types (optional)
+    // Stripe Connect source-of-truth: sync payout capability from account updates.
+    if (event.type === 'account.updated') {
+      try {
+        const account = event.data.object as Stripe.Account
+        let supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>
+        let admin: ReturnType<typeof createAdminClient> | null = null
+        try {
+          admin = createAdminClient()
+          supabase = admin
+        } catch {
+          supabase = await createClient()
+        }
+
+        const verified = Boolean(account.charges_enabled && account.payouts_enabled)
+        const chargesEnabled = Boolean(account.charges_enabled)
+        const payoutsEnabled = Boolean(account.payouts_enabled)
+        const detailsSubmitted = Boolean(account.details_submitted)
+        const req = account.requirements
+        const currentlyDue = Array.isArray(req?.currently_due) ? req.currently_due : []
+        const pendingVerification = Array.isArray(req?.pending_verification)
+          ? req.pending_verification
+          : []
+        const disabledReason =
+          typeof req?.disabled_reason === 'string' ? req.disabled_reason : null
+
+        const { data: gyms, error: gymLookupError } = await supabase
+          .from('gyms')
+          .select('id, name, owner_id, stripe_payouts_enabled')
+          .eq('stripe_account_id', account.id)
+
+        if (gymLookupError) {
+          return NextResponse.json(
+            { error: 'Failed to lookup gym for Stripe account update' },
+            { status: 500 }
+          )
+        }
+
+        if (!gyms || gyms.length === 0) {
+          return NextResponse.json({ received: true, account_not_linked: true })
+        }
+
+        const nowIso = new Date().toISOString()
+
+        for (const gym of gyms as Array<{
+          id: string
+          name: string
+          owner_id: string
+          stripe_payouts_enabled: boolean | null
+        }>) {
+          const prevPayouts = gym.stripe_payouts_enabled
+          const transitionToPayoutsOff = prevPayouts === true && payoutsEnabled === false
+
+          let emailSent = false
+          if (transitionToPayoutsOff && admin) {
+            const { data: authUser, error: authErr } = await admin.auth.admin.getUserById(gym.owner_id)
+            const ownerEmail = authErr ? null : authUser.user?.email ?? null
+
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('owner_notification_prefs')
+              .eq('id', gym.owner_id)
+              .single()
+
+            const prefs = normalizeOwnerNotificationPrefs(
+              (profile as { owner_notification_prefs?: unknown } | null)?.owner_notification_prefs
+            )
+
+            if (ownerEmail && prefs.email_payouts) {
+              await sendOwnerPayoutDisabledEmail({
+                ownerEmail,
+                gymName: gym.name,
+                stripeAccountId: account.id,
+                disabledReason,
+                requirementsDue: currentlyDue,
+              })
+              emailSent = true
+            }
+          }
+
+          const updatePayload: Record<string, unknown> = {
+            stripe_connect_verified: verified,
+            stripe_charges_enabled: chargesEnabled,
+            stripe_payouts_enabled: payoutsEnabled,
+            stripe_details_submitted: detailsSubmitted,
+            stripe_requirements_currently_due: currentlyDue,
+            stripe_requirements_pending_verification: pendingVerification,
+            stripe_disabled_reason: disabledReason,
+            last_stripe_account_sync_at: nowIso,
+            updated_at: nowIso,
+          }
+
+          if (payoutsEnabled === true) {
+            updatePayload.payout_disabled_notified_at = null
+            // Stripe re-verified payouts → clear any active payout-change hold.
+            updatePayload.payouts_hold_active = false
+            updatePayload.payouts_hold_cleared_at = nowIso
+          } else if (transitionToPayoutsOff && emailSent) {
+            updatePayload.payout_disabled_notified_at = nowIso
+          }
+
+          const { error: updateError } = await supabase
+            .from('gyms')
+            .update(updatePayload)
+            .eq('id', gym.id)
+
+          if (updateError) {
+            return NextResponse.json(
+              { error: 'Failed to update Stripe verification state' },
+              { status: 500 }
+            )
+          }
+        }
+
+        return NextResponse.json({
+          received: true,
+          event_type: event.type,
+          stripe_account_id: account.id,
+          stripe_connect_verified: verified,
+        })
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: error?.message || 'Failed to process account.updated webhook' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Payout-change hold: when external bank account changes, set a hold flag
+    // so we can surface a banner in the owner portal and re-prompt verification.
+    if (
+      event.type === 'account.external_account.created' ||
+      event.type === 'account.external_account.updated' ||
+      event.type === 'account.external_account.deleted'
+    ) {
+      try {
+        const account = event.account
+        if (!account) {
+          return NextResponse.json({ received: true, event_type: event.type, skipped: true })
+        }
+        let supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>
+        let admin: ReturnType<typeof createAdminClient> | null = null
+        try {
+          admin = createAdminClient()
+          supabase = admin
+        } catch {
+          supabase = await createClient()
+        }
+
+        const nowIso = new Date().toISOString()
+        const reason =
+          event.type === 'account.external_account.deleted'
+            ? 'Bank account removed'
+            : 'Bank account changed'
+
+        const { data: gyms, error: lookupError } = await supabase
+          .from('gyms')
+          .select('id, name, owner_id')
+          .eq('stripe_account_id', account)
+
+        if (lookupError) {
+          return NextResponse.json(
+            { error: 'Failed to lookup gym for external_account event' },
+            { status: 500 }
+          )
+        }
+        if (!gyms || gyms.length === 0) {
+          return NextResponse.json({ received: true, account_not_linked: true })
+        }
+
+        for (const gym of gyms as Array<{ id: string; name: string; owner_id: string }>) {
+          await supabase
+            .from('gyms')
+            .update({
+              payouts_hold_active: true,
+              payouts_hold_reason: reason,
+              payouts_hold_set_at: nowIso,
+              updated_at: nowIso,
+            })
+            .eq('id', gym.id)
+
+          if (admin) {
+            await admin.from('owner_telemetry_events').insert({
+              event_type: 'payouts_hold_activated',
+              user_id: gym.owner_id,
+              gym_id: gym.id,
+              metadata: { reason, stripe_event: event.type },
+            })
+
+            // Best-effort owner email reusing the existing payout-disabled template.
+            try {
+              const { data: authUser } = await admin.auth.admin.getUserById(gym.owner_id)
+              const ownerEmail = authUser.user?.email ?? null
+              const { data: profile } = await admin
+                .from('profiles')
+                .select('owner_notification_prefs')
+                .eq('id', gym.owner_id)
+                .single()
+              const prefs = normalizeOwnerNotificationPrefs(
+                (profile as { owner_notification_prefs?: unknown } | null)?.owner_notification_prefs
+              )
+              if (ownerEmail && prefs.email_payouts) {
+                await sendOwnerPayoutDisabledEmail({
+                  ownerEmail,
+                  gymName: gym.name,
+                  stripeAccountId: account,
+                  disabledReason: reason,
+                  requirementsDue: [],
+                })
+              }
+            } catch (emailErr) {
+              console.warn('[stripe-webhook] payout-hold email failed:', emailErr)
+            }
+          }
+        }
+
+        return NextResponse.json({
+          received: true,
+          event_type: event.type,
+          payouts_hold_active: true,
+        })
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: error?.message || 'Failed to process external_account event' },
+          { status: 500 }
+        )
+      }
+    }
+
     console.log(`ℹ️  Unhandled event type: ${event.type}`)
     return NextResponse.json({ received: true, event_type: event.type })
   } catch (error: any) {

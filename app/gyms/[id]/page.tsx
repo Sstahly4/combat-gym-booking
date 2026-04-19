@@ -69,29 +69,48 @@ interface GymWithDetails extends Gym {
   training_schedule?: Record<string, Array<{ time: string; type?: string }>>
 }
 
-async function getGym(id: string) {
-  try {
-    const supabase = await createClient()
-    
-    // Fetch gym with images - explicitly select order column and sort in query
-    const { data: gymData, error: gymError } = await supabase
-      .from('gyms')
-      .select(`
+const GYM_LISTING_SELECT = `
         *,
         packages(*, variants:package_variants(*)),
         reviews:bookings(
           id,
+          user_id,
           reviews(*)
         ),
         owner:profiles!gyms_owner_id_fkey(full_name)
-      `)
+      `
+
+async function getGym(id: string) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    // Fetch gym with images - explicitly select order column and sort in query
+    let { data: gymData, error: gymError } = await supabase
+      .from('gyms')
+      .select(GYM_LISTING_SELECT)
       .eq('id', id)
       .in('verification_status', ['verified', 'trusted', 'draft'])
-      .single()
+      .maybeSingle()
 
     if (gymError) {
       console.error('Error fetching gym:', gymError)
-      return null
+    }
+
+    // Owner fallback: always allow owner to load their row even if filters fail
+    if (!gymData && user) {
+      const { data: owned, error: ownedErr } = await supabase
+        .from('gyms')
+        .select(GYM_LISTING_SELECT)
+        .eq('id', id)
+        .eq('owner_id', user.id)
+        .maybeSingle()
+      if (ownedErr) {
+        console.error('Error fetching gym (owner fallback):', ownedErr)
+      }
+      gymData = owned ?? null
     }
 
     if (!gymData) {
@@ -167,13 +186,32 @@ async function getGym(id: string) {
 
 export default async function GymDetailsPage({ params, searchParams }: { params: { id: string }, searchParams: { checkin?: string, checkout?: string } }) {
   const gym = await getGym(params.id)
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!gym) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-lg">
         <Card>
-          <CardContent className="py-12 text-center">
-            Gym not found
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-gray-900 font-medium">Gym not found</p>
+            {user ? (
+              <p className="text-sm text-gray-600">
+                If this is your gym, open{' '}
+                <a href={`/manage/gym/preview?gym_id=${params.id}`} className="text-[#003580] font-medium underline">
+                  listing preview
+                </a>{' '}
+                or{' '}
+                <a href={`/manage/gym/edit?id=${params.id}`} className="text-[#003580] font-medium underline">
+                  edit gym
+                </a>{' '}
+                from the owner dashboard.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600">Check the link or browse gyms from search.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -181,8 +219,6 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
   }
 
   // Check if user is owner (for draft preview)
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
   const isOwner = user && gym.owner_id === user.id
   const isDraft = gym.verification_status === 'draft'
 

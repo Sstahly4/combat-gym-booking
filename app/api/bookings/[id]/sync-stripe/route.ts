@@ -274,21 +274,21 @@ export async function POST(
       }
     }
 
-    // Payment is succeeded in Stripe, update booking if needed
-    // Allow syncing from any status (pending_payment, pending_confirmation, etc.)
-    if (booking.status === 'confirmed') {
+    // Payment is succeeded in Stripe, update booking if needed.
+    if (booking.status === 'paid' || booking.status === 'completed') {
       return NextResponse.json({
         synced: true,
         already_confirmed: true,
-        message: 'Booking is already confirmed'
+        message: 'Booking is already paid'
       })
     }
 
-    // Update booking status to confirmed
+    // Update booking status to paid
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({ 
-        status: 'confirmed',
+        status: 'paid',
+        payment_captured_at: new Date().toISOString(),
         updated_at: new Date().toISOString() // Force updated_at to change
       })
       .eq('id', bookingId)
@@ -323,12 +323,12 @@ export async function POST(
     if (verifyError) {
       console.error('Error verifying booking update:', verifyError)
     } else {
-      console.log(`✅ Booking status synced to confirmed: ${bookingId}`)
+      console.log(`✅ Booking status synced to paid: ${bookingId}`)
       console.log(`   Verified status: ${verifiedBooking?.status}`)
       console.log(`   Verified timestamp: ${verifiedBooking?.updated_at}`)
       
-      if (verifiedBooking?.status !== 'confirmed') {
-        console.error(`❌ WARNING: Status update may have failed. Expected 'confirmed', got '${verifiedBooking?.status}'`)
+      if (verifiedBooking?.status !== 'paid') {
+        console.error(`❌ WARNING: Status update may have failed. Expected 'paid', got '${verifiedBooking?.status}'`)
       }
     }
 

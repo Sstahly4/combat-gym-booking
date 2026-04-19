@@ -31,8 +31,8 @@ export async function POST(
     console.log('Payment intent from URL:', payment_intent)
     console.log('Payment intent in booking:', booking.stripe_payment_intent_id)
 
-    // Idempotency: if already pending_confirmation or confirmed, don't re-send notifications.
-    if (booking.status === 'pending_confirmation' || booking.status === 'confirmed') {
+    // Idempotency: if already confirmed/paid, don't re-send notifications.
+    if (booking.status === 'confirmed' || booking.status === 'paid') {
       console.log(`Booking already ${booking.status} - skipping notify`)
       return NextResponse.json({ success: true, already_confirmed: true })
     }
@@ -60,13 +60,12 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid payment intent' }, { status: 400 })
     }
 
-    // Update booking status to pending_confirmation
-    // Payment is authorized but not captured yet
-    console.log('Updating booking status to pending_confirmation...')
+    // Canonical status: authorized bookings move to `confirmed` before capture.
+    console.log('Updating booking status to confirmed...')
     const { error: updateError } = await supabase
       .from('bookings')
       .update({ 
-        status: 'pending_confirmation',
+        status: 'confirmed',
         stripe_payment_intent_id: payment_intent // Ensure it's set
       })
       .eq('id', bookingId)
@@ -76,7 +75,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
     }
 
-    console.log('✅ Booking status updated to pending_confirmation')
+    console.log('✅ Booking status updated to confirmed')
 
     // Send notifications (admin + gym owner)
     console.log('Sending notifications...')

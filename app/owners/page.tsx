@@ -1,9 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check, ChevronDown } from 'lucide-react'
 import { RotatingWord } from '@/components/owners/rotating-word'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { createClient } from '@/lib/supabase/client'
+import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
@@ -215,25 +219,203 @@ const FAQ = [
   },
 ]
 
-const CTA_LINK = '/auth/signup?intent=owner'
+function CtaButton({
+  label,
+  href,
+  onClick,
+  showFreeBadge = false,
+  loading = false,
+}: {
+  label: string
+  href?: string
+  onClick?: () => void
+  showFreeBadge?: boolean
+  loading?: boolean
+}) {
+  const hrefRef = useRef(href)
+  hrefRef.current = href
 
-function CtaButton({ label, showFreeBadge = false }: { label: string; showFreeBadge?: boolean }) {
-  return (
-    <Link
-      href={CTA_LINK}
-      className="inline-flex items-center justify-center gap-3 rounded-md bg-[#006ce4] hover:bg-[#0057b8] text-white text-sm font-semibold px-6 py-3 transition-colors"
-    >
-      <span>{label}</span>
+  const content = (
+    <>
+      <span>{loading ? 'Please wait...' : label}</span>
       {showFreeBadge && (
         <span className="inline-flex items-center rounded-md bg-[#febb02] px-2.5 py-1 text-xs font-extrabold leading-none text-[#1a1a1a]">
           Free
         </span>
       )}
-    </Link>
+    </>
+  )
+
+  if (href) {
+    // Use a real button + full-page navigation so the first tap always commits (no <a> + re-render races).
+    const navClass =
+      'inline-flex items-center justify-center gap-3 rounded-md bg-[#006ce4] hover:bg-[#0057b8] text-white text-sm font-semibold px-6 py-3 transition-colors cursor-pointer disabled:opacity-60 disabled:pointer-events-none'
+    return (
+      <button
+        type="button"
+        className={navClass}
+        onClick={(e) => {
+          const target = hrefRef.current
+          if (!target) return
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+            window.open(target, '_blank', 'noopener,noreferrer')
+            return
+          }
+          window.location.href = target
+        }}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className="inline-flex items-center justify-center gap-3 rounded-md bg-[#006ce4] hover:bg-[#0057b8] text-white text-sm font-semibold px-6 py-3 transition-colors"
+    >
+      {content}
+    </button>
   )
 }
 
 export default function OwnersLandingPage() {
+  const router = useRouter()
+  const { user, profile, loading: authLoading } = useAuth()
+  const [ctaLoading, setCtaLoading] = useState(false)
+  /** Refined target after gym + readiness load; until then CTA uses safe default onboarding URL. */
+  const [ownerResolvedHref, setOwnerResolvedHref] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolveOwnerDestination = async () => {
+      if (!user || profile?.role !== 'owner') {
+        if (!cancelled) setOwnerResolvedHref(null)
+        return
+      }
+
+      try {
+        const supabase = createClient()
+        const { data: gym } = await supabase
+          .from('gyms')
+          .select('id')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (cancelled) return
+
+        if (!gym?.id) {
+          setOwnerResolvedHref(buildOnboardingWizardUrl('step-1', null))
+          return
+        }
+
+        const readinessResponse = await fetch(`/api/onboarding/readiness?gym_id=${encodeURIComponent(gym.id)}`)
+        if (cancelled) return
+
+        if (!readinessResponse.ok) {
+          setOwnerResolvedHref(buildOnboardingWizardUrl('step-1', gym.id))
+          return
+        }
+
+        const readiness = await readinessResponse.json()
+        if (readiness?.canGoLive) {
+          setOwnerResolvedHref('/manage')
+        } else {
+          setOwnerResolvedHref(buildOnboardingWizardUrl('step-1', gym.id))
+        }
+      } catch {
+        if (!cancelled) setOwnerResolvedHref(buildOnboardingWizardUrl('step-1', null))
+      }
+    }
+
+    if (!authLoading) {
+      void resolveOwnerDestination()
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, user, profile?.role])
+
+  const ctaConfig = useMemo(() => {
+    if (!user) {
+      return {
+        label: 'List your gym',
+        href: '/auth/signup?intent=owner&redirect=/manage/list-your-gym',
+      }
+    }
+
+    if (profile?.role === 'owner') {
+      const ownerHref = ownerResolvedHref ?? buildOnboardingWizardUrl('step-1', null)
+      const onboardingPath = ownerHref.startsWith('/manage/onboarding')
+      return {
+        label: onboardingPath ? 'Continue onboarding' : 'Owner dashboard',
+        href: ownerHref,
+      }
+    }
+
+    if (profile?.role === 'admin') {
+      return {
+        label: 'Admin dashboard',
+        href: '/admin',
+      }
+    }
+
+    return {
+      label: 'Start owner onboarding',
+      href: undefined,
+    }
+  }, [user, profile?.role, ownerResolvedHref])
+
+  const handleNonOwnerCta = async () => {
+    if (!user) {
+      router.push('/auth/signin?intent=owner&redirect=/owners')
+      return
+    }
+    if (profile?.role === 'admin') {
+      router.push('/admin')
+      return
+    }
+    setCtaLoading(true)
+    try {
+      const supabase = createClient()
+      const { data: authData } = await supabase.auth.getUser()
+      const activeUser = authData.user
+      if (!activeUser) {
+        router.push('/auth/signin?intent=owner&redirect=/owners')
+        return
+      }
+
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: activeUser.id,
+            role: 'owner',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        )
+        .select()
+
+      if (upsertError) {
+        router.push('/auth/signin?intent=owner&redirect=/owners')
+        return
+      }
+
+      router.push('/manage/security-onboarding')
+      router.refresh()
+    } catch {
+      router.push('/auth/signin?intent=owner&redirect=/owners')
+    } finally {
+      setCtaLoading(false)
+    }
+  }
+
   return (
     <div className="bg-white">
 
@@ -294,7 +476,13 @@ export default function OwnersLandingPage() {
                 Reach fighters actively looking for their next training camp — and manage every booking from a single dashboard.
               </p>
               <div className="mt-7 md:mt-8">
-                <CtaButton label="List your gym" showFreeBadge />
+                <CtaButton
+                  label={ctaConfig.label}
+                  href={ctaConfig.href}
+                  onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+                  showFreeBadge={!user}
+                  loading={ctaLoading}
+                />
               </div>
             </div>
 
@@ -338,7 +526,12 @@ export default function OwnersLandingPage() {
           </div>
 
           <div className="mt-8 sm:mt-10 lg:mt-12">
-            <CtaButton label="Start listing today" />
+            <CtaButton
+              label={ctaConfig.label}
+              href={ctaConfig.href}
+              onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+              loading={ctaLoading}
+            />
           </div>
         </div>
       </section>
@@ -413,7 +606,12 @@ export default function OwnersLandingPage() {
           </div>
 
           <div className="mt-12">
-            <CtaButton label="Get started today" />
+            <CtaButton
+              label={ctaConfig.label}
+              href={ctaConfig.href}
+              onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+              loading={ctaLoading}
+            />
           </div>
         </div>
       </section>
@@ -455,7 +653,12 @@ export default function OwnersLandingPage() {
           </div>
 
           <div className="mt-12">
-            <CtaButton label="Reach new guests today" />
+            <CtaButton
+              label={ctaConfig.label}
+              href={ctaConfig.href}
+              onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+              loading={ctaLoading}
+            />
           </div>
         </div>
       </section>
@@ -555,7 +758,12 @@ export default function OwnersLandingPage() {
           </div>
 
           <div className="mt-10">
-            <CtaButton label="Join gym owners like you" />
+            <CtaButton
+              label={ctaConfig.label}
+              href={ctaConfig.href}
+              onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+              loading={ctaLoading}
+            />
           </div>
         </div>
       </section>
@@ -579,7 +787,12 @@ export default function OwnersLandingPage() {
               </Link>
               {' '}and we&apos;ll get back to you quickly.
             </p>
-            <CtaButton label="Start welcoming guests" />
+            <CtaButton
+              label={ctaConfig.label}
+              href={ctaConfig.href}
+              onClick={!ctaConfig.href ? () => void handleNonOwnerCta() : undefined}
+              loading={ctaLoading}
+            />
           </div>
         </div>
       </section>

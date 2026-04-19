@@ -3,11 +3,31 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCurrency, CURRENCIES, LANGUAGES } from '@/lib/contexts/currency-context'
 import { CurrencyModal } from '@/components/currency-modal'
-import { Menu, X, Globe, Settings, HelpCircle, FileText, Building2, Info, Heart } from 'lucide-react'
+import {
+  Menu,
+  X,
+  Globe,
+  Settings,
+  FileText,
+  Building2,
+  Info,
+  LayoutDashboard,
+} from 'lucide-react'
+import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
+import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
+
+/** Anchor for the “Needs your response” block on the owner bookings page. */
+const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
+
+/** Plain sandwich-menu row (matches “Customer support” — text only, one weight). */
+const menuPlainClass =
+  'flex items-center px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
+const menuPlainBetweenClass =
+  'flex items-center justify-between gap-2 px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
 
 export function Navbar() {
   const { user, profile, signOut } = useAuth()
@@ -48,10 +68,55 @@ export function Navbar() {
   }
 
   const isOwnersPage = pathname === '/owners'
+  const isOwner = Boolean(user && profile?.role === 'owner')
+  const isManageOwnerShell =
+    Boolean(isOwner && pathname && pathname.startsWith('/manage'))
+  /** Block dashboard / header search shortcuts while finishing gym onboarding. */
+  const ownerOnboardingNavLock = Boolean(isOwner && pathname && isManageGymOnboardingNavLocked(pathname))
   const ownersAwarePartnerLabel = isOwnersPage ? 'Already a partner' : 'List your gym'
   const ownersAwarePartnerHref = isOwnersPage
-    ? (user ? '/manage' : '/auth/signin?intent=partner&redirect=/manage')
-    : (user ? '/manage/onboarding' : '/owners')
+    ? (user
+        ? (profile?.role === 'owner' ? '/manage' : '/owners')
+        : '/auth/signin?intent=partner&redirect=/manage')
+    : '/owners'
+
+  /** Signed-in gym owners: primary CTA is the owner dashboard, not “List your gym”. */
+  const topPartnerHref = isOwner && !isOwnersPage ? '/manage' : ownersAwarePartnerHref
+  const topPartnerLabel =
+    isOwner && !isOwnersPage ? 'Dashboard' : ownersAwarePartnerLabel
+  const showOwnerDashboardIcon = isOwner && topPartnerHref === '/manage'
+
+  /** During gym onboarding, show “List your gym” (→ /owners) instead of Dashboard. */
+  const navPartnerHref = ownerOnboardingNavLock ? '/owners' : topPartnerHref
+  const navPartnerLabel = ownerOnboardingNavLock ? 'List your gym' : topPartnerLabel
+  const navPartnerShowDashboardIcon = showOwnerDashboardIcon && !ownerOnboardingNavLock
+
+  const [ownerPendingCount, setOwnerPendingCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!isOwner || !user?.id) {
+      setOwnerPendingCount(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: gyms } = await supabase.from('gyms').select('id').eq('owner_id', user.id)
+      const ids = (gyms || []).map((g) => g.id)
+      if (ids.length === 0) {
+        if (!cancelled) setOwnerPendingCount(0)
+        return
+      }
+      const { count, error } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .in('gym_id', ids)
+        .eq('status', 'pending')
+      if (!cancelled) setOwnerPendingCount(error ? null : count ?? 0)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isOwner, user?.id])
 
   return (
     <>
@@ -59,18 +124,45 @@ export function Navbar() {
     <div className={`${isOwnersPage ? 'fixed inset-x-0 top-0' : 'sticky top-0'} z-50`}>
     <nav className={isOwnersPage ? 'bg-transparent' : 'bg-[#003580]'}>
       <div className="max-w-6xl mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="text-xl md:text-2xl font-bold tracking-tight text-white">
-              CombatBooking.com
-            </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {/* List your gym */}
-            <Link href={ownersAwarePartnerHref}>
-              <button className="px-3 py-2 rounded-full text-sm font-medium text-white/90 hover:bg-white/10 transition-colors">
-                {ownersAwarePartnerLabel}
-              </button>
+        <div
+          className={`flex min-w-0 items-center justify-between gap-2 md:gap-3 ${
+            isManageOwnerShell ? 'min-h-[5rem] py-2' : 'h-16'
+          }`}
+        >
+            {isManageOwnerShell ? (
+              <Link
+                href="/"
+                className="shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              >
+                <span className="block truncate text-left text-lg font-bold leading-snug tracking-tight text-white sm:text-xl md:text-2xl">
+                  CombatBooking.com
+                </span>
+                <span className="mt-0.5 block translate-x-px text-left text-base font-light leading-tight tracking-tight text-white sm:text-lg md:text-xl">
+                  Partner Hub
+                </span>
+              </Link>
+            ) : (
+              <Link
+                href="/"
+                className="shrink-0 truncate text-lg font-bold tracking-tight text-white sm:text-xl md:text-2xl"
+              >
+                CombatBooking.com
+              </Link>
+            )}
+
+          {/* Desktop Navigation — sit above page content that also uses z-50 (e.g. search popovers) */}
+          <div className="relative z-[100] hidden shrink-0 items-center gap-1.5 md:flex">
+            {isManageOwnerShell && !ownerOnboardingNavLock ? <ManageHeaderSearch /> : null}
+
+            {/* Partner CTA: list gym (visitors / owners in onboarding) or dashboard (signed-in owners) */}
+            <Link
+              href={navPartnerHref}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
+            >
+              {navPartnerShowDashboardIcon ? (
+                <LayoutDashboard className="h-4 w-4 shrink-0 opacity-95" strokeWidth={1.75} aria-hidden />
+              ) : null}
+              <span>{navPartnerLabel}</span>
             </Link>
 
             {/* Globe / Language + Currency */}
@@ -90,8 +182,8 @@ export function Navbar() {
             <div className="relative" ref={desktopMenuRef}>
               <button
                 type="button"
-                onClick={() => setDesktopMenuOpen(v => !v)}
-                className="flex items-center p-2 rounded-full hover:bg-white/10 transition-colors"
+                onClick={() => setDesktopMenuOpen((v) => !v)}
+                className="flex items-center p-2 rounded-full hover:bg-white/10 transition-colors touch-manipulation"
                 aria-label="Open menu"
               >
                 <Menu className="w-5 h-5 text-white/90" />
@@ -100,82 +192,109 @@ export function Navbar() {
               {desktopMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] py-1">
 
-                  {/* Help Centre */}
-                  <Link
-                    href="/faq"
-                    onClick={() => setDesktopMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors"
-                  >
-                    <HelpCircle className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <span className="font-medium">Help Centre</span>
-                  </Link>
+                  {/* List your gym — featured row (guests, or owners still in gym onboarding) */}
+                  {!isOwner || ownerOnboardingNavLock ? (
+                    <>
+                      <Link
+                        href="/owners"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-50 transition-colors"
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">List your gym</div>
+                          <div className="text-xs text-gray-500 mt-0.5 leading-snug">
+                            Start earning by listing your combat sports gym.
+                          </div>
+                        </div>
+                        <img
+                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          alt=""
+                          aria-hidden
+                          className="w-10 h-10 object-contain flex-shrink-0"
+                        />
+                      </Link>
+                      <div className="h-px bg-gray-100 mx-2" />
+                    </>
+                  ) : null}
 
-                  <div className="h-px bg-gray-100 mx-2" />
+                  {/* Guests: find trips */}
+                  {!isOwner ? (
+                    <Link
+                      href="/bookings"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className={menuPlainClass}
+                    >
+                      Find bookings
+                    </Link>
+                  ) : null}
 
-                  {/* List your gym — featured row */}
-                  <Link
-                    href={user ? "/manage/onboarding" : "/owners"}
-                    onClick={() => setDesktopMenuOpen(false)}
-                    className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-50 transition-colors"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">List your gym</div>
-                      <div className="text-xs text-gray-500 mt-0.5 leading-snug">Start earning by listing your combat sports gym.</div>
-                    </div>
-                    <img
-                      src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
-                      alt=""
-                      aria-hidden
-                      className="w-10 h-10 object-contain flex-shrink-0"
-                    />
-                  </Link>
+                  {/* Owner: property + personal (plain rows; calendar opens full bookings page) */}
+                  {isOwner ? (
+                    <>
+                      <div className="px-4 pb-1 pt-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                          Your property
+                        </p>
+                      </div>
+                      <Link
+                        href="/manage/calendar"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className={menuPlainClass}
+                      >
+                        Calendar &amp; availability
+                      </Link>
+                      <Link
+                        href={OWNER_INQUIRIES_HREF}
+                        onClick={() => setDesktopMenuOpen(false)}
+                        aria-label={
+                          (ownerPendingCount ?? 0) > 0
+                            ? `Inquiries, ${ownerPendingCount} pending`
+                            : 'Inquiries'
+                        }
+                        className={menuPlainBetweenClass}
+                      >
+                        <span>Inquiries</span>
+                        {(ownerPendingCount ?? 0) > 0 ? (
+                          <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-red-800">
+                            {ownerPendingCount! > 99 ? '99+' : ownerPendingCount}
+                          </span>
+                        ) : null}
+                      </Link>
+                      <Link
+                        href="/manage/promotions"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className={menuPlainClass}
+                      >
+                        Promotions
+                      </Link>
 
-                  <div className="h-px bg-gray-100 mx-2" />
+                      <div className="px-4 pb-1 pt-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Personal</p>
+                      </div>
+                      <Link href="/saved" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
+                        My favorites
+                      </Link>
+                    </>
+                  ) : (
+                    <Link href="/saved" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
+                      Saved gyms
+                    </Link>
+                  )}
 
-                  {/* Find Bookings */}
-                  <Link
-                    href="/bookings"
-                    onClick={() => setDesktopMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors"
-                  >
-                    Find Bookings
-                  </Link>
-
-                  {/* Saved Gyms */}
-                  <Link
-                    href="/saved"
-                    onClick={() => setDesktopMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors"
-                  >
-                    Saved Gyms
-                  </Link>
-
-                  {/* Customer support */}
-                  <Link
-                    href="/contact"
-                    onClick={() => setDesktopMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors"
-                  >
+                  {/* Customer support, then Help Centre */}
+                  <Link href="/contact" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
                     Customer support
+                  </Link>
+                  <Link href="/faq" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
+                    Help Centre
                   </Link>
 
                   {/* Admin links when applicable */}
                   {user && profile?.role === 'admin' && (
                     <>
                       <div className="h-px bg-gray-100 mx-2" />
-                      <Link href="/admin" onClick={() => setDesktopMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors">
-                        <Settings className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span>Admin Dashboard</span>
-                      </Link>
-                    </>
-                  )}
-
-                  {user && profile?.role === 'owner' && (
-                    <>
-                      <div className="h-px bg-gray-100 mx-2" />
-                      <Link href="/manage" onClick={() => setDesktopMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors">
-                        <Settings className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span>Gym Dashboard</span>
+                      <Link href="/admin" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
+                        Admin Dashboard
                       </Link>
                     </>
                   )}
@@ -186,29 +305,30 @@ export function Navbar() {
                   {user ? (
                     <button
                       type="button"
-                      onClick={() => { handleSignOut(); setDesktopMenuOpen(false) }}
-                      className="w-full flex items-center px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 transition-colors"
+                      onClick={() => {
+                        handleSignOut()
+                        setDesktopMenuOpen(false)
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors"
                     >
                       Sign out
                     </button>
                   ) : (
-                    <>
-                      <Link
-                        href="/auth/signin"
-                        onClick={() => setDesktopMenuOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-colors"
-                      >
-                        Log in or sign up
-                      </Link>
-                    </>
+                    <Link
+                      href="/auth/signin"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block px-4 py-3 text-sm font-normal text-gray-900 hover:bg-gray-50 transition-colors"
+                    >
+                      Log in or sign up
+                    </Link>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Mobile Navigation */}
-          <div className="flex md:hidden items-center gap-1">
+          {/* Mobile Navigation — same stacking guard as desktop */}
+          <div className="flex md:hidden items-center gap-1 relative z-[100]">
             {/* Globe / Language + Currency - Mobile */}
             <button
               type="button"
@@ -225,8 +345,8 @@ export function Navbar() {
             {/* Hamburger Menu Button */}
             <button
               type="button"
-              className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors touch-manipulation"
+              onClick={() => setMobileMenuOpen((v) => !v)}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -305,30 +425,123 @@ export function Navbar() {
                   {/* Divider */}
                   <div className="h-px bg-gray-200 my-2" />
 
-                  {/* List your gym — featured section */}
+                  {/* Partner CTA: list gym (guests / owners in onboarding) or owner dashboard */}
                   <div className="pt-2">
-                    <Link
-                      href={user ? "/manage/onboarding" : "/owners"}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between gap-4 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors rounded-xl px-2 touch-manipulation"
-                    >
-                      <div>
-                        <div className="text-[15px] font-semibold text-gray-900">List your gym</div>
-                        <div className="text-[13px] text-gray-500 mt-1 leading-snug">
-                          Start earning by listing your combat sports gym.
+                    {isOwner && !ownerOnboardingNavLock ? (
+                      <Link
+                        href="/manage"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center justify-between gap-4 rounded-xl px-2 py-4 transition-colors hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#003580]/10">
+                            <LayoutDashboard className="h-7 w-7 text-[#003580]" strokeWidth={1.75} aria-hidden />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-semibold text-gray-900">Dashboard</div>
+                            <div className="mt-1 text-[13px] leading-snug text-gray-500">
+                              Manage your gym, bookings, and settings.
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <img
-                        src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
-                        alt=""
-                        aria-hidden
-                        className="w-14 h-14 object-contain flex-shrink-0"
-                      />
-                    </Link>
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/owners"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center justify-between gap-4 rounded-xl px-2 py-4 transition-colors hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                      >
+                        <div>
+                          <div className="text-[15px] font-semibold text-gray-900">List your gym</div>
+                          <div className="mt-1 text-[13px] leading-snug text-gray-500">
+                            Start earning by listing your combat sports gym.
+                          </div>
+                        </div>
+                        <img
+                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          alt=""
+                          aria-hidden
+                          className="h-14 w-14 flex-shrink-0 object-contain"
+                        />
+                      </Link>
+                    )}
                   </div>
 
                   {/* Divider */}
                   <div className="h-px bg-gray-200 my-2" />
+
+                  {/* Guests: find trips + saved (plain, matches desktop) */}
+                  {!isOwner ? (
+                    <div className="space-y-0 pt-2">
+                      <Link
+                        href="/bookings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        Find bookings
+                      </Link>
+                      <Link
+                        href="/saved"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        Saved gyms
+                      </Link>
+                    </div>
+                  ) : null}
+
+                  {!isOwner ? <div className="h-px bg-gray-200 my-2" /> : null}
+
+                  {/* Owner: same plain rows as desktop (calendar → full bookings page) */}
+                  {isOwner ? (
+                    <div className="space-y-0 pt-2">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 px-0">
+                        Your property
+                      </div>
+                      <Link
+                        href="/manage/calendar"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        Calendar &amp; availability
+                      </Link>
+                      <Link
+                        href={OWNER_INQUIRIES_HREF}
+                        onClick={() => setMobileMenuOpen(false)}
+                        aria-label={
+                          (ownerPendingCount ?? 0) > 0
+                            ? `Inquiries, ${ownerPendingCount} pending`
+                            : 'Inquiries'
+                        }
+                        className="flex w-full items-center justify-between gap-2 py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        <span>Inquiries</span>
+                        {(ownerPendingCount ?? 0) > 0 ? (
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-normal tabular-nums text-red-800">
+                            {ownerPendingCount! > 99 ? '99+' : ownerPendingCount}
+                          </span>
+                        ) : null}
+                      </Link>
+                      <Link
+                        href="/manage/promotions"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        Promotions
+                      </Link>
+
+                      <div className="pt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Personal</div>
+                      <Link
+                        href="/saved"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        My favorites
+                      </Link>
+                    </div>
+                  ) : null}
+
+                  {isOwner ? <div className="h-px bg-gray-200 my-2" /> : null}
 
                   {/* Settings and legal Section */}
                   <div className="pt-2">
@@ -406,20 +619,24 @@ export function Navbar() {
                   {/* Divider */}
                   <div className="h-px bg-gray-200 my-2" />
 
-                  {/* Help and support Section (moved to bottom, below Cookie Policy) */}
+                  {/* Help and support — Customer support first, then Help Centre (plain rows) */}
                   <div className="pt-2">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-0">Help and support</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-0">
+                      Help and support
+                    </div>
                     <Link
                       href="/contact"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center justify-between py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                      className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          <HelpCircle className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div className="text-sm text-gray-900">Contact Customer Service</div>
-                      </div>
+                      Customer support
+                    </Link>
+                    <Link
+                      href="/faq"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                    >
+                      Help Centre
                     </Link>
                   </div>
 
@@ -459,49 +676,7 @@ export function Navbar() {
                           </>
                         )}
 
-                        {/* Owner Dashboard */}
-                        {profile?.role === 'owner' && (
-                          <Link
-                            href="/manage"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="w-full flex items-center justify-between py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                <Settings className="w-5 h-5 text-gray-600" />
-                              </div>
-                              <div className="text-sm text-gray-900">Dashboard</div>
-                            </div>
-                          </Link>
-                        )}
-
-                        {/* My Bookings */}
-                        <Link
-                          href="/bookings"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="w-full flex items-center justify-between py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-5 h-5 text-gray-600" />
-                            </div>
-                            <div className="text-sm text-gray-900">My Bookings</div>
-                          </div>
-                        </Link>
-
-                        {/* Saved Gyms */}
-                        <Link
-                          href="/saved"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="w-full flex items-center justify-between py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                              <Heart className="w-5 h-5 text-gray-600" />
-                            </div>
-                            <div className="text-sm text-gray-900">Saved Gyms</div>
-                          </div>
-                        </Link>
+                        {/* Find bookings / saved live above for guests; owners use “Your property” block */}
 
                         {/* Sign Out */}
                         <button

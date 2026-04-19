@@ -28,6 +28,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    // Prevent privilege escalation: only existing admins can assign admin role.
+    if (role === 'admin' && currentProfile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Try with regular client first (respects RLS)
     const { error: updateError } = await supabase
       .from('profiles')

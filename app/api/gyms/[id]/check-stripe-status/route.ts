@@ -1,18 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Use admin client to bypass RLS - this endpoint is only used from admin page
-    // which already verifies admin access on the client side
+    const authClient = await createClient()
+    const {
+      data: { user },
+    } = await authClient.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await authClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Use admin client for data reads after authz is verified.
     const supabase = createAdminClient()
 
     // Get gym
@@ -37,6 +54,13 @@ export async function GET(
         error: 'Gym not found',
         gymId: params.id 
       }, { status: 404 })
+    }
+
+    const ownerId = gym.owner_id as string
+    const isAdmin = profile.role === 'admin'
+    const isOwner = ownerId === user.id
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     if (!gym.stripe_account_id) {

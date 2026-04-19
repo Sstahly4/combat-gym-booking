@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChevronDown, Shield, Dumbbell, FileText, HelpCircle } from 'lucide-react'
+import { ChevronDown, Shield, Dumbbell, FileText, HelpCircle, Banknote } from 'lucide-react'
 import { useEffect } from 'react'
 
 export default function FAQPage() {
@@ -65,6 +65,7 @@ interface FAQItem {
 const faqCategories = [
   { id: 'safety', label: 'Safety & Security', icon: Shield },
   { id: 'bookings', label: 'Bookings', icon: FileText },
+  { id: 'payments', label: 'Payments & disputes', icon: Banknote },
   { id: 'gyms', label: 'Gyms & Training', icon: Dumbbell },
   { id: 'general', label: 'General', icon: HelpCircle },
 ]
@@ -118,7 +119,36 @@ const faqs: FAQItem[] = [
     id: 'booking-2',
     category: 'bookings',
     question: 'When will I be charged for my booking?',
-    answer: 'Your payment method is authorized when you complete the booking, but funds are only charged after the gym confirms availability. This typically happens within 24-48 hours. You\'ll receive an email confirmation once your payment is processed and the booking is confirmed.'
+    answer:
+      'Your card is usually authorised at checkout. The actual charge (capture) happens after the free-cancellation window shown on your package has closed — so if you cancel in time, the authorisation is released and you pay nothing. If your package has no free-cancellation window, capture may happen sooner. You\'ll see the exact policy before you pay, and the gym still confirms availability where your booking flow requires it.',
+  },
+  {
+    id: 'payments-1',
+    category: 'payments',
+    question: 'Who charges my card?',
+    answer:
+      'CombatBooking is the merchant of record for payments on the platform. Your bank statement shows a charge from us. We collect payment under the cancellation and package terms you agree to at checkout; the gym provides your training or stay as an independent partner.',
+  },
+  {
+    id: 'payments-2',
+    category: 'payments',
+    question: 'When does the gym get paid?',
+    answer:
+      'Today we typically settle with gyms on an agreed manual schedule (platform-first flow). What matters for you as a guest: your cancellation rights follow the policy shown at checkout, and your card is only captured after the free-cancellation deadline for your package has passed (unless there is no free-cancellation window). Automated payouts to gyms may change over time; your checkout terms stay what you agreed to for that booking.',
+  },
+  {
+    id: 'payments-3',
+    category: 'payments',
+    question: 'What if I cancel inside or outside the cancellation window?',
+    answer:
+      'Inside the window — before the deadline shown for your package — you can cancel without being charged: we release the card authorisation. After that window, your payment may be captured and you are committed per the policy you agreed to at checkout. Contact support with your booking reference if you are unsure where you sit.',
+  },
+  {
+    id: 'payments-4',
+    category: 'payments',
+    question: 'What if I dispute the charge with my bank?',
+    answer:
+      'Please contact our support team first with your booking reference; many issues are resolved faster than a bank dispute. If you open a chargeback, we may submit evidence of what you agreed to at checkout (including policy and timing). Misuse of chargebacks can affect future bookings. Nothing here limits your statutory rights where they apply.',
   },
   {
     id: 'booking-3',

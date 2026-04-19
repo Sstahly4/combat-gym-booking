@@ -73,9 +73,13 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Cancellation and Refunds</h2>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Cancellation policies vary by gym and package type</li>
-              <li>Free cancellation policies are clearly displayed on each package</li>
-              <li>Refunds are processed according to the specific gym's cancellation policy</li>
+              <li>
+                You are bound by the <strong>gym's cancellation policy as shown and agreed to at checkout</strong> for that
+                booking (including the cancellation deadline and refund position recorded at payment).
+              </li>
+              <li>Cancellation policies vary by gym and package type; the applicable terms for your purchase are those presented on the package and confirmed at checkout.</li>
+              <li>Free cancellation windows, where offered, are clearly displayed; card charges may be captured only after that window has closed, as described in checkout and payment processing notices.</li>
+              <li>Refunds are processed according to that policy and these terms</li>
               <li>Refunds may take 5-10 business days to appear in your account</li>
               <li>We are not responsible for currency conversion fees or bank charges</li>
             </ul>
@@ -100,12 +104,29 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Payment Terms</h2>
             <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Merchant of record:</strong> For card payments made through the platform, <strong>CombatBooking</strong>{' '}
+                acts as the merchant of record. Your payment is processed with us; the gym provides the training or related
+                services as an independent supplier. What you agree to at checkout (including cancellation terms) is recorded
+                with the transaction for reference if a payment is disputed.
+              </li>
               <li>All prices are displayed in the selected currency</li>
               <li>Prices include applicable taxes unless otherwise stated</li>
               <li>Payment is processed securely through third-party payment processors</li>
               <li>We reserve the right to refuse or cancel bookings at our discretion</li>
-              <li>In case of payment disputes, contact our support team</li>
+              <li>In case of payment disputes, contact our support team before initiating a bank or card chargeback where possible</li>
             </ul>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">7a. Gym partners — chargeback recovery</h2>
+            <p>
+              If you operate a gym or training business on the platform: where permitted by law and your partner agreement with
+              us, <strong>CombatBooking may recover chargeback losses, refunds, or payment dispute costs from future payouts</strong>{' '}
+              or other amounts owed to you. This is intended to align financial exposure with the booking and payment evidence we
+              hold. <strong>This clause must be reviewed by your own lawyer</strong> before you rely on it commercially; it is not
+              legal advice.
+            </p>
           </section>
 
           <section>
@@ -156,8 +177,13 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <div className="text-sm text-gray-500 mt-8 pt-6 border-t">
-            <p>Last Updated: January 2026</p>
+          <div className="text-sm text-gray-500 mt-8 pt-6 border-t space-y-2">
+            <p>
+              <strong>Legal review:</strong> The merchant-of-record, checkout-policy, and partner recovery clauses above are
+              for transparency and must be reviewed by qualified counsel in your jurisdiction before you treat them as
+              legally complete.
+            </p>
+            <p>Last Updated: March 2026</p>
           </div>
         </div>
       </div>

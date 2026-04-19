@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
+    const access = await getOwnerAccessContext()
+    if (access.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    // Check if user is gym owner
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'owner') {
+    if (access.status !== 'ok') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    const { supabase } = access
 
     const bookingId = params.id
 
@@ -43,11 +34,11 @@ export async function POST(
 
     const gym = booking.gym as any
 
-    if (gym.owner_id !== user.id) {
+    if (gym.owner_id !== access.userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    if (booking.status !== 'awaiting_approval') {
+    if (booking.status !== 'pending' && booking.status !== 'confirmed') {
       return NextResponse.json({ error: 'Invalid booking status' }, { status: 400 })
     }
 

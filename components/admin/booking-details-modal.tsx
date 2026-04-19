@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Booking, Gym, Package as PackageType, PackageVariant } from '@/lib/types/database'
+import { toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 interface BookingWithDetails extends Booking {
   gym?: Gym
@@ -89,16 +90,17 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
   }
 
   const getStatusBadge = (status: string) => {
+    const canonicalStatus = toCanonicalBookingStatus(status)
     const statusConfig: Record<string, { label: string; className: string }> = {
-      pending_payment: { label: 'Pending Payment', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-      pending_confirmation: { label: 'Pending Confirmation', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+      pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
       confirmed: { label: 'Confirmed', className: 'bg-green-100 text-green-800 border-green-200' },
+      paid: { label: 'Paid', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
       declined: { label: 'Declined', className: 'bg-red-100 text-red-800 border-red-200' },
       completed: { label: 'Completed', className: 'bg-green-100 text-green-800 border-green-200' },
       cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800 border-red-200' }
     }
 
-    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800 border-gray-200' }
+    const config = statusConfig[canonicalStatus] || { label: canonicalStatus, className: 'bg-gray-100 text-gray-800 border-gray-200' }
     return <Badge className={config.className}>{config.label}</Badge>
   }
 
@@ -173,7 +175,7 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
       console.log('Sync response:', data)
       
       if (data.already_confirmed) {
-        alert('Booking is already confirmed. Status is in sync with Stripe.')
+        alert('Booking is already paid. Status is in sync with Stripe.')
         // Still refresh to ensure UI is up to date
         await fetchBookingDetails(true)
         // Force refresh with delay to ensure DB is updated
@@ -181,7 +183,7 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
           if (onRefresh) onRefresh()
         }, 500)
       } else if (data.synced || data.status_updated) {
-        console.log('✅ Sync successful, status should be updated to confirmed')
+        console.log('✅ Sync successful, status should be updated to paid')
         alert(`✅ Booking status synced! ${data.email_sent ? 'Confirmation email sent.' : 'Email not sent (no guest email).'}`)
         // Force refresh booking details immediately
         await fetchBookingDetails(true)
@@ -491,10 +493,10 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                     <div className="font-mono text-sm break-all">{booking.stripe_payment_intent_id}</div>
                   </div>
                 )}
-                {/* Action buttons for pending bookings */}
-                {(booking.status === 'pending_payment' || booking.status === 'pending_confirmation' || booking.status === 'awaiting_approval') && (
+                {/* Action buttons for pending/confirmed bookings */}
+                {(toCanonicalBookingStatus(booking.status) === 'pending' || toCanonicalBookingStatus(booking.status) === 'confirmed') && (
                   <div className="pt-4 border-t space-y-3">
-                    {booking.stripe_payment_intent_id && (booking.status === 'pending_confirmation' || booking.status === 'awaiting_approval') && (
+                    {booking.stripe_payment_intent_id && toCanonicalBookingStatus(booking.status) === 'confirmed' && (
                       <Button
                         onClick={handleCapturePayment}
                         className="w-full bg-[#003580] hover:bg-[#003580]/90"
@@ -532,13 +534,13 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                       )}
                     </Button>
                     <p className="text-xs text-gray-500 mt-2 text-center">
-                      {booking.status === 'pending_payment' 
+                      {toCanonicalBookingStatus(booking.status) === 'pending'
                         ? 'Use "Sync with Stripe" if you manually captured the payment in Stripe dashboard. This will check Stripe and update the booking status if payment was captured.'
                         : 'Use "Sync with Stripe" if you manually captured the payment in Stripe dashboard'}
                     </p>
                   </div>
                 )}
-                {booking.status === 'confirmed' && booking.guest_email && (
+                {(toCanonicalBookingStatus(booking.status) === 'paid' || toCanonicalBookingStatus(booking.status) === 'completed') && booking.guest_email && (
                   <div className="pt-4 border-t">
                     <Button
                       onClick={handleResendConfirmationEmail}

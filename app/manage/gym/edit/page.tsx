@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -12,41 +12,21 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Gym, GymImage } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
-import { GymEditSidebar } from '@/components/manage/gym-edit-sidebar'
-import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight, Menu, X as XIcon } from 'lucide-react'
+import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
+import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
+import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
+import {
+  DEFAULT_GYM_AMENITIES,
+  GYM_AMENITY_ORDER,
+  labelGymAmenity,
+  mergeGymAmenitiesFromDb,
+} from '@/lib/constants/gym-amenities'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-
-// Complete list of all countries
-const ALL_COUNTRIES = [
-  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
-  'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
-  'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic',
-  'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic',
-  'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia',
-  'Fiji', 'Finland', 'France',
-  'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana',
-  'Haiti', 'Honduras', 'Hungary',
-  'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy',
-  'Jamaica', 'Japan', 'Jordan',
-  'Kazakhstan', 'Kenya', 'Kiribati', 'Korea, North', 'Korea, South', 'Kuwait', 'Kyrgyzstan',
-  'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg',
-  'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
-  'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Norway',
-  'Oman',
-  'Pakistan', 'Palau', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
-  'Qatar',
-  'Romania', 'Russia', 'Rwanda',
-  'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria',
-  'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
-  'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan',
-  'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
-  'Yemen',
-  'Zambia', 'Zimbabwe'
-].sort()
 
 interface GymWithImages extends Gym {
   images: GymImage[]
@@ -59,6 +39,7 @@ function EditGymForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const gymId = searchParams.get('id')
+  const sectionFromUrl = searchParams.get('section')
   
   const { user, profile, loading: authLoading } = useAuth()
   const [gym, setGym] = useState<GymWithImages | null>(null)
@@ -66,67 +47,14 @@ function EditGymForm() {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('basic')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const scrolledToSectionKey = useRef<string | null>(null)
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false)
 
   // Form State
   const [disciplines, setDisciplines] = useState<string[]>([])
-  const [amenities, setAmenities] = useState<Record<string, boolean>>({
-    accommodation: false,
-    wifi: false,
-    equipment: false,
-    showers: false,
-    parking: false,
-    meals: false,
-    locker_room: false,
-    security: false,
-    air_conditioning: false,
-    swimming_pool: false,
-    sauna: false,
-    massage: false,
-    laundry: false,
-    airport_transfer: false,
-    twenty_four_hour: false,
-    personal_training: false,
-    group_classes: false,
-    pro_shop: false,
-    nutritionist: false,
-    physiotherapy: false,
-    recovery_facilities: false,
-    restaurant: false,
-    cafe: false,
-    english_speaking: false,
-    beginner_friendly: false,
-    competition_prep: false,
-    ice_bath: false,
-    steam_room: false,
-    hot_tub: false,
-    yoga_studio: false,
-    crossfit_area: false,
-    outdoor_training: false,
-    weight_room: false,
-    cardio_equipment: false,
-    boxing_ring: false,
-    mma_cage: false,
-    wrestling_mats: false,
-    climbing_wall: false,
-    bike_storage: false,
-    towel_service: false,
-    water_station: false,
-    changing_rooms: false,
-    first_aid: false,
-    fire_safety: false,
-    wheelchair_accessible: false,
-    wifi_lounge: false,
-    co_working_space: false,
-    printing_facilities: false,
-    atm: false,
-    vending_machines: false,
-    bike_rental: false,
-    scooter_rental: false,
-    tour_booking: false,
-    visa_assistance: false,
-  })
+  const [amenities, setAmenities] = useState<Record<string, boolean>>(() => ({
+    ...DEFAULT_GYM_AMENITIES,
+  }))
   const [newImages, setNewImages] = useState<File[]>([])
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
   const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
@@ -211,7 +139,7 @@ function EditGymForm() {
 
       // Restore form state
       if (formState.disciplines) setDisciplines(formState.disciplines)
-      if (formState.amenities) setAmenities(formState.amenities)
+      if (formState.amenities) setAmenities(mergeGymAmenitiesFromDb(formState.amenities))
       if (formState.selectedCountry) setSelectedCountry(formState.selectedCountry)
       if (formState.openingHours) setOpeningHours(formState.openingHours)
       if (formState.trainingSchedule) setTrainingSchedule(formState.trainingSchedule)
@@ -273,6 +201,29 @@ function EditGymForm() {
     }
   }, [user, profile, gymId, authLoading])
 
+  useEffect(() => {
+    if (!gym || !sectionFromUrl) return
+    const validSectionIds = new Set([
+      'basic',
+      'location',
+      'images',
+      'disciplines',
+      'schedule',
+      'trainers',
+      'faq',
+      'packages',
+    ])
+    if (!validSectionIds.has(sectionFromUrl)) return
+    const key = `${(gym as { id: string }).id}:${sectionFromUrl}`
+    if (scrolledToSectionKey.current === key) return
+    scrolledToSectionKey.current = key
+    setActiveSection(sectionFromUrl)
+    const t = window.setTimeout(() => {
+      document.getElementById(`section-${sectionFromUrl}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 200)
+    return () => window.clearTimeout(t)
+  }, [gym, sectionFromUrl])
+
   const fetchGym = async (id: string) => {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -326,82 +277,16 @@ function EditGymForm() {
       setDisciplines(data.disciplines || [])
     }
     
-    // Initialize all amenities with defaults, then merge saved data
-    const defaultAmenities: Record<string, boolean> = {
-      accommodation: false,
-      wifi: false,
-      equipment: false,
-      showers: false,
-      parking: false,
-      meals: false,
-      locker_room: false,
-      security: false,
-      air_conditioning: false,
-      swimming_pool: false,
-      sauna: false,
-      massage: false,
-      laundry: false,
-      airport_transfer: false,
-      twenty_four_hour: false,
-      personal_training: false,
-      group_classes: false,
-      pro_shop: false,
-      nutritionist: false,
-      physiotherapy: false,
-      recovery_facilities: false,
-      restaurant: false,
-      cafe: false,
-      english_speaking: false,
-      beginner_friendly: false,
-      competition_prep: false,
-      ice_bath: false,
-      steam_room: false,
-      hot_tub: false,
-      yoga_studio: false,
-      crossfit_area: false,
-      outdoor_training: false,
-      weight_room: false,
-      cardio_equipment: false,
-      boxing_ring: false,
-      mma_cage: false,
-      wrestling_mats: false,
-      climbing_wall: false,
-      bike_storage: false,
-      towel_service: false,
-      water_station: false,
-      changing_rooms: false,
-      first_aid: false,
-      fire_safety: false,
-      wheelchair_accessible: false,
-      wifi_lounge: false,
-      co_working_space: false,
-      printing_facilities: false,
-      atm: false,
-      vending_machines: false,
-      bike_rental: false,
-      scooter_rental: false,
-      tour_booking: false,
-      visa_assistance: false,
-    }
     if (!hasCachedState) {
-      setAmenities({
-        ...defaultAmenities,
-        ...(data.amenities || {}),
-      })
+      setAmenities(mergeGymAmenitiesFromDb(data.amenities))
     } else {
-      // If we restored from cache, merge in any NEW amenities from database (don't overwrite cached values)
-      // Only add amenities that exist in database but not in cache
-      setAmenities(prev => {
-        const merged = { ...defaultAmenities, ...prev }
-        // Only add new amenities from database that don't exist in cache
-        if (data.amenities) {
-          Object.keys(data.amenities).forEach(key => {
-            if (!(key in prev)) {
-              merged[key] = data.amenities[key]
-            }
-          })
+      setAmenities((prev) => {
+        const fromDb = mergeGymAmenitiesFromDb(data.amenities)
+        const out = { ...fromDb }
+        for (const k of GYM_AMENITY_ORDER) {
+          if (k in prev) out[k] = prev[k] as boolean
         }
-        return merged
+        return out
       })
     }
     
@@ -470,10 +355,10 @@ function EditGymForm() {
     })
   }
   
-  // Stable alphabetical sort - don't reorder when items are checked/unchecked
-  const sortedAmenities = Object.entries(amenities).sort(([a], [b]) => {
-    return a.localeCompare(b)
-  })
+  const orderedAmenityEntries: [string, boolean][] = GYM_AMENITY_ORDER.map((key) => [
+    key,
+    amenities[key] ?? false,
+  ])
 
   const handleNewImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -751,7 +636,7 @@ function EditGymForm() {
       price_per_week: formData.get('price_per_week') ? parseFloat(formData.get('price_per_week') as string) : null,
       currency: formData.get('currency') as string,
       disciplines: [...disciplines], // Create new array to avoid readonly issues
-      amenities: { ...amenities }, // Create new object to avoid readonly issues
+      amenities: mergeGymAmenitiesFromDb(amenities),
       google_maps_link: formData.get('google_maps_link') as string || null,
       instagram_link: formData.get('instagram_link') as string || null,
       facebook_link: formData.get('facebook_link') as string || null,
@@ -892,72 +777,37 @@ function EditGymForm() {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-    setSidebarOpen(false) // Close mobile sidebar
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="md:hidden sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link 
-            href="/manage" 
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+    <div className="min-h-full bg-gray-50">
+      {/* Mobile header */}
+      <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Link href="/manage" className="inline-flex items-center text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-4 h-4 mr-1" />
             <span className="text-sm font-medium">Back</span>
           </Link>
-          <h1 className="text-lg font-bold text-gray-900">Edit Gym</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2"
-          >
-            {sidebarOpen ? <XIcon className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
+          <h1 className="text-lg font-bold text-gray-900 truncate">Edit gym</h1>
         </div>
       </div>
 
-      <div className="flex">
-        {/* Sidebar Navigation - Fixed below navbar */}
-        <aside className={`
-          fixed top-16 md:top-16 left-0 h-[calc(100vh-4rem)] z-40 bg-white border-r border-gray-200
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          transition-transform duration-300 ease-in-out
-        `}>
-          <GymEditSidebar
-            activeSection={activeSection}
-            onSectionChange={scrollToSection}
-            sections={sectionStatus}
+      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+        <div className="hidden md:block mb-6">
+          <ManageBreadcrumbs
+            items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Edit gym' }]}
           />
-        </aside>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit gym profile</h1>
+          <p className="text-gray-600 text-sm mt-1">Update your listing — changes sync to your preview and public page.</p>
+        </div>
 
-        {/* Overlay for mobile */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        <GymEditSectionTabs
+          activeSection={activeSection}
+          onSectionChange={scrollToSection}
+          sections={sectionStatus}
+        />
 
-        {/* Main Content - Add left margin on desktop to account for fixed sidebar */}
-        <main className="flex-1 min-w-0 md:ml-64">
-          <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
-            {/* Desktop Header */}
-            <div className="hidden md:block mb-8">
-              <Link 
-                href="/manage" 
-                className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Link>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Gym Profile</h1>
-              <p className="text-gray-600">Update your gym information to attract more bookings</p>
-            </div>
-
-            <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
+        <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
           {/* Basic Information */}
           <Card id="section-basic" className="scroll-mt-6">
             <CardHeader>
@@ -1115,8 +965,8 @@ function EditGymForm() {
                         />
                         <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden">
                           <div className="overflow-y-auto max-h-60">
-                            {ALL_COUNTRIES
-                              .filter(country => 
+                            {ALL_GYM_COUNTRIES
+                              .filter(country =>
                                 country.toLowerCase().includes(countrySearch.toLowerCase())
                               )
                               .map(country => (
@@ -1135,7 +985,7 @@ function EditGymForm() {
                                   {country}
                                 </button>
                               ))}
-                            {ALL_COUNTRIES.filter(country => 
+                            {ALL_GYM_COUNTRIES.filter(country =>
                               country.toLowerCase().includes(countrySearch.toLowerCase())
                             ).length === 0 && (
                               <div className="px-4 py-2 text-sm text-gray-500">
@@ -1265,10 +1115,10 @@ function EditGymForm() {
                   <div>
                     <Label>Amenities</Label>
                     <p className="text-xs text-gray-500 mt-1">
-                      Select all that apply. More amenities help customers find what they're looking for.
+                      Training gear, classes, and facility details tailored for combat sports—pick everything that applies.
                     </p>
                   </div>
-                  {sortedAmenities.length > 12 && (
+                  {orderedAmenityEntries.length > 12 && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -1284,14 +1134,16 @@ function EditGymForm() {
                       ) : (
                         <>
                           <ChevronDown className="w-3 h-3 mr-1 inline" />
-                          Show More ({sortedAmenities.length - 12} more)
+                          Show More ({orderedAmenityEntries.length - 12} more)
                         </>
                       )}
                     </Button>
                   )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                  {sortedAmenities.slice(0, amenitiesExpanded ? sortedAmenities.length : 12).map(([key, value]) => (
+                  {orderedAmenityEntries
+                    .slice(0, amenitiesExpanded ? orderedAmenityEntries.length : 12)
+                    .map(([key, value]) => (
                     <label 
                       key={key} 
                       className={`flex items-start gap-2.5 cursor-pointer p-2.5 rounded-md border transition-colors ${
@@ -1306,8 +1158,8 @@ function EditGymForm() {
                         onChange={(e) => handleAmenityChange(key, e.target.checked)}
                         className="rounded w-4 h-4 text-[#003580] focus:ring-2 focus:ring-[#003580] focus:ring-offset-1 cursor-pointer flex-shrink-0 mt-0.5"
                       />
-                      <span className="text-sm text-gray-700 capitalize leading-tight select-none flex-1">
-                        {key.replace(/_/g, ' ')}
+                      <span className="text-sm text-gray-700 leading-tight select-none flex-1">
+                        {labelGymAmenity(key)}
                       </span>
                     </label>
                   ))}
@@ -1722,9 +1574,7 @@ function EditGymForm() {
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
-          </div>
-        </main>
-      </div>
+      </main>
     </div>
   )
 }

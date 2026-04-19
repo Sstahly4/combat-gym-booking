@@ -103,11 +103,9 @@ export async function POST(request: NextRequest) {
       attempts++
     }
 
-    // Determine initial status based on booking mode
-    // Request-to-Book: Start as 'pending' (no payment intent yet)
-    // Instant: Start as 'pending_payment' (create payment intent immediately)
-    const initialStatus = bookingMode === 'request_to_book' ? 'pending' : 'pending_payment'
-    const requestSubmittedAt = bookingMode === 'request_to_book' ? new Date().toISOString() : null
+    // Canonical status model starts all new bookings as `pending`.
+    const initialStatus = 'pending'
+    const requestSubmittedAt = new Date().toISOString()
 
     // Create booking (guest or authenticated)
     const { data: booking, error: bookingError } = await supabase

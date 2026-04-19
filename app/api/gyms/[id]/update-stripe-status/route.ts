@@ -1,22 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 // Webhook or manual trigger to update Stripe Connect verification status
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const ownerAccess = await getOwnerAccessContext()
+    let supabase: any
+    let userId = ''
+    let isAdmin = false
 
-    if (!user) {
+    if (ownerAccess.status === 'ok') {
+      supabase = ownerAccess.supabase
+      userId = ownerAccess.userId
+    } else if (ownerAccess.status === 'not_owner' && ownerAccess.userId) {
+      // Allow admins to trigger status refresh for support flows.
+      const authClient = await createClient()
+      const { data: profile } = await authClient
+        .from('profiles')
+        .select('role')
+        .eq('id', ownerAccess.userId)
+        .single()
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      supabase = authClient
+      userId = ownerAccess.userId
+      isAdmin = true
+    } else if (ownerAccess.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    } else {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Get gym
@@ -30,14 +50,7 @@ export async function POST(
       return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
     }
 
-    // Check ownership or admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (gym.owner_id !== user.id && profile?.role !== 'admin') {
+    if (!isAdmin && gym.owner_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

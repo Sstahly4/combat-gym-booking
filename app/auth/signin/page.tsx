@@ -13,7 +13,7 @@ function SignInPageContent() {
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('redirect')
   const intent = searchParams.get('intent')
-  const isPartnerIntent = intent === 'partner'
+  const isPartnerIntent = intent === 'partner' || intent === 'owner'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,16 +26,38 @@ function SignInPageContent() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        redirectBasedOnProfile(user.id)
-      } else {
-        setCheckingSession(false)
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // If the server still rejects /manage/* (no cookie sync), auto-assign would loop forever.
+          if (redirectUrl) {
+            const bounceKey = `auth-redirect-bounce:${redirectUrl}`
+            const last = sessionStorage.getItem(bounceKey)
+            const now = Date.now()
+            if (last && now - Number(last) < 12_000) {
+              await supabase.auth.signOut()
+              sessionStorage.removeItem(bounceKey)
+              setCheckingSession(false)
+              setError(
+                'Your browser session does not match the server yet. Sign in again below to continue to the owner area.'
+              )
+              return
+            }
+            sessionStorage.setItem(bounceKey, String(now))
+            window.location.assign(redirectUrl)
+            return
+          }
+          await redirectBasedOnProfile(user.id)
+          return
+        }
+      } catch {
+        // Fall through and show the form instead of hanging on skeleton.
       }
+      setCheckingSession(false)
     }
-    checkSession()
-  }, [])
+    void checkSession()
+  }, [redirectUrl])
 
   const redirectBasedOnProfile = async (userId: string) => {
     const supabase = createClient()
@@ -45,8 +67,14 @@ function SignInPageContent() {
       .eq('id', userId)
       .single()
 
+    if (isPartnerIntent) {
+      router.replace('/owners')
+      return
+    }
+
     if (profile?.role === 'owner') {
-      router.replace('/manage')
+      // Use /owners as the stable owner hub when no explicit redirect is provided.
+      router.replace(redirectUrl || '/owners')
     } else if (profile?.role === 'admin') {
       router.replace('/admin')
     } else {
@@ -110,7 +138,11 @@ function SignInPageContent() {
             body: JSON.stringify({ role: 'fighter', full_name: fullName }),
           })
         } catch {}
-        router.push(redirectUrl || '/')
+        if (redirectUrl) {
+          window.location.assign(redirectUrl)
+        } else {
+          router.push('/')
+        }
       }
       setLoading(false)
       return
@@ -134,8 +166,18 @@ function SignInPageContent() {
     }
 
     if (data.user) {
+      try {
+        await fetch('/api/auth/security/record-sign-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_hint: 'password' }),
+        })
+      } catch {
+        // non-blocking
+      }
       if (redirectUrl) {
-        router.push(redirectUrl)
+        sessionStorage.removeItem(`auth-redirect-bounce:${redirectUrl}`)
+        window.location.assign(redirectUrl)
       } else {
         await redirectBasedOnProfile(data.user.id)
       }

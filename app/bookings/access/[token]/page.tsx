@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { MapPin, Dumbbell, Calendar, CreditCard, User, Mail, Phone } from 'lucide-react'
 import type { Booking, Gym, Package, PackageVariant } from '@/lib/types/database'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 export default function BookingAccessPage() {
   const params = useParams()
@@ -65,12 +66,15 @@ export default function BookingAccessPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    switch (toCanonicalBookingStatus(status)) {
+      case 'paid':
         return 'bg-green-100 text-green-800'
-      case 'pending_confirmation':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800'
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800'
       case 'declined':
+      case 'cancelled':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -158,9 +162,9 @@ export default function BookingAccessPage() {
               </CardHeader>
               <CardContent>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-                  {booking.status.replace('_', ' ').toUpperCase()}
+                  {canonicalBookingStatusLabel(toCanonicalBookingStatus(booking.status))}
                 </span>
-                {booking.status === 'pending_confirmation' && (
+                {toCanonicalBookingStatus(booking.status) === 'pending' && (
                   <p className="text-sm text-gray-600 mt-2">
                     Your booking is being confirmed with the gym. You'll be notified once it's confirmed.
                   </p>
@@ -313,7 +317,7 @@ export default function BookingAccessPage() {
                       {booking.stripe_payment_intent_id ? 'Authorized' : 'Pending'}
                     </span>
                   </div>
-                  {booking.status === 'pending_confirmation' && (
+                  {toCanonicalBookingStatus(booking.status) === 'pending' && (
                     <p className="text-xs text-gray-500 mt-2">
                       Your card has been authorized. Payment will be captured once the gym confirms availability.
                     </p>

@@ -133,7 +133,7 @@ export default function BlogPage() {
       breadcrumbs={[{ label: 'Home', href: '/' }]}
     >
       <GuideHero
-        imageSrc="/N-8427.jpeg.avif"
+        imageSrc="/training-center-1.avif"
         imageAlt="Combat sports training guides"
         priority
         overlayText="Training guides that rank—and help travelers decide."

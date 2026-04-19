@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { GymStepper } from './gym-stepper'
+import { AccommodationQuickModal } from './accommodation-quick-modal'
 import type { CanonicalOfferType, Package } from '@/lib/types/database'
 import { 
   Dumbbell, 
@@ -73,9 +74,11 @@ interface OfferStepperProps {
   currency: string
   onComplete: () => void
   existingPackage?: Package | null
+  /** When true, omit full-viewport height and page background — for use inside modals / onboarding cards. */
+  embedded?: boolean
 }
 
-export function OfferStepper({ gymId, currency, onComplete, existingPackage }: OfferStepperProps) {
+export function OfferStepper({ gymId, currency, onComplete, existingPackage, embedded = false }: OfferStepperProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [saving, setSaving] = useState(false)
   
@@ -110,6 +113,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
   const [pricePerMonth, setPricePerMonth] = useState('')
   const [linkedAccommodationIds, setLinkedAccommodationIds] = useState<string[]>([])
   const [availableAccommodations, setAvailableAccommodations] = useState<any[]>([])
+  const [accommodationModalOpen, setAccommodationModalOpen] = useState(false)
   
   // Step 5: Availability
   const [availableYearRound, setAvailableYearRound] = useState(true)
@@ -448,6 +452,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
         if (linkError) {
           console.error('Error linking accommodations:', linkError)
         }
+      }
+
+      const { error: gymCurrencyError } = await supabase
+        .from('gyms')
+        .update({ currency: packageCurrency })
+        .eq('id', gymId)
+      if (gymCurrencyError) {
+        console.error('Failed to sync gym currency from package:', gymCurrencyError)
       }
 
       onComplete()
@@ -889,9 +901,20 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      No accommodation options available. Create them in the Accommodation Manager first.
-                    </p>
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-4 py-4">
+                      <p className="text-sm text-gray-700">
+                        No rooms yet. Add at least one so guests can choose where they stay.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-3 border-gray-200 bg-white"
+                        onClick={() => setAccommodationModalOpen(true)}
+                      >
+                        <BedDouble className="mr-2 h-4 w-4" />
+                        Add accommodation
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -1504,7 +1527,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={embedded ? 'min-h-0 bg-transparent' : 'min-h-screen bg-gray-50'}>
+      <AccommodationQuickModal
+        open={accommodationModalOpen}
+        onOpenChange={setAccommodationModalOpen}
+        gymId={gymId}
+        currency={packageCurrency}
+        onSaved={() => void loadAccommodations()}
+      />
       <GymStepper
         currentStep={currentStep}
         steps={steps}
@@ -1514,8 +1544,8 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage }: O
           }
         }}
       />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8">
+
+      <div className={`mx-auto max-w-7xl px-4 ${embedded ? 'py-4 md:py-6' : 'py-8'}`}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Form (2/3 on desktop) */}
           <div className="lg:col-span-2">

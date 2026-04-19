@@ -2,9 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Forward pathname+search so server layouts can whitelist paths and preserve return URLs.
+  // (Nothing else in the app was setting `next-url`, which broke manage/layout.tsx.)
+  const nextUrl = `${request.nextUrl.pathname}${request.nextUrl.search}`
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-next-url', nextUrl)
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   })
 
@@ -17,9 +23,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+          // Next.js `request.cookies.set` only accepts (name, value); response gets full options.
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          const refreshedHeaders = new Headers(request.headers)
+          refreshedHeaders.set('x-next-url', nextUrl)
           response = NextResponse.next({
-            request,
+            request: {
+              headers: refreshedHeaders,
+            },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)

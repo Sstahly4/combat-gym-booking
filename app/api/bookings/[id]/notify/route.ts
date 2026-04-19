@@ -38,10 +38,10 @@ export async function POST(
 
     console.log('Booking found, status:', booking.status)
 
-    // Only send the initial "booking request received" email for pending_payment or pending_confirmation
-    // Don't send if already confirmed (that email comes from webhook/capture)
-    if (booking.status === 'confirmed') {
-      console.log('ℹ️  Booking already confirmed - skipping initial notification email (confirmation email should come from webhook/capture)')
+    // Only send the initial "booking request received" email for non-finalized bookings.
+    // Finalized states send dedicated confirmation/capture lifecycle emails.
+    if (booking.status === 'paid' || booking.status === 'completed') {
+      console.log('ℹ️  Booking already paid/completed - skipping initial notification email')
       return NextResponse.json({ success: true, skipped: 'already_confirmed' })
     }
 

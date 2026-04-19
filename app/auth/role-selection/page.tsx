@@ -30,7 +30,7 @@ export default function RoleSelectionPage() {
       .select()
 
     if (role === 'owner') {
-      router.push('/manage/onboarding')
+      router.push('/manage/onboarding?step=step-1')
     } else {
       router.push('/dashboard')
     }

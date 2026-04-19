@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Booking, Gym } from '@/lib/types/database'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -111,13 +112,13 @@ export default function DashboardPage() {
                       {booking.gym.name} - {booking.gym.city}, {booking.gym.country}
                     </CardTitle>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'awaiting_approval' ? 'bg-yellow-100 text-yellow-800' :
-                          booking.status === 'declined' ? 'bg-red-100 text-red-800' :
-                          booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                          toCanonicalBookingStatus(booking.status) === 'paid' ? 'bg-green-100 text-green-800' :
+                          toCanonicalBookingStatus(booking.status) === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          toCanonicalBookingStatus(booking.status) === 'declined' || toCanonicalBookingStatus(booking.status) === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          toCanonicalBookingStatus(booking.status) === 'completed' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                      {booking.status.replace('_', ' ')}
+                      {canonicalBookingStatusLabel(toCanonicalBookingStatus(booking.status))}
                     </span>
                   </div>
                 </CardHeader>

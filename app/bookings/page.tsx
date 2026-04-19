@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Calendar, MapPin, Dumbbell, CreditCard, AlertCircle, Check } from 'lucide-react'
 import type { Booking, Gym, Package, PackageVariant } from '@/lib/types/database'
 import { useCurrency } from '@/lib/contexts/currency-context'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 export default function MyBookingsPage() {
   const router = useRouter()
@@ -124,15 +125,18 @@ export default function MyBookingsPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    switch (toCanonicalBookingStatus(status)) {
+      case 'paid':
         return 'bg-green-100 text-green-800'
-      case 'pending_confirmation':
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800'
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800'
       case 'declined':
+      case 'cancelled':
         return 'bg-red-100 text-red-800'
       case 'completed':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-indigo-100 text-indigo-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -280,7 +284,7 @@ export default function MyBookingsPage() {
                         {booking.gym.name}
                       </CardTitle>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(booking.status)}`}>
-                        {booking.status.replace('_', ' ').toUpperCase()}
+                        {canonicalBookingStatusLabel(toCanonicalBookingStatus(booking.status))}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
@@ -329,13 +333,13 @@ export default function MyBookingsPage() {
                         >
                           View Details
                         </Button>
-                        {booking.status === 'pending_confirmation' && (
+                        {toCanonicalBookingStatus(booking.status) === 'pending' && (
                           <div className="flex items-center gap-2 text-xs text-yellow-700">
                             <AlertCircle className="w-4 h-4" />
                             <span>Awaiting gym confirmation</span>
                           </div>
                         )}
-                        {booking.status === 'confirmed' && (
+                        {toCanonicalBookingStatus(booking.status) === 'paid' && (
                           <div className="flex items-center gap-2 text-xs text-green-700">
                             <Check className="w-4 h-4" />
                             <span>Confirmed</span>

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 export default function PaymentSuccessPage() {
   const params = useParams()
@@ -51,7 +52,7 @@ export default function PaymentSuccessPage() {
 
     try {
       console.log('Calling confirm-payment endpoint...')
-      // Update booking status to pending_confirmation (payment authorized, waiting for gym confirmation)
+      // Update booking status to confirmed (payment authorized, waiting for capture)
       const response = await fetch(`/api/bookings/${bookingId}/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -760,15 +761,16 @@ export default function PaymentSuccessPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-gray-600">Status</span>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                  booking.status === 'pending_confirmation' ? 'bg-yellow-100 text-yellow-800' :
+                  toCanonicalBookingStatus(booking.status) === 'paid' ? 'bg-green-100 text-green-800' :
+                  toCanonicalBookingStatus(booking.status) === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  toCanonicalBookingStatus(booking.status) === 'confirmed' ? 'bg-blue-100 text-blue-800' :
                   booking.status === 'declined' ? 'bg-red-100 text-red-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {booking.status.replace('_', ' ').toUpperCase()}
+                  {canonicalBookingStatusLabel(toCanonicalBookingStatus(booking.status))}
                 </span>
               </div>
-              {booking.status === 'pending_confirmation' && (
+              {toCanonicalBookingStatus(booking.status) === 'pending' && (
                 <p className="text-sm text-gray-600 mt-2">
                   Your booking is being confirmed with the gym. You'll be notified once it's confirmed.
                 </p>

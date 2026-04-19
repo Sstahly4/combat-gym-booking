@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingRequestDeclinedEmail } from '@/lib/email'
+import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 
 /**
  * Decline a booking request (Gym Owner Action)
@@ -13,18 +14,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabaseAuth = await createClient()
-    const { data: { user } } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
+    const ownerAccess = await getOwnerAccessContext()
+    if (ownerAccess.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { data: profile } = await supabaseAuth
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    let userId = ownerAccess.userId
+    let isAdmin = false
+    if (ownerAccess.status !== 'ok') {
+      const authClient = await createClient()
+      const { data: profile } = await authClient
+        .from('profiles')
+        .select('role')
+        .eq('id', ownerAccess.userId)
+        .single()
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      isAdmin = true
+      userId = ownerAccess.userId
+    }
 
     const bookingId = params.id
     const body = await request.json()
@@ -50,7 +58,7 @@ export async function POST(
     const gym = booking.gym as any
 
     // Verify user is gym owner or admin
-    if (profile?.role !== 'admin' && gym.owner_id !== user.id) {
+    if (!isAdmin && gym.owner_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

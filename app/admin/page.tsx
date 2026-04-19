@@ -34,6 +34,7 @@ import { Select } from '@/components/ui/select'
 import { GymVerificationCard } from '@/components/admin/gym-verification-card'
 import { BookingDetailsModal } from '@/components/admin/booking-details-modal'
 import type { Gym, Booking } from '@/lib/types/database'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -808,14 +809,14 @@ WHERE id = '${user.id}';`}
                         {booking.booking_reference ? `Booking ${booking.booking_reference}` : `Booking #${booking.id.slice(0, 8)}`}
                       </CardTitle>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'pending_confirmation' ? 'bg-yellow-100 text-yellow-800' :
-                        booking.status === 'pending_payment' ? 'bg-blue-100 text-blue-800' :
-                        booking.status === 'declined' ? 'bg-red-100 text-red-800' :
-                        booking.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        toCanonicalBookingStatus(booking.status) === 'paid' ? 'bg-green-100 text-green-800' :
+                        toCanonicalBookingStatus(booking.status) === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                        toCanonicalBookingStatus(booking.status) === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        toCanonicalBookingStatus(booking.status) === 'declined' || toCanonicalBookingStatus(booking.status) === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        toCanonicalBookingStatus(booking.status) === 'completed' ? 'bg-indigo-100 text-indigo-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {booking.status.replace('_', ' ')}
+                        {canonicalBookingStatusLabel(toCanonicalBookingStatus(booking.status))}
                       </span>
                     </div>
                   </CardHeader>

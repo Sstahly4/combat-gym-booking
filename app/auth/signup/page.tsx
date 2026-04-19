@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -18,14 +18,23 @@ function SignUpForm() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!message) return
+    const timer = setTimeout(() => {
+      router.push('/auth/signin?intent=owner')
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [message, router])
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/onboarding' : '/'))}`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/'))}`,
       },
     })
   }
@@ -35,7 +44,7 @@ function SignUpForm() {
     await supabase.auth.signInWithOAuth({
       provider: 'facebook',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/onboarding' : '/'))}`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/'))}`,
       },
     })
   }
@@ -43,13 +52,20 @@ function SignUpForm() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setMessage(null)
     setLoading(true)
 
+    const role = intent === 'owner' ? 'owner' : 'fighter'
     const supabase = createClient()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: {
+          full_name: fullName,
+          role_intent: role,
+        },
+      },
     })
 
     if (signUpError) {
@@ -68,8 +84,6 @@ function SignUpForm() {
     }
 
     if (data.user) {
-      const role = intent === 'owner' ? 'owner' : 'fighter'
-
       await new Promise(resolve => setTimeout(resolve, 500))
 
       try {
@@ -79,6 +93,14 @@ function SignUpForm() {
           body: JSON.stringify({ role, full_name: fullName }),
         })
 
+        if (response.status === 401) {
+          setMessage(
+            'Account created. Please verify your email and sign in to finish setting up your profile.'
+          )
+          setLoading(false)
+          return
+        }
+
         if (!response.ok) {
           const errorData = await response.json()
           setError(`Failed to create profile: ${errorData.error || 'Unknown error'}`)
@@ -86,13 +108,15 @@ function SignUpForm() {
           return
         }
       } catch {
-        setError('Failed to create profile. Please try again.')
+        setMessage(
+          'Account created. Please verify your email and sign in to finish setting up your profile.'
+        )
         setLoading(false)
         return
       }
 
       if (role === 'owner') {
-        router.push(data.user.email_confirmed_at ? '/manage/onboarding' : '/manage/onboarding?verify_email=true')
+        router.push('/manage/list-your-gym')
       } else {
         router.push(redirectUrl || '/')
       }
@@ -206,6 +230,12 @@ function SignUpForm() {
               <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                {message}
               </div>
             )}
 
