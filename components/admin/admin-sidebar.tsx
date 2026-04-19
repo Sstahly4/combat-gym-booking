@@ -30,6 +30,8 @@ type NavItem = {
   icon: LucideIcon
   isActive: (pathname: string) => boolean
   badge?: number | null
+  /** Orange only for urgent / action-needed counts (verification queue). */
+  badgeUrgent?: boolean
 }
 
 interface AdminSidebarProps {
@@ -60,6 +62,7 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         icon: ShieldCheck,
         isActive: (p) => p === '/admin/verification' || p.startsWith('/admin/verification/'),
         badge: counts?.verification ?? null,
+        badgeUrgent: true,
       },
       {
         href: '/admin/gyms',
@@ -108,7 +111,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 }
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const { href, label, icon: Icon, isActive, badge } = item
+  const { href, label, icon: Icon, isActive, badge, badgeUrgent } = item
   const active = isActive(pathname)
   return (
     <Link
@@ -125,7 +128,11 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
         <span
           className={cn(
             'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold',
-            active ? 'bg-[#003580] text-white' : 'bg-orange-100 text-orange-700',
+            active
+              ? 'bg-[#003580] text-white'
+              : badgeUrgent
+                ? 'bg-orange-100 text-orange-800'
+                : 'bg-slate-100 text-slate-600',
           )}
         >
           {badge}
@@ -154,7 +161,7 @@ export function AdminSidebar({ counts }: AdminSidebarProps) {
           title="Admin dashboard"
         >
           <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-orange-500 text-[10px] font-bold text-white"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#003580] text-[10px] font-bold text-white"
             aria-hidden
           >
             A

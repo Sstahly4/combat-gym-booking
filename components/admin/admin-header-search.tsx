@@ -196,7 +196,7 @@ export function AdminHeaderSearch() {
                       aria-selected={active}
                       className={cn(
                         'block px-3 py-2.5 text-left transition-colors',
-                        active ? 'bg-orange-50' : 'hover:bg-gray-50',
+                        active ? 'bg-[#003580]/8' : 'hover:bg-gray-50',
                       )}
                       onMouseEnter={() => setHighlight(idx)}
                       onClick={() => { setOpen(false); setQuery('') }}

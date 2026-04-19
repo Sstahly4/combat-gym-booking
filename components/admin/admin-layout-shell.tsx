@@ -93,7 +93,7 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   if (profile?.role !== 'admin') {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">Access denied</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Access denied</p>
         <h1 className="mt-1 text-2xl font-semibold text-stone-900">Admins only</h1>
         <p className="mt-2 text-sm text-stone-600">
           This area is restricted to platform admins. If you think this is a

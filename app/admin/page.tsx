@@ -122,7 +122,7 @@ export default function AdminOverviewPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">
             Admin
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">Overview</h1>
@@ -147,7 +147,7 @@ export default function AdminOverviewPage() {
           label="Verification queue"
           value={stats.unverified}
           icon={ShieldCheck}
-          accent="orange"
+          accent="brand"
           href="/admin/verification"
           loading={loading}
         />
@@ -305,7 +305,7 @@ export default function AdminOverviewPage() {
           </h2>
           <Link
             href="/admin/gyms"
-            className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700"
+            className="inline-flex items-center gap-1 text-sm font-medium text-[#003580] hover:text-[#002a66]"
           >
             View all <Eye className="h-4 w-4" />
           </Link>
@@ -351,7 +351,7 @@ export default function AdminOverviewPage() {
 }
 
 const ACCENTS = {
-  orange: 'text-orange-600 bg-orange-50',
+  brand: 'text-[#003580] bg-[#003580]/10',
   blue: 'text-blue-700 bg-blue-50',
   slate: 'text-slate-700 bg-slate-100',
   emerald: 'text-emerald-700 bg-emerald-50',
@@ -381,7 +381,7 @@ function StatCard({
           <Icon className="h-4 w-4" />
         </span>
         {href && (
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-600">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#003580]">
             View
           </span>
         )}
@@ -415,13 +415,13 @@ function ActionCard({
       href={href}
       className={`group flex h-full flex-col gap-2 rounded-xl border p-4 transition-all hover:shadow-sm ${
         highlight
-          ? 'border-orange-300 bg-orange-50/40 hover:border-orange-400'
+          ? 'border-[#003580]/25 bg-[#003580]/[0.06] hover:border-[#003580]/35'
           : 'border-stone-200 bg-white hover:border-stone-300'
       }`}
     >
       <span
         className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${
-          highlight ? 'bg-orange-500 text-white' : 'bg-stone-100 text-stone-700'
+          highlight ? 'bg-[#003580] text-white' : 'bg-stone-100 text-stone-700'
         }`}
       >
         <Icon className="h-4 w-4" />

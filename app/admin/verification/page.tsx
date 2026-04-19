@@ -155,7 +155,7 @@ export default function AdminVerificationPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">
             Admin
           </p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-stone-900">

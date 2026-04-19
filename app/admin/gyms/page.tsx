@@ -139,7 +139,7 @@ export default function AdminGymsPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">
             Admin
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">All gyms</h1>
@@ -172,7 +172,7 @@ export default function AdminGymsPage() {
             <Button
               onClick={markAllAdminOwned}
               disabled={bulkBusy}
-              className="rounded-full bg-orange-600 text-white hover:bg-orange-700"
+              className="rounded-full bg-[#003580] text-white hover:bg-[#002a66]"
             >
               <Sparkles className="mr-1.5 h-4 w-4" />
               {bulkBusy ? 'Marking…' : `Mark ${adminOwnedNotPreListed.length} as pre-listed`}
@@ -220,7 +220,7 @@ export default function AdminGymsPage() {
                     </div>
                   )}
                   {gym.is_pre_listed && (
-                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-orange-500/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#003580]/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
                       <Sparkles className="h-3 w-3" />
                       Pre-listed
                     </span>
@@ -296,7 +296,7 @@ export default function AdminGymsPage() {
                       className={`w-full rounded-full ${
                         gym.is_pre_listed
                           ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
-                          : 'bg-orange-600 text-white hover:bg-orange-700'
+                          : 'bg-[#003580] text-white hover:bg-[#002a66]'
                       }`}
                     >
                       <Sparkles className="mr-1.5 h-4 w-4" />
