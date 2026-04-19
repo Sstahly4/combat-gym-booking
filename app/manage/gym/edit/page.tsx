@@ -23,6 +23,7 @@ import {
   labelGymAmenity,
   mergeGymAmenitiesFromDb,
 } from '@/lib/constants/gym-amenities'
+import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -1574,6 +1575,10 @@ function EditGymForm() {
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
+
+            {profile?.role === 'admin' && gym?.id && gym.name ? (
+              <AdminDeleteGymSection gymId={gym.id} gymName={gym.name} />
+            ) : null}
       </main>
     </div>
   )
