@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -55,6 +56,14 @@ export default function OrphanGymsPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [freshLinks, setFreshLinks] = useState<Record<string, string>>({})
   const [filter, setFilter] = useState('')
+  const [linkModal, setLinkModal] = useState<{
+    gymName: string
+    url: string
+    expiresAt: string | null
+    placeholderEmail: string | null
+    regenerated: boolean
+  } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -74,18 +83,29 @@ export default function OrphanGymsPage() {
 
   async function generate(gymId: string) {
     setBusyId(gymId)
+    setError(null)
     try {
+      const gymBefore = gyms.find((g) => g.gym_id === gymId)
       const res = await fetch(`/api/admin/gyms/${gymId}/claim-link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expires_in_days: 14 }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to generate')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Failed to generate (HTTP ${res.status})`)
+      if (!data?.url) throw new Error('Server did not return a claim link URL')
       setFreshLinks((prev) => ({ ...prev, [gymId]: data.url }))
+      setLinkModal({
+        gymName: gymBefore?.gym_name || 'Untitled gym',
+        url: data.url,
+        expiresAt: data.expires_at ?? null,
+        placeholderEmail: data.placeholder_email ?? null,
+        regenerated: Boolean(data.regenerated),
+      })
+      setCopied(false)
       await load()
     } catch (err: any) {
-      alert(err?.message || 'Failed to generate link')
+      setError(err?.message || 'Failed to generate link')
     } finally {
       setBusyId(null)
     }
@@ -94,23 +114,30 @@ export default function OrphanGymsPage() {
   async function revoke(gymId: string) {
     if (!confirm('Revoke the active claim link for this gym? You can re-issue at any time.')) return
     setBusyId(gymId)
+    setError(null)
     try {
       const res = await fetch(`/api/admin/gyms/${gymId}/claim-link`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to revoke')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Failed to revoke (HTTP ${res.status})`)
       setFreshLinks((prev) => {
         const next = { ...prev }; delete next[gymId]; return next
       })
       await load()
     } catch (err: any) {
-      alert(err?.message || 'Failed to revoke link')
+      setError(err?.message || 'Failed to revoke link')
     } finally {
       setBusyId(null)
     }
   }
 
-  function copy(url: string) {
-    navigator.clipboard?.writeText(url)
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard?.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignore — user can still select the input manually
+    }
   }
 
   const filtered = useMemo(() => {
@@ -227,6 +254,67 @@ export default function OrphanGymsPage() {
           )}
         </div>
       )}
+
+      <Dialog open={linkModal !== null} onOpenChange={(open) => { if (!open) setLinkModal(null) }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {linkModal?.regenerated ? 'New claim link generated' : 'Claim link ready'}
+            </DialogTitle>
+            <DialogDescription>
+              Send this single-use URL to the owner of{' '}
+              <span className="font-medium text-stone-900">{linkModal?.gymName}</span>.
+              We won&apos;t show it again — copy it now.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={linkModal?.url ?? ''}
+                  className="flex-1 rounded border border-emerald-300 bg-white px-2 py-2 text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => linkModal?.url && copy(linkModal.url)}
+                  className="rounded bg-[#003580] text-white hover:bg-[#002a5c]"
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-1 gap-2 text-xs text-stone-600 sm:grid-cols-2">
+              {linkModal?.expiresAt && (
+                <div>
+                  <dt className="font-medium text-stone-500">Expires</dt>
+                  <dd>{new Date(linkModal.expiresAt).toLocaleString()}</dd>
+                </div>
+              )}
+              {linkModal?.placeholderEmail && (
+                <div>
+                  <dt className="font-medium text-stone-500">Placeholder owner</dt>
+                  <dd className="break-all"><code>{linkModal.placeholderEmail}</code></dd>
+                </div>
+              )}
+            </dl>
+
+            <p className="text-xs text-stone-500">
+              The link is also displayed on the gym&apos;s card below until you refresh the page.
+              Regenerating revokes any earlier active link.
+            </p>
+          </div>
+
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setLinkModal(null)} className="rounded-full">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
