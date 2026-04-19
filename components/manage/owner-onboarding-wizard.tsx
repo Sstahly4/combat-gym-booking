@@ -157,10 +157,14 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const previousStep = OWNER_WIZARD_STEPS.find((item) => item.index === currentIndex - 1) || null
   const nextStep = OWNER_WIZARD_STEPS.find((item) => item.index === currentIndex + 1) || null
 
-  /** Prefer server state, then URL (?gym_id=), then first owned gym — fixes editor links when session lags. */
+  /**
+   * Prefer server state, then URL (?gym_id=), then first owned gym — fixes editor links when session lags.
+   * In admin “Create new gym” mode we never fall back to an existing owned gym, otherwise the wizard would
+   * pull packages / photos / deep-links from an unrelated listing.
+   */
   const editorGymId = useMemo(
-    () => activeGymId ?? gymIdParam ?? gyms[0]?.id ?? null,
-    [activeGymId, gymIdParam, gyms]
+    () => activeGymId ?? gymIdParam ?? (embedInAdmin ? null : gyms[0]?.id ?? null),
+    [activeGymId, gymIdParam, gyms, embedInAdmin]
   )
 
   const refreshPackagesFromServer = useCallback(async () => {
@@ -243,10 +247,34 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
   }, [authLoading, profile?.id, profile?.country_of_residence])
 
+  // Re-run loader (and reset form) when admin clicks "Create gym" again with a fresh nonce.
+  const adminCreateNonce = embedInAdmin && !gymIdParam ? searchParams.get('t') : null
+
   useEffect(() => {
     const loadState = async () => {
       setLoading(true)
       setError(null)
+      // Clear any stale form state from a previous gym/session before fetching fresh data.
+      setActiveGymId(null)
+      setSessionId(null)
+      setCompletedKeys([])
+      setGymBasics({
+        name: '',
+        description: '',
+        address: '',
+        city: '',
+        country: '',
+        disciplines: [],
+        google_maps_link: '',
+        instagram_link: '',
+        facebook_link: '',
+      })
+      setOffersAccommodation(false)
+      setStripeConnected(false)
+      setPackageCount(0)
+      setPhotoCount(0)
+      setPackagesPreview([])
+      setSecurityDone(false)
       try {
         const selectedGymId = gymIdParam
         const params = new URLSearchParams()
@@ -341,7 +369,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
 
     void loadState()
-  }, [gymIdParam, embedInAdmin])
+  }, [gymIdParam, embedInAdmin, adminCreateNonce])
 
   useEffect(() => {
     if (step.key !== 'packages' || !editorGymId) return
@@ -477,10 +505,14 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         }
       }
     }
-    const firstOwned = gyms[0]?.id
-    if (firstOwned) {
-      setActiveGymId(firstOwned)
-      return firstOwned
+    // In the admin "Create new gym" embed, never adopt an existing owned listing here —
+    // the next insert below creates a brand new draft for this session.
+    if (!embedInAdmin) {
+      const firstOwned = gyms[0]?.id
+      if (firstOwned) {
+        setActiveGymId(firstOwned)
+        return firstOwned
+      }
     }
 
     const mapsLink = gymBasics.google_maps_link.trim() || null

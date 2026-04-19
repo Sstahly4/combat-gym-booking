@@ -18,7 +18,7 @@ import { Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
 
 interface Hit {
   id: string
@@ -120,12 +120,15 @@ export function AdminHeaderSearch() {
     return null
   }
 
+  const resolveHref = (href: string) =>
+    href === ADMIN_CREATE_GYM_ONBOARDING_HREF ? buildFreshAdminCreateGymHref() : href
+
   const goHighlighted = () => {
     const hit = results[highlight]
     if (!hit) return
     setOpen(false)
     setQuery('')
-    router.push(hit.href)
+    router.push(resolveHref(hit.href))
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -193,7 +196,7 @@ export function AdminHeaderSearch() {
                 return (
                   <li key={hit.id} className="m-0 p-0">
                     <Link
-                      href={hit.href}
+                      href={resolveHref(hit.href)}
                       role="option"
                       aria-selected={active}
                       className={cn(

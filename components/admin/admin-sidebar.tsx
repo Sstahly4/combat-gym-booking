@@ -11,7 +11,7 @@
  */
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import {
   Building2,
@@ -23,7 +23,7 @@ import {
   Sparkles,
   Star,
 } from 'lucide-react'
-import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
@@ -34,6 +34,12 @@ type NavItem = {
   badge?: number | null
   /** Orange only for urgent / action-needed counts (verification queue). */
   badgeUrgent?: boolean
+  /**
+   * When true, every click pushes the link with a fresh `t=<timestamp>` query
+   * so the destination component re-runs its loader (e.g. start a brand new
+   * "Create gym" draft instead of resuming the previous one).
+   */
+  freshNavigate?: boolean
 }
 
 interface AdminSidebarProps {
@@ -63,6 +69,7 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         label: 'Create gym',
         icon: PlusCircle,
         isActive: (p) => p === '/admin/create-gym' || p.startsWith('/admin/create-gym/'),
+        freshNavigate: true,
       },
       {
         href: '/admin/verification',
@@ -119,11 +126,23 @@ function SectionLabel({ children }: { children: ReactNode }) {
 }
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const { href, label, icon: Icon, isActive, badge, badgeUrgent } = item
+  const router = useRouter()
+  const { href, label, icon: Icon, isActive, badge, badgeUrgent, freshNavigate } = item
   const active = isActive(pathname)
+  const handleClick = freshNavigate
+    ? (event: React.MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault()
+        const target =
+          href === ADMIN_CREATE_GYM_ONBOARDING_HREF
+            ? buildFreshAdminCreateGymHref()
+            : `${href}${href.includes('?') ? '&' : '?'}t=${Date.now()}`
+        router.push(target)
+      }
+    : undefined
   return (
     <Link
       href={href}
+      onClick={handleClick}
       className={cn(
         'flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] leading-snug transition-colors',
         active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500 hover:text-gray-800',
