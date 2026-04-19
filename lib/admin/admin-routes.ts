@@ -3,4 +3,4 @@
  * owners; the draft gym is created under the admin account until a claim link
  * or handoff changes ownership.
  */
-export const ADMIN_CREATE_GYM_ONBOARDING_HREF = '/manage/onboarding?step=step-1'
+export const ADMIN_CREATE_GYM_ONBOARDING_HREF = '/admin/create-gym?step=step-1&create_new=1'

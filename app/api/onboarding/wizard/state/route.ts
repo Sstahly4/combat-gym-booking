@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveActiveGymId } from '@/lib/onboarding/wizard-api-logic'
 import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 
+const SESSION_SELECT =
+  'id, owner_id, gym_id, state, started_at, completed_at, created_at, updated_at'
+
 export async function GET(request: NextRequest) {
   try {
     const access = await getOwnerOrAdminAccessContext()
@@ -13,6 +16,7 @@ export async function GET(request: NextRequest) {
     const { supabase } = access
 
     const requestedGymId = request.nextUrl.searchParams.get('gym_id')
+    const createNew = request.nextUrl.searchParams.get('create_new') === '1'
 
     const { data: ownerGyms } = await supabase
       .from('gyms')
@@ -20,47 +24,127 @@ export async function GET(request: NextRequest) {
       .eq('owner_id', access.userId)
       .order('created_at', { ascending: false })
 
-    let sessionQuery = supabase
-      .from('owner_onboarding_sessions')
-      .select('id, owner_id, gym_id, state, started_at, completed_at, created_at, updated_at')
-      .eq('owner_id', access.userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    let session: {
+      id: string
+      owner_id: string
+      gym_id: string | null
+      state: string
+      started_at: string | null
+      completed_at: string | null
+      created_at: string
+      updated_at: string
+    } | null = null
 
     if (requestedGymId) {
-      sessionQuery = sessionQuery.eq('gym_id', requestedGymId)
-    }
+      const { data: sessions, error: sessionError } = await supabase
+        .from('owner_onboarding_sessions')
+        .select(SESSION_SELECT)
+        .eq('owner_id', access.userId)
+        .eq('gym_id', requestedGymId)
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-    const { data: sessions, error: sessionError } = await sessionQuery
-    if (sessionError) {
-      return NextResponse.json({ error: 'Failed to load onboarding session' }, { status: 500 })
-    }
+      if (sessionError) {
+        return NextResponse.json({ error: 'Failed to load onboarding session' }, { status: 500 })
+      }
+      session = sessions?.[0] || null
 
-    let session = sessions?.[0] || null
+      if (!session) {
+        const activeGymId = resolveActiveGymId({
+          requestedGymId,
+          sessionGymId: null,
+          latestOwnerGymId: ownerGyms?.[0]?.id || null,
+        })
+
+        const { data: createdSession, error: createError } = await supabase
+          .from('owner_onboarding_sessions')
+          .insert({
+            owner_id: access.userId,
+            gym_id: activeGymId,
+            state: 'in_progress',
+            started_at: new Date().toISOString(),
+          })
+          .select(SESSION_SELECT)
+          .single()
+
+        if (createError || !createdSession) {
+          return NextResponse.json({ error: 'Failed to initialize onboarding session' }, { status: 500 })
+        }
+        session = createdSession
+      }
+    } else if (createNew) {
+      const { data: draftSessions, error: draftError } = await supabase
+        .from('owner_onboarding_sessions')
+        .select(SESSION_SELECT)
+        .eq('owner_id', access.userId)
+        .is('gym_id', null)
+        .eq('state', 'in_progress')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (draftError) {
+        return NextResponse.json({ error: 'Failed to load onboarding session' }, { status: 500 })
+      }
+      session = draftSessions?.[0] || null
+
+      if (!session) {
+        const { data: createdSession, error: createError } = await supabase
+          .from('owner_onboarding_sessions')
+          .insert({
+            owner_id: access.userId,
+            gym_id: null,
+            state: 'in_progress',
+            started_at: new Date().toISOString(),
+          })
+          .select(SESSION_SELECT)
+          .single()
+
+        if (createError || !createdSession) {
+          return NextResponse.json({ error: 'Failed to initialize onboarding session' }, { status: 500 })
+        }
+        session = createdSession
+      }
+    } else {
+      const { data: sessions, error: sessionError } = await supabase
+        .from('owner_onboarding_sessions')
+        .select(SESSION_SELECT)
+        .eq('owner_id', access.userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (sessionError) {
+        return NextResponse.json({ error: 'Failed to load onboarding session' }, { status: 500 })
+      }
+      session = sessions?.[0] || null
+
+      if (!session) {
+        const ownerGym = ownerGyms?.[0] || null
+        const activeGymId = resolveActiveGymId({
+          requestedGymId,
+          sessionGymId: null,
+          latestOwnerGymId: ownerGym?.id || null,
+        })
+
+        const { data: createdSession, error: createError } = await supabase
+          .from('owner_onboarding_sessions')
+          .insert({
+            owner_id: access.userId,
+            gym_id: activeGymId,
+            state: 'in_progress',
+            started_at: new Date().toISOString(),
+          })
+          .select(SESSION_SELECT)
+          .single()
+
+        if (createError || !createdSession) {
+          return NextResponse.json({ error: 'Failed to initialize onboarding session' }, { status: 500 })
+        }
+        session = createdSession
+      }
+    }
 
     if (!session) {
-      const ownerGym = ownerGyms?.[0] || null
-      const activeGymId = resolveActiveGymId({
-        requestedGymId,
-        sessionGymId: null,
-        latestOwnerGymId: ownerGym?.id || null,
-      })
-
-      const { data: createdSession, error: createError } = await supabase
-        .from('owner_onboarding_sessions')
-        .insert({
-          owner_id: access.userId,
-          gym_id: activeGymId,
-          state: 'in_progress',
-          started_at: new Date().toISOString(),
-        })
-        .select('id, owner_id, gym_id, state, started_at, completed_at, created_at, updated_at')
-        .single()
-
-      if (createError || !createdSession) {
-        return NextResponse.json({ error: 'Failed to initialize onboarding session' }, { status: 500 })
-      }
-      session = createdSession
+      return NextResponse.json({ error: 'Failed to load onboarding session' }, { status: 500 })
     }
 
     const { data: steps, error: stepsError } = await supabase
@@ -72,10 +156,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to load onboarding steps' }, { status: 500 })
     }
 
+    const omitLatest = Boolean(createNew && !requestedGymId)
     const activeGymId = resolveActiveGymId({
       requestedGymId,
       sessionGymId: session.gym_id || null,
       latestOwnerGymId: ownerGyms?.[0]?.id || null,
+      omitLatestGymFallback: omitLatest,
     })
 
     // Explicitly bind session to active gym context when known.
@@ -84,7 +170,7 @@ export async function GET(request: NextRequest) {
         .from('owner_onboarding_sessions')
         .update({ gym_id: activeGymId })
         .eq('id', session.id)
-      session = { ...session, gym_id: activeGymId }
+      session = { ...session, gym_id: activeGymId as string | null }
     }
 
     return NextResponse.json({

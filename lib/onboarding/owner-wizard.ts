@@ -89,12 +89,27 @@ export function getWizardStepBySlug(slug: string | null | undefined) {
   return OWNER_WIZARD_STEPS[0]
 }
 
+export type OnboardingWizardUrlOptions = {
+  /** Defaults to `/manage/onboarding`. */
+  basePath?: string
+  /** Append `create_new=1` when there is no `gym_id` (admin new-listing draft). */
+  adminCreateNewDraft?: boolean
+}
+
 /** Single-route wizard: avoids full remount when changing steps (client-side navigation only). */
-export function buildOnboardingWizardUrl(stepSlug: string, gymId: string | null) {
+export function buildOnboardingWizardUrl(
+  stepSlug: string,
+  gymId: string | null,
+  options?: OnboardingWizardUrlOptions
+) {
   const q = new URLSearchParams()
   q.set('step', stepSlug)
   if (gymId) q.set('gym_id', gymId)
-  return `/manage/onboarding?${q.toString()}`
+  if (options?.adminCreateNewDraft && !gymId) {
+    q.set('create_new', '1')
+  }
+  const base = options?.basePath ?? '/manage/onboarding'
+  return `${base}?${q.toString()}`
 }
 
 /** Gym editor requires `id` (not gym_id). Optional `section` scrolls to e.g. packages or images. */
@@ -105,9 +120,13 @@ export function buildGymEditDeepLink(gymId: string, section?: string | null) {
   return `/manage/gym/edit?${q.toString()}`
 }
 
-export function buildWizardStepDeepLink(step: OwnerWizardStepDefinition, gymId: string | null) {
+export function buildWizardStepDeepLink(
+  step: OwnerWizardStepDefinition,
+  gymId: string | null,
+  options?: OnboardingWizardUrlOptions
+) {
   if (step.deepLinkPath.startsWith('/manage/onboarding/step-')) {
-    return buildOnboardingWizardUrl(step.slug, gymId)
+    return buildOnboardingWizardUrl(step.slug, gymId, options)
   }
   const url = new URL(step.deepLinkPath, 'http://localhost')
   if (gymId) {

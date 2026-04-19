@@ -62,7 +62,7 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         href: ADMIN_CREATE_GYM_ONBOARDING_HREF,
         label: 'Create gym',
         icon: PlusCircle,
-        isActive: (p) => p === '/manage/onboarding' || p.startsWith('/manage/onboarding/'),
+        isActive: (p) => p === '/admin/create-gym' || p.startsWith('/admin/create-gym/'),
       },
       {
         href: '/admin/verification',

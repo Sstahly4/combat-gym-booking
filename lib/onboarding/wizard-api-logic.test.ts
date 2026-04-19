@@ -20,6 +20,16 @@ test('wizard state: resolveActiveGymId falls back to session gym', () => {
   assert.equal(result, 'gym-session')
 })
 
+test('wizard state: resolveActiveGymId can omit latest gym fallback', () => {
+  const result = resolveActiveGymId({
+    requestedGymId: null,
+    sessionGymId: null,
+    latestOwnerGymId: 'gym-latest',
+    omitLatestGymFallback: true,
+  })
+  assert.equal(result, null)
+})
+
 test('wizard step: validateWizardStepKey allows known keys', () => {
   const allowed = ['basics', 'packages', 'photos', 'finalize']
   assert.equal(validateWizardStepKey('packages', allowed), true)

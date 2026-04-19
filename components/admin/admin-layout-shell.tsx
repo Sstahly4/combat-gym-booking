@@ -28,6 +28,7 @@ function adminSectionTitle(pathname: string): string {
   if (pathname.startsWith('/admin/orphan-gyms')) return 'Claim links'
   if (pathname.startsWith('/admin/reviews')) return 'Reviews'
   if (pathname.startsWith('/admin/offers')) return 'Offers'
+  if (pathname.startsWith('/admin/create-gym')) return 'Create gym'
   return 'Admin'
 }
 
