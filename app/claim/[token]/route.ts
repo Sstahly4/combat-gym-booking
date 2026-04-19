@@ -55,10 +55,30 @@ function extractMagiclinkOtpHash(
   return null
 }
 
-function fail(request: NextRequest, reason: string) {
+function fail(request: NextRequest, reason: string, detail?: unknown) {
+  console.warn('[claim] redirect to /claim/invalid', { reason, detail })
   const url = new URL('/claim/invalid', request.url)
   url.searchParams.set('reason', reason)
   return NextResponse.redirect(url)
+}
+
+/**
+ * Supabase splits its auth payload into chunked cookies (sb-<ref>-auth-token,
+ * sb-<ref>-auth-token.0, .1, .code-verifier, etc). Clear them all so a previous
+ * session from the same browser (admin or a previously-claimed placeholder)
+ * cannot survive into the new claim session.
+ */
+function clearSupabaseAuthCookies(request: NextRequest, response: NextResponse) {
+  for (const c of request.cookies.getAll()) {
+    if (c.name.startsWith('sb-')) {
+      response.cookies.set({
+        name: c.name,
+        value: '',
+        path: '/',
+        maxAge: 0,
+      })
+    }
+  }
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
@@ -79,7 +99,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
-  if (tokenErr || !token) return fail(request, 'not_found')
+  if (tokenErr || !token) return fail(request, 'not_found', tokenErr?.message)
   if (token.claimed_at) return fail(request, 'used')
   if (token.revoked_at) return fail(request, 'revoked')
   if (new Date(token.expires_at).getTime() <= Date.now()) {
@@ -91,14 +111,19 @@ export async function GET(request: NextRequest, { params }: Params) {
     .select('id, owner_id, name')
     .eq('id', token.gym_id)
     .single()
-  if (gymErr || !gym) return fail(request, 'gym_missing')
+  if (gymErr || !gym) return fail(request, 'gym_missing', gymErr?.message)
 
   const { data: ownerLookup, error: ownerErr } =
     await admin.auth.admin.getUserById(gym.owner_id)
   if (ownerErr || !ownerLookup?.user?.email) {
-    return fail(request, 'owner_missing')
+    return fail(request, 'owner_missing', ownerErr?.message ?? 'no email on placeholder user')
   }
   const ownerEmail = ownerLookup.user.email
+  console.info('[claim] redeeming token', {
+    gym_id: gym.id,
+    owner_id: gym.owner_id,
+    owner_email_domain: ownerEmail.split('@')[1] ?? null,
+  })
 
   // Build the redirect response first, then bind the Supabase browser client to it so
   // `verifyOtp` Set-Cookie headers are applied to this same response. Using
@@ -130,18 +155,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     },
   )
 
-  // Also clear any pre-existing Supabase auth cookies on the redirect response
-  // so the browser drops the previous session before the new one lands.
-  for (const c of request.cookies.getAll()) {
-    if (c.name.startsWith('sb-') && c.name.includes('auth-token')) {
-      redirectResponse.cookies.set({
-        name: c.name,
-        value: '',
-        path: '/',
-        maxAge: 0,
-      })
-    }
-  }
+  clearSupabaseAuthCookies(request, redirectResponse)
 
   // Generate a one-time magic-link OTP for the placeholder user and consume it server-side.
   const { data: linkData, error: linkErr } =
@@ -150,20 +164,23 @@ export async function GET(request: NextRequest, { params }: Params) {
     linkData as { properties?: Record<string, unknown> | null } | null,
   )
   if (linkErr || !tokenHashOtp) {
-    console.warn('[claim] generateLink missing otp hash', {
+    return fail(request, 'link_failed', {
       message: linkErr?.message,
       hasProperties: Boolean(linkData?.properties),
+      keys: linkData?.properties ? Object.keys(linkData.properties) : null,
     })
-    return fail(request, 'link_failed')
   }
 
-  const { error: verifyErr } = await supabase.auth.verifyOtp({
+  const { error: verifyErr, data: verifyData } = await supabase.auth.verifyOtp({
     type: 'magiclink',
     token_hash: tokenHashOtp,
   })
-  if (verifyErr) {
-    console.warn('[claim] verifyOtp failed', verifyErr.message, verifyErr)
-    return fail(request, 'session_failed')
+  if (verifyErr || !verifyData?.session) {
+    return fail(request, 'session_failed', {
+      message: verifyErr?.message,
+      status: (verifyErr as unknown as { status?: number })?.status,
+      hasSession: Boolean(verifyData?.session),
+    })
   }
 
   // Single-use: mark claimed only after the session is established.
