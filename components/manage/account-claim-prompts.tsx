@@ -134,7 +134,7 @@ function HardClaimModal({
     >
       <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="border-b border-stone-100 px-6 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">
             {showWelcome ? 'Welcome to your gym' : 'Action required'}
           </p>
           <h2 id="claim-modal-title" className="mt-1 text-xl font-semibold text-stone-900">
@@ -217,7 +217,7 @@ function HardClaimModal({
           <Button
             onClick={submit}
             disabled={submitting || !passwordsMatch || password.length < 12}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className="bg-[#003580] text-white hover:bg-[#002a5c]"
           >
             {submitting ? 'Saving…' : 'Save and continue'}
           </Button>
@@ -239,15 +239,15 @@ function SoftEmailBanner({ currentEmail }: { currentEmail: string }) {
   if (dismissed) return null
 
   return (
-    <div className="border-b border-orange-100 bg-orange-50/80 px-4 py-2 text-sm text-orange-900">
+    <div className="border-b border-[#003580]/15 bg-[#003580]/[0.06] px-4 py-2 text-sm text-[#0a2540]">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
-        <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-orange-500" />
+        <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-[#003580]" />
         <p className="flex-1">
           Your account is still using a temporary email
           {currentEmail ? <> (<code className="rounded bg-white/60 px-1">{currentEmail}</code>)</> : null}.
           Update it in
           {' '}
-          <a href="/manage/settings?tab=account" className="font-medium underline">
+          <a href="/manage/settings?tab=account" className="font-medium text-[#003580] underline underline-offset-2 hover:text-[#002a5c]">
             Settings → Account
           </a>
           {' '}so we can send booking and payout notifications to the right inbox.
@@ -258,7 +258,7 @@ function SoftEmailBanner({ currentEmail }: { currentEmail: string }) {
             window.sessionStorage.setItem(SOFT_PROMPT_DISMISS_KEY, '1')
             setDismissed(true)
           }}
-          className="rounded-full px-2 py-0.5 text-xs font-medium text-orange-800 hover:bg-orange-100"
+          className="rounded-full px-2 py-0.5 text-xs font-medium text-[#003580] hover:bg-[#003580]/10"
         >
           Dismiss
         </button>
