@@ -9,7 +9,7 @@
  *   orphan claim links). One query each, every time we land on /admin/*.
  */
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase/client'
@@ -20,8 +20,19 @@ interface SidebarCounts {
   orphan?: number
 }
 
+function adminSectionTitle(pathname: string): string {
+  if (pathname === '/admin') return 'Overview'
+  if (pathname.startsWith('/admin/verification')) return 'Verification'
+  if (pathname.startsWith('/admin/gyms')) return 'All gyms'
+  if (pathname.startsWith('/admin/orphan-gyms')) return 'Claim links'
+  if (pathname.startsWith('/admin/reviews')) return 'Reviews'
+  if (pathname.startsWith('/admin/offers')) return 'Offers'
+  return 'Admin'
+}
+
 export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname() ?? ''
   const { user, profile, loading: authLoading } = useAuth()
   const [counts, setCounts] = useState<SidebarCounts>({})
 
@@ -65,6 +76,12 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
     }
   }, [authLoading, user, profile?.role])
 
+  useEffect(() => {
+    if (authLoading || !user || profile?.role !== 'admin') return
+    const section = adminSectionTitle(pathname)
+    document.title = `${section} | Combatbooking`
+  }, [authLoading, user, profile?.role, pathname])
+
   if (authLoading) {
     return (
       <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
@@ -93,7 +110,7 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   if (profile?.role !== 'admin') {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Access denied</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Access denied</p>
         <h1 className="mt-1 text-2xl font-semibold text-stone-900">Admins only</h1>
         <p className="mt-2 text-sm text-stone-600">
           This area is restricted to platform admins. If you think this is a

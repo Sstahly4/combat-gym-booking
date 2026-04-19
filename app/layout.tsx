@@ -16,15 +16,19 @@ const siteUrl = (
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "CombatBooking.com",
+  name: "Combatbooking",
   url: siteUrl,
   logo: `${siteUrl}/favicon-512x512-rounded.png`,
 }
 
+const defaultTitle =
+  "Combatbooking — Book Muay Thai & MMA Training Camps in Thailand"
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Combat Gym Booking",
-  description: "Book authentic combat sports training camps",
+  title: defaultTitle,
+  description:
+    "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
   manifest: "/site.webmanifest",
   icons: {
     icon: [
@@ -34,10 +38,11 @@ export const metadata: Metadata = {
     apple: [{ url: "/favicon-180x180.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "Combat Gym Booking",
-    description: "Book authentic combat sports training camps",
+    title: defaultTitle,
+    description:
+      "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
     url: "/",
-    siteName: "CombatBooking.com",
+    siteName: "Combatbooking",
     type: "website",
     locale: "en_US",
     images: [
@@ -45,14 +50,15 @@ export const metadata: Metadata = {
         url: "/favicon-512x512-rounded.png",
         width: 512,
         height: 512,
-        alt: "CombatBooking",
+        alt: "Combatbooking",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Combat Gym Booking",
-    description: "Book authentic combat sports training camps",
+    title: defaultTitle,
+    description:
+      "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
     images: ["/favicon-512x512-rounded.png"],
   },
 }

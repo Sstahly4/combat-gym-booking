@@ -122,7 +122,7 @@ export default function AdminOverviewPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
             Admin
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">Overview</h1>
@@ -147,7 +147,7 @@ export default function AdminOverviewPage() {
           label="Verification queue"
           value={stats.unverified}
           icon={ShieldCheck}
-          accent="brand"
+          accent="urgent"
           href="/admin/verification"
           loading={loading}
         />
@@ -155,7 +155,7 @@ export default function AdminOverviewPage() {
           label="Claim links open"
           value={stats.orphan}
           icon={KeyRound}
-          accent="blue"
+          accent="attention"
           href="/admin/orphan-gyms"
           loading={loading}
         />
@@ -163,14 +163,14 @@ export default function AdminOverviewPage() {
           label="Pending (legacy)"
           value={stats.pendingApproval}
           icon={Clock}
-          accent="slate"
+          accent="muted"
           loading={loading}
         />
         <StatCard
           label="Approved gyms"
           value={stats.totalGyms}
           icon={Building2}
-          accent="emerald"
+          accent="positive"
           href="/admin/gyms"
           loading={loading}
         />
@@ -178,7 +178,7 @@ export default function AdminOverviewPage() {
           label="Offers live"
           value={stats.offers}
           icon={Sparkles}
-          accent="fuchsia"
+          accent="promo"
           href="/admin/offers"
           loading={loading}
         />
@@ -186,7 +186,7 @@ export default function AdminOverviewPage() {
           label="Recent bookings"
           value={stats.recentBookings}
           icon={CreditCard}
-          accent="indigo"
+          accent="info"
           loading={loading}
         />
       </section>
@@ -201,13 +201,14 @@ export default function AdminOverviewPage() {
             title="Verify gyms"
             description="Approve drafts and clear the verification queue."
             icon={ShieldCheck}
+            tone="urgent"
           />
           <ActionCard
             href="/admin/orphan-gyms"
             title="Issue claim links"
             description="Generate single-use links so pre-listed owners can take over their account."
             icon={KeyRound}
-            highlight
+            tone="attention"
           />
           <ActionCard
             href="/admin/reviews"
@@ -305,7 +306,7 @@ export default function AdminOverviewPage() {
           </h2>
           <Link
             href="/admin/gyms"
-            className="inline-flex items-center gap-1 text-sm font-medium text-[#003580] hover:text-[#002a66]"
+            className="inline-flex items-center gap-1 text-sm font-medium text-stone-600 hover:text-emerald-700"
           >
             View all <Eye className="h-4 w-4" />
           </Link>
@@ -350,14 +351,30 @@ export default function AdminOverviewPage() {
   )
 }
 
+/** Stat tile icon backgrounds — urgency / semantic (not all brand navy). */
 const ACCENTS = {
-  brand: 'text-[#003580] bg-[#003580]/10',
-  blue: 'text-blue-700 bg-blue-50',
-  slate: 'text-slate-700 bg-slate-100',
-  emerald: 'text-emerald-700 bg-emerald-50',
-  fuchsia: 'text-fuchsia-700 bg-fuchsia-50',
-  indigo: 'text-indigo-700 bg-indigo-50',
+  /** Needs timely review */
+  urgent: 'text-amber-800 bg-amber-50',
+  /** Owner handoff / claim workflow */
+  attention: 'text-violet-800 bg-violet-50',
+  /** Low-priority / legacy */
+  muted: 'text-slate-700 bg-slate-100',
+  /** Healthy inventory */
+  positive: 'text-emerald-800 bg-emerald-50',
+  /** Marketing */
+  promo: 'text-fuchsia-800 bg-fuchsia-50',
+  /** Activity / bookings */
+  info: 'text-indigo-800 bg-indigo-50',
 } as const
+
+const VIEW_LINK: Record<keyof typeof ACCENTS, string> = {
+  urgent: 'text-amber-800',
+  attention: 'text-violet-800',
+  muted: 'text-slate-600',
+  positive: 'text-emerald-800',
+  promo: 'text-fuchsia-800',
+  info: 'text-indigo-800',
+}
 
 function StatCard({
   label,
@@ -381,7 +398,7 @@ function StatCard({
           <Icon className="h-4 w-4" />
         </span>
         {href && (
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#003580]">
+          <span className={`text-[11px] font-semibold uppercase tracking-wider ${VIEW_LINK[accent]}`}>
             View
           </span>
         )}
@@ -397,33 +414,46 @@ function StatCard({
   return href ? <Link href={href}>{body}</Link> : body
 }
 
+type ActionTone = 'default' | 'urgent' | 'attention'
+
+const ACTION_TONE: Record<
+  ActionTone,
+  { card: string; icon: string }
+> = {
+  default: {
+    card: 'border-stone-200 bg-white hover:border-stone-300',
+    icon: 'bg-stone-100 text-stone-700',
+  },
+  urgent: {
+    card: 'border-amber-200/90 bg-amber-50/50 hover:border-amber-300',
+    icon: 'bg-amber-600 text-white',
+  },
+  attention: {
+    card: 'border-violet-200/90 bg-violet-50/40 hover:border-violet-300',
+    icon: 'bg-violet-600 text-white',
+  },
+}
+
 function ActionCard({
   href,
   title,
   description,
   icon: Icon,
-  highlight,
+  tone = 'default',
 }: {
   href: string
   title: string
   description: string
   icon: React.ComponentType<{ className?: string }>
-  highlight?: boolean
+  tone?: ActionTone
 }) {
+  const t = ACTION_TONE[tone]
   return (
     <Link
       href={href}
-      className={`group flex h-full flex-col gap-2 rounded-xl border p-4 transition-all hover:shadow-sm ${
-        highlight
-          ? 'border-[#003580]/25 bg-[#003580]/[0.06] hover:border-[#003580]/35'
-          : 'border-stone-200 bg-white hover:border-stone-300'
-      }`}
+      className={`group flex h-full flex-col gap-2 rounded-xl border p-4 transition-all hover:shadow-sm ${t.card}`}
     >
-      <span
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${
-          highlight ? 'bg-[#003580] text-white' : 'bg-stone-100 text-stone-700'
-        }`}
-      >
+      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${t.icon}`}>
         <Icon className="h-4 w-4" />
       </span>
       <p className="text-sm font-semibold text-stone-900">{title}</p>

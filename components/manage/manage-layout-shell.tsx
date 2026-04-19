@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { ManageSidebar } from '@/components/manage/manage-sidebar'
@@ -29,6 +30,11 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   const viewListingHref = active ? `/manage/gym/preview?gym_id=${active.id}` : '/manage/onboarding'
   const gymName = active?.name?.trim() ? active.name.trim() : null
   const firstGymId = active?.id ?? null
+
+  useEffect(() => {
+    const base = gymName ? `${gymName} Dashboard` : 'Gym Dashboard'
+    document.title = `${base} | Combatbooking`
+  }, [gymName])
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">

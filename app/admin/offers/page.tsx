@@ -278,7 +278,7 @@ export default function AdminOffersPage() {
               Back to Admin
             </Link>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Sparkles className="w-7 h-7 text-[#003580]" />
+              <Sparkles className="w-7 h-7 text-fuchsia-600" />
               Offers
             </h1>
             <p className="text-gray-600 mt-2">Create and manage homepage promotions.</p>
@@ -408,7 +408,7 @@ export default function AdminOffersPage() {
                 </label>
 
                 <div className="flex items-center gap-3 pt-2">
-                  <Button type="submit" className="bg-[#003580] hover:bg-[#003580]/90 text-white" disabled={saving}>
+                  <Button type="submit" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" disabled={saving}>
                     {saving ? 'Saving...' : editingOfferId ? 'Update Offer' : 'Create Offer'}
                   </Button>
                   {editingOfferId && (
@@ -462,7 +462,7 @@ export default function AdminOffersPage() {
                         <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
                           <Link
                             href={offer.cta_url}
-                            className="inline-flex items-center rounded-md bg-[#003580] px-3 py-2 font-medium text-white hover:bg-[#003580]/90 transition-colors"
+                            className="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-2 font-medium text-white hover:bg-fuchsia-700 transition-colors"
                           >
                             {offer.cta_text}
                           </Link>

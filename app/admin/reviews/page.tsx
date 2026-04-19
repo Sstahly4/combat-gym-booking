@@ -106,9 +106,9 @@ export default function AdminReviewsPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Admin</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Admin</p>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-stone-900">
-          <Star className="h-5 w-5 text-[#003580]" />
+          <Star className="h-5 w-5 text-fuchsia-600" />
           Manual reviews
         </h1>
         <p className="mt-1 text-sm text-stone-600">

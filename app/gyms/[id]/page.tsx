@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Review, Package } from '@/lib/types/database'
@@ -181,6 +182,22 @@ async function getGym(id: string) {
   } catch (err) {
     console.error('Error in getGym:', err)
     return null
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string }
+}): Promise<Metadata> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('gyms').select('name').eq('id', params.id).maybeSingle()
+  const name = data?.name?.trim()
+  if (!name) {
+    return { title: 'Training Camp | Combatbooking' }
+  }
+  return {
+    title: `${name} — Book Training Camps | Combatbooking`,
   }
 }
 
