@@ -5,10 +5,13 @@
  *
  * Auth guard is provided by `app/admin/layout.tsx`.
  *
- * Beyond browsing/editing, this page is also where the admin marks gyms as
- * "pre-listed" — meaning they were created on behalf of a real owner and are
- * ready to be handed over via a single-use claim link. Pre-listed gyms then
- * surface in `/admin/orphan-gyms` for the actual link issuance.
+ * Conceptually:
+ *   - Every admin-owned gym is treated as "pre-listed" — admins create gyms
+ *     on behalf of real owners and hand them over via claim links from
+ *     `/admin/orphan-gyms`. There is no separate manual "mark as pre-listed"
+ *     step in the UI; the admin owner_id IS the signal.
+ *   - "Owner-owned" gyms are everything else (real partner accounts plus
+ *     placeholder accounts that have been minted but not yet claimed).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -24,14 +27,14 @@ interface GymWithImage extends Gym {
   images: GymImage[]
 }
 
+type AdminGymsFilter = 'all' | 'pre_listed' | 'owner_owned'
+
 export default function AdminGymsPage() {
   const { user } = useAuth()
   const [gyms, setGyms] = useState<GymWithImage[]>([])
   const [loading, setLoading] = useState(true)
   const [adminOwnerIds, setAdminOwnerIds] = useState<Set<string>>(new Set())
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [bulkBusy, setBulkBusy] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'pre_listed' | 'admin_only'>('all')
+  const [filter, setFilter] = useState<AdminGymsFilter>('all')
 
   const fetchGyms = useCallback(async () => {
     setLoading(true)
@@ -65,76 +68,21 @@ export default function AdminGymsPage() {
 
   useEffect(() => { fetchGyms() }, [fetchGyms])
 
-  const togglePreListed = async (gymId: string, next: boolean) => {
-    setBusyId(gymId)
-    try {
-      const res = await fetch(`/api/admin/gyms/${gymId}/pre-listed`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_pre_listed: next }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        alert(`Failed: ${data?.error || res.statusText}`)
-        return
-      }
-      setGyms((prev) =>
-        prev.map((g) => (g.id === gymId ? { ...g, is_pre_listed: next } : g)),
-      )
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   const adminOwnedGyms = useMemo(
     () => gyms.filter((g) => adminOwnerIds.has(g.owner_id)),
     [gyms, adminOwnerIds],
   )
 
-  const adminOwnedNotPreListed = useMemo(
-    () => adminOwnedGyms.filter((g) => !g.is_pre_listed),
-    [adminOwnedGyms],
+  const ownerOwnedGyms = useMemo(
+    () => gyms.filter((g) => !adminOwnerIds.has(g.owner_id)),
+    [gyms, adminOwnerIds],
   )
 
-  const markAllAdminOwned = async () => {
-    const targets = adminOwnedNotPreListed
-    if (targets.length === 0) return
-    if (
-      !confirm(
-        `Mark ${targets.length} admin-owned gym(s) as pre-listed?\n\nThey'll show up in /admin/orphan-gyms ready for a claim link. You can unmark anything you want to keep before issuing links.`,
-      )
-    ) {
-      return
-    }
-    setBulkBusy(true)
-    let ok = 0
-    let failed = 0
-    try {
-      for (const g of targets) {
-        try {
-          const res = await fetch(`/api/admin/gyms/${g.id}/pre-listed`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_pre_listed: true }),
-          })
-          if (res.ok) ok++
-          else failed++
-        } catch {
-          failed++
-        }
-      }
-      alert(`Marked: ${ok}\nFailed: ${failed}`)
-      fetchGyms()
-    } finally {
-      setBulkBusy(false)
-    }
-  }
-
   const visible = useMemo(() => {
-    if (filter === 'pre_listed') return gyms.filter((g) => g.is_pre_listed)
-    if (filter === 'admin_only') return adminOwnedGyms
+    if (filter === 'pre_listed') return adminOwnedGyms
+    if (filter === 'owner_owned') return ownerOwnedGyms
     return gyms
-  }, [gyms, adminOwnedGyms, filter])
+  }, [gyms, adminOwnedGyms, ownerOwnedGyms, filter])
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
@@ -145,8 +93,12 @@ export default function AdminGymsPage() {
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">All gyms</h1>
           <p className="mt-1 text-sm text-stone-600">
-            Browse, edit, and mark gyms as <span className="font-medium">pre-listed</span>{' '}
-            to surface them in the claim-link workflow.
+            Browse and edit listings. Admin-owned gyms are automatically{' '}
+            <span className="font-medium">pre-listed</span> — issue claim links from{' '}
+            <Link href="/admin/orphan-gyms" className="text-violet-700 underline-offset-2 hover:underline">
+              /admin/orphan-gyms
+            </Link>
+            .
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -160,9 +112,9 @@ export default function AdminGymsPage() {
           <div className="inline-flex rounded-full border border-stone-200 bg-white p-0.5 text-xs">
             {(
               [
-                ['all', 'All'],
-                ['admin_only', `Admin-owned (${adminOwnedGyms.length})`],
-                ['pre_listed', `Pre-listed (${gyms.filter((g) => g.is_pre_listed).length})`],
+                ['all', `All (${gyms.length})`],
+                ['pre_listed', `Pre-listed (${adminOwnedGyms.length})`],
+                ['owner_owned', `Owner-owned (${ownerOwnedGyms.length})`],
               ] as const
             ).map(([v, l]) => (
               <button
@@ -176,16 +128,6 @@ export default function AdminGymsPage() {
               </button>
             ))}
           </div>
-          {adminOwnedNotPreListed.length > 0 && (
-            <Button
-              onClick={markAllAdminOwned}
-              disabled={bulkBusy}
-              className="rounded-full bg-violet-600 text-white hover:bg-violet-700"
-            >
-              <Sparkles className="mr-1.5 h-4 w-4" />
-              {bulkBusy ? 'Marking…' : `Mark ${adminOwnedNotPreListed.length} as pre-listed`}
-            </Button>
-          )}
           <Link
             href="/admin/orphan-gyms"
             className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
@@ -227,7 +169,7 @@ export default function AdminGymsPage() {
                       No image
                     </div>
                   )}
-                  {gym.is_pre_listed && (
+                  {isAdminOwned && (
                     <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-violet-600/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
                       <Sparkles className="h-3 w-3" />
                       Pre-listed
@@ -278,7 +220,7 @@ export default function AdminGymsPage() {
                   ) : null}
                   <p className="text-[11px] text-stone-500">
                     {isMine
-                      ? 'Owner: you'
+                      ? 'Owner: you (admin)'
                       : isAdminOwned
                         ? `Owner: admin (${gym.owner_id.slice(0, 8)}…)`
                         : `Owner: ${gym.owner_id.slice(0, 8)}…`}
@@ -298,22 +240,15 @@ export default function AdminGymsPage() {
                     </Link>
                   </div>
                   {isAdminOwned && (
-                    <Button
-                      onClick={() => togglePreListed(gym.id, !gym.is_pre_listed)}
-                      disabled={busyId === gym.id}
-                      className={`w-full rounded-full ${
-                        gym.is_pre_listed
-                          ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
-                          : 'bg-violet-600 text-white hover:bg-violet-700'
-                      }`}
-                    >
-                      <Sparkles className="mr-1.5 h-4 w-4" />
-                      {busyId === gym.id
-                        ? 'Working…'
-                        : gym.is_pre_listed
-                          ? 'Unmark pre-listed'
-                          : 'Mark as pre-listed'}
-                    </Button>
+                    <Link href="/admin/orphan-gyms" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-full border-violet-200 text-violet-800 hover:bg-violet-50"
+                      >
+                        <KeyRound className="mr-1.5 h-4 w-4" />
+                        Issue claim link
+                      </Button>
+                    </Link>
                   )}
                 </CardFooter>
               </Card>

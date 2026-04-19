@@ -6,9 +6,8 @@
  * Lists every gym waiting to be handed over to a real owner — either:
  *   • already owned by a synthetic placeholder profile (a claim link was issued
  *     in the past, the owner just hasn't finished setup), or
- *   • owned by an admin profile and explicitly flagged `is_pre_listed = true`
- *     (admin pre-created it; first claim-link generation will mint the
- *     placeholder and reassign ownership).
+ *   • still owned by an admin profile (admin pre-created it; first claim-link
+ *     generation will mint the placeholder and reassign ownership).
  *
  * From here the admin can:
  *   - Generate a fresh claim link (revokes any prior active link)
@@ -176,12 +175,11 @@ export default function OrphanGymsPage() {
                 <>
                   No gyms ready for claim links yet.
                   <br />
-                  Mark gyms as <span className="font-semibold text-stone-700">pre-listed</span>{' '}
-                  from{' '}
+                  Create a new gym from{' '}
                   <Link href="/admin/gyms" className="text-violet-700 underline-offset-2 hover:underline">
                     /admin/gyms
                   </Link>{' '}
-                  to surface them here.
+                  — every admin-owned gym surfaces here automatically.
                 </>
               )}
           </CardContent>

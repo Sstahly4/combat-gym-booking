@@ -8,13 +8,11 @@
  *     placeholder Supabase user (the admin generated a claim link previously).
  *     Resolved by `profiles.placeholder_account = true`.
  *
- *  2. `state = 'pre_listed'` — admin pre-created the gym while logged in as
- *     themselves and explicitly flagged `gyms.is_pre_listed = true`. No
- *     placeholder user has been minted yet; the first claim-link generation
- *     will mint one and reassign ownership.
- *
- * Internal/test gyms owned by the admin without the `is_pre_listed` flag are
- * intentionally omitted so they don't pollute the handoff workflow.
+ *  2. `state = 'pre_listed'` — gym is still owned by an admin profile. We
+ *     treat every admin-owned gym as pre-listed (admins create listings on
+ *     behalf of real owners; the first claim-link generation mints a
+ *     placeholder and reassigns ownership). The legacy `is_pre_listed`
+ *     column is no longer required as a filter.
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -86,7 +84,6 @@ export async function GET() {
         .from('gyms')
         .select('id, name, city, country, owner_id, created_at, is_live, status, is_pre_listed')
         .in('owner_id', adminIds)
-        .eq('is_pre_listed', true)
         .order('created_at', { ascending: false })
     : { data: [] as any[] }
 

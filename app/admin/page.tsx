@@ -157,7 +157,7 @@ export default function AdminOverviewPage() {
               <p className="text-sm font-semibold text-stone-900">Create a new gym</p>
               <p className="mt-0.5 text-sm text-stone-600">
                 Opens the same partner onboarding wizard (basics, packages, photos, payouts). The
-                listing is created under your admin account — mark it pre-listed and issue a claim
+                listing is created under your admin account (counts as pre-listed) — issue a claim
                 link later, or verify it from{' '}
                 <span className="font-medium text-stone-800">Verification</span> when ready.
               </p>
