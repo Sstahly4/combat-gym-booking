@@ -2,6 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Skip session refresh entirely for /claim/* — that route handler manages
+  // its own Supabase session swap (signing the placeholder owner in via a
+  // one-time magic link) and any extra cookie writes from middleware can
+  // clobber it, leaving the user with their previous (admin) session.
+  if (request.nextUrl.pathname.startsWith('/claim/')) {
+    return NextResponse.next()
+  }
+
   // Forward pathname+search so server layouts can whitelist paths and preserve return URLs.
   // (Nothing else in the app was setting `next-url`, which broke manage/layout.tsx.)
   const nextUrl = `${request.nextUrl.pathname}${request.nextUrl.search}`

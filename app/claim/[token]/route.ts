@@ -107,13 +107,19 @@ export async function GET(request: NextRequest, { params }: Params) {
   const dest = new URL('/manage?claimed=1', request.url)
   const redirectResponse = NextResponse.redirect(dest)
 
+  // IMPORTANT: start with NO inbound cookies. If the visitor is already signed
+  // in as someone else (e.g. the admin who issued the link, opening it in the
+  // same browser), their session cookies would be sent in, GoTrue would see an
+  // active session, and verifyOtp can fail or refuse to swap users. Treating
+  // this request as anonymous lets verifyOtp cleanly mint the placeholder
+  // session and overwrite the cookies on the redirect response.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return []
         },
         setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -123,6 +129,19 @@ export async function GET(request: NextRequest, { params }: Params) {
       },
     },
   )
+
+  // Also clear any pre-existing Supabase auth cookies on the redirect response
+  // so the browser drops the previous session before the new one lands.
+  for (const c of request.cookies.getAll()) {
+    if (c.name.startsWith('sb-') && c.name.includes('auth-token')) {
+      redirectResponse.cookies.set({
+        name: c.name,
+        value: '',
+        path: '/',
+        maxAge: 0,
+      })
+    }
+  }
 
   // Generate a one-time magic-link OTP for the placeholder user and consume it server-side.
   const { data: linkData, error: linkErr } =
