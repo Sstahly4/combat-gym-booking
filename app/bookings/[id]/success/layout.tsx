@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { memberHubPageTitle } from '@/lib/metadata/site-hubs'
 
 export const metadata: Metadata = {
-  title: memberHubPageTitle('Review your booking'),
+  title: memberHubPageTitle('Booking confirmed'),
 }
 
-export default function BookingSummaryLayout({ children }: { children: React.ReactNode }) {
+export default function BookingSuccessLayout({ children }: { children: React.ReactNode }) {
   return children
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 import {
   DEFAULT_STRIPE_CONNECT_COUNTRY,
   gymCountryToStripeIso2,
@@ -52,7 +52,7 @@ function isStaleConnectedAccountError(message: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await getOwnerAccessContext()
+    const access = await getOwnerOrAdminAccessContext()
     if (access.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

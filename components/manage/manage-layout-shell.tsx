@@ -7,6 +7,8 @@ import { ManageSidebar } from '@/components/manage/manage-sidebar'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
 import { AccountClaimPrompts } from '@/components/manage/account-claim-prompts'
+import { formatHubDocumentTitle } from '@/lib/metadata/site-hubs'
+import { managePartnerSectionTitle } from '@/lib/manage/manage-partner-section-title'
 
 const NO_SIDEBAR_PREFIXES = [
   '/manage/invite',
@@ -17,6 +19,16 @@ const NO_SIDEBAR_PREFIXES = [
 
 function shouldHideSidebar(pathname: string): boolean {
   return NO_SIDEBAR_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+function ManageNoSidebarHubTitle() {
+  const pathname = usePathname() ?? ''
+  useEffect(() => {
+    if (!pathname.startsWith('/manage')) return
+    const section = managePartnerSectionTitle(pathname)
+    document.title = formatHubDocumentTitle(section, 'partner')
+  }, [pathname])
+  return null
 }
 
 function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
@@ -32,9 +44,15 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   const firstGymId = active?.id ?? null
 
   useEffect(() => {
-    const base = gymName ? `${gymName} Dashboard` : 'Gym Dashboard'
-    document.title = `${base} | Combatbooking`
-  }, [gymName])
+    if (!pathname.startsWith('/manage')) return
+    const isRoot = pathname === '/manage' || pathname === '/manage/'
+    const section = isRoot
+      ? gymName
+        ? `${gymName} Dashboard`
+        : 'Gym Dashboard'
+      : managePartnerSectionTitle(pathname)
+    document.title = formatHubDocumentTitle(section, 'partner')
+  }, [gymName, pathname])
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">
@@ -64,6 +82,7 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <AccountClaimPrompts />
+        <ManageNoSidebarHubTitle />
         {children}
       </>
     )

@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase/client'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
+import { formatHubDocumentTitle } from '@/lib/metadata/site-hubs'
 
 interface SidebarCounts {
   verification?: number
@@ -77,10 +78,10 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   }, [authLoading, user, profile?.role])
 
   useEffect(() => {
-    if (authLoading || !user || profile?.role !== 'admin') return
+    if (!pathname.startsWith('/admin')) return
     const section = adminSectionTitle(pathname)
-    document.title = `${section} | Combatbooking`
-  }, [authLoading, user, profile?.role, pathname])
+    document.title = formatHubDocumentTitle(section, 'admin')
+  }, [pathname])
 
   if (authLoading) {
     return (

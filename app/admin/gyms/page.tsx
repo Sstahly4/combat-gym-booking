@@ -12,7 +12,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, KeyRound } from 'lucide-react'
+import { KeyRound, PlusCircle, Sparkles } from 'lucide-react'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -149,6 +150,13 @@ export default function AdminGymsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={ADMIN_CREATE_GYM_ONBOARDING_HREF}
+            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Create gym
+          </Link>
           <div className="inline-flex rounded-full border border-stone-200 bg-white p-0.5 text-xs">
             {(
               [

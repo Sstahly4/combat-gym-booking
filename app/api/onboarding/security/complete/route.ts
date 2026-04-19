@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
 
 const residenceNames = RESIDENCE_COUNTRIES.map((c) => c.name) as [string, ...string[]]
@@ -27,7 +27,7 @@ const accountHolderSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await getOwnerAccessContext()
+    const access = await getOwnerOrAdminAccessContext()
     if (access.status === 'no_user') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

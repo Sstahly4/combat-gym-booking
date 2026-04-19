@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { memberHubPageTitle } from '@/lib/metadata/site-hubs'
 
 export const metadata: Metadata = {
-  title: 'Complete Your Booking | Combatbooking',
+  title: memberHubPageTitle('Payment'),
 }
 
 export default function BookingPaymentLayout({ children }: { children: React.ReactNode }) {

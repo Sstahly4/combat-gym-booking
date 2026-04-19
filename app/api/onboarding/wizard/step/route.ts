@@ -4,12 +4,12 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { OWNER_WIZARD_STEPS } from '@/lib/onboarding/owner-wizard'
 import { buildStepMetadata, validateWizardStepKey } from '@/lib/onboarding/wizard-api-logic'
-import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await getOwnerAccessContext()
+    const access = await getOwnerOrAdminAccessContext()
     if (access.status === 'no_user') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (access.status !== 'ok') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { supabase } = access

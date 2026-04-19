@@ -18,6 +18,7 @@ import { Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 
 interface Hit {
   id: string
@@ -28,6 +29,7 @@ interface Hit {
 }
 
 const STATIC_HITS: Hit[] = [
+  { id: 'admin-create-gym', title: 'Create gym', subtitle: 'Partner onboarding wizard (same as owners)', href: ADMIN_CREATE_GYM_ONBOARDING_HREF, keywords: ['create', 'new', 'gym', 'listing', 'onboarding', 'wizard'] },
   { id: 'admin-overview', title: 'Overview', subtitle: 'Admin · home', href: '/admin', keywords: ['home', 'overview', 'dashboard'] },
   { id: 'admin-verification', title: 'Verification queue', subtitle: 'Admin · verify gyms', href: '/admin/verification', keywords: ['verify', 'verification', 'draft', 'queue'] },
   { id: 'admin-gyms', title: 'All gyms', subtitle: 'Admin · browse + pre-list', href: '/admin/gyms', keywords: ['gyms', 'browse', 'pre-listed', 'pre-list'] },
@@ -105,7 +107,7 @@ export function AdminHeaderSearch() {
 
   const results = useMemo(() => {
     const q = query.trim()
-    if (!q) return STATIC_HITS.slice(0, 6)
+    if (!q) return STATIC_HITS.slice(0, 8)
     return [...allHits]
       .map((h) => ({ h, s: score(h, q) }))
       .filter((x) => x.s > 0)

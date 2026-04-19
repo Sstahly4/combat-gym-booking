@@ -18,11 +18,13 @@ import {
   CreditCard,
   Eye,
   KeyRound,
+  PlusCircle,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   Star,
 } from 'lucide-react'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { BookingDetailsModal } from '@/components/admin/booking-details-modal'
@@ -142,6 +144,31 @@ export default function AdminOverviewPage() {
         </Button>
       </header>
 
+      <section className="mb-8">
+        <Link
+          href={ADMIN_CREATE_GYM_ONBOARDING_HREF}
+          className="flex flex-col gap-2 rounded-xl border border-emerald-200/90 bg-emerald-50/40 p-4 transition-all hover:border-emerald-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+              <PlusCircle className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-stone-900">Create a new gym</p>
+              <p className="mt-0.5 text-sm text-stone-600">
+                Opens the same partner onboarding wizard (basics, packages, photos, payouts). The
+                listing is created under your admin account — mark it pre-listed and issue a claim
+                link later, or verify it from{' '}
+                <span className="font-medium text-stone-800">Verification</span> when ready.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 self-start rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white sm:self-center">
+            Start wizard
+          </span>
+        </Link>
+      </section>
+
       <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           label="Verification queue"
@@ -196,6 +223,13 @@ export default function AdminOverviewPage() {
           Quick actions
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ActionCard
+            href={ADMIN_CREATE_GYM_ONBOARDING_HREF}
+            title="Create gym"
+            description="Full listing wizard — same steps owners use. Edit anytime under All gyms."
+            icon={PlusCircle}
+            tone="positive"
+          />
           <ActionCard
             href="/admin/verification"
             title="Verify gyms"
@@ -414,7 +448,7 @@ function StatCard({
   return href ? <Link href={href}>{body}</Link> : body
 }
 
-type ActionTone = 'default' | 'urgent' | 'attention'
+type ActionTone = 'default' | 'positive' | 'urgent' | 'attention'
 
 const ACTION_TONE: Record<
   ActionTone,
@@ -423,6 +457,10 @@ const ACTION_TONE: Record<
   default: {
     card: 'border-stone-200 bg-white hover:border-stone-300',
     icon: 'bg-stone-100 text-stone-700',
+  },
+  positive: {
+    card: 'border-emerald-200/90 bg-emerald-50/40 hover:border-emerald-300',
+    icon: 'bg-emerald-600 text-white',
   },
   urgent: {
     card: 'border-amber-200/90 bg-amber-50/50 hover:border-amber-300',

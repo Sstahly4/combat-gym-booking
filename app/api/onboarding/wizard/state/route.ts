@@ -3,11 +3,11 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveActiveGymId } from '@/lib/onboarding/wizard-api-logic'
-import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await getOwnerAccessContext()
+    const access = await getOwnerOrAdminAccessContext()
     if (access.status === 'no_user') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (access.status !== 'ok') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { supabase } = access

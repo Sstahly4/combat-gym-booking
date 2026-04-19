@@ -17,11 +17,13 @@ import {
   Building2,
   Home,
   KeyRound,
+  PlusCircle,
   Settings,
   ShieldCheck,
   Sparkles,
   Star,
 } from 'lucide-react'
+import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
@@ -55,6 +57,12 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         label: 'Overview',
         icon: Home,
         isActive: (p) => p === '/admin',
+      },
+      {
+        href: ADMIN_CREATE_GYM_ONBOARDING_HREF,
+        label: 'Create gym',
+        icon: PlusCircle,
+        isActive: (p) => p === '/manage/onboarding' || p.startsWith('/manage/onboarding/'),
       },
       {
         href: '/admin/verification',

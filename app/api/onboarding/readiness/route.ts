@@ -3,12 +3,12 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getGymReadiness } from '@/lib/onboarding/readiness'
-import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await getOwnerAccessContext()
+    const access = await getOwnerOrAdminAccessContext()
     if (access.status === 'no_user') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (access.status !== 'ok') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
