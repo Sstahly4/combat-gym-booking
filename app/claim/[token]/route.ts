@@ -31,11 +31,12 @@ import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 interface Params { params: { token: string } }
 
 /**
- * Admin `generateLink({ type: 'magiclink' })` usually returns `properties.hashed_token`.
- * Some GoTrue versions expose the hash only inside `action_link` query params — parse that
- * so server-side `verifyOtp` always receives a token_hash.
+ * Admin `generateLink()` returns the OTP hash either as `properties.hashed_token`
+ * directly or only inside `action_link` query params (older / newer GoTrue
+ * versions differ). Pull whichever is available so server-side `verifyOtp`
+ * always has a token to verify.
  */
-function extractMagiclinkOtpHash(
+function extractOtpHash(
   linkData: { properties?: Record<string, unknown> | null } | null | undefined,
 ): string | null {
   const p = linkData?.properties
@@ -157,10 +158,14 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   clearSupabaseAuthCookies(request, redirectResponse)
 
-  // Generate a one-time magic-link OTP for the placeholder user and consume it server-side.
+  // Use a recovery-type link rather than magiclink. For users created with
+  // `email_confirm: true` (every placeholder owner) GoTrue silently invalidates
+  // magiclink hashed_tokens, surfacing as `otp_expired` from verifyOtp. Recovery
+  // links are designed for already-confirmed users, sign them in just the same,
+  // and fit this flow because the next thing we ask for is a new password.
   const { data: linkData, error: linkErr } =
-    await admin.auth.admin.generateLink({ type: 'magiclink', email: ownerEmail })
-  const tokenHashOtp = extractMagiclinkOtpHash(
+    await admin.auth.admin.generateLink({ type: 'recovery', email: ownerEmail })
+  const tokenHashOtp = extractOtpHash(
     linkData as { properties?: Record<string, unknown> | null } | null,
   )
   if (linkErr || !tokenHashOtp) {
@@ -172,13 +177,14 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const { error: verifyErr, data: verifyData } = await supabase.auth.verifyOtp({
-    type: 'magiclink',
+    type: 'recovery',
     token_hash: tokenHashOtp,
   })
   if (verifyErr || !verifyData?.session) {
     return fail(request, 'session_failed', {
       message: verifyErr?.message,
       status: (verifyErr as unknown as { status?: number })?.status,
+      code: (verifyErr as unknown as { code?: string })?.code,
       hasSession: Boolean(verifyData?.session),
     })
   }
