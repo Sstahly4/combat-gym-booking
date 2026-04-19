@@ -51,6 +51,12 @@ export default function ReviewPage() {
         throw reviewError
       }
 
+      void fetch('/api/reviews/notify-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: bookingId }),
+      }).catch(() => {})
+
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Failed to submit review')

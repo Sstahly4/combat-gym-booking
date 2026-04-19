@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { AdminHeaderSearch } from '@/components/admin/admin-header-search'
+import { NotificationBell } from '@/components/manage/notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
@@ -159,6 +160,7 @@ export function Navbar() {
           <div className="relative z-[100] hidden shrink-0 items-center gap-1.5 md:flex">
             {isManageOwnerShell && !ownerOnboardingNavLock ? <ManageHeaderSearch /> : null}
             {isAdminShell ? <AdminHeaderSearch /> : null}
+            {isManageOwnerShell && !ownerOnboardingNavLock ? <NotificationBell /> : null}
 
             {/* Partner CTA: list gym (visitors / owners in onboarding) or dashboard (signed-in owners) */}
             <Link

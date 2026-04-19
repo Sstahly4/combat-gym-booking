@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingRequestDeclinedEmail } from '@/lib/email'
+import { sendOwnerBookingCancelledEmail } from '@/lib/email-owner-notifications'
+import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 
 /**
@@ -101,6 +103,40 @@ export async function POST(
         console.error('Error sending decline email:', emailError)
         // Don't fail the request if email fails
       }
+    }
+
+    if (gym?.owner_id) {
+      void recordOwnerNotification(supabase, {
+        user_id: gym.owner_id,
+        gym_id: gym.id,
+        type: 'booking_cancelled',
+        title: `Booking declined for ${gym.name || 'your gym'}`,
+        body: `${booking.guest_name || 'Guest'} \u2014 ${booking.start_date} \u2192 ${booking.end_date}.${reason ? ` Reason: ${reason}` : ''}`,
+        link_href: `/manage/bookings?ref=${booking.booking_reference || ''}`,
+        metadata: { booking_id: bookingId, reason: reason ?? null },
+        email: {
+          pref_key: 'email_cancellations',
+          send: async () => {
+            try {
+              const { data: ownerAuth } = await supabase.auth.admin.getUserById(gym.owner_id)
+              const ownerEmail = ownerAuth?.user?.email
+              if (!ownerEmail) return false
+              return await sendOwnerBookingCancelledEmail({
+                ownerEmail,
+                gymName: gym.name || 'your gym',
+                bookingReference: booking.booking_reference || bookingId,
+                guestName: booking.guest_name || 'Guest',
+                startDate: booking.start_date,
+                endDate: booking.end_date,
+                reason: reason ?? undefined,
+              })
+            } catch (err) {
+              console.warn('[decline-request] owner email lookup failed', err)
+              return false
+            }
+          },
+        },
+      })
     }
 
     return NextResponse.json({

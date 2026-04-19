@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { randomBytes } from 'crypto'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
+import { sendOwnerBookingCreatedEmail } from '@/lib/email-owner-notifications'
 
 // Generate booking reference (e.g., "BK-ABC123")
 function generateBookingReference(): string {
@@ -53,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Verify gym exists and is verified (not draft)
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
-      .select('id, verification_status, status')
+      .select('id, name, owner_id, verification_status, status')
       .eq('id', gym_id)
       .single()
 
@@ -136,6 +139,47 @@ export async function POST(request: NextRequest) {
     if (bookingError) {
       console.error('Booking creation error:', bookingError)
       return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
+    }
+
+    // Best-effort: light up the owner's bell + email (gated by their prefs).
+    if (gym.owner_id) {
+      const adminSb = createAdminClient()
+      void recordOwnerNotification(adminSb, {
+        user_id: gym.owner_id,
+        gym_id: gym.id,
+        type: 'booking_created',
+        title: `New booking request for ${gym.name || 'your gym'}`,
+        body: `${guest_name || 'A guest'} requested ${start_date} \u2192 ${end_date}.`,
+        link_href: `/manage/bookings?ref=${bookingReference}`,
+        metadata: {
+          booking_id: booking.id,
+          booking_reference: bookingReference,
+          start_date,
+          end_date,
+        },
+        email: {
+          pref_key: 'email_bookings',
+          send: async () => {
+            try {
+              const { data: ownerAuth } = await adminSb.auth.admin.getUserById(gym.owner_id)
+              const ownerEmail = ownerAuth?.user?.email
+              if (!ownerEmail) return false
+              return await sendOwnerBookingCreatedEmail({
+                ownerEmail,
+                gymName: gym.name || 'your gym',
+                bookingReference,
+                guestName: guest_name || 'A guest',
+                startDate: start_date,
+                endDate: end_date,
+                totalPrice: typeof total_price === 'number' ? total_price : undefined,
+              })
+            } catch (err) {
+              console.warn('[bookings/create] owner email lookup failed', err)
+              return false
+            }
+          },
+        },
+      })
     }
 
     return NextResponse.json({ 

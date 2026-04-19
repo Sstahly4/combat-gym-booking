@@ -350,6 +350,25 @@ export interface OwnerInviteToken {
   updated_at: string
 }
 
+export type OwnerNotificationType =
+  | 'booking_created'
+  | 'booking_cancelled'
+  | 'review_posted'
+  | 'payout_paid'
+
+export interface OwnerNotification {
+  id: string
+  user_id: string
+  gym_id: string | null
+  type: OwnerNotificationType
+  title: string
+  body: string | null
+  link_href: string | null
+  metadata: Record<string, unknown>
+  read_at: string | null
+  created_at: string
+}
+
 export interface SecurityEvent {
   id: string
   user_id: string

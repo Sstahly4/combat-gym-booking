@@ -5,7 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { sendBookingConfirmedEmail, sendOwnerPayoutDisabledEmail } from '@/lib/email'
+import { sendOwnerPayoutPaidEmail } from '@/lib/email-owner-notifications'
 import { normalizeOwnerNotificationPrefs } from '@/lib/manage/owner-notification-prefs'
+import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 
 // Disable body parsing, we need the raw body for webhook signature verification
 export const runtime = 'nodejs'
@@ -483,6 +485,68 @@ export async function POST(request: NextRequest) {
           { error: error?.message || 'Failed to process external_account event' },
           { status: 500 }
         )
+      }
+    }
+
+    // Owner-facing payout receipt: when Stripe finishes paying out to the
+    // gym's bank we light up the navbar bell and (gated by the owner's
+    // email_payouts pref) send a receipt email. event.account is the
+    // connected account id (Connect direct webhook).
+    if (event.type === 'payout.paid') {
+      try {
+        const payout = event.data.object as Stripe.Payout
+        const accountId = event.account
+        if (!accountId) {
+          return NextResponse.json({ received: true, event_type: event.type, skipped: 'no_account' })
+        }
+        const admin = createAdminClient()
+        const { data: gyms } = await admin
+          .from('gyms')
+          .select('id, name, owner_id')
+          .eq('stripe_account_id', accountId)
+        const arrivalIso = payout.arrival_date
+          ? new Date(payout.arrival_date * 1000).toISOString().slice(0, 10)
+          : 'soon'
+        const amount = (payout.amount ?? 0) / 100
+        const currency = (payout.currency || 'usd').toUpperCase()
+
+        for (const gym of gyms || []) {
+          if (!gym?.owner_id) continue
+          await recordOwnerNotification(admin, {
+            user_id: gym.owner_id,
+            gym_id: gym.id,
+            type: 'payout_paid',
+            title: `Payout sent — ${currency} ${amount.toFixed(2)}`,
+            body: `Expected to arrive in your bank account on ${arrivalIso}.`,
+            link_href: '/manage/balances/payouts',
+            metadata: { payout_id: payout.id, amount, currency, arrival_date: arrivalIso },
+            email: {
+              pref_key: 'email_payouts',
+              send: async () => {
+                try {
+                  const { data: ownerAuth } = await admin.auth.admin.getUserById(gym.owner_id)
+                  const ownerEmail = ownerAuth?.user?.email
+                  if (!ownerEmail) return false
+                  return await sendOwnerPayoutPaidEmail({
+                    ownerEmail,
+                    gymName: gym.name || 'your gym',
+                    amount,
+                    currency,
+                    arrivalDate: arrivalIso,
+                    payoutId: payout.id,
+                  })
+                } catch (err) {
+                  console.warn('[stripe-webhook] payout.paid email lookup failed', err)
+                  return false
+                }
+              },
+            },
+          })
+        }
+        return NextResponse.json({ received: true, event_type: event.type, gyms_notified: (gyms || []).length })
+      } catch (err: any) {
+        console.error('[stripe-webhook] payout.paid failed:', err)
+        return NextResponse.json({ error: err?.message || 'payout.paid failed' }, { status: 500 })
       }
     }
 
