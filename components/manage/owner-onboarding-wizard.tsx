@@ -18,8 +18,8 @@ import { Info } from 'lucide-react'
 import {
   buildOnboardingWizardUrl,
   buildWizardStepDeepLink,
-  getWizardStepBySlug,
-  OWNER_WIZARD_STEPS,
+  getOwnerWizardStepsForContext,
+  resolveWizardStepFromSlug,
   type OnboardingWizardUrlOptions,
 } from '@/lib/onboarding/owner-wizard'
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
@@ -80,7 +80,13 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const searchParams = useSearchParams()
   const gymIdParam = searchParams.get('gym_id')
   const stepSlugParam = searchParams.get('step') || 'step-1'
-  const step = getWizardStepBySlug(stepSlugParam) ?? OWNER_WIZARD_STEPS[0]
+
+  const wizardSteps = useMemo(() => getOwnerWizardStepsForContext(embedInAdmin), [embedInAdmin])
+  const step = useMemo(
+    () => resolveWizardStepFromSlug(stepSlugParam, wizardSteps),
+    [stepSlugParam, wizardSteps]
+  )
+
   const { user, profile, loading: authLoading } = useAuth()
 
   const wizardUrlOptions = useMemo<OnboardingWizardUrlOptions | undefined>(() => {
@@ -136,6 +142,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const [wizConfirmPassword, setWizConfirmPassword] = useState('')
   const [wizPasswordUpdating, setWizPasswordUpdating] = useState(false)
   const [wizPasswordMessage, setWizPasswordMessage] = useState<string | null>(null)
+  const [adminVerifyBusy, setAdminVerifyBusy] = useState(false)
+  const [adminVerifyMessage, setAdminVerifyMessage] = useState<string | null>(null)
 
   const fieldClass =
     'border-gray-200 bg-white focus-visible:border-[#003580]/45 focus-visible:ring-[#003580]/20'
@@ -154,8 +162,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const wizHint = 'text-xs leading-relaxed text-muted-foreground'
 
   const currentIndex = step.index
-  const previousStep = OWNER_WIZARD_STEPS.find((item) => item.index === currentIndex - 1) || null
-  const nextStep = OWNER_WIZARD_STEPS.find((item) => item.index === currentIndex + 1) || null
+  const previousStep = wizardSteps.find((item) => item.index === currentIndex - 1) || null
+  const nextStep = wizardSteps.find((item) => item.index === currentIndex + 1) || null
 
   /**
    * Prefer server state, then URL (?gym_id=), then first owned gym — fixes editor links when session lags.
@@ -387,17 +395,26 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     [gymBasics.address, gymBasics.city, gymBasics.country, gymBasics.disciplines]
   )
 
-  const basicsMergedComplete = useMemo(
-    () =>
+  const basicsMergedComplete = useMemo(() => {
+    if (embedInAdmin) {
+      return completedKeys.includes('basics')
+    }
+    return (
       completedKeys.includes('basics') &&
-      (completedKeys.includes('disciplines') || gymListingLocationComplete),
-    [completedKeys, gymListingLocationComplete]
-  )
+      (completedKeys.includes('disciplines') || gymListingLocationComplete)
+    )
+  }, [embedInAdmin, completedKeys, gymListingLocationComplete])
 
   const stepIsComplete = useMemo(() => {
-    if (step.key === 'basics') return basicsMergedComplete
+    if (step.key === 'basics') {
+      if (embedInAdmin) return completedKeys.includes('basics')
+      return basicsMergedComplete
+    }
+    if (embedInAdmin && step.key === 'security') {
+      return completedKeys.includes('security')
+    }
     return completedKeys.includes(step.key)
-  }, [step.key, basicsMergedComplete, completedKeys])
+  }, [step.key, embedInAdmin, basicsMergedComplete, completedKeys])
 
   const coreStepsCompleteCount = useMemo(() => {
     let n = basicsMergedComplete ? 1 : 0
@@ -409,12 +426,12 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
   const goToWizardStep = useCallback(
     (stepNumber: number) => {
-      const targetStep = OWNER_WIZARD_STEPS.find((item) => item.index === stepNumber)
+      const targetStep = wizardSteps.find((item) => item.index === stepNumber)
       if (!targetStep) return
       const gymIdForUrl = editorGymId ?? gymIdParam ?? null
       router.push(buildWizUrl(targetStep.slug, gymIdForUrl), { scroll: false })
     },
-    [buildWizUrl, editorGymId, gymIdParam, router]
+    [buildWizUrl, editorGymId, gymIdParam, router, wizardSteps]
   )
 
   const isMigratedStep = step.key === 'basics'
@@ -465,7 +482,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
       if (completed && nextStep) {
         router.push(buildWizUrl(nextStep.slug, editorGymId), { scroll: false })
-      } else if (completed && step.key === 'finalize') {
+      } else if (completed && step.key === 'finalize' && !embedInAdmin) {
         const gid = editorGymId ?? activeGymId
         if (gid) {
           router.push(`/manage/onboarding/complete?gym_id=${encodeURIComponent(gid)}`, { scroll: false })
@@ -519,16 +536,21 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     const igLink = gymBasics.instagram_link.trim() || null
     const fbLink = gymBasics.facebook_link.trim() || null
 
+    const cityForInsert = gymBasics.city.trim() || (embedInAdmin ? 'Pending' : '')
+    const countryForInsert = gymBasics.country.trim() || (embedInAdmin ? 'Pending' : '')
+    const disciplinesForInsert =
+      gymBasics.disciplines.length > 0 ? gymBasics.disciplines : embedInAdmin ? ([] as string[]) : gymBasics.disciplines
+
     const { data: createdGym, error: createError } = await supabase
       .from('gyms')
       .insert({
         owner_id: user.id,
         name: gymBasics.name.trim(),
-        description: gymBasics.description || null,
-        address: gymBasics.address || null,
-        city: gymBasics.city || '',
-        country: gymBasics.country || '',
-        disciplines: gymBasics.disciplines,
+        description: gymBasics.description.trim() || null,
+        address: gymBasics.address.trim() || null,
+        city: cityForInsert,
+        country: countryForInsert,
+        disciplines: disciplinesForInsert,
         offers_accommodation: offersAccommodation,
         google_maps_link: mapsLink,
         instagram_link: igLink,
@@ -562,16 +584,119 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       setError(
         e instanceof Error
           ? e.message
-          : 'Could not open packages. Complete Basic Info (name, location, disciplines) first, then try again.'
+          : embedInAdmin
+            ? 'Could not open packages. Add a gym name on Basic Info and save first.'
+            : 'Could not open packages. Complete Basic Info (name, location, disciplines) first, then try again.'
       )
     }
   }
+
+  const submitAdminBasicsQuick = async () => {
+    if (!sessionId) {
+      setError('Wizard session not ready. Refresh the page and try again.')
+      return
+    }
+    if (!gymBasics.name.trim()) {
+      setError('Gym name is required')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const gymId = await ensureActiveGym()
+      const supabase = createClient()
+      const mapsLink = gymBasics.google_maps_link.trim() || null
+      const igLink = gymBasics.instagram_link.trim() || null
+      const fbLink = gymBasics.facebook_link.trim() || null
+
+      const { error: updateError } = await supabase
+        .from('gyms')
+        .update({
+          name: gymBasics.name.trim(),
+          description: gymBasics.description.trim() || null,
+          address: gymBasics.address.trim() || null,
+          city: gymBasics.city.trim() || 'Pending',
+          country: gymBasics.country.trim() || 'Pending',
+          disciplines: gymBasics.disciplines.length > 0 ? gymBasics.disciplines : [],
+          offers_accommodation: offersAccommodation,
+          google_maps_link: mapsLink,
+          instagram_link: igLink,
+          facebook_link: fbLink,
+        })
+        .eq('id', gymId)
+      if (updateError) {
+        setError('Failed to save gym listing')
+        return
+      }
+
+      clearReadinessSessionCache()
+
+      const wRes = await fetch('/api/onboarding/wizard/step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          step_key: 'basics',
+          completed: true,
+          metadata: { source: 'admin_embed_wizard_basic_info', slug: 'step-1' },
+          gym_id: gymId,
+        }),
+      })
+      const wData = (await wRes.json()) as { error?: string }
+      if (!wRes.ok) {
+        setError(wData.error || 'Failed to mark Basic Info complete')
+        return
+      }
+
+      flushSync(() => {
+        setSecurityDone(true)
+        setCompletedKeys((prev) => Array.from(new Set([...prev, 'basics', 'security'])))
+      })
+
+      const packagesStep = wizardSteps.find((s) => s.key === 'packages')
+      if (packagesStep) {
+        router.push(buildWizUrl(packagesStep.slug, gymId), { scroll: false })
+      }
+    } catch (basicErr: unknown) {
+      setError(basicErr instanceof Error ? basicErr.message : 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const runAdminVerifyGym = useCallback(async () => {
+    const gid = editorGymId ?? activeGymId
+    if (!gid) {
+      setAdminVerifyMessage('Save Basic Info first so the gym exists.')
+      return
+    }
+    setAdminVerifyBusy(true)
+    setAdminVerifyMessage(null)
+    setError(null)
+    try {
+      const res = await fetch(`/api/gyms/${encodeURIComponent(gid)}/verify`, { method: 'POST' })
+      const data = (await res.json()) as { error?: string; message?: string }
+      if (!res.ok) {
+        setAdminVerifyMessage(data?.error || 'Verification failed')
+        return
+      }
+      setAdminVerifyMessage(data?.message ?? 'Gym verified successfully.')
+    } catch (e) {
+      setAdminVerifyMessage(e instanceof Error ? e.message : 'Verification failed')
+    } finally {
+      setAdminVerifyBusy(false)
+    }
+  }, [editorGymId, activeGymId])
 
   const startBasicInfoSubmit = () => {
     setError(null)
     setResendMessage(null)
     if (!sessionId) {
       setError('Wizard session not ready. Refresh the page and try again.')
+      return
+    }
+    if (embedInAdmin) {
+      void submitAdminBasicsQuick()
       return
     }
     if (!gymBasics.name.trim() || !gymBasics.description.trim()) {
@@ -687,7 +812,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         setCompletedKeys((prev) => Array.from(new Set([...prev, 'security', 'basics'])))
       })
 
-      const packagesStep = OWNER_WIZARD_STEPS.find((s) => s.key === 'packages')
+      const packagesStep = wizardSteps.find((s) => s.key === 'packages')
       if (packagesStep) {
         router.push(buildWizUrl(packagesStep.slug, gymId), { scroll: false })
       }
@@ -882,6 +1007,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
 
     if (step.key === 'security') {
+      if (embedInAdmin) return true
       const { data: userData } = await supabase.auth.getUser()
       const user = userData.user
       if (!user) return false
@@ -900,6 +1026,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
 
     if (step.key === 'finalize') {
+      if (embedInAdmin) return true
       const core = ['packages', 'photos', 'payouts', 'security'] as const
       return basicsMergedComplete && core.every((key) => completedKeys.includes(key))
     }
@@ -995,14 +1122,14 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             {embedInAdmin ? 'Create new gym listing' : 'List your gym on CombatBooking'}
           </p>
           <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
-            Step {step.index} of {OWNER_WIZARD_STEPS.length}
+            Step {step.index} of {wizardSteps.length}
           </p>
         </header>
 
         <div className="flex flex-col lg:flex-row lg:items-stretch">
           <aside className="border-b border-gray-100 bg-gray-50/50 p-6 md:p-8 lg:w-[min(280px,100%)] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-gray-100 lg:py-10">
             <OwnerWizardSidebar
-              steps={OWNER_WIZARD_STEPS}
+              steps={wizardSteps}
               currentIndex={step.index}
               completedKeys={completedKeys}
               onStepClick={goToWizardStep}
@@ -1023,8 +1150,17 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       <div>
                         <h3 className={wizH3}>Your gym</h3>
                         <p className={`mt-1 ${wizBody}`}>
-                          <span className="font-medium text-gray-900">Name and story on your public profile.</span> This
-                          is how travellers find and recognise you in search and on your listing.
+                          {embedInAdmin ? (
+                            <>
+                              <span className="font-medium text-gray-900">Gym name is required</span> to create the draft.
+                              Everything else is optional — add it here, in later steps, or in the full editor.
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-medium text-gray-900">Name and story on your public profile.</span>{' '}
+                              This is how travellers find and recognise you in search and on your listing.
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className="space-y-2">
@@ -1036,7 +1172,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className={labelClass}>Description *</Label>
+                        <Label className={labelClass}>{embedInAdmin ? 'Description (optional)' : 'Description *'}</Label>
                         <Textarea
                           className={fieldClass}
                           rows={4}
@@ -1045,7 +1181,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className={labelClass}>Address *</Label>
+                        <Label className={labelClass}>{embedInAdmin ? 'Address (optional)' : 'Address *'}</Label>
                         <Input
                           className={fieldClass}
                           value={gymBasics.address}
@@ -1054,7 +1190,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label className={labelClass}>City *</Label>
+                          <Label className={labelClass}>{embedInAdmin ? 'City (optional)' : 'City *'}</Label>
                           <Input
                             className={fieldClass}
                             value={gymBasics.city}
@@ -1063,8 +1199,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                         </div>
                         <GymCountryField
                           id="wiz-gym-country"
-                          label="Country"
-                          required
+                          label={embedInAdmin ? 'Country (optional)' : 'Country'}
+                          required={!embedInAdmin}
                           value={gymBasics.country}
                           onChange={(country) => setGymBasics((prev) => ({ ...prev, country }))}
                           inputClassName={fieldClass}
@@ -1072,7 +1208,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className={labelClass}>Disciplines *</Label>
+                        <Label className={labelClass}>{embedInAdmin ? 'Disciplines (optional)' : 'Disciplines *'}</Label>
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                           {DISCIPLINES.map((discipline) => (
                             <label
@@ -1115,6 +1251,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       </div>
                     </div>
 
+                    {!embedInAdmin ? (
+                      <>
                     <div className="space-y-4 border-t border-gray-100 pt-8">
                       <div>
                         <h3 className={wizH3}>Trust &amp; verification (KYC)</h3>
@@ -1307,6 +1445,13 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       your password once. We then save your gym (including location and disciplines), record account
                       holder details, and mark this step and security verification complete.
                     </p>
+                      </>
+                    ) : (
+                      <p className={`border-t border-gray-100 pt-8 ${wizMuted}`}>
+                        <strong className="font-semibold text-gray-900">Save and continue</strong> creates or updates the draft
+                        under your admin account — no password confirmation, KYC, or account-holder fields required here.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -1513,6 +1658,14 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                 )}
 
                 {step.key === 'security' && (
+                  embedInAdmin ? (
+                    <div className="space-y-3">
+                      <p className={wizBody}>
+                        Not required for staff-created listings. This step is marked complete when you save Basic Info
+                        so you can focus on packages, photos, and handoff.
+                      </p>
+                    </div>
+                  ) : (
                   <div className="space-y-8">
                     {!securityDone ? (
                       <div className="flex flex-col gap-3 rounded-lg border border-amber-200/90 bg-amber-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1601,9 +1754,52 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       outlineButtonClassName={`w-full sm:w-auto ${btnGhost}`}
                     />
                   </div>
+                  )
                 )}
 
                 {step.key === 'finalize' && (
+                  embedInAdmin ? (
+                    <div className="space-y-5">
+                      <p className={wizBody}>
+                        The listing stays in <strong className="text-gray-900">draft</strong> until you verify it or the
+                        future owner completes onboarding. Use the actions below when you&apos;re ready.
+                      </p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                        <Link href={editorGymId ? `/manage/gym/edit?id=${encodeURIComponent(editorGymId)}` : '#'}>
+                          <Button
+                            className={btnPrimary}
+                            disabled={!editorGymId}
+                            type="button"
+                          >
+                            Open full gym editor
+                          </Button>
+                        </Link>
+                        <Link href="/admin/gyms">
+                          <Button variant="outline" className={btnGhost} type="button">
+                            Back to all gyms
+                          </Button>
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`${btnGhost} border-emerald-200 text-emerald-900 hover:bg-emerald-50`}
+                          disabled={!editorGymId || adminVerifyBusy}
+                          onClick={() => void runAdminVerifyGym()}
+                        >
+                          {adminVerifyBusy ? 'Verifying…' : 'Verify gym now'}
+                        </Button>
+                      </div>
+                      {adminVerifyMessage ? (
+                        <p className="text-sm text-emerald-800" role="status">
+                          {adminVerifyMessage}
+                        </p>
+                      ) : null}
+                      <p className={`${wizCaption} text-muted-foreground`}>
+                        Verify marks the gym approved for the platform (admin override). You can still edit everything in
+                        the full editor afterwards.
+                      </p>
+                    </div>
+                  ) : (
                   <div className="space-y-4">
                     <p className={wizMuted}>
                       When you&apos;re ready, use <strong className="font-semibold text-gray-900">Finish below</strong>.
@@ -1616,6 +1812,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       <span className="font-semibold text-gray-900">{coreStepsCompleteCount}/5</span>
                     </p>
                   </div>
+                  )
                 )}
 
                 {!hasDedicatedStepContent && (
@@ -1653,7 +1850,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                     </Link>
                   ) : null}
 
-                  {stepIsComplete && !isMigratedStep ? (
+                  {stepIsComplete && !isMigratedStep && !(embedInAdmin && step.key === 'finalize') ? (
                     <Button
                       onClick={() => void saveStepCompletion(false)}
                       disabled={saving || loading}
@@ -1668,11 +1865,11 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       onClick={() => {
                         void startBasicInfoSubmit()
                       }}
-                      disabled={saving || loading || selfServeExpired}
+                      disabled={saving || loading || (!embedInAdmin && selfServeExpired)}
                     >
                       {saving ? 'Saving…' : 'Save and continue →'}
                     </Button>
-                  ) : (
+                  ) : !(embedInAdmin && step.key === 'finalize') ? (
                     <Button
                       className={btnPrimary}
                       onClick={() => void saveStepCompletion(true)}
@@ -1686,16 +1883,18 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                             ? 'Confirm & continue →'
                             : 'Mark complete and continue →'}
                     </Button>
-                  )}
+                  ) : null}
                 </div>
 
-                <Link
-                  href={`/manage/onboarding/review${editorGymId ? `?gym_id=${encodeURIComponent(editorGymId)}` : ''}`}
-                >
-                  <Button variant="ghost" className="text-muted-foreground hover:text-[#003580]">
-                    Go to review
-                  </Button>
-                </Link>
+                {!embedInAdmin ? (
+                  <Link
+                    href={`/manage/onboarding/review${editorGymId ? `?gym_id=${encodeURIComponent(editorGymId)}` : ''}`}
+                  >
+                    <Button variant="ghost" className="text-muted-foreground hover:text-[#003580]">
+                      Go to review
+                    </Button>
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>

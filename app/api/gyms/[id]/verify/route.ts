@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth/require-admin'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Use admin client with service role key - bypasses RLS
-    // Security: This endpoint should only be accessible from the admin page
-    // which already verifies the user is an admin on the client side
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
+    // Use admin client with service role key - bypasses RLS (caller verified admin above).
     let supabase
     try {
       supabase = createAdminClient()

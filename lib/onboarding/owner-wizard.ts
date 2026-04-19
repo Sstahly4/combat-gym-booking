@@ -89,6 +89,50 @@ export function getWizardStepBySlug(slug: string | null | undefined) {
   return OWNER_WIZARD_STEPS[0]
 }
 
+/** Same slugs/keys as {@link OWNER_WIZARD_STEPS}; copy with admin-friendly labels/descriptions for `/admin/create-gym`. */
+export function getOwnerWizardStepsForContext(embedInAdmin: boolean): OwnerWizardStepDefinition[] {
+  if (!embedInAdmin) return OWNER_WIZARD_STEPS
+  return OWNER_WIZARD_STEPS.map((s) => {
+    if (s.key === 'basics') {
+      return {
+        ...s,
+        description:
+          'Only the gym name is required to create the draft. Add more detail here or in the full editor anytime. KYC and account-holder fields are not required for admin-created listings.',
+      }
+    }
+    if (s.key === 'security') {
+      return {
+        ...s,
+        description:
+          'Optional for staff. Skip when you are only preparing a gym for owner handoff.',
+      }
+    }
+    if (s.key === 'finalize') {
+      return {
+        ...s,
+        label: 'Finish',
+        description:
+          'This listing stays in draft until you verify it or the owner completes onboarding. Open the full editor anytime.',
+      }
+    }
+    return s
+  })
+}
+
+export function resolveWizardStepFromSlug(
+  slug: string | null | undefined,
+  steps: OwnerWizardStepDefinition[]
+): OwnerWizardStepDefinition {
+  const s = (slug || 'step-1').trim() || 'step-1'
+  const direct = steps.find((step) => step.slug === s)
+  if (direct) return direct
+  const legacyTarget = LEGACY_WIZARD_SLUG_MAP[s]
+  if (legacyTarget) {
+    return steps.find((step) => step.slug === legacyTarget) ?? steps[0]
+  }
+  return steps[0]
+}
+
 export type OnboardingWizardUrlOptions = {
   /** Defaults to `/manage/onboarding`. */
   basePath?: string
