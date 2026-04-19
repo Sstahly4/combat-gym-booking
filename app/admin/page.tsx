@@ -390,7 +390,7 @@ const ACCENTS = {
   /** Needs timely review */
   urgent: 'text-amber-800 bg-amber-50',
   /** Owner handoff / claim workflow */
-  attention: 'text-violet-800 bg-violet-50',
+  attention: 'text-slate-800 bg-slate-100',
   /** Low-priority / legacy */
   muted: 'text-slate-700 bg-slate-100',
   /** Healthy inventory */
@@ -403,7 +403,7 @@ const ACCENTS = {
 
 const VIEW_LINK: Record<keyof typeof ACCENTS, string> = {
   urgent: 'text-amber-800',
-  attention: 'text-violet-800',
+  attention: 'text-slate-800',
   muted: 'text-slate-600',
   positive: 'text-emerald-800',
   promo: 'text-fuchsia-800',
@@ -467,8 +467,8 @@ const ACTION_TONE: Record<
     icon: 'bg-amber-600 text-white',
   },
   attention: {
-    card: 'border-violet-200/90 bg-violet-50/40 hover:border-violet-300',
-    icon: 'bg-violet-600 text-white',
+    card: 'border-slate-200/90 bg-slate-50/60 hover:border-slate-300',
+    icon: 'bg-[#003580] text-white',
   },
 }
 

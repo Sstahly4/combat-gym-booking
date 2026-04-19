@@ -95,7 +95,7 @@ export default function AdminGymsPage() {
           <p className="mt-1 text-sm text-stone-600">
             Browse and edit listings. Admin-owned gyms are automatically{' '}
             <span className="font-medium">pre-listed</span> — issue claim links from{' '}
-            <Link href="/admin/orphan-gyms" className="text-violet-700 underline-offset-2 hover:underline">
+            <Link href="/admin/orphan-gyms" className="text-[#003580] underline-offset-2 hover:underline">
               /admin/orphan-gyms
             </Link>
             .
@@ -170,8 +170,8 @@ export default function AdminGymsPage() {
                     </div>
                   )}
                   {isAdminOwned && (
-                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-violet-600/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                      <Sparkles className="h-3 w-3" />
+                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-stone-700 shadow-sm backdrop-blur-sm">
+                      <Sparkles className="h-3 w-3 text-stone-500" aria-hidden />
                       Pre-listed
                     </span>
                   )}
@@ -243,7 +243,7 @@ export default function AdminGymsPage() {
                     <Link href="/admin/orphan-gyms" className="w-full">
                       <Button
                         variant="outline"
-                        className="w-full rounded-full border-violet-200 text-violet-800 hover:bg-violet-50"
+                        className="w-full rounded-full border-stone-300 text-stone-800 hover:bg-stone-100"
                       >
                         <KeyRound className="mr-1.5 h-4 w-4" />
                         Issue claim link

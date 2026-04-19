@@ -176,7 +176,7 @@ export default function OrphanGymsPage() {
                   No gyms ready for claim links yet.
                   <br />
                   Create a new gym from{' '}
-                  <Link href="/admin/gyms" className="text-violet-700 underline-offset-2 hover:underline">
+                  <Link href="/admin/gyms" className="text-[#003580] underline-offset-2 hover:underline">
                     /admin/gyms
                   </Link>{' '}
                   — every admin-owned gym surfaces here automatically.
@@ -292,7 +292,7 @@ function OrphanCard({
 
   const statusClass =
     isPreListed && !t
-      ? 'bg-violet-100 text-violet-900'
+      ? 'bg-stone-200 text-stone-800'
       : t?.active
         ? 'bg-emerald-100 text-emerald-800'
         : t?.expired
@@ -360,7 +360,7 @@ function OrphanCard({
           <Button
             onClick={onGenerate}
             disabled={busy}
-            className="rounded-full bg-violet-600 text-white hover:bg-violet-700"
+            className="rounded-full bg-[#003580] text-white hover:bg-[#002a5c]"
           >
             {busy
               ? 'Working…'
