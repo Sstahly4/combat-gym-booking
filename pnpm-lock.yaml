@@ -11,6 +11,12 @@ importers:
       '@radix-ui/react-dialog':
         specifier: ^1.0.5
         version: 1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@stripe/connect-js':
+        specifier: ^3.3.35
+        version: 3.3.35
+      '@stripe/react-connect-js':
+        specifier: ^3.3.34
+        version: 3.3.34(@stripe/connect-js@3.3.35)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@stripe/react-stripe-js':
         specifier: ^2.4.0
         version: 2.9.0(@stripe/stripe-js@2.4.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -688,6 +694,16 @@ packages:
 
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
+
+  '@stripe/connect-js@3.3.35':
+    resolution: {integrity: sha512-9qGDe+G5MWPHdFK05lBRX+wjHIafZ72hCNrXzXnM4Uf7X/rbRe04/EOgaur0/aza5UlDcmEWJ+LSNmeoxytX6w==}
+
+  '@stripe/react-connect-js@3.3.34':
+    resolution: {integrity: sha512-eNyvlWeh90SBUC5dQhNfVPXOFuliO2Va3ZOfhZfybJoAYyZx4Jwy6SBOq5lEUU5+4RwRj/JJQfMeezSS9xQBng==}
+    peerDependencies:
+      '@stripe/connect-js': '>=3.3.35'
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   '@stripe/react-stripe-js@2.9.0':
     resolution: {integrity: sha512-+/j2g6qKAKuWSurhgRMfdlIdKM+nVVJCy/wl0US2Ccodlqx0WqfIIBhUkeONkCG+V/b+bZzcj4QVa3E/rXtT4Q==}
@@ -3111,6 +3127,14 @@ snapshots:
   '@rushstack/eslint-patch@1.16.1': {}
 
   '@stablelib/base64@1.0.1': {}
+
+  '@stripe/connect-js@3.3.35': {}
+
+  '@stripe/react-connect-js@3.3.34(@stripe/connect-js@3.3.35)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@stripe/connect-js': 3.3.35
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@stripe/react-stripe-js@2.9.0(@stripe/stripe-js@2.4.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:

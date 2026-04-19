@@ -26,6 +26,16 @@ type NavItem = {
   label: string
   icon: LucideIcon
   isActive: (pathname: string) => boolean
+  /**
+   * Optional sub-items rendered as an indented list directly under this item.
+   * Sub-items expand only when the parent or one of the children is active,
+   * matching the "Booking.com Extranet" style nested nav.
+   */
+  children?: Array<{
+    href: string
+    label: string
+    isActive: (pathname: string) => boolean
+  }>
 }
 
 function getNavGroups(
@@ -59,6 +69,13 @@ function getNavGroups(
         label: 'Balances',
         icon: Wallet,
         isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
+        children: [
+          {
+            href: '/manage/balances/payouts',
+            label: 'Payouts',
+            isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
+          },
+        ],
       },
       {
         href: '/manage/promotions',
@@ -124,20 +141,50 @@ function NavLink({
   item: NavItem
   pathname: string
 }) {
-  const { href, label, icon: Icon, isActive } = item
+  const { href, label, icon: Icon, isActive, children } = item
   const active = isActive(pathname)
+  const childActive = (children ?? []).some((c) => c.isActive(pathname))
+  const showChildren = Boolean(children?.length) && (active || childActive)
   return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] leading-snug transition-colors',
-        active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500 hover:text-gray-800'
-      )}
-      aria-current={active ? 'page' : undefined}
-    >
-      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-      {label}
-    </Link>
+    <div>
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] leading-snug transition-colors',
+          active && !childActive
+            ? 'font-medium text-[#003580]'
+            : active || childActive
+            ? 'font-medium text-[#003580]'
+            : 'font-normal text-gray-500 hover:text-gray-800'
+        )}
+        aria-current={active ? 'page' : undefined}
+      >
+        <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        {label}
+      </Link>
+      {showChildren ? (
+        <div className="ml-7 mt-0.5 flex flex-col gap-0.5 border-l border-gray-100 pl-3">
+          {children!.map((c) => {
+            const cActive = c.isActive(pathname)
+            return (
+              <Link
+                key={c.href}
+                href={c.href}
+                className={cn(
+                  'rounded-md px-2 py-1.5 text-[12.5px] leading-snug transition-colors',
+                  cActive
+                    ? 'font-medium text-[#003580]'
+                    : 'font-normal text-gray-500 hover:text-gray-800'
+                )}
+                aria-current={cActive ? 'page' : undefined}
+              >
+                {c.label}
+              </Link>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

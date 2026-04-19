@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
+    "@stripe/connect-js": "^3.3.35",
+    "@stripe/react-connect-js": "^3.3.34",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/ssr": "^0.5.2",
