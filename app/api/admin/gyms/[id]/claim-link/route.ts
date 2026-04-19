@@ -138,10 +138,12 @@ export async function POST(request: NextRequest, { params }: Params) {
       )
     }
 
-    // Reassign the gym to the placeholder.
+    // Reassign the gym to the placeholder. Clear `is_pre_listed` at the same
+    // time — once the gym is owned by a placeholder profile, the orphan-gyms
+    // endpoint matches it via the placeholder branch and the flag is moot.
     const { error: gymUpdErr } = await admin
       .from('gyms')
-      .update({ owner_id: placeholderUserId })
+      .update({ owner_id: placeholderUserId, is_pre_listed: false })
       .eq('id', gym.id)
     if (gymUpdErr) {
       return NextResponse.json(

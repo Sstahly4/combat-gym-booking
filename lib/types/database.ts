@@ -55,6 +55,8 @@ export interface Gym {
   country: string
   /** Owner-indicated: gym offers bookable accommodation */
   offers_accommodation?: boolean
+  /** Admin pre-listed this gym for handoff to a real owner via a claim link. */
+  is_pre_listed?: boolean
   address: string | null
   latitude: number | null
   longitude: number | null

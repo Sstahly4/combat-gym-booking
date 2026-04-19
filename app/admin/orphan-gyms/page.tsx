@@ -1,22 +1,30 @@
 'use client'
 
 /**
- * Admin → Orphan gyms.
+ * Admin → Orphan / pre-listed gyms.
  *
- * Lists every gym whose owner is still a synthetic placeholder account, with
- * the latest claim-link state. From here an admin can:
+ * Lists every gym waiting to be handed over to a real owner — either:
+ *   • already owned by a synthetic placeholder profile (a claim link was issued
+ *     in the past, the owner just hasn't finished setup), or
+ *   • owned by an admin profile and explicitly flagged `is_pre_listed = true`
+ *     (admin pre-created it; first claim-link generation will mint the
+ *     placeholder and reassign ownership).
+ *
+ * From here the admin can:
  *   - Generate a fresh claim link (revokes any prior active link)
  *   - Copy the link to clipboard (only shown once after generation)
  *   - Revoke the active link without re-issuing
  *
  * The plaintext URL is never persisted server-side — generate again any time.
+ *
+ * Page-level auth guard lives in `app/admin/layout.tsx`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+type OrphanState = 'placeholder' | 'pre_listed'
 
 interface OrphanGym {
   gym_id: string
@@ -26,9 +34,11 @@ interface OrphanGym {
   created_at: string
   is_live: boolean
   status: string
+  state: OrphanState
   placeholder_owner_id: string
   placeholder_email: string | null
   claim_password_set: boolean
+  is_pre_listed: boolean
   latest_token: {
     expires_at: string
     claimed_at: string | null
@@ -40,20 +50,12 @@ interface OrphanGym {
 }
 
 export default function OrphanGymsPage() {
-  const { profile, loading: authLoading } = useAuth()
-  const router = useRouter()
   const [gyms, setGyms] = useState<OrphanGym[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [freshLinks, setFreshLinks] = useState<Record<string, string>>({})
   const [filter, setFilter] = useState('')
-
-  useEffect(() => {
-    if (!authLoading && profile && profile.role !== 'admin') {
-      router.replace('/')
-    }
-  }, [authLoading, profile, router])
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -109,9 +111,7 @@ export default function OrphanGymsPage() {
   }
 
   function copy(url: string) {
-    navigator.clipboard?.writeText(url).then(() => {
-      // Tiny ack — keep it lightweight; full toast UI would be overkill here.
-    })
+    navigator.clipboard?.writeText(url)
   }
 
   const filtered = useMemo(() => {
@@ -125,21 +125,21 @@ export default function OrphanGymsPage() {
     )
   }, [gyms, filter])
 
-  if (authLoading || (profile && profile.role !== 'admin')) {
-    return <div className="p-8 text-stone-500">Loading…</div>
-  }
+  const preListed = filtered.filter((g) => g.state === 'pre_listed')
+  const placeholders = filtered.filter((g) => g.state === 'placeholder')
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
             Admin
           </p>
-          <h1 className="text-2xl font-semibold text-stone-900">Orphan gyms</h1>
-          <p className="mt-1 text-sm text-stone-600">
-            Pre-listed gyms still owned by a placeholder account. Issue a claim
-            link and send it to the real owner so they can take over.
+          <h1 className="mt-1 text-2xl font-semibold text-stone-900">Claim links</h1>
+          <p className="mt-1 max-w-prose text-sm text-stone-600">
+            Pre-listed gyms ready to be handed over to a real owner. Generating
+            a link mints a placeholder owner (first time only) and gives you a
+            single-use URL to send the gym owner.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -149,17 +149,11 @@ export default function OrphanGymsPage() {
             placeholder="Filter by name, city, email…"
             className="rounded-full border border-stone-300 px-4 py-2 text-sm"
           />
-          <Button variant="outline" onClick={load} disabled={loading}>
+          <Button variant="outline" onClick={load} disabled={loading} className="rounded-full">
             Refresh
           </Button>
-          <Link
-            href="/admin"
-            className="rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
-          >
-            ← Back to admin
-          </Link>
         </div>
-      </div>
+      </header>
 
       {error && (
         <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -168,124 +162,229 @@ export default function OrphanGymsPage() {
       )}
 
       {loading ? (
-        <div className="text-stone-500">Loading…</div>
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-stone-100" />
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-stone-500">
-            No orphan gyms{filter ? ' match that filter' : ''}.
+            {filter
+              ? 'No gyms match that filter.'
+              : (
+                <>
+                  No gyms ready for claim links yet.
+                  <br />
+                  Mark gyms as <span className="font-semibold text-stone-700">pre-listed</span>{' '}
+                  from{' '}
+                  <Link href="/admin/gyms" className="text-orange-600 underline-offset-2 hover:underline">
+                    /admin/gyms
+                  </Link>{' '}
+                  to surface them here.
+                </>
+              )}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((g) => {
-            const t = g.latest_token
-            const status = t?.active
-              ? 'Active link'
-              : t?.claimed_at
-                ? 'Claimed (password not yet set)'
-                : t?.revoked_at
-                  ? 'Revoked'
-                  : t?.expired
-                    ? 'Expired'
-                    : 'No link yet'
-            return (
-              <Card key={g.gym_id} className="overflow-hidden">
-                <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base">{g.gym_name || 'Untitled gym'}</CardTitle>
-                    <p className="mt-0.5 text-xs text-stone-500">
-                      {[g.city, g.country].filter(Boolean).join(', ') || '—'}
-                      {' · '}placeholder: <code>{g.placeholder_email ?? '—'}</code>
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={
-                        'rounded-full px-2.5 py-0.5 text-xs font-medium ' +
-                        (t?.active
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : t?.expired
-                            ? 'bg-amber-100 text-amber-800'
-                            : t?.revoked_at
-                              ? 'bg-stone-200 text-stone-700'
-                              : 'bg-stone-100 text-stone-600')
-                      }
-                    >
-                      {status}
-                    </span>
-                    <span className="text-[11px] text-stone-500">
-                      {g.claim_password_set ? 'Password set' : 'Password not set'}
-                    </span>
-                  </div>
-                </CardHeader>
+        <div className="space-y-10">
+          {preListed.length > 0 && (
+            <Section
+              title="Pre-listed (no link issued yet)"
+              description="Admin-created gyms flagged as ready for handoff. Generating the first claim link will mint a placeholder owner and reassign the gym to it."
+              count={preListed.length}
+            >
+              {preListed.map((g) => (
+                <OrphanCard
+                  key={g.gym_id}
+                  gym={g}
+                  busy={busyId === g.gym_id}
+                  freshLink={freshLinks[g.gym_id]}
+                  onGenerate={() => generate(g.gym_id)}
+                  onRevoke={() => revoke(g.gym_id)}
+                  onCopy={copy}
+                />
+              ))}
+            </Section>
+          )}
 
-                <CardContent className="space-y-3 pt-0">
-                  {t && (
-                    <p className="text-xs text-stone-500">
-                      Last link issued {new Date(t.created_at).toLocaleString()},
-                      {' '}expires {new Date(t.expires_at).toLocaleString()}
-                      {t.claimed_at ? ` · claimed ${new Date(t.claimed_at).toLocaleString()}` : ''}
-                      {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
-                    </p>
-                  )}
-
-                  {freshLinks[g.gym_id] && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                      <p className="text-xs font-medium text-emerald-800">
-                        New claim link (copy now — we won't show it again):
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <input
-                          readOnly
-                          value={freshLinks[g.gym_id]}
-                          className="flex-1 rounded border border-emerald-300 bg-white px-2 py-1 text-xs"
-                          onFocus={(e) => e.currentTarget.select()}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copy(freshLinks[g.gym_id])}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      onClick={() => generate(g.gym_id)}
-                      disabled={busyId === g.gym_id}
-                      className="bg-orange-600 hover:bg-orange-700 text-white"
-                    >
-                      {busyId === g.gym_id
-                        ? 'Working…'
-                        : t?.active
-                          ? 'Regenerate link'
-                          : 'Generate claim link'}
-                    </Button>
-                    {t?.active && (
-                      <Button
-                        variant="outline"
-                        onClick={() => revoke(g.gym_id)}
-                        disabled={busyId === g.gym_id}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                    <Link
-                      href={`/gyms/${g.gym_id}`}
-                      className="ml-auto rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50"
-                    >
-                      View listing
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+          {placeholders.length > 0 && (
+            <Section
+              title="Placeholder owner (claim in progress)"
+              description="Gyms already transferred to a synthetic placeholder. You can regenerate a link any time without losing ownership."
+              count={placeholders.length}
+            >
+              {placeholders.map((g) => (
+                <OrphanCard
+                  key={g.gym_id}
+                  gym={g}
+                  busy={busyId === g.gym_id}
+                  freshLink={freshLinks[g.gym_id]}
+                  onGenerate={() => generate(g.gym_id)}
+                  onRevoke={() => revoke(g.gym_id)}
+                  onCopy={copy}
+                />
+              ))}
+            </Section>
+          )}
         </div>
       )}
     </main>
+  )
+}
+
+function Section({
+  title,
+  description,
+  count,
+  children,
+}: {
+  title: string
+  description: string
+  count: number
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-stone-900">
+            {title}{' '}
+            <span className="ml-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+              {count}
+            </span>
+          </h2>
+          <p className="mt-0.5 text-xs text-stone-500">{description}</p>
+        </div>
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  )
+}
+
+function OrphanCard({
+  gym,
+  busy,
+  freshLink,
+  onGenerate,
+  onRevoke,
+  onCopy,
+}: {
+  gym: OrphanGym
+  busy: boolean
+  freshLink: string | undefined
+  onGenerate: () => void
+  onRevoke: () => void
+  onCopy: (url: string) => void
+}) {
+  const t = gym.latest_token
+  const isPreListed = gym.state === 'pre_listed'
+
+  const status = isPreListed && !t
+    ? 'Awaiting first link'
+    : t?.active
+      ? 'Active link'
+      : t?.claimed_at
+        ? 'Claimed (password not yet set)'
+        : t?.revoked_at
+          ? 'Revoked'
+          : t?.expired
+            ? 'Expired'
+            : 'No link yet'
+
+  const statusClass =
+    isPreListed && !t
+      ? 'bg-orange-100 text-orange-800'
+      : t?.active
+        ? 'bg-emerald-100 text-emerald-800'
+        : t?.expired
+          ? 'bg-amber-100 text-amber-800'
+          : t?.revoked_at
+            ? 'bg-stone-200 text-stone-700'
+            : 'bg-stone-100 text-stone-600'
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <CardTitle className="text-base">{gym.gym_name || 'Untitled gym'}</CardTitle>
+          <p className="mt-0.5 text-xs text-stone-500">
+            {[gym.city, gym.country].filter(Boolean).join(', ') || '—'}
+            {gym.placeholder_email && (
+              <>
+                {' · '}placeholder: <code>{gym.placeholder_email}</code>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}>
+            {status}
+          </span>
+          {!isPreListed && (
+            <span className="text-[11px] text-stone-500">
+              {gym.claim_password_set ? 'Password set' : 'Password not set'}
+            </span>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-3 pt-0">
+        {t && (
+          <p className="text-xs text-stone-500">
+            Last link issued {new Date(t.created_at).toLocaleString()},
+            {' '}expires {new Date(t.expires_at).toLocaleString()}
+            {t.claimed_at ? ` · claimed ${new Date(t.claimed_at).toLocaleString()}` : ''}
+            {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
+          </p>
+        )}
+
+        {freshLink && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <p className="text-xs font-medium text-emerald-800">
+              New claim link (copy now — we won't show it again):
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                readOnly
+                value={freshLink}
+                className="flex-1 rounded border border-emerald-300 bg-white px-2 py-1 text-xs"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <Button size="sm" variant="outline" onClick={() => onCopy(freshLink)}>
+                Copy
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={onGenerate}
+            disabled={busy}
+            className="rounded-full bg-orange-600 text-white hover:bg-orange-700"
+          >
+            {busy
+              ? 'Working…'
+              : t?.active
+                ? 'Regenerate link'
+                : isPreListed && !t
+                  ? 'Generate first link'
+                  : 'Generate claim link'}
+          </Button>
+          {t?.active && (
+            <Button variant="outline" onClick={onRevoke} disabled={busy} className="rounded-full">
+              Revoke
+            </Button>
+          )}
+          <Link
+            href={`/gyms/${gym.gym_id}`}
+            className="ml-auto rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50"
+          >
+            View listing
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

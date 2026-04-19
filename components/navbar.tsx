@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react'
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
+import { AdminHeaderSearch } from '@/components/admin/admin-header-search'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
@@ -69,8 +70,12 @@ export function Navbar() {
 
   const isOwnersPage = pathname === '/owners'
   const isOwner = Boolean(user && profile?.role === 'owner')
+  const isAdmin = Boolean(user && profile?.role === 'admin')
   const isManageOwnerShell =
     Boolean(isOwner && pathname && pathname.startsWith('/manage'))
+  /** Admin Hub shell — same tall layout as Partner Hub but for `/admin/*`. */
+  const isAdminShell =
+    Boolean(isAdmin && pathname && pathname.startsWith('/admin'))
   /** Block dashboard / header search shortcuts while finishing gym onboarding. */
   const ownerOnboardingNavLock = Boolean(isOwner && pathname && isManageGymOnboardingNavLocked(pathname))
   const ownersAwarePartnerLabel = isOwnersPage ? 'Already a partner' : 'List your gym'
@@ -126,19 +131,19 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4">
         <div
           className={`flex min-w-0 items-center justify-between gap-2 md:gap-3 ${
-            isManageOwnerShell ? 'min-h-[5rem] py-2' : 'h-16'
+            isManageOwnerShell || isAdminShell ? 'min-h-[5rem] py-2' : 'h-16'
           }`}
         >
-            {isManageOwnerShell ? (
+            {isManageOwnerShell || isAdminShell ? (
               <Link
-                href="/"
+                href={isAdminShell ? '/admin' : '/'}
                 className="shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
                 <span className="block truncate text-left text-lg font-bold leading-snug tracking-tight text-white sm:text-xl md:text-2xl">
                   CombatBooking.com
                 </span>
                 <span className="mt-0.5 block translate-x-px text-left text-base font-light leading-tight tracking-tight text-white sm:text-lg md:text-xl">
-                  Partner Hub
+                  {isAdminShell ? 'Admin Hub' : 'Partner Hub'}
                 </span>
               </Link>
             ) : (
@@ -153,6 +158,7 @@ export function Navbar() {
           {/* Desktop Navigation — sit above page content that also uses z-50 (e.g. search popovers) */}
           <div className="relative z-[100] hidden shrink-0 items-center gap-1.5 md:flex">
             {isManageOwnerShell && !ownerOnboardingNavLock ? <ManageHeaderSearch /> : null}
+            {isAdminShell ? <AdminHeaderSearch /> : null}
 
             {/* Partner CTA: list gym (visitors / owners in onboarding) or dashboard (signed-in owners) */}
             <Link
