@@ -3,10 +3,15 @@
 import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/footer'
 
-/** Omits the global footer on owner dashboard routes so the manage area isn’t followed by site chrome. */
+/** Omits the global footer on hub dashboards so they aren’t followed by site chrome. */
 export function ConditionalFooter() {
   const pathname = usePathname() ?? ''
-  if (pathname === '/manage' || pathname.startsWith('/manage/')) {
+  if (
+    pathname === '/manage' ||
+    pathname.startsWith('/manage/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/')
+  ) {
     return null
   }
   return <Footer />
