@@ -38,6 +38,8 @@ A Next.js web application for booking combat sports training camps, inspired by 
    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
    STRIPE_SECRET_KEY=your_stripe_secret_key
    STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+   # Optional: second signing secret when Connect-only events (e.g. payout.paid) use a separate Dashboard webhook pointing at the same URL.
+   STRIPE_CONNECT_WEBHOOK_SECRET=
 
    # App
    NEXT_PUBLIC_APP_URL=http://localhost:3000

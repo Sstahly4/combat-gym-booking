@@ -13,6 +13,40 @@ import { recordOwnerNotification } from '@/lib/notifications/owner-notifications
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+/**
+ * Stripe may send platform-account events and Connect-account events (e.g.
+ * `payout.paid` on connected accounts) through different Dashboard webhook
+ * endpoints, each with its own signing secret. Try the platform secret first,
+ * then optional STRIPE_CONNECT_WEBHOOK_SECRET so one URL can serve both.
+ */
+function constructVerifiedStripeEvent(
+  body: string,
+  signature: string,
+  stripeClient: NonNullable<typeof stripe>
+): { event: Stripe.Event; verifiedWith: 'platform' | 'connect' } {
+  const platformSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim()
+  const connectSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim()
+
+  if (!platformSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured')
+  }
+
+  try {
+    const event = stripeClient.webhooks.constructEvent(body, signature, platformSecret)
+    return { event, verifiedWith: 'platform' }
+  } catch (platformErr: unknown) {
+    if (!connectSecret) {
+      throw platformErr
+    }
+    try {
+      const event = stripeClient.webhooks.constructEvent(body, signature, connectSecret)
+      return { event, verifiedWith: 'connect' }
+    } catch {
+      throw platformErr
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
@@ -36,12 +70,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    const platformSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim()
+    const connectSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim()
 
-    if (!webhookSecret) {
+    if (!platformSecret) {
       console.error('❌ STRIPE_WEBHOOK_SECRET not configured')
-      console.error('⚠️  Make sure to set STRIPE_WEBHOOK_SECRET in your .env.local')
-      console.error('   If using Stripe CLI, use the secret from: stripe listen --forward-to localhost:3000/api/webhooks/stripe')
+      console.error('⚠️  Set STRIPE_WEBHOOK_SECRET in your environment (platform webhook signing secret).')
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -51,24 +85,30 @@ export async function POST(request: NextRequest) {
     console.log('📥 Webhook received:')
     console.log('   Body length:', body.length)
     console.log('   Signature present:', !!signature)
-    console.log('   Webhook secret configured:', !!webhookSecret)
+    console.log('   Platform webhook secret configured:', !!platformSecret)
+    console.log('   Connect webhook secret configured:', !!connectSecret)
 
     let event: Stripe.Event
 
     try {
-      // Verify webhook signature
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-      console.log('✅ Webhook signature verified')
+      const verified = constructVerifiedStripeEvent(body, signature, stripe)
+      event = verified.event
+      console.log(
+        `✅ Webhook signature verified (${verified.verifiedWith === 'connect' ? 'STRIPE_CONNECT_WEBHOOK_SECRET' : 'STRIPE_WEBHOOK_SECRET'})`
+      )
     } catch (err: any) {
       console.error('❌ Webhook signature verification failed:', err.message)
-      console.error('   Make sure you are using the correct webhook secret:')
-      console.error('   - If using Stripe CLI: Use the secret from "stripe listen" output (starts with whsec_)')
-      console.error('   - If using Stripe Dashboard: Use the signing secret from the webhook endpoint settings')
-      console.error('   - Current secret starts with:', webhookSecret.substring(0, 10) + '...')
+      console.error('   Verify STRIPE_WEBHOOK_SECRET matches your platform webhook endpoint in Stripe.')
+      if (connectSecret) {
+        console.error(
+          '   If this event is from a Connect-only webhook, verify STRIPE_CONNECT_WEBHOOK_SECRET matches that endpoint.'
+        )
+      }
       return NextResponse.json(
-        { 
+        {
           error: `Webhook signature verification failed: ${err.message}`,
-          hint: 'Make sure STRIPE_WEBHOOK_SECRET matches the secret from Stripe CLI or Dashboard'
+          hint:
+            'Use the signing secret from the Stripe webhook endpoint that delivers this event. For Connect-only events, set STRIPE_CONNECT_WEBHOOK_SECRET to the second endpoint secret.',
         },
         { status: 400 }
       )
