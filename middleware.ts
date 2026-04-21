@@ -55,7 +55,22 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  /*
+   * Only run Supabase session refresh on routes that actually render
+   * authenticated UI (owner portal, admin, personal account, booking/saved
+   * screens, and the claim flow). Public pages (/, /search, /blog, /gyms,
+   * /login, /signup, /faq, /owners, etc.) read no server-side session, so
+   * sending every request through middleware just adds a Supabase round-trip
+   * to TTFB for zero benefit. API routes handle their own auth via
+   * createClient() in the route handler and don't need middleware either.
+   */
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/manage/:path*',
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/account/:path*',
+    '/bookings/:path*',
+    '/saved/:path*',
+    '/claim/:path*',
   ],
 }

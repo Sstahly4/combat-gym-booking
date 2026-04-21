@@ -5,6 +5,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 import { sendOwnerBookingCreatedEmail } from '@/lib/email-owner-notifications'
 
+const PLATFORM_COMMISSION_RATE = parseFloat(
+  process.env.PLATFORM_COMMISSION_RATE || '0.15'
+)
+
 // Generate booking reference (e.g., "BK-ABC123")
 function generateBookingReference(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // Exclude confusing chars
@@ -37,7 +41,6 @@ export async function POST(request: NextRequest) {
       experience_level, 
       notes, 
       total_price, 
-      platform_fee,
       guest_email,
       guest_phone,
       guest_name
@@ -47,6 +50,10 @@ export async function POST(request: NextRequest) {
     if (!gym_id || !start_date || !end_date || !discipline || !experience_level || !total_price) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // Server is the source of truth for commission. Never trust client-supplied
+    // platform_fee — recompute from total_price and the configured rate.
+    const platform_fee = Number((Number(total_price) * PLATFORM_COMMISSION_RATE).toFixed(2))
 
     // For guest bookings, require email, phone, and name
     if (!user && (!guest_email || !guest_phone || !guest_name)) {

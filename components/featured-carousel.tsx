@@ -9,12 +9,19 @@ import { SaveButton } from '@/components/save-button'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { useBooking } from '@/lib/contexts/booking-context'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 interface FeaturedCarouselProps {
   gyms: any[]
+  /**
+   * Number of leading card images to mark as `priority` so Next.js emits
+   * a <link rel="preload"> for them. Use this on the first carousel that
+   * is above the fold on the homepage. Defaults to 0 (no preloads).
+   */
+  priorityCount?: number
 }
 
-export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
+export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -133,7 +140,7 @@ export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
         onScroll={checkScroll}
         className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth"
       >
-        {gyms.map((gym: any) => (
+        {gyms.map((gym: any, idx: number) => (
           <Link 
             key={gym.id} 
             href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
@@ -149,7 +156,11 @@ export function FeaturedCarousel({ gyms }: FeaturedCarouselProps) {
                     alt={gym.name}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 25vw"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 288px"
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
+                    priority={idx < priorityCount}
+                    loading={idx < priorityCount ? 'eager' : 'lazy'}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gray-100 text-sm">

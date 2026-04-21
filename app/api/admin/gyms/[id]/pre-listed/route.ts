@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth/require-admin'
+import { revalidateGymCache } from '@/lib/seo/revalidate-gym'
 
 interface Params { params: { id: string } }
 
@@ -47,6 +48,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  revalidateGymCache(gymId)
 
   return NextResponse.json({ success: true, gym: data })
 }

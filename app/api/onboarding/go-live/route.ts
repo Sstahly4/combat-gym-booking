@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getGymReadiness } from '@/lib/onboarding/readiness'
 import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
+import { revalidateGymCache } from '@/lib/seo/revalidate-gym'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +87,8 @@ export async function POST(request: NextRequest) {
       user_id: access.userId,
       gym_id: gymId,
     })
+
+    revalidateGymCache(gymId)
 
     return NextResponse.json({ success: true, already_live: false })
   } catch (error: any) {

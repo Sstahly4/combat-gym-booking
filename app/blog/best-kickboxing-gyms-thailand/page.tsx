@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -19,19 +25,20 @@ import {
 import { Zap, Sun, Target } from 'lucide-react'
 
 const TITLE = 'Best Kickboxing Gyms in Thailand (2026)'
+const SEO_TITLE = 'Best Kickboxing Gyms in Thailand 2026 [Prices + Reviews]'
+const PATH = '/blog/best-kickboxing-gyms-thailand'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1400&q=80'
 const DESCRIPTION =
   'Kickboxing gyms in Thailand: ranked by reviews with real listings, photos, and planning advice. Discipline-filtered so you do not land in a Muay-Thai-only camp by mistake.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | K-1 Style & Striking | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-kickboxing-gyms-thailand' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -100,39 +107,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestKickboxingGymsThailandPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'Kickboxing' })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-kickboxing-gyms-thailand'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: TITLE, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -147,9 +137,10 @@ export default async function BestKickboxingGymsThailandPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1400&q=80"
+        imageSrc={HERO_IMAGE}
         imageAlt="Kickboxing gloves and training gear"
         priority
         overlayText="Kickboxing in Thailand: sharpen hands + kicks with discipline-filtered rankings, schedules, and honest planning advice."
@@ -338,6 +329,14 @@ export default async function BestKickboxingGymsThailandPage() {
         <p className="mb-8 text-gray-600">Kickboxing travel questions that come up in search.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Thailand kickboxing gym?"
+        subtitle="Filter every verified Thailand kickboxing gym by price, dates, and striking style — book directly."
+        href="/search?country=Thailand&discipline=Kickboxing"
+        buttonLabel="Find your kickboxing gym"
+      />
+
+
 
       <RelatedGuides
         guides={[

@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -20,19 +26,20 @@ import {
 import { Check, Shield, Swords, Zap } from 'lucide-react'
 
 const TITLE = 'Best MMA Camps in Thailand (2026)'
+const SEO_TITLE = 'Best MMA Camps in Thailand 2026 [Prices + Reviews]'
+const PATH = '/blog/best-mma-camps-thailand'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = '/tjj8r5ovjts8nhqjhkqc.avif'
 const DESCRIPTION =
   'Ranked MMA gyms in Thailand: only mixed martial arts listings, with prices, photos, schedule snippets, and long-form planning advice Muay-Thai-only sites cannot replicate.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Striking + Grappling | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-mma-camps-thailand' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -123,39 +130,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestMmaCampsThailandPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'MMA' })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-mma-camps-thailand'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: TITLE, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -170,9 +160,10 @@ export default async function BestMmaCampsThailandPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/tjj8r5ovjts8nhqjhkqc.avif"
+        imageSrc={HERO_IMAGE}
         imageAlt="MMA training in Thailand"
         priority
         overlayText="MMA in Thailand: blend striking tradition with cage-ready grappling—compare real gyms with transparent listings, not generic travel fluff."
@@ -429,6 +420,14 @@ export default async function BestMmaCampsThailandPage() {
         <p className="mb-8 text-gray-600">MMA-specific questions.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Thailand MMA camp?"
+        subtitle="Filter every verified Thailand MMA gym by price, dates, and disciplines — book directly on Combatbooking."
+        href="/search?country=Thailand&discipline=MMA"
+        buttonLabel="Find your MMA camp"
+      />
+
+
 
       <RelatedGuides
         guides={[

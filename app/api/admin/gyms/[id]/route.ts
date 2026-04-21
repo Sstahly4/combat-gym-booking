@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidateGymCache } from '@/lib/seo/revalidate-gym'
 
 interface Params {
   params: { id: string }
@@ -77,6 +78,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       { status: 500 }
     )
   }
+
+  revalidateGymCache(gymId)
 
   return NextResponse.json({ ok: true, deleted_id: gymId })
 }

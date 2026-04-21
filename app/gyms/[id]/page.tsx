@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { unstable_cache } from 'next/cache'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-server'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Review, Package } from '@/lib/types/database'
 import { PackagesList } from '@/components/packages-list'
@@ -19,6 +23,7 @@ import { TrainingSchedule } from '@/components/training-schedule'
 import { ShowOnMapLink } from '@/components/show-on-map-link'
 import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
+import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
 
 // Helper function to format review date as "time ago"
 function formatReviewDate(createdAt: string): string {
@@ -81,181 +86,296 @@ const GYM_LISTING_SELECT = `
         owner:profiles!gyms_owner_id_fkey(full_name)
       `
 
-async function getGym(id: string) {
+// Revalidate pre-rendered gym pages hourly so fresh pricing/reviews land
+// without rebuilding. Non-statically-generated gyms still render on demand
+// (dynamicParams = true) and get cached on the edge after first hit.
+export const revalidate = 3600
+export const dynamicParams = true
+
+/**
+ * Pre-render the top 100 most-reviewed verified gyms at build time so popular
+ * detail pages load as static HTML (0ms DB wait). Everything else falls back
+ * to on-demand ISR via dynamicParams=true.
+ */
+export async function generateStaticParams() {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('gyms')
+      .select('id, reviews:bookings(reviews(id))')
+      .eq('verification_status', 'verified')
+      .eq('status', 'approved')
+      .limit(300)
+    if (error || !data) return []
+
+    const ranked = data
+      .map((g: any) => ({
+        id: g.id as string,
+        count: (g.reviews || []).reduce(
+          (sum: number, b: any) => sum + ((b?.reviews || []).length || 0),
+          0,
+        ),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 100)
+
+    return ranked.map(({ id }) => ({ id }))
+  } catch (err) {
+    console.error('generateStaticParams(gyms) failed:', err)
+    return []
+  }
+}
+
+// Shared reducer that turns raw Supabase rows into a GymWithDetails. The same
+// query shape is used for the cached public path and the owner-draft fallback,
+// so we keep the reshape logic in one place.
+async function assembleGym(
+  supabase: SupabaseClient,
+  gymData: any,
+  id: string,
+): Promise<GymWithDetails | null> {
+  if (!gymData) return null
+
+  const { data: imagesData, error: imagesError } = await supabase
+    .from('gym_images')
+    .select('*')
+    .eq('gym_id', id)
+    .order('order', { ascending: true, nullsFirst: false })
+
+  if (imagesError) {
+    console.error('Error fetching images:', imagesError)
+  }
+
+  const sortedImages = (imagesData || []).sort((a: any, b: any) => {
+    const orderA = a.order !== null && a.order !== undefined ? a.order : 999
+    const orderB = b.order !== null && b.order !== undefined ? b.order : 999
+    return orderA - orderB
+  })
+
+  const bookingReviews = (gymData.reviews || []).flatMap((booking: any) =>
+    (booking.reviews || []).map((review: any) => ({
+      ...review,
+      booking: { user_id: booking.user_id },
+    })),
+  )
+
+  // MVP ONLY: Fetch manual reviews (gym_id based) - REMOVE BEFORE SHIPPING
+  let manualReviews: any[] = []
+  try {
+    const { data: reviewsData } = await supabase
+      .from('reviews')
+      .select('id, rating, comment, created_at, reviewer_name')
+      .eq('gym_id', id)
+      .eq('manual_review', true)
+      .limit(10)
+    manualReviews = reviewsData || []
+  } catch (reviewError) {
+    console.error('Error fetching manual reviews:', reviewError)
+  }
+
+  const reviews = [
+    ...bookingReviews,
+    ...manualReviews.map((review: any) => ({
+      ...review,
+      booking: null,
+    })),
+  ]
+
+  return {
+    ...gymData,
+    images: sortedImages,
+    reviews,
+  } as GymWithDetails
+}
+
+/**
+ * Public, cookie-free fetch for verified/trusted gyms. Because we never touch
+ * cookies() / auth on this path, Next can actually statically render the
+ * page (with ISR) and cache it at the edge. Wrapped in unstable_cache so
+ * repeat requests for the same gym within the revalidation window skip
+ * Supabase entirely.
+ */
+const getPublicGym = unstable_cache(
+  async (id: string): Promise<GymWithDetails | null> => {
+    try {
+      const supabase = createPublicClient()
+      const { data: gymData, error } = await supabase
+        .from('gyms')
+        .select(GYM_LISTING_SELECT)
+        .eq('id', id)
+        .in('verification_status', ['verified', 'trusted'])
+        .maybeSingle()
+      if (error) {
+        console.error('Error fetching public gym:', error)
+        return null
+      }
+      return await assembleGym(supabase as any, gymData, id)
+    } catch (err) {
+      console.error('Error in getPublicGym:', err)
+      return null
+    }
+  },
+  ['gym-detail'],
+  { revalidate: 3600, tags: ['gyms'] },
+)
+
+/**
+ * Cookie-scoped fallback used only when the public fetch returns nothing —
+ * typically a draft gym the current user owns. This path reads auth and is
+ * therefore dynamic, but it only runs for <1% of traffic.
+ */
+async function getOwnerDraftGym(id: string): Promise<GymWithDetails | null> {
   try {
     const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
+    if (!user) return null
 
-    // Fetch gym with images - explicitly select order column and sort in query
-    let { data: gymData, error: gymError } = await supabase
+    const { data: gymData, error } = await supabase
       .from('gyms')
       .select(GYM_LISTING_SELECT)
       .eq('id', id)
-      .in('verification_status', ['verified', 'trusted', 'draft'])
+      .eq('owner_id', user.id)
       .maybeSingle()
-
-    if (gymError) {
-      console.error('Error fetching gym:', gymError)
-    }
-
-    // Owner fallback: always allow owner to load their row even if filters fail
-    if (!gymData && user) {
-      const { data: owned, error: ownedErr } = await supabase
-        .from('gyms')
-        .select(GYM_LISTING_SELECT)
-        .eq('id', id)
-        .eq('owner_id', user.id)
-        .maybeSingle()
-      if (ownedErr) {
-        console.error('Error fetching gym (owner fallback):', ownedErr)
-      }
-      gymData = owned ?? null
-    }
-
-    if (!gymData) {
+    if (error) {
+      console.error('Error fetching gym (owner fallback):', error)
       return null
     }
-
-    // Fetch images separately with explicit order column and sorting
-    // This ensures consistent ordering matching other pages (homepage, search, etc.)
-    const { data: imagesData, error: imagesError } = await supabase
-      .from('gym_images')
-      .select('*')
-      .eq('gym_id', id)
-      .order('order', { ascending: true, nullsFirst: false })
-
-    if (imagesError) {
-      console.error('Error fetching images:', imagesError)
-    }
-
-    // Attach sorted images to gym data - images are already ordered by query, but ensure consistency
-    const sortedImages = (imagesData || []).sort((a: any, b: any) => {
-      const orderA = a.order !== null && a.order !== undefined ? a.order : 999
-      const orderB = b.order !== null && b.order !== undefined ? b.order : 999
-      return orderA - orderB
-    })
-
-    const data = {
-      ...gymData,
-      images: sortedImages
-    }
-
-    // Flatten reviews from bookings
-    const bookingReviews = (data.reviews || []).flatMap((booking: any) => 
-      (booking.reviews || []).map((review: any) => ({
-        ...review,
-        booking: { user_id: booking.user_id }
-      }))
-    )
-
-    // MVP ONLY: Fetch manual reviews (gym_id based) - REMOVE BEFORE SHIPPING
-    // Fetch in parallel with main query for better performance
-    let manualReviews: any[] = []
-    try {
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select('id, rating, comment, created_at, reviewer_name')
-        .eq('gym_id', id)
-        .eq('manual_review', true)
-        .limit(10) // Limit to prevent large queries
-      manualReviews = reviewsData || []
-    } catch (reviewError) {
-      console.error('Error fetching manual reviews:', reviewError)
-      // Continue without manual reviews
-    }
-
-    // Combine booking reviews and manual reviews
-    const reviews = [
-      ...bookingReviews,
-      ...(manualReviews || []).map((review: any) => ({
-        ...review,
-        booking: null // Manual reviews don't have bookings
-      }))
-    ]
-
-    return {
-      ...data,
-      reviews,
-    } as GymWithDetails
+    return await assembleGym(supabase as any, gymData, id)
   } catch (err) {
-    console.error('Error in getGym:', err)
+    console.error('Error in getOwnerDraftGym:', err)
     return null
   }
 }
+
+// Cached, cookie-free metadata lookup. Using createPublicClient (instead of
+// the cookie-bound createClient) keeps generateMetadata from accidentally
+// opting the whole page into dynamic rendering, and unstable_cache tagged
+// with 'gyms' means metadata invalidates alongside the main page whenever
+// revalidateGymCache() runs.
+const getGymMetadata = unstable_cache(
+  async (id: string) => {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from('gyms')
+      .select('name, description, verification_status')
+      .eq('id', id)
+      .maybeSingle()
+    return data
+  },
+  ['gym-metadata'],
+  { revalidate: 3600, tags: ['gyms'] },
+)
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string }
 }): Promise<Metadata> {
-  const supabase = await createClient()
-  const { data } = await supabase.from('gyms').select('name').eq('id', params.id).maybeSingle()
-  const name = data?.name?.trim()
-  if (!name) {
-    return { title: 'Training Camp | Combatbooking' }
+  const data = await getGymMetadata(params.id)
+
+  if (!data || data.verification_status !== 'verified') {
+    return {
+      title: 'Gym Not Found | Combatbooking',
+      robots: { index: false, follow: false },
+    }
   }
+
+  const name = data.name?.trim() || 'Training Camp'
+  const description =
+    data.description?.trim() ||
+    `Train at ${name}. Book your next combat sports camp on Combatbooking.`
+
   return {
     title: `${name} — Book Training Camps | Combatbooking`,
+    description,
+    alternates: {
+      canonical: `/gyms/${params.id}`,
+    },
+    openGraph: {
+      title: `${name} — Book Training Camps | Combatbooking`,
+      description,
+      url: `/gyms/${params.id}`,
+      type: 'website',
+    },
   }
 }
 
 export default async function GymDetailsPage({ params, searchParams }: { params: { id: string }, searchParams: { checkin?: string, checkout?: string } }) {
-  const gym = await getGym(params.id)
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  // Fast path: cookie-free, cached fetch — renders statically for verified/trusted gyms.
+  let gym = await getPublicGym(params.id)
+  // Only fall back to the cookie-based owner path (which opts this request into
+  // dynamic rendering) when the public fetch returned nothing. That keeps the
+  // top 100 pre-rendered at build and the long tail edge-cached after one hit.
+  let isOwner = false
   if (!gym) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-lg">
-        <Card>
-          <CardContent className="py-12 text-center space-y-4">
-            <p className="text-gray-900 font-medium">Gym not found</p>
-            {user ? (
-              <p className="text-sm text-gray-600">
-                If this is your gym, open{' '}
-                <a href={`/manage/gym/preview?gym_id=${params.id}`} className="text-[#003580] font-medium underline">
-                  listing preview
-                </a>{' '}
-                or{' '}
-                <a href={`/manage/gym/edit?id=${params.id}`} className="text-[#003580] font-medium underline">
-                  edit gym
-                </a>{' '}
-                from the owner dashboard.
-              </p>
-            ) : (
-              <p className="text-sm text-gray-600">Check the link or browse gyms from search.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    )
+    gym = await getOwnerDraftGym(params.id)
+    isOwner = !!gym
   }
 
-  // Check if user is owner (for draft preview)
-  const isOwner = user && gym.owner_id === user.id
+  if (!gym) {
+    notFound()
+  }
+
+  const isVerified = gym.verification_status === 'verified'
   const isDraft = gym.verification_status === 'draft'
 
-  // Block public access to draft gyms (only owner can preview)
-  if (isDraft && !isOwner) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <h2 className="text-2xl font-bold mb-4">Gym Not Available</h2>
-            <p className="text-gray-600">This gym is not yet live and cannot be viewed.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  if (!isVerified && !isOwner) {
+    notFound()
   }
 
   const averageRating = gym.reviews.length > 0
     ? gym.reviews.reduce((sum, r) => sum + r.rating, 0) / gym.reviews.length
     : 0
+
+  const primaryImage =
+    gym.images && gym.images.length > 0 ? gym.images[0]?.url : undefined
+
+  const sportsActivityLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'SportsActivityLocation',
+    '@id': absoluteUrl(`/gyms/${gym.id}`),
+    name: gym.name,
+    url: absoluteUrl(`/gyms/${gym.id}`),
+    description: gym.description || `Train at ${gym.name} in ${gym.city}, ${gym.country}. Book combat sports camps on Combatbooking.`,
+    image: primaryImage ? [primaryImage] : undefined,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: gym.address || undefined,
+      addressLocality: gym.city || undefined,
+      addressCountry: gym.country || undefined,
+    },
+    geo:
+      typeof gym.latitude === 'number' && typeof gym.longitude === 'number'
+        ? {
+            '@type': 'GeoCoordinates',
+            latitude: gym.latitude,
+            longitude: gym.longitude,
+          }
+        : undefined,
+    telephone: gym.public_contact_phone || undefined,
+    sport: Array.isArray(gym.disciplines) && gym.disciplines.length > 0 ? gym.disciplines : undefined,
+    priceRange:
+      typeof gym.price_per_day === 'number' && gym.price_per_day > 0
+        ? `From $${gym.price_per_day}/day`
+        : undefined,
+    aggregateRating:
+      gym.reviews.length > 0
+        ? {
+            '@type': 'AggregateRating',
+            ratingValue: Number(averageRating.toFixed(2)),
+            reviewCount: gym.reviews.length,
+            bestRating: 5,
+            worstRating: 1,
+          }
+        : undefined,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'Combatbooking',
+      url: siteUrl,
+    },
+  }
 
   // Get nearby landmarks - ONLY use cached from database, never fetch on page load
   // Landmarks should be fetched once via API endpoint when gym is created/approved
@@ -272,6 +392,10 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
 
   return (
     <BookingProvider initialCheckin={searchParams.checkin} initialCheckout={searchParams.checkout}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
+      />
       <div className="min-h-screen bg-white pb-12">
         {/* Draft Mode Notice for Owner */}
         {isDraft && isOwner && (

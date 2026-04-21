@@ -1,16 +1,28 @@
 import type { MetadataRoute } from 'next'
 
-export default function robots(): MetadataRoute.Robots {
-  const baseUrl = 'https://combatbooking.com'
+const siteUrl = (
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'
+).replace(/\/$/, '')
 
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
+        disallow: [
+          '/manage',
+          '/admin',
+          '/dashboard',
+          '/bookings',
+          '/auth',
+          '/claim',
+          '/api',
+          '/samples',
+        ],
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   }
 }
-

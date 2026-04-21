@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 interface Sport {
   name: string
@@ -16,9 +17,11 @@ interface SportTypeCarouselProps {
   sports: Sport[]
   country: string
   dateDisplay: string
+  /** Number of leading images to preload via Next.js `priority`. */
+  priorityCount?: number
 }
 
-export function SportTypeCarousel({ sports, country, dateDisplay }: SportTypeCarouselProps) {
+export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount = 0 }: SportTypeCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -86,20 +89,24 @@ export function SportTypeCarousel({ sports, country, dateDisplay }: SportTypeCar
         onScroll={checkScroll}
         className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth"
       >
-        {sports.map((sport) => (
+        {sports.map((sport, idx) => (
           <Link
             key={sport.name}
             href={`/search?discipline=${encodeURIComponent(sport.name)}&country=${encodeURIComponent(country)}`}
             className="min-w-[calc(50%-12px)] md:min-w-[calc(25%-12px)] max-w-[calc(50%-12px)] md:max-w-[calc(25%-12px)] snap-start flex-shrink-0"
           >
             <div className="cursor-pointer hover:shadow-md transition-shadow">
-              <div className="relative w-full aspect-[5/4] rounded-lg overflow-hidden mb-2">
+              <div className="relative w-full aspect-[5/4] rounded-lg overflow-hidden mb-2 bg-gray-100">
                 <Image
                   src={sport.image}
                   alt={sport.name}
                   fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 288px"
                   className="object-cover"
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
+                  priority={idx < priorityCount}
+                  loading={idx < priorityCount ? 'eager' : 'lazy'}
                 />
               </div>
               <h3 className="font-semibold text-xs md:text-sm text-gray-900 mb-0.5">{sport.name}</h3>

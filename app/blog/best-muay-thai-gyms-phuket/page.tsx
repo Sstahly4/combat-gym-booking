@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -20,18 +26,19 @@ import { Anchor, Sun } from 'lucide-react'
 
 const CITY = 'Phuket'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
+const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const PATH = '/blog/best-muay-thai-gyms-phuket'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg'
 const DESCRIPTION = `Ranked Muay Thai camps in Phuket, Thailand: live prices, photos, schedule snippets, and reviews. Compare the best gyms before you book.`
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Photos, Prices & Tips | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-muay-thai-gyms-phuket' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -125,39 +132,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestMuayThaiGymsPhuketPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'Muay Thai', city: CITY })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-muay-thai-gyms-phuket'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: `Thailand`, path: '/search?country=Thailand' },
+    { name: `Best Muay Thai Gyms in ${CITY}`, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -172,9 +162,10 @@ export default async function BestMuayThaiGymsPhuketPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg"
+        imageSrc={HERO_IMAGE}
         imageAlt={`Muay Thai training in ${CITY}, Thailand`}
         priority
         overlayText={`${CITY} combines island life with serious Muay Thai—use this guide to compare camps by reviews, price, and real schedule data.`}
@@ -388,12 +379,21 @@ export default async function BestMuayThaiGymsPhuketPage() {
         <p className="mb-8 text-gray-600">Phuket-specific questions travelers ask before booking a camp.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Phuket Muay Thai camp?"
+        subtitle="Filter verified Phuket gyms by dates, price, and vibe — then book the one your schedule actually fits."
+        href="/search?country=Thailand&location=Phuket&discipline=Muay%20Thai"
+        buttonLabel="Find your Phuket camp"
+      />
+
+
 
       <RelatedGuides
         guides={[
           { title: '25 best Muay Thai camps in Thailand (2026)', href: '/blog/best-muay-thai-camps-thailand-2026' },
           { title: 'Best Muay Thai gyms in Bangkok', href: '/blog/best-muay-thai-gyms-bangkok' },
           { title: 'Best Muay Thai gyms in Chiang Mai', href: '/blog/best-muay-thai-gyms-chiang-mai' },
+          { title: 'Top 5 conditioning gyms for fighters in Phuket', href: '/blog/phuket-fighter-conditioning-gyms' },
           { title: 'Thailand training visa / DTV', href: '/blog/thailand-training-visa-dtv' },
         ]}
       />

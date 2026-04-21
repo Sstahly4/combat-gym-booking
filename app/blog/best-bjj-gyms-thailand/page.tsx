@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -19,19 +25,20 @@ import {
 import { CircleDot, Users } from 'lucide-react'
 
 const TITLE = 'Best BJJ Gyms in Thailand (2026)'
+const SEO_TITLE = 'Best BJJ Gyms in Thailand 2026 [Prices + Reviews]'
+const PATH = '/blog/best-bjj-gyms-thailand'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = '/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png'
 const DESCRIPTION =
   'Brazilian Jiu-Jitsu gyms in Thailand: ranked by reviews, with gi/no-gi tips, pricing signals, and discipline-only filtering—not generic fight camp lists.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Gi, No-Gi & Grappling | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-bjj-gyms-thailand' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -125,39 +132,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestBjjGymsThailandPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'BJJ' })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-bjj-gyms-thailand'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: TITLE, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -172,9 +162,10 @@ export default async function BestBjjGymsThailandPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+        imageSrc={HERO_IMAGE}
         imageAlt="Brazilian Jiu-Jitsu training in Thailand"
         priority
         overlayText="Thailand’s BJJ scene pairs well with MMA and Muay Thai—this guide ranks grappling gyms with real discipline tags and live reviews."
@@ -414,6 +405,14 @@ export default async function BestBjjGymsThailandPage() {
         <p className="mb-8 text-gray-600">BJJ traveler questions.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Thailand BJJ gym?"
+        subtitle="Filter every verified Thailand BJJ gym by price, dates, and gi/no-gi — book directly on Combatbooking."
+        href="/search?country=Thailand&discipline=BJJ"
+        buttonLabel="Find your BJJ gym"
+      />
+
+
 
       <RelatedGuides
         guides={[

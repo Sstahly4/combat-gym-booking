@@ -12,30 +12,31 @@ import {
   GuideSection,
   GuideThreeCards,
 } from '@/components/guides/guide-page-blocks'
+import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
 import { FileWarning, Plane, ScrollText } from 'lucide-react'
 
 const TITLE = 'Thailand Training Visa / DTV Guide for Fighters (2026)'
+const PATH = '/blog/thailand-training-visa-dtv'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = '/highquality-world-map-vector-art_1112614-9909.jpg'
 const DESCRIPTION =
   'Plan longer combat sports training in Thailand: visa routes, DTV basics, documents, insurance, and official sources—editorial guide, not legal advice.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | DTV & Long Stays | CombatBooking.com`,
+  title: `${TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/thailand-training-visa-dtv' },
+  alternates: { canonical: PATH },
   openGraph: {
-    title: `${TITLE} - CombatBooking.com`,
+    title: `${TITLE} | Combatbooking`,
     description: DESCRIPTION,
     type: 'article',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${TITLE} - CombatBooking.com`,
+    title: `${TITLE} | Combatbooking`,
     description: DESCRIPTION,
   },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
 }
 
 const FAQ_ITEMS = [
@@ -78,25 +79,21 @@ const FAQ_ITEMS = [
 ]
 
 export default function ThailandTrainingVisaDtvPage() {
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/thailand-training-visa-dtv'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: TITLE, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -109,9 +106,10 @@ export default function ThailandTrainingVisaDtvPage() {
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/highquality-world-map-vector-art_1112614-9909.jpg"
+        imageSrc={HERO_IMAGE}
         imageAlt="Training in Thailand"
         priority
         overlayText="Visa rules change—use this guide to structure your research, then confirm every detail with official immigration sources."

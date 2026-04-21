@@ -713,6 +713,11 @@ function EditGymForm() {
       // Clear cached form state on successful save
       clearFormState()
 
+      // Punch the ISR cache for this gym's public page so the edit appears
+      // immediately instead of within the 1h revalidate window. Fire-and-forget:
+      // a failure here shouldn't block the save flow.
+      fetch(`/api/gyms/${gym.id}/revalidate`, { method: 'POST' }).catch(() => {})
+
       router.push('/manage')
     } catch (err: any) {
       console.error('Error updating gym:', err)

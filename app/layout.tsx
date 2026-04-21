@@ -10,7 +10,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] })
 
 const siteUrl = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://combatbooking.com"
+  process.env.NEXT_PUBLIC_APP_URL || "https://www.combatbooking.com"
 ).replace(/\/$/, "")
 
 const organizationJsonLd = {
@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   title: defaultTitle,
   description:
     "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/site.webmanifest",
   icons: {
     icon: [

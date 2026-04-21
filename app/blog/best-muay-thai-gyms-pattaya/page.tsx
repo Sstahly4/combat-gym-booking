@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -20,19 +26,20 @@ import { MapPin, Sun, Waves } from 'lucide-react'
 
 const CITY = 'Pattaya'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
+const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const PATH = '/blog/best-muay-thai-gyms-pattaya'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1400&q=80'
 const DESCRIPTION =
   'Ranked Muay Thai camps in Pattaya, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near the beach.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Prices, Photos & Tips | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-muay-thai-gyms-pattaya' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -73,39 +80,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestMuayThaiGymsPattayaPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'Muay Thai', city: CITY })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-muay-thai-gyms-pattaya'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: `Best Muay Thai Gyms in ${CITY}`, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -120,9 +110,10 @@ export default async function BestMuayThaiGymsPattayaPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1400&q=80"
+        imageSrc={HERO_IMAGE}
         imageAlt={`Pattaya Thailand coastline`}
         priority
         overlayText="Pattaya Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
@@ -329,6 +320,14 @@ export default async function BestMuayThaiGymsPattayaPage() {
         <p className="mb-8 text-gray-600">Pattaya training questions that show up in search.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Pattaya Muay Thai camp?"
+        subtitle="Filter every verified Pattaya gym by price, dates, and amenities — book directly on Combatbooking."
+        href="/search?country=Thailand&location=Pattaya&discipline=Muay%20Thai"
+        buttonLabel="Find your Pattaya camp"
+      />
+
+
 
       <RelatedGuides
         guides={[

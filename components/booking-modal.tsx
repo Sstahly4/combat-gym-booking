@@ -79,8 +79,7 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
 
     try {
       const total = calculateTotal()
-      const platformFee = total * 0.15 // 15% commission
-      
+
       // Append options to notes
       let finalNotes = bookingData.notes
       if (initialData?.variantName) finalNotes = `[Variant: ${initialData.variantName}]\n` + finalNotes
@@ -102,7 +101,6 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
           experience_level: bookingData.experience_level,
           notes: finalNotes,
           total_price: total,
-          platform_fee: platformFee,
         }),
       })
 

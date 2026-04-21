@@ -12,18 +12,23 @@ import {
   GuideThreeCards,
   GuideCtaStrip,
 } from '@/components/guides/guide-page-blocks'
+import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
 import { FileWarning, ShieldCheck, Timer } from 'lucide-react'
 
 const TITLE = 'Thailand Visa Extension & Overstay Guide (2026)'
+const PATH = '/blog/thailand-visa-extension-overstay-guide'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/8/82/Thai_Visa_on_Arrival.jpg'
 const DESCRIPTION =
   'A practical 2026 guide to Thailand visa extensions and overstay risk for long-stay training travelers: mindset, checklists, official links, and common mistakes.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | TM.7, Fees & Mistakes | CombatBooking.com`,
+  title: `${TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/thailand-visa-extension-overstay-guide' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
+  alternates: { canonical: PATH },
+  openGraph: { title: `${TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -58,25 +63,21 @@ const FAQ_ITEMS = [
 ]
 
 export default function ThailandVisaExtensionOverstayGuidePage() {
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: 'https://combatbooking.com/blog/thailand-visa-extension-overstay-guide',
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: TITLE, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -90,9 +91,10 @@ export default function ThailandVisaExtensionOverstayGuidePage() {
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="https://upload.wikimedia.org/wikipedia/commons/8/82/Thai_Visa_on_Arrival.jpg"
+        imageSrc={HERO_IMAGE}
         imageAlt="Thailand visa page visual"
         priority
         overlayText="Extensions and overstays can ruin a training trip. Use a checklist, act early, and verify everything with official sources."

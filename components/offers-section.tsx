@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Offer } from '@/lib/types/database'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 interface OffersSectionProps {
   offers: Offer[]
@@ -24,7 +25,7 @@ export function OffersSection({ offers }: OffersSectionProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {offers.map((offer) => {
+          {offers.map((offer, idx) => {
             const image = offer.image_url?.trim()
             const ctaClassName = "inline-flex items-center justify-center rounded-md bg-[#003580] px-3 py-2 text-sm font-medium text-white hover:bg-[#003580]/90 transition-colors"
             const cta = isExternalUrl(offer.cta_url) ? (
@@ -69,6 +70,10 @@ export function OffersSection({ offers }: OffersSectionProps) {
                       height={112}
                       sizes="(max-width: 768px) 96px, 112px"
                       className="w-full h-full object-cover"
+                      placeholder="blur"
+                      blurDataURL={BLUR_DATA_URL}
+                      priority={idx < 2}
+                      loading={idx < 2 ? 'eager' : 'lazy'}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />

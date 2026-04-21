@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -131,6 +131,10 @@ function SearchPageContent() {
   const [sortBy, setSortBy] = useState('recommended')
   const [sortOpen, setSortOpen] = useState(false)
   const [category, setCategory] = useState<'gyms' | 'train-stay' | 'seminars'>('gyms')
+  // useTransition lets React keep the filter inputs responsive while the
+  // derived result list (sorting, rating filter, card re-render) runs at
+  // lower priority in the background — big INP win on the search page.
+  const [, startTransition] = useTransition()
 
   const queryParam = searchParams.get('query') || ''
   const parsedQuery = parseSearchQuery(queryParam)
@@ -181,7 +185,16 @@ function SearchPageContent() {
     }
   }, [searchParams])
 
-  useEffect(() => { fetchGyms() }, [filters])
+  // Debounce filter changes → fetchGyms. Without this, typing "150" into
+  // the Min Price input fires 3 Supabase round-trips; with debounce, only
+  // the final value triggers the network call, and the typing itself stays
+  // at 60fps. 250ms is short enough to feel instant but long enough to
+  // coalesce rapid input/checkbox storms.
+  useEffect(() => {
+    const t = setTimeout(() => { fetchGyms() }, 250)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
 
   const fetchGyms = async () => {
     setLoading(true)
@@ -231,19 +244,20 @@ function SearchPageContent() {
     setLoading(false)
   }
 
-  const handleFilterChange = (key: string, value: any) => setFilters(prev => ({ ...prev, [key]: value }))
+  const handleFilterChange = (key: string, value: any) =>
+    startTransition(() => setFilters(prev => ({ ...prev, [key]: value })))
 
   const toggleArrayFilter = (key: 'disciplines' | 'countries' | 'levels' | 'popularFilters', value: string) => {
-    setFilters(prev => {
+    startTransition(() => setFilters(prev => {
       const arr = prev[key] as string[]
       return { ...prev, [key]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] }
-    })
+    }))
   }
 
-  const clearFilters = () => setFilters(prev => ({
+  const clearFilters = () => startTransition(() => setFilters(prev => ({
     ...prev, discipline: '', minPrice: '', maxPrice: '', experienceLevel: '',
     accommodation: false, disciplines: [], countries: [], levels: [], minRating: '', popularFilters: [],
-  }))
+  })))
 
   const activeFilterCount = [
     filters.discipline, filters.minPrice, filters.maxPrice, filters.minRating,

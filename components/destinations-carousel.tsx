@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 interface Destination {
   name: string
@@ -14,9 +15,11 @@ interface Destination {
 
 interface DestinationsCarouselProps {
   destinations: Destination[]
+  /** Number of leading images to preload via Next.js `priority`. */
+  priorityCount?: number
 }
 
-export function DestinationsCarousel({ destinations }: DestinationsCarouselProps) {
+export function DestinationsCarousel({ destinations, priorityCount = 0 }: DestinationsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -84,7 +87,7 @@ export function DestinationsCarousel({ destinations }: DestinationsCarouselProps
         onScroll={checkScroll}
         className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth group"
       >
-        {destinations.map((city) => (
+        {destinations.map((city, idx) => (
           <Link
             key={city.name}
             href={`/search?location=${encodeURIComponent(city.name)}`}
@@ -96,8 +99,12 @@ export function DestinationsCarousel({ destinations }: DestinationsCarouselProps
                   src={city.image}
                   alt={city.name}
                   fill
-                  sizes="(max-width: 768px) 29vw, 33vw"
+                  sizes="(max-width: 768px) 29vw, (max-width: 1200px) 33vw, 384px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
+                  priority={idx < priorityCount}
+                  loading={idx < priorityCount ? 'eager' : 'lazy'}
                 />
                 <div className="absolute top-2 left-2 text-white drop-shadow-md">
                   <span className="text-[10px] font-semibold bg-black/30 rounded px-1.5 py-0.5">

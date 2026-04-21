@@ -6,6 +6,12 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
 import {
   GuideAccentIntro,
@@ -20,18 +26,19 @@ import { Building2, Sun } from 'lucide-react'
 
 const CITY = 'Bangkok'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
+const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const PATH = '/blog/best-muay-thai-gyms-bangkok'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-20'
+const HERO_IMAGE = '/1296749132.jpg'
 const DESCRIPTION = `Ranked Muay Thai camps in Bangkok: live prices, photos, reviews, and schedule snippets. Find the best gyms in Thailand’s capital.`
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Prices & Neighborhood Tips | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-muay-thai-gyms-bangkok' },
-  openGraph: { title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} - CombatBooking.com`, description: DESCRIPTION },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
+  alternates: { canonical: PATH },
+  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -123,39 +130,22 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
 export default async function BestMuayThaiGymsBangkokPage() {
   const gyms = await getThailandGymsForGuide({ discipline: 'Muay Thai', city: CITY })
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: gyms.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: gyms.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-muay-thai-gyms-bangkok'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Thailand', path: '/search?country=Thailand' },
+    { name: `Best Muay Thai Gyms in ${CITY}`, path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -170,9 +160,10 @@ export default async function BestMuayThaiGymsBangkokPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/1296749132.jpg"
+        imageSrc={HERO_IMAGE}
         imageAlt={`Muay Thai gyms in ${CITY}`}
         priority
         overlayText="Bangkok: maximum convenience, huge variety, and easy access to stadium shows—pick a camp that fits your commute and schedule, not only its rank."
@@ -408,6 +399,14 @@ export default async function BestMuayThaiGymsBangkokPage() {
         <p className="mb-8 text-gray-600">Bangkok-specific planning questions.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
+      <GuideCtaStrip
+        title="Ready to pick your Bangkok Muay Thai camp?"
+        subtitle="Filter verified Bangkok gyms by price, dates, and neighborhood — then book the one that fits your week."
+        href="/search?country=Thailand&location=Bangkok&discipline=Muay%20Thai"
+        buttonLabel="Find your Bangkok camp"
+      />
+
+
 
       <RelatedGuides
         guides={[

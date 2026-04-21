@@ -401,7 +401,7 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
                       <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.5;">
                         Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
                       </p>
-                      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://combatbooking.com'}/privacy" style="color: #f59e0b; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
+                      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'}/privacy" style="color: #f59e0b; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
                     </td>
                   </tr>
                 </table>
@@ -762,7 +762,7 @@ export async function sendBookingConfirmedEmail(data: BookingConfirmedEmailData)
                 <p style="margin: 0; color: #4b5563; font-size: 13px; line-height: 1.5;">
                   Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
                 </p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://combatbooking.com'}/privacy" style="color: #006ce4; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'}/privacy" style="color: #006ce4; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
               </div>
 
             </td>

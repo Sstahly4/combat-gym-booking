@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { revalidateGymCache } from '@/lib/seo/revalidate-gym'
 
 const facilityUpdateSchema = z.object({
   gym_id: z.string().uuid(),
@@ -97,6 +98,7 @@ export async function PUT(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: 'Failed to save facility' }, { status: 500 })
 
+    revalidateGymCache(parsed.data.gym_id)
     return NextResponse.json({ success: true, facility: patch })
   } catch (error: any) {
     return NextResponse.json(

@@ -16,30 +16,38 @@ import {
   GuideThreeCards,
 } from '@/components/guides/guide-page-blocks'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqLd,
+  buildGymItemListLd,
+} from '@/lib/seo/guide-schema'
 import { Check, MapPin, Shield, Sparkles } from 'lucide-react'
 
+const PATH = '/blog/best-muay-thai-camps-thailand-2026'
+const DATE_PUBLISHED = '2025-10-15'
+const DATE_MODIFIED = '2026-04-21'
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
+
 const TITLE = '25 Best Muay Thai Camps in Thailand (2026)'
+const SEO_TITLE = '25 Best Muay Thai Camps in Thailand 2026 [Prices + Reviews]'
 const DESCRIPTION =
-  'The most complete 2026 guide to the best Muay Thai camps in Thailand: ranked listings, prices, training tips, Bangkok vs Phuket vs Chiang Mai, visas, and FAQs—updated from live gym data.'
+  'Ranked 2026 guide to the best Muay Thai camps in Thailand. Compare real prices, guest reviews, and training packages in Bangkok, Phuket, Chiang Mai and more—book directly on Combatbooking.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Training, Prices & Regions | CombatBooking.com`,
+  title: `${SEO_TITLE} | Combatbooking`,
   description: DESCRIPTION,
-  alternates: { canonical: '/blog/best-muay-thai-camps-thailand-2026' },
+  alternates: { canonical: PATH },
   openGraph: {
-    title: `${TITLE} - CombatBooking.com`,
+    title: `${SEO_TITLE} | Combatbooking`,
     description: DESCRIPTION,
     type: 'article',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${TITLE} - CombatBooking.com`,
+    title: `${SEO_TITLE} | Combatbooking`,
     description: DESCRIPTION,
   },
-}
-
-function absoluteUrl(path: string) {
-  return `https://combatbooking.com${path}`
 }
 
 const FAQ_ITEMS = [
@@ -77,11 +85,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How much does it cost to train Muay Thai in Thailand?',
-    a: 'Costs vary by city, package type, and whether accommodation/meals are included. Use this guide to shortlist camps, then confirm current package pricing on each gym page—monthly bundles can be better value than paying day-to-day.',
+    a: 'Costs vary by city, package type, and whether accommodation/meals are included. Use this guide to shortlist camps, then confirm current package pricing on each gym page—monthly bundles can be better value than paying day-to-day. For a fuller breakdown, read our Thailand Muay Thai camp cost guide.',
   },
   {
     q: 'How long should I stay to see real progress?',
-    a: 'Most travelers notice meaningful progress with 2–4 weeks of consistent training and enough recovery. One week is great for experience; longer stays are where technique repetition and conditioning compound.',
+    a: 'Most travelers notice meaningful progress with 2–4 weeks of consistent training and enough recovery. One week is great for experience; longer stays are where technique repetition and conditioning compound. If you are deciding between trip lengths, read our 1-week vs 1-month camp guide.',
   },
   {
     q: 'Is it safe for beginners to train twice per day?',
@@ -89,7 +97,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What should I pack for a Thailand training camp?',
-    a: 'Bring wraps, a mouthguard, lightweight training clothes, and basic first-aid (tape/blister care). Many travelers buy gloves/shin guards locally to avoid luggage weight—confirm gear rules on each gym profile.',
+    a: 'Bring wraps, a mouthguard, lightweight training clothes, and basic first-aid (tape/blister care). Many travelers buy gloves/shin guards locally to avoid luggage weight—confirm gear rules on each gym profile. For a full checklist, read our Thailand combat sports packing list.',
   },
 ]
 
@@ -176,39 +184,21 @@ export default async function BestMuayThaiCampsThailand2026Page() {
   const totalListed = allMuayThai.length
   const top25 = allMuayThai.slice(0, 25)
 
-  const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: TITLE,
-    numberOfItems: top25.length,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
-    itemListElement: top25.map((gym, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: gym.name,
-      url: absoluteUrl(`/gyms/${gym.id}`),
-    })),
-  }
-
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: TITLE,
+  const itemList = buildGymItemListLd({ name: TITLE, gyms: top25 })
+  const articleLd = buildArticleLd({
+    title: TITLE,
     description: DESCRIPTION,
-    mainEntityOfPage: absoluteUrl('/blog/best-muay-thai-camps-thailand-2026'),
-    author: { '@type': 'Organization', name: 'CombatBooking.com' },
-    publisher: { '@type': 'Organization', name: 'CombatBooking.com' },
-  }
-
-  const faqLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQ_ITEMS.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  }
+    path: PATH,
+    datePublished: DATE_PUBLISHED,
+    dateModified: DATE_MODIFIED,
+    imagePath: HERO_IMAGE,
+  })
+  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const breadcrumbLd = buildBreadcrumbLd([
+    { name: 'Home', path: '/' },
+    { name: 'Training Guides', path: '/blog' },
+    { name: 'Best Muay Thai Camps in Thailand (2026)', path: PATH },
+  ])
 
   return (
     <ArticleShell
@@ -222,9 +212,10 @@ export default async function BestMuayThaiCampsThailand2026Page() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <GuideHero
-        imageSrc="/Khun_3_c4e13bdce8_c0b7f8b5b5.avif"
+        imageSrc={HERO_IMAGE}
         imageAlt="Muay Thai training in Thailand"
         priority
         overlayText="Find the right camp faster: ranked gyms, transparent pricing signals, and regional context—then book on CombatBooking."
@@ -453,6 +444,13 @@ export default async function BestMuayThaiCampsThailand2026Page() {
               </Link>{' '}
               by price after you identify camps you like from this ranked list.
             </p>
+            <p>
+              For real 2026 numbers, use{' '}
+              <Link href="/blog/muay-thai-camp-thailand-cost" className="font-medium text-[#003580] underline">
+                how much a Muay Thai camp costs in Thailand
+              </Link>{' '}
+              (includes a summary pricing table), then compare that against the cities in this guide.
+            </p>
           </div>
           <div className="space-y-3 text-sm leading-relaxed text-gray-800">
             <h3 className="text-lg font-semibold text-gray-900">Packing and etiquette basics</h3>
@@ -467,6 +465,30 @@ export default async function BestMuayThaiCampsThailand2026Page() {
               </Link>{' '}
               early so your booking window matches your entry rules.
             </p>
+            <p>
+              If you are extending beyond a quick holiday-style trip, also read{' '}
+              <Link href="/blog/ed-visa-martial-arts-training-thailand" className="font-medium text-[#003580] underline">
+                visas for martial arts training in Thailand (ED visa + alternatives)
+              </Link>{' '}
+              and keep official sources bookmarked.
+            </p>
+          </div>
+        </div>
+        <div className="mt-8 rounded-xl border border-amber-200/70 bg-white/80 p-5 text-sm text-gray-800 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Quick planning guides</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Link href="/blog/packing-list-combat-sports-camp-thailand" className="font-medium text-[#003580] underline">
+              Packing list for a combat sports camp in Thailand
+            </Link>
+            <Link href="/blog/muay-thai-camp-1-week-vs-1-month" className="font-medium text-[#003580] underline">
+              1-week vs 1-month Muay Thai camps: what to expect
+            </Link>
+            <Link href="/blog/beginners-guide-muay-thai-chiang-mai" className="font-medium text-[#003580] underline">
+              Beginner&apos;s guide to Muay Thai in Chiang Mai
+            </Link>
+            <Link href="/blog/koh-tao-vs-koh-phangan-muay-thai" className="font-medium text-[#003580] underline">
+              Koh Tao vs Koh Phangan: where to train?
+            </Link>
           </div>
         </div>
       </GuideSection>
@@ -476,6 +498,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         subtitle="Filter by city, price, and more—beyond this top 25 shortlist."
         href="/search?country=Thailand&discipline=Muay%20Thai"
         buttonLabel="Open directory"
+        variant="light"
       />
 
       <section id="ranked-camps" className="mb-16 scroll-mt-24">
@@ -489,7 +512,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         <ChunkedGymGrid
           gyms={top25}
           chunkSize={5}
-          fallbackImageSrc="/Khun_3_c4e13bdce8_c0b7f8b5b5.avif"
+          fallbackImageSrc={HERO_IMAGE}
           editorialBetweenChunks={BETWEEN_CHUNKS}
           rankEyebrow="national"
         />
@@ -502,6 +525,13 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         </p>
         <GuideFaqList items={FAQ_ITEMS} />
       </section>
+
+      <GuideCtaStrip
+        title="Ready to lock in your Thailand Muay Thai camp?"
+        subtitle="You've seen the top 25 — compare live prices, reviews, and dates, then book in a few clicks."
+        href="/search?country=Thailand&discipline=Muay%20Thai"
+        buttonLabel="Browse all camps & book"
+      />
 
       <RelatedGuides
         guides={[

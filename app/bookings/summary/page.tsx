@@ -216,7 +216,6 @@ function BookingSummaryPageContent() {
           experience_level: experienceLevel,
           notes: notes || null,
           total_price: totalPrice,
-          platform_fee: 0,
           // Guest booking details
           guest_email: email,
           guest_phone: phone,

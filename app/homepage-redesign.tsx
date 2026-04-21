@@ -12,6 +12,7 @@ import { OffersSection } from '@/components/offers-section'
 import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 async function getGyms(limit: number = 10) {
   const supabase = createPublicClient()
@@ -313,7 +314,8 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Top Rated Camps</h2>
             <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Highly rated by fighters who've trained there - verified reviews from real bookings</p>
-            <FeaturedCarousel gyms={topRatedGyms} />
+            {/* First visible carousel: preload the first 3 cards (2 mobile viewports, 4 desktop). */}
+            <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
           </div>
         </section>
 
@@ -347,8 +349,10 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                     src={city.image}
                     alt={city.name}
                     fill
-                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 50vw, 33vw"
+                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 50vw, 576px"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">
@@ -367,8 +371,10 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                     src={city.image}
                     alt={city.name}
                     fill
-                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 33vw, 22vw"
+                    sizes="(max-width: 768px) 0px, (max-width: 1200px) 33vw, 384px"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">

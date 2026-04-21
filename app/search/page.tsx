@@ -9,6 +9,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   return {
     title: buildSearchBrowseTitleFromSearchParams(searchParams),
+    alternates: {
+      canonical: '/search',
+    },
   }
 }
 

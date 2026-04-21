@@ -37,6 +37,39 @@ export default function BlogPage() {
     },
   ]
 
+  const trainingBasics = [
+    {
+      title: 'How Much Does a Muay Thai Camp in Thailand Cost? (2026)',
+      excerpt: 'Real 2026 numbers with a summary pricing table + hidden costs to budget for.',
+      href: '/blog/muay-thai-camp-thailand-cost',
+    },
+    {
+      title: '1-Week vs. 1-Month Muay Thai Camps: What to Expect',
+      excerpt: 'Progress curve, cost-per-day logic, and who each stay length fits.',
+      href: '/blog/muay-thai-camp-1-week-vs-1-month',
+    },
+    {
+      title: 'Packing List for a Combat Sports Camp in Thailand',
+      excerpt: 'What to bring, what to buy locally, and what to leave at home.',
+      href: '/blog/packing-list-combat-sports-camp-thailand',
+    },
+    {
+      title: "Beginner's Guide to Training Muay Thai in Chiang Mai",
+      excerpt: 'A week-by-week beginner plan, gear, mistakes to avoid, and how to choose a gym.',
+      href: '/blog/beginners-guide-muay-thai-chiang-mai',
+    },
+    {
+      title: 'Koh Tao vs. Koh Phangan: Where Is the Best Place to Train?',
+      excerpt: 'A direct island comparison on gyms, cost, vibe, and stay length.',
+      href: '/blog/koh-tao-vs-koh-phangan-muay-thai',
+    },
+    {
+      title: 'Top 5 Fitness & Conditioning Gyms for Fighters in Phuket',
+      excerpt: 'How to layer S&C and recovery around a Phuket fight camp (without burning out).',
+      href: '/blog/phuket-fighter-conditioning-gyms',
+    },
+  ]
+
   const cityGuides = [
     {
       title: 'Best Muay Thai Gyms in Phuket',
@@ -120,6 +153,11 @@ export default function BlogPage() {
       href: '/blog/thailand-training-visa-dtv',
     },
     {
+      title: 'Visas for Martial Arts Training in Thailand (ED visa + alternatives)',
+      excerpt: 'A structured planning framework for longer Muay Thai/BJJ/MMA stays. Editorial guide, not legal advice.',
+      href: '/blog/ed-visa-martial-arts-training-thailand',
+    },
+    {
       title: 'Thailand Visa Extension & Overstay Guide',
       excerpt: 'TM.7 mindset, official links, timing mistakes, and overstay risk—built for longer training trips.',
       href: '/blog/thailand-visa-extension-overstay-guide',
@@ -197,6 +235,26 @@ export default function BlogPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {cityGuides.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <Compass className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">Training basics (cost, packing, planning)</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {trainingBasics.map((article) => (
             <Link key={article.href} href={article.href} className="block h-full">
               <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col p-6">
