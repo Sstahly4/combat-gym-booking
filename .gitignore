@@ -50,3 +50,7 @@ WEBHOOK_SETUP.md
 SUPABASE_EMAIL_SETUP.md
 PAYMENT_FLOW.md
 AI_CONTEXT.md
+
+# Supabase CLI cache
+supabase/.temp/
+

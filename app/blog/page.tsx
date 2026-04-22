@@ -68,6 +68,21 @@ export default function BlogPage() {
       excerpt: 'How to layer S&C and recovery around a Phuket fight camp (without burning out).',
       href: '/blog/phuket-fighter-conditioning-gyms',
     },
+    {
+      title: 'Muay Thai Camps with Private AC Rooms in Krabi',
+      excerpt: 'High-intent stay-and-train shortlist with a clean side-by-side comparison table.',
+      href: '/blog/muay-thai-krabi-private-ac-rooms',
+    },
+    {
+      title: 'Best Muay Thai Gym for Female Solo Travelers (2026)',
+      excerpt: 'Trust-first checklist + frictionless top-5 comparison built from verified listings.',
+      href: '/blog/best-muay-thai-gym-female-solo-travelers-2026',
+    },
+    {
+      title: 'Muay Thai Fight Prep Camps with On-Site Physiotherapy',
+      excerpt: 'Fight camp recovery-first shortlist: physio + competition-prep signals, compared cleanly.',
+      href: '/blog/muay-thai-fight-prep-camps-physiotherapy',
+    },
   ]
 
   const cityGuides = [

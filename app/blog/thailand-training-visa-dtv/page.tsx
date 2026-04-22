@@ -450,6 +450,13 @@ export default function ThailandTrainingVisaDtvPage() {
         <Link href="/blog/best-bjj-gyms-thailand" className="text-sm font-semibold text-[#003580] underline hover:no-underline">
           BJJ gyms
         </Link>
+        <span className="text-gray-300">|</span>
+        <Link
+          href="/blog/ed-visa-martial-arts-training-thailand"
+          className="text-sm font-semibold text-[#003580] underline hover:no-underline"
+        >
+          ED visa guide (martial arts)
+        </Link>
       </div>
 
       <GuideSection id="faq" variant="default" className="mb-14 border border-gray-200 bg-white p-6 md:p-10">
@@ -470,6 +477,7 @@ export default function ThailandTrainingVisaDtvPage() {
           { title: 'Best Muay Thai gyms in Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
           { title: 'Best MMA camps in Thailand', href: '/blog/best-mma-camps-thailand' },
           { title: 'Best BJJ gyms in Thailand', href: '/blog/best-bjj-gyms-thailand' },
+          { title: 'Best Muay Thai gym for female solo travelers (2026)', href: '/blog/best-muay-thai-gym-female-solo-travelers-2026' },
         ]}
       />
     </ArticleShell>

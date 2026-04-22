@@ -29,7 +29,7 @@ const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
 const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
 const PATH = '/blog/best-muay-thai-gyms-krabi'
 const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
+const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1549973890-38b8d7b51b2a?auto=format&fit=crop&w=1400&q=80'
 const DESCRIPTION =
   'Ranked Muay Thai camps in Krabi, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near Ao Nang and the limestone coast.'
@@ -164,6 +164,20 @@ export default async function BestMuayThaiGymsKrabiPage() {
             { title: 'Beginner ramp', body: 'Start with one session/day for a few days. Add volume only when sleep and soreness stabilize.' },
           ]}
         />
+        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">High-intent shortcuts</p>
+          <p className="mt-2 text-sm leading-relaxed text-gray-700">
+            If your search intent is very specific, use these focused pages built for fast comparison.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Link href="/blog/muay-thai-krabi-private-ac-rooms" className="font-medium text-[#003580] underline">
+              Muay Thai camps with private AC rooms in Krabi
+            </Link>
+            <Link href="/blog/packing-list-combat-sports-camp-thailand" className="font-medium text-[#003580] underline">
+              Packing list for a combat sports camp in Thailand
+            </Link>
+          </div>
+        </div>
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900">Common mistakes</h3>
@@ -367,6 +381,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
         guides={[
           { title: 'Best Muay Thai gyms in Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
           { title: '25 best Muay Thai camps in Thailand (2026)', href: '/blog/best-muay-thai-camps-thailand-2026' },
+          { title: 'Muay Thai camps with private AC rooms in Krabi', href: '/blog/muay-thai-krabi-private-ac-rooms' },
           { title: 'Thailand training visa / DTV', href: '/blog/thailand-training-visa-dtv' },
           { title: 'Training guides hub', href: '/blog' },
         ]}

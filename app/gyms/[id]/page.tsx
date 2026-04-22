@@ -21,6 +21,7 @@ import { FacilitiesList } from '@/components/facilities-list'
 import { GymDescription } from '@/components/gym-description'
 import { TrainingSchedule } from '@/components/training-schedule'
 import { ShowOnMapLink } from '@/components/show-on-map-link'
+import { GymAddressCopy } from '@/components/gym-address-copy'
 import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
@@ -437,7 +438,7 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                   {gym.address && (
                     <>
                       <span className="text-gray-400 hidden md:inline">•</span>
-                      <span className="text-sm md:text-[15px] break-words">{gym.address}</span>
+                      <GymAddressCopy address={gym.address} className="text-sm md:text-[15px]" />
                     </>
                   )}
                   {/* Show on map link - Mobile only */}

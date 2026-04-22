@@ -1,35 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
+/**
+ * Fetch a single booking with its related gym/package/variant.
+ *
+ * Auth is delegated to Row Level Security on `public.bookings`, which allows:
+ *   - The booking's owner (auth.uid() = bookings.user_id)
+ *   - Guest bookings where user_id IS NULL (security enforced at app layer via
+ *     magic-link tokens and PIN/reference codes)
+ *   - The gym owner of the booking
+ *   - Admin users
+ *
+ * Anything RLS hides shows up as a "not found" here, which is intentional.
+ */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabaseAuth = await createClient()
-    const { data: { user } } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: profile } = await supabaseAuth
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    // Use admin client to bypass RLS - this endpoint is for admin use
-    const supabase = createAdminClient()
+    const supabase = await createClient()
     const bookingId = params.id
 
-    // Get booking with all related data
-    // Force fresh data by not using cache
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -42,20 +33,21 @@ export async function GET(
       .single()
 
     if (bookingError || !booking) {
-      console.error('Booking query error:', bookingError)
-      return NextResponse.json({ 
-        error: 'Booking not found',
-        details: bookingError?.message 
-      }, { status: 404 })
+      if (bookingError && bookingError.code !== 'PGRST116') {
+        console.error('Booking query error:', bookingError)
+      }
+      return NextResponse.json(
+        { error: 'Booking not found', details: bookingError?.message },
+        { status: 404 }
+      )
     }
 
-    // Return with no-cache headers to ensure fresh data
     return NextResponse.json(booking, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
     })
   } catch (error: any) {
     console.error('Error fetching booking:', error)

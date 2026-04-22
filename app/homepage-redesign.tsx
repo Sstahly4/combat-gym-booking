@@ -238,12 +238,12 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
   const destinations = [
     {
       name: "Phuket",
-      image: "https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?auto=format&fit=crop&w=800&q=80",
+      image: "/phuket.jpg",
       flag: "🇹🇭"
     },
     {
       name: "Bangkok",
-      image: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=2250&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      image: "/Bangkok-Thailand.jpg",
       flag: "🇹🇭"
     },
     {
@@ -253,12 +253,12 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
     },
     {
       name: "Pattaya",
-      image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
+      image: "/pattaya.jpg",
       flag: "🇹🇭"
     },
     {
       name: "Chiang Mai",
-      image: "https://images.unsplash.com/photo-1710262210319-15266954e283?q=80&w=2708&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      image: "/chiang-mai-thailand-16by9.webp",
       flag: "🇹🇭"
     }
   ]
