@@ -1,8 +1,8 @@
 /** Tab-title suffixes so users can see which secure area they are in. */
 export const SITE_HUB_SUFFIX = {
-  admin: 'Combatbooking Admin Hub',
-  partner: 'Combatbooking Partner Hub',
-  member: 'Combatbooking Member Hub',
+  admin: 'CombatStay Admin Hub',
+  partner: 'CombatStay Partner Hub',
+  member: 'CombatStay Member Hub',
 } as const
 
 export type SiteHubKey = keyof typeof SITE_HUB_SUFFIX

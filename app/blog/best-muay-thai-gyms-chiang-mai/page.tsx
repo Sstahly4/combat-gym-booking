@@ -34,11 +34,11 @@ const HERO_IMAGE = '/e079bedfbf7e870f827b4fda7ce2132f.avif'
 const DESCRIPTION = `Ranked Muay Thai camps in Chiang Mai, Thailand: prices, photos, reviews, and tips for training in the north.`
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -48,7 +48,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How does ranking work on this page?',
-    a: 'Same review-first logic as other CombatBooking guides, filtered to Muay Thai gyms whose city matches Chiang Mai on the listing.',
+    a: 'Same review-first logic as other CombatStay guides, filtered to Muay Thai gyms whose city matches Chiang Mai on the listing.',
   },
   {
     q: 'Can I combine trekking and hard training?',

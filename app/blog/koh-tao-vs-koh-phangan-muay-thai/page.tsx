@@ -25,11 +25,11 @@ const DESCRIPTION =
   'A direct comparison of Koh Tao vs Koh Phangan for Muay Thai training: gym density, cost, vibe, nightlife, logistics, and who should pick each island in 2026.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [

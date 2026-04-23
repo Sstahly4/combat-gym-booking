@@ -6,7 +6,7 @@
 import Link from 'next/link'
 
 const REASON_COPY: Record<string, { title: string; body: string }> = {
-  not_found:  { title: 'This claim link is not valid', body: 'The link you opened is not recognised. Ask the Combat Booking team to resend a fresh one.' },
+  not_found:  { title: 'This claim link is not valid', body: 'The link you opened is not recognised. Ask the CombatStay team to resend a fresh one.' },
   used:       { title: 'This claim link has already been used', body: 'Your gym account has already been claimed. Sign in below — if it wasn\u2019t you, contact us right away.' },
   revoked:    { title: 'This claim link has been revoked', body: 'The previous link has been cancelled. Ask us to send you a new one.' },
   expired:    { title: 'This claim link has expired', body: 'For your security, claim links only work for a short window. Ask us to send a fresh link.' },
@@ -33,13 +33,13 @@ export default function ClaimInvalidPage({
       <p className="mt-3 text-stone-600">{copy.body}</p>
       <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
         <Link
-          href="/auth/login"
+          href="/auth/signin"
           className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
         >
           Sign in
         </Link>
         <Link
-          href="mailto:hello@combatbooking.com"
+          href="mailto:hello@combatstay.com"
           className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-800 hover:bg-stone-50"
         >
           Contact support

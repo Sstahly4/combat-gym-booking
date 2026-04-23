@@ -9,7 +9,7 @@ const COMMON_PASSWORD_FRAGMENTS = [
   'qwerty',
   'letmein',
   'welcome',
-  'combatbooking',
+  'combatstay',
 ]
 
 export function validatePasswordRules(password: string): PasswordValidationResult {

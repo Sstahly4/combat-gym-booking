@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked Muay Thai camps in Koh Samui, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for island training routines.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -49,7 +49,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `How are Koh Samui gyms ranked?`,
-    a: `We filter for verified/trusted CombatBooking listings that match the Koh Samui city filter and list Muay Thai, then rank primarily by review score and review volume.`,
+    a: `We filter for verified/trusted CombatStay listings that match the Koh Samui city filter and list Muay Thai, then rank primarily by review score and review volume.`,
   },
   {
     q: `How do I avoid turning an island trip into a vacation-only week?`,
@@ -73,7 +73,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `Does this list include every Muay Thai gym on Koh Samui?`,
-    a: `No. It includes verified/trusted CombatBooking listings that match the Koh Samui city filter and list Muay Thai. A gym can be missing if it is not live on the marketplace yet.`,
+    a: `No. It includes verified/trusted CombatStay listings that match the Koh Samui city filter and list Muay Thai. A gym can be missing if it is not live on the marketplace yet.`,
   },
 ]
 
@@ -137,7 +137,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
 

@@ -152,7 +152,7 @@ function SignUpForm() {
         {/* Brand */}
         <div className="text-center mb-8">
           <span className="text-base font-bold text-[#003580] tracking-tight">
-            CombatBooking.com
+            CombatStay.com
           </span>
         </div>
 

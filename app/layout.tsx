@@ -4,31 +4,31 @@ import "./globals.css"
 import { Navbar } from "@/components/navbar"
 import { ConditionalFooter } from "@/components/conditional-footer"
 import { CurrencyProvider } from "@/lib/contexts/currency-context"
+import { BRAND_NAME, canonicalSiteUrl } from "@/lib/brand"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"] })
 
-const siteUrl = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://www.combatbooking.com"
-).replace(/\/$/, "")
+const siteUrl = canonicalSiteUrl()
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Combatbooking",
+  name: BRAND_NAME,
   url: siteUrl,
   logo: `${siteUrl}/favicon-512x512-rounded.png`,
 }
 
 const defaultTitle =
-  "Combatbooking — Book Muay Thai & MMA Training Camps in Thailand"
+  "CombatStay — Book Muay Thai & MMA Training Camps in Thailand"
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: defaultTitle,
   description:
     "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
+  applicationName: BRAND_NAME,
   alternates: {
     canonical: "/",
   },
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     description:
       "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
     url: "/",
-    siteName: "Combatbooking",
+    siteName: BRAND_NAME,
     type: "website",
     locale: "en_US",
     images: [
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
         url: "/favicon-512x512-rounded.png",
         width: 512,
         height: 512,
-        alt: "Combatbooking",
+        alt: BRAND_NAME,
       },
     ],
   },

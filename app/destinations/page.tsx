@@ -3,16 +3,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Top Locations - CombatBooking.com',
+  title: 'Top Locations - CombatStay.com',
   description: 'Discover training camps in the world\'s premier combat sports destinations including Thailand, Brazil, Philippines, and more.',
   openGraph: {
-    title: 'Top Locations - CombatBooking.com',
+    title: 'Top Locations - CombatStay.com',
     description: 'Discover training camps in the world\'s premier combat sports destinations including Thailand, Brazil, Philippines, and more.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Top Locations - CombatBooking.com',
+    title: 'Top Locations - CombatStay.com',
     description: 'Discover training camps in the world\'s premier combat sports destinations including Thailand, Brazil, Philippines, and more.',
   },
   alternates: {

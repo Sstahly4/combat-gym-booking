@@ -41,7 +41,7 @@ export async function getNearbyLandmarks(
           `accept-language=en`, // Request English language
           {
             headers: {
-              'User-Agent': 'CombatBooking/1.0',
+              'User-Agent': 'CombatStay/1.0',
             },
           }
         )
@@ -64,7 +64,7 @@ export async function getNearbyLandmarks(
                 `accept-language=en`,
                 {
                   headers: {
-                    'User-Agent': 'CombatBooking/1.0',
+                    'User-Agent': 'CombatStay/1.0',
                   },
                 }
               )
@@ -115,7 +115,7 @@ export async function getNearbyLandmarks(
         `accept-language=en`, // Request English language
         {
           headers: {
-            'User-Agent': 'CombatBooking/1.0',
+            'User-Agent': 'CombatStay/1.0',
           },
         }
       )
@@ -160,7 +160,7 @@ export async function getNearbyLandmarks(
           `accept-language=en`, // Request English language
           {
             headers: {
-              'User-Agent': 'CombatBooking/1.0',
+              'User-Agent': 'CombatStay/1.0',
             },
           }
         )

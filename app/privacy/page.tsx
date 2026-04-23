@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy - CombatBooking.com',
+  title: 'Privacy Policy - CombatStay.com',
   description: 'Read our privacy policy to understand how we collect, use, and protect your personal information.',
   openGraph: {
-    title: 'Privacy Policy - CombatBooking.com',
+    title: 'Privacy Policy - CombatStay.com',
     description: 'Read our privacy policy to understand how we collect, use, and protect your personal information.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Privacy Policy - CombatBooking.com',
+    title: 'Privacy Policy - CombatStay.com',
     description: 'Read our privacy policy to understand how we collect, use, and protect your personal information.',
   },
   alternates: {
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Introduction</h2>
             <p>
-              CombatBooking.com ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform to book training camps and gyms.
+              CombatStay.com ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform to book training camps and gyms.
             </p>
           </section>
 

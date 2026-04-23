@@ -63,5 +63,5 @@ export function buildSearchBrowseTitleFromSearchParams(
   } else {
     specific = 'Browse Muay Thai & MMA Camps'
   }
-  return `${specific} | Combatbooking`
+  return `${specific} | CombatStay`
 }

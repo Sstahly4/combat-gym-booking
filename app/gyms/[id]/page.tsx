@@ -278,7 +278,7 @@ export async function generateMetadata({
 
   if (!data || data.verification_status !== 'verified') {
     return {
-      title: 'Gym Not Found | Combatbooking',
+      title: 'Gym Not Found | CombatStay',
       robots: { index: false, follow: false },
     }
   }
@@ -286,16 +286,16 @@ export async function generateMetadata({
   const name = data.name?.trim() || 'Training Camp'
   const description =
     data.description?.trim() ||
-    `Train at ${name}. Book your next combat sports camp on Combatbooking.`
+    `Train at ${name}. Book your next combat sports camp on CombatStay.`
 
   return {
-    title: `${name} — Book Training Camps | Combatbooking`,
+    title: `${name} — Book Training Camps | CombatStay`,
     description,
     alternates: {
       canonical: `/gyms/${params.id}`,
     },
     openGraph: {
-      title: `${name} — Book Training Camps | Combatbooking`,
+      title: `${name} — Book Training Camps | CombatStay`,
       description,
       url: `/gyms/${params.id}`,
       type: 'website',
@@ -339,7 +339,7 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
     '@id': absoluteUrl(`/gyms/${gym.id}`),
     name: gym.name,
     url: absoluteUrl(`/gyms/${gym.id}`),
-    description: gym.description || `Train at ${gym.name} in ${gym.city}, ${gym.country}. Book combat sports camps on Combatbooking.`,
+    description: gym.description || `Train at ${gym.name} in ${gym.city}, ${gym.country}. Book combat sports camps on CombatStay.`,
     image: primaryImage ? [primaryImage] : undefined,
     address: {
       '@type': 'PostalAddress',
@@ -373,7 +373,7 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
         : undefined,
     isPartOf: {
       '@type': 'WebSite',
-      name: 'Combatbooking',
+      name: 'CombatStay',
       url: siteUrl,
     },
   }

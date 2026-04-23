@@ -6,18 +6,18 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { GuideHero, GuideSection } from '@/components/guides/guide-page-blocks'
 
 export const metadata: Metadata = {
-  title: 'Training Guides | Thailand Muay Thai, MMA, BJJ & More | CombatBooking.com',
+  title: 'Training Guides | Thailand Muay Thai, MMA, BJJ & More | CombatStay.com',
   description:
     'Data-backed Thailand guides: ranked Muay Thai camps, city shortlists, MMA/BJJ/boxing, and visa planning. Live gym listings—not recycled affiliate lists.',
   openGraph: {
-    title: 'Training Guides - CombatBooking.com',
+    title: 'Training Guides - CombatStay.com',
     description:
       'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing—plus city guides and visa basics.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Training Guides - CombatBooking.com',
+    title: 'Training Guides - CombatStay.com',
     description:
       'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing—plus city guides and visa basics.',
   },

@@ -1,4 +1,4 @@
-# Combat Gym Booking MVP
+# CombatStay MVP
 
 A Next.js web application for booking combat sports training camps, inspired by Booking.com and NowMuayThai.com.
 
@@ -73,7 +73,7 @@ Set at minimum:
 
 | Variable | Notes |
 |----------|--------|
-| `NEXT_PUBLIC_APP_URL` | Canonical site origin (e.g. `https://combatbooking.com`). Used when building gym claim URLs and other absolute links so they are not tied to a random request host. |
+| `NEXT_PUBLIC_APP_URL` | Canonical site origin (e.g. `https://combatstay.com`). Used when building gym claim URLs and other absolute links so they are not tied to a random request host. |
 | `CLAIM_TOKEN_PEPPER` | **Required in production** for gym claim links: random string **≥ 32 characters** (e.g. output of `openssl rand -hex 32`). Mixed into SHA-256 of claim tokens. **Do not change after links are issued** — rotation invalidates outstanding URLs. If unset in production, generating or redeeming claim links returns HTTP 503 / a safe error page. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Already required for admin APIs and webhooks; keep server-only. |
 

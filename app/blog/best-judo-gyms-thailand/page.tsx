@@ -34,11 +34,11 @@ const DESCRIPTION =
   'Judo gyms in Thailand: ranked by reviews with real listings, schedules, and travel planning advice. Discipline-filtered so you get true judo options, not generic fight camps.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -56,7 +56,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Are these rankings paid?',
-    a: 'No. Rankings follow review signals from verified/trusted listings on CombatBooking, not paid placements.',
+    a: 'No. Rankings follow review signals from verified/trusted listings on CombatStay, not paid placements.',
   },
   {
     q: 'How much does judo training cost in Thailand?',
@@ -136,7 +136,7 @@ export default async function BestJudoGymsThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription="Verified/trusted judo-tagged gyms in Thailand on CombatBooking."
+        statDescription="Verified/trusted judo-tagged gyms in Thailand on CombatStay."
         statIcon={<Trophy className="h-5 w-5" />}
       />
 

@@ -34,11 +34,11 @@ const HERO_IMAGE = '/1296749132.jpg'
 const DESCRIPTION = `Ranked Muay Thai camps in Bangkok: live prices, photos, reviews, and schedule snippets. Find the best gyms in Thailand’s capital.`
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -52,7 +52,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Why is a gym missing from this Bangkok list?',
-    a: 'It must be live on CombatBooking, list Muay Thai, and have a city field matching our Bangkok filter. Update the listing if the name is spelled differently.',
+    a: 'It must be live on CombatStay, list Muay Thai, and have a city field matching our Bangkok filter. Update the listing if the name is spelled differently.',
   },
   {
     q: 'What neighborhoods are best for Muay Thai in Bangkok?',
@@ -179,7 +179,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai listings matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai listings matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
 

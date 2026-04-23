@@ -26,11 +26,11 @@ const DESCRIPTION =
   'Compare Krabi Muay Thai camps with accommodation and air conditioning. A frictionless “top 5” comparison table plus booking-ready links.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 function yesNo(v: boolean) {
@@ -60,7 +60,7 @@ const FAQ_ITEMS = [
     a: 'Often, yes—Krabi can offer lower accommodation and food costs than Phuket, while still providing beach access and a strong training routine.',
   },
   {
-    q: 'Can I book Krabi camps directly on CombatBooking?',
+    q: 'Can I book Krabi camps directly on CombatStay?',
     a: 'Yes—open any gym profile to see live pricing, photos, reviews, and booking-ready details.',
   },
 ]

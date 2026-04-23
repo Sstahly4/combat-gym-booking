@@ -24,11 +24,11 @@ const DESCRIPTION =
   'A practical 2026 guide to Thailand visa extensions and overstay risk for long-stay training travelers: mindset, checklists, official links, and common mistakes.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Combatbooking`,
+  title: `${TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [

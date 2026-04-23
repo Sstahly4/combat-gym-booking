@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Accessibility Statement - CombatBooking.com',
+  title: 'Accessibility Statement - CombatStay.com',
   description: 'Learn about our commitment to digital accessibility and how we ensure our platform is accessible to everyone.',
   openGraph: {
-    title: 'Accessibility Statement - CombatBooking.com',
+    title: 'Accessibility Statement - CombatStay.com',
     description: 'Learn about our commitment to digital accessibility and how we ensure our platform is accessible to everyone.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Accessibility Statement - CombatBooking.com',
+    title: 'Accessibility Statement - CombatStay.com',
     description: 'Learn about our commitment to digital accessibility and how we ensure our platform is accessible to everyone.',
   },
   alternates: {
@@ -27,7 +27,7 @@ export default function AccessibilityPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Our Commitment</h2>
             <p>
-              CombatBooking.com is committed to ensuring digital accessibility for people with disabilities. We are continually improving the user experience for everyone and applying the relevant accessibility standards to achieve these goals.
+              CombatStay.com is committed to ensuring digital accessibility for people with disabilities. We are continually improving the user experience for everyone and applying the relevant accessibility standards to achieve these goals.
             </p>
           </section>
 
@@ -61,7 +61,7 @@ export default function AccessibilityPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Feedback</h2>
             <p>
-              We welcome your feedback on the accessibility of CombatBooking.com. If you encounter accessibility barriers or have suggestions for improvement, please contact us through our <a href="/contact" className="text-[#003580] hover:underline">support page</a>.
+              We welcome your feedback on the accessibility of CombatStay.com. If you encounter accessibility barriers or have suggestions for improvement, please contact us through our <a href="/contact" className="text-[#003580] hover:underline">support page</a>.
             </p>
           </section>
 

@@ -24,17 +24,17 @@ const DESCRIPTION =
   'Plan longer combat sports training in Thailand: visa routes, DTV basics, documents, insurance, and official sources—editorial guide, not legal advice.'
 
 export const metadata: Metadata = {
-  title: `${TITLE} | Combatbooking`,
+  title: `${TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
   openGraph: {
-    title: `${TITLE} | Combatbooking`,
+    title: `${TITLE} | CombatStay`,
     description: DESCRIPTION,
     type: 'article',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${TITLE} | Combatbooking`,
+    title: `${TITLE} | CombatStay`,
     description: DESCRIPTION,
   },
 }
@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
     a: 'Common examples include accommodation proof, return or onward travel, training-related bookings or correspondence, and insurance appropriate for contact training. Exact needs vary by visa type.',
   },
   {
-    q: 'Can CombatBooking sponsor my visa?',
+    q: 'Can CombatStay sponsor my visa?',
     a: 'No. We are a camp marketplace. Immigration decisions are between you, your embassy/consulate, and Thai authorities.',
   },
   {

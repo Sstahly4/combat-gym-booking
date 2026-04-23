@@ -34,21 +34,21 @@ const HERO_IMAGE = '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg'
 const DESCRIPTION = `Ranked Muay Thai camps in Phuket, Thailand: live prices, photos, schedule snippets, and reviews. Compare the best gyms before you book.`
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
   {
     q: `How is this different from the national “25 best Muay Thai camps” list?`,
-    a: `This page only includes gyms whose city field matches Phuket-area listings on CombatBooking and that list Muay Thai. The national guide ranks Thailand-wide; this one is for island trip planning.`,
+    a: `This page only includes gyms whose city field matches Phuket-area listings on CombatStay and that list Muay Thai. The national guide ranks Thailand-wide; this one is for island trip planning.`,
   },
   {
     q: `Why is a camp missing if it is famous in Phuket?`,
-    a: `The gym must be live on CombatBooking with Muay Thai in disciplines and a city name that matches our Phuket filter. Owners can update their listing to appear here.`,
+    a: `The gym must be live on CombatStay with Muay Thai in disciplines and a city name that matches our Phuket filter. Owners can update their listing to appear here.`,
   },
   {
     q: `Beach area vs Old Town—does ranking account for location?`,
@@ -179,7 +179,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching this ${CITY} guide on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching this ${CITY} guide on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
 
@@ -225,7 +225,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
             and transport time between your hotel and the gym.
           </p>
           <p>
-            Unlike generic listicles, this page pulls <strong>only verified gyms</strong> that list Muay Thai on CombatBooking
+            Unlike generic listicles, this page pulls <strong>only verified gyms</strong> that list Muay Thai on CombatStay
             and match our {CITY} location filter. Rankings follow the same review-first logic as our national guides so you
             can compare consistently.
           </p>

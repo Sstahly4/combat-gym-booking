@@ -34,11 +34,11 @@ const DESCRIPTION =
   'Brazilian Jiu-Jitsu gyms in Thailand: ranked by reviews, with gi/no-gi tips, pricing signals, and discipline-only filtering—not generic fight camp lists.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -181,7 +181,7 @@ export default async function BestBjjGymsThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription="Verified/trusted BJJ / grappling-tagged gyms ranked on CombatBooking."
+        statDescription="Verified/trusted BJJ / grappling-tagged gyms ranked on CombatStay."
         statIcon={<CircleDot className="h-5 w-5" />}
       />
 
@@ -407,7 +407,7 @@ export default async function BestBjjGymsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand BJJ gym?"
-        subtitle="Filter every verified Thailand BJJ gym by price, dates, and gi/no-gi — book directly on Combatbooking."
+        subtitle="Filter every verified Thailand BJJ gym by price, dates, and gi/no-gi — book directly on CombatStay."
         href="/search?country=Thailand&discipline=BJJ"
         buttonLabel="Find your BJJ gym"
       />

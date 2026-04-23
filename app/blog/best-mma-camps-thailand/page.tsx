@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked MMA gyms in Thailand: only mixed martial arts listings, with prices, photos, schedule snippets, and long-form planning advice Muay-Thai-only sites cannot replicate.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -180,7 +180,7 @@ export default async function BestMmaCampsThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription="Verified/trusted MMA-tagged gyms in Thailand on CombatBooking (this page ranks all that qualify)."
+        statDescription="Verified/trusted MMA-tagged gyms in Thailand on CombatStay (this page ranks all that qualify)."
         statIcon={<Swords className="h-5 w-5" />}
       />
 
@@ -222,7 +222,7 @@ export default async function BestMmaCampsThailandPage() {
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
             Searchers typing <strong>best MMA camps in Thailand</strong> need mixed martial arts coaching—not a Muay Thai
-            list retitled for clicks. CombatBooking is discipline-aware: this article only surfaces gyms whose profiles
+            list retitled for clicks. CombatStay is discipline-aware: this article only surfaces gyms whose profiles
             include MMA or mixed martial arts tags, then ranks them using the same review signals as our other guides.
           </p>
           <p>
@@ -422,7 +422,7 @@ export default async function BestMmaCampsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand MMA camp?"
-        subtitle="Filter every verified Thailand MMA gym by price, dates, and disciplines — book directly on Combatbooking."
+        subtitle="Filter every verified Thailand MMA gym by price, dates, and disciplines — book directly on CombatStay."
         href="/search?country=Thailand&discipline=MMA"
         buttonLabel="Find your MMA camp"
       />

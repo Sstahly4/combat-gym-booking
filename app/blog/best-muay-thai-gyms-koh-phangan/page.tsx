@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked Muay Thai camps in Koh Phangan, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for island training routines.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -49,7 +49,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `How are Koh Phangan gyms ranked?`,
-    a: `We filter for verified/trusted CombatBooking listings that match the Koh Phangan city filter and list Muay Thai, then rank primarily by review score and review volume.`,
+    a: `We filter for verified/trusted CombatStay listings that match the Koh Phangan city filter and list Muay Thai, then rank primarily by review score and review volume.`,
   },
   {
     q: `Can I train hard on Koh Phangan and still enjoy the island?`,
@@ -73,7 +73,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `Does this list include every gym on Koh Phangan?`,
-    a: `No. It includes verified/trusted CombatBooking listings that match the Koh Phangan filter and list Muay Thai. A gym can be missing if it is not live on the marketplace yet.`,
+    a: `No. It includes verified/trusted CombatStay listings that match the Koh Phangan filter and list Muay Thai. A gym can be missing if it is not live on the marketplace yet.`,
   },
 ]
 
@@ -137,7 +137,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
 
@@ -332,7 +332,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Koh Phangan Muay Thai camp?"
-        subtitle="Filter verified Koh Phangan gyms by dates, price, and amenities — book directly on Combatbooking."
+        subtitle="Filter verified Koh Phangan gyms by dates, price, and amenities — book directly on CombatStay."
         href="/search?country=Thailand&location=Koh%20Phangan&discipline=Muay%20Thai"
         buttonLabel="Find your Koh Phangan camp"
       />

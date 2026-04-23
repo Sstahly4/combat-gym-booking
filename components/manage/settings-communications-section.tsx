@@ -47,7 +47,7 @@ const EMAIL_TOGGLES: {
   {
     key: 'email_marketing',
     title: 'Platform updates & tips',
-    description: 'CombatBooking product releases, best-practice guides, promotional emails.',
+    description: 'CombatStay product releases, best-practice guides, promotional emails.',
     group: 'marketing',
   },
 ]
@@ -215,7 +215,7 @@ export function SettingsCommunicationsSection() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-gray-900">Platform updates &amp; marketing</CardTitle>
           <CardDescription className="text-sm text-gray-500">
-            Feature launches, educational content, and offers from CombatBooking. You can opt out at any time.
+            Feature launches, educational content, and offers from CombatStay. You can opt out at any time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

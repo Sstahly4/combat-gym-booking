@@ -124,7 +124,7 @@ const TESTIMONIALS = [
     color: 'bg-[#003580]',
   },
   {
-    quote: 'CombatBooking.com puts us in front of people who are actually serious about training. The quality of guest enquiries is far better than posting on social media.',
+    quote: 'CombatStay.com puts us in front of people who are actually serious about training. The quality of guest enquiries is far better than posting on social media.',
     name: 'Kru Nong',
     gym: 'Tiger Muay Thai, Phuket',
     initials: 'KN',
@@ -470,7 +470,7 @@ export default function OwnersLandingPage() {
                   className="text-white"
                 />{' '}
                 on
-                <br className="hidden md:block" /> CombatBooking.com
+                <br className="hidden md:block" /> CombatStay.com
               </h1>
               <p className="mt-5 text-white/75 text-base md:text-lg leading-relaxed">
                 Reach fighters actively looking for their next training camp — and manage every booking from a single dashboard.
@@ -554,7 +554,7 @@ export default function OwnersLandingPage() {
               },
               {
                 title: 'Serious guests',
-                body: 'Travellers on CombatBooking.com are looking for training, not generic holidays.',
+                body: 'Travellers on CombatStay.com are looking for training, not generic holidays.',
               },
               {
                 title: 'You stay in control',
@@ -628,7 +628,7 @@ export default function OwnersLandingPage() {
             Reach a growing audience of serious fighters
           </h2>
           <p className="mt-4 text-gray-500 text-base md:text-lg leading-relaxed max-w-xl">
-            Guests on CombatBooking.com are looking for exactly what you offer. They&apos;re not browsing — they&apos;re ready to train.
+            Guests on CombatStay.com are looking for exactly what you offer. They&apos;re not browsing — they&apos;re ready to train.
           </p>
 
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-10">

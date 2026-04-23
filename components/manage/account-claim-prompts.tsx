@@ -23,7 +23,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
-const SOFT_PROMPT_DISMISS_KEY = 'cb:claim-email-soft-prompt-dismissed'
+const SOFT_PROMPT_DISMISS_KEY = 'cs:claim-email-soft-prompt-dismissed'
 
 function isPlaceholderEmail(email: string | null | undefined): boolean {
   if (!email) return false
@@ -150,7 +150,7 @@ function HardClaimModal({
             Set your password to continue
           </h2>
           <p className="mt-2 text-sm text-stone-600">
-            Combat Booking pre-listed your gym for you. Pick a password (and your
+            CombatStay pre-listed your gym for you. Pick a password (and your
             real email if you'd like) to take ownership of this account. You'll
             be able to connect Stripe, edit your gym, and start taking bookings
             right after.

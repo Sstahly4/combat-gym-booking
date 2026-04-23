@@ -25,11 +25,11 @@ const DESCRIPTION =
   'A fighter-first guide to strength and conditioning in Phuket: where to lift, how to structure S&C around Muay Thai/MMA, recovery tools, and how to pick the right gym in 2026.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -62,7 +62,7 @@ const FAQ_ITEMS = [
     a: 'Scooters are common but carry real risk. If you are training hard, even a minor crash can end the trip. Budget for taxis/Grab if you are not a confident rider, and always wear a proper helmet.',
   },
   {
-    q: 'Can I find Phuket gyms with weights and recovery amenities on CombatBooking?',
+    q: 'Can I find Phuket gyms with weights and recovery amenities on CombatStay?',
     a: 'Yes. Open Phuket listings and read each gym profile for weights areas, cardio equipment, physio, massage, and recovery tools.',
   },
 ]

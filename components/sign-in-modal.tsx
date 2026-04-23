@@ -43,7 +43,7 @@ export function SignInModal({
           {/* Header: brand + close */}
           <div className="flex items-center justify-between mb-8 sm:mb-10">
             <span className="text-sm font-bold text-[#003580] tracking-tight">
-              CombatBooking.com
+              CombatStay.com
             </span>
             <button
               type="button"

@@ -9,7 +9,7 @@ export type OwnerHelpFaq = {
 export const OWNER_HELP_FAQS: OwnerHelpFaq[] = [
   {
     id: 'owner-1',
-    question: 'How do I get my gym live on CombatBooking?',
+    question: 'How do I get my gym live on CombatStay?',
     answer:
       'Complete your gym profile (photos, packages, Stripe Connect), then finish verification: Google Maps link, social link, and Stripe payouts. Our team reviews listings before they appear in search.',
   },

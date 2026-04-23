@@ -1,4 +1,4 @@
-# Gym Owner Portal Implementation Tracker
+# Partner Hub Implementation Tracker
 
 Last updated: 2026-04-19 (Milestone 6: admin-issued claim links for pre-listed gyms shipped)
 Owner: engineering
@@ -36,7 +36,7 @@ This is the canonical tracker for the owner portal rollout. It reflects current 
 ## Step 0 (prerequisite): Readiness contract
 
 - [x] One-page signed checklist artifact exists (external canonical contract)
-  - Source: `/Users/seth/Documents/Business/Combatbooking.com/Documents/combatbooking_readiness_contract.docx`
+  - Source: `/Users/seth/Documents/Business/CombatStay.com/Documents/combatstay_readiness_contract.docx`
 - [x] **In-repo summary** of the contract — `docs/readiness-contract.md` (referenced from this file).
 - [x] **Sign-off decision resolved before Milestone 2C:** go-live state model — Option B using `gyms.is_live`; `verification_status` independent.
 - [x] Required go-live gates defined — `lib/onboarding/readiness.ts`.
@@ -214,7 +214,7 @@ Use case: the platform pre-creates a batch of gyms under a single admin account,
 - [x] **Public failure page** — `app/claim/invalid/page.tsx`: friendly per-reason copy (`expired`, `used`, `revoked`, etc.) without leaking which condition failed.
 - [x] **Hard prompt** — `components/manage/account-claim-prompts.tsx` `HardClaimModal`: non-dismissible blocking modal on every `/manage` page until the owner sets a real password (no current-password required because the admin-set one is unknown to them). Optional fields for real email and full name in the same step.
 - [x] **Complete-claim API** — `POST /api/manage/account/complete-claim`: gated to `placeholder_account || !claim_password_set`, validates with `validatePasswordRules`, updates auth via service-role `updateUserById`, flips profile flags, records `password_changed` security event + `gym_claim_password_set` / `gym_claim_email_updated` telemetry.
-- [x] **Soft prompt** — same component’s `SoftEmailBanner`: surfaces above the manage shell while the auth email still ends in `@claim.combatbooking.local`. Per-session dismiss via `sessionStorage`.
+- [x] **Soft prompt** — same component’s `SoftEmailBanner`: surfaces above the manage shell while the auth email still ends in `@claim.combatstay.local`. Per-session dismiss via `sessionStorage`.
 - [x] **Admin UI** — `app/admin/orphan-gyms/page.tsx`: list, filter, generate / regenerate / revoke, copy-to-clipboard for the freshly minted URL (only shown once).
 - [x] **Telemetry** — new event types in `lib/telemetry/owner-events.ts`: `gym_claim_link_generated|revoked|redeemed`, `gym_claim_password_set`, `gym_claim_email_updated`.
 - [x] **Type updates** — `lib/types/database.ts` `Profile` exposes `placeholder_account`, `claim_password_set`, `placeholder_email`.

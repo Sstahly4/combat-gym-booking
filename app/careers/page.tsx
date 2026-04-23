@@ -3,17 +3,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Join Our Team - CombatBooking.com',
-  description: 'Help us build the future of combat sports training. Explore career opportunities at CombatBooking.com.',
+  title: 'Join Our Team - CombatStay.com',
+  description: 'Help us build the future of combat sports training. Explore career opportunities at CombatStay.com.',
   openGraph: {
-    title: 'Join Our Team - CombatBooking.com',
-    description: 'Help us build the future of combat sports training. Explore career opportunities at CombatBooking.com.',
+    title: 'Join Our Team - CombatStay.com',
+    description: 'Help us build the future of combat sports training. Explore career opportunities at CombatStay.com.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Join Our Team - CombatBooking.com',
-    description: 'Help us build the future of combat sports training. Explore career opportunities at CombatBooking.com.',
+    title: 'Join Our Team - CombatStay.com',
+    description: 'Help us build the future of combat sports training. Explore career opportunities at CombatStay.com.',
   },
   alternates: {
     canonical: '/careers',
@@ -35,7 +35,7 @@ export default function CareersPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Why Work With Us</h2>
             <p className="text-sm text-gray-700 mb-4">
-              CombatBooking.com is growing rapidly, and we're looking for passionate individuals who share our vision of connecting fighters with world-class training opportunities.
+              CombatStay.com is growing rapidly, and we're looking for passionate individuals who share our vision of connecting fighters with world-class training opportunities.
             </p>
             <ul className="list-disc pl-6 space-y-2 text-sm text-gray-700">
               <li>Work with a mission-driven team</li>

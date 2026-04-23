@@ -37,7 +37,7 @@ MESSAGE:
 ${message}
 
 ═══════════════════════════════════════════════════════════
-This is a contact form submission from CombatBooking
+This is a contact form submission from CombatStay
 ═══════════════════════════════════════════════════════════
     `.trim()
 

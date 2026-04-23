@@ -1,10 +1,11 @@
 import { siteUrl, absoluteUrl } from './site-url'
+import { BRAND_NAME } from '@/lib/brand'
 
 const DEFAULT_LOGO_PATH = '/favicon-512x512-rounded.png'
 
 const publisher = {
   '@type': 'Organization',
-  name: 'Combatbooking',
+  name: BRAND_NAME,
   url: siteUrl,
   logo: {
     '@type': 'ImageObject',
@@ -40,7 +41,7 @@ export function buildArticleLd(args: {
     image: imageUrl ? [imageUrl] : undefined,
     author: {
       '@type': 'Organization',
-      name: 'Combatbooking',
+      name: BRAND_NAME,
       url: siteUrl,
     },
     publisher,

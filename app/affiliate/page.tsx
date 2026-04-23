@@ -3,16 +3,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Affiliate Program - CombatBooking.com',
+  title: 'Affiliate Program - CombatStay.com',
   description: 'Earn commissions by referring training camp bookings. Join our affiliate program today.',
   openGraph: {
-    title: 'Affiliate Program - CombatBooking.com',
+    title: 'Affiliate Program - CombatStay.com',
     description: 'Earn commissions by referring training camp bookings. Join our affiliate program today.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Affiliate Program - CombatBooking.com',
+    title: 'Affiliate Program - CombatStay.com',
     description: 'Earn commissions by referring training camp bookings. Join our affiliate program today.',
   },
   alternates: {
@@ -35,7 +35,7 @@ export default function AffiliatePage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">How It Works</h2>
             <p className="text-sm text-gray-700 mb-4">
-              Join our affiliate program and earn commissions when you refer bookings to CombatBooking.com. Perfect for bloggers, influencers, coaches, and anyone with an audience interested in combat sports training.
+              Join our affiliate program and earn commissions when you refer bookings to CombatStay.com. Perfect for bloggers, influencers, coaches, and anyone with an audience interested in combat sports training.
             </p>
           </section>
 

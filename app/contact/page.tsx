@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export default function ContactPage() {
   useEffect(() => {
     // Set document title
-    document.title = 'Contact Customer Service - CombatBooking.com'
+    document.title = 'Contact Customer Service - CombatStay.com'
     
     // Set or create meta description
     let metaDescription = document.querySelector('meta[name="description"]')
@@ -32,7 +32,7 @@ export default function ContactPage() {
       tag.setAttribute('content', content)
     }
     
-    setMetaTag('og:title', 'Contact Customer Service - CombatBooking.com')
+    setMetaTag('og:title', 'Contact Customer Service - CombatStay.com')
     setMetaTag('og:description', 'Get in touch with our customer service team. We\'re here to help with your booking questions and support needs.')
     setMetaTag('og:type', 'website')
     if (typeof window !== 'undefined') {
@@ -41,7 +41,7 @@ export default function ContactPage() {
     
     // Set Twitter Card tags
     setMetaTag('twitter:card', 'summary')
-    setMetaTag('twitter:title', 'Contact Customer Service - CombatBooking.com')
+    setMetaTag('twitter:title', 'Contact Customer Service - CombatStay.com')
     setMetaTag('twitter:description', 'Get in touch with our customer service team. We\'re here to help with your booking questions and support needs.')
     
     // Set canonical URL

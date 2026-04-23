@@ -4,16 +4,16 @@ import { Search, Calendar, CreditCard, CheckCircle } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'How It Works - CombatBooking.com',
+  title: 'How It Works - CombatStay.com',
   description: 'Learn how to book your perfect training camp in four simple steps. Discover how our platform works for both fighters and gym owners.',
   openGraph: {
-    title: 'How It Works - CombatBooking.com',
+    title: 'How It Works - CombatStay.com',
     description: 'Learn how to book your perfect training camp in four simple steps. Discover how our platform works for both fighters and gym owners.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'How It Works - CombatBooking.com',
+    title: 'How It Works - CombatStay.com',
     description: 'Learn how to book your perfect training camp in four simple steps. Discover how our platform works for both fighters and gym owners.',
   },
   alternates: {

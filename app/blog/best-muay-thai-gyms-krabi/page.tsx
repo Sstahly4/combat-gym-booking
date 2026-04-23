@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked Muay Thai camps in Krabi, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near Ao Nang and the limestone coast.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -73,7 +73,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `Does this list include every Muay Thai gym in Krabi?`,
-    a: `No. This guide includes verified/trusted CombatBooking listings that match the Krabi city filter and list Muay Thai. If a gym is missing, it may not have a live listing yet.`,
+    a: `No. This guide includes verified/trusted CombatStay listings that match the Krabi city filter and list Muay Thai. If a gym is missing, it may not have a live listing yet.`,
   },
 ]
 
@@ -137,7 +137,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
 
@@ -370,7 +370,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Krabi Muay Thai camp?"
-        subtitle="Filter verified Krabi gyms by dates, price, and amenities — book directly on Combatbooking."
+        subtitle="Filter verified Krabi gyms by dates, price, and amenities — book directly on CombatStay."
         href="/search?country=Thailand&location=Krabi&discipline=Muay%20Thai"
         buttonLabel="Find your Krabi camp"
       />

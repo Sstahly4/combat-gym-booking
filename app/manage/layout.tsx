@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { ManageLayoutShell } from '@/components/manage/manage-layout-shell'
 
 export const metadata: Metadata = {
-  title: 'Partner | Combatbooking Partner Hub',
+  title: 'Partner | CombatStay Partner Hub',
 }
 
 /** Owner portal relies on client hooks (e.g. search params); avoid static prerender errors. */

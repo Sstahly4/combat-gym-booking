@@ -34,11 +34,11 @@ const DESCRIPTION =
   'Boxing-only gym rankings in Thailand: real listings, prices, reviews, and long-form advice—separate from Muay Thai roundups.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -184,7 +184,7 @@ export default async function BestBoxingGymsThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription="Verified/trusted boxing-tagged gyms ranked on CombatBooking."
+        statDescription="Verified/trusted boxing-tagged gyms ranked on CombatStay."
         statIcon={<Sun className="h-5 w-5" />}
       />
 

@@ -1,9 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-server'
+import { canonicalSiteUrl } from '@/lib/brand'
 
-const siteUrl = (
-  process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'
-).replace(/\/$/, '')
+const siteUrl = canonicalSiteUrl()
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()

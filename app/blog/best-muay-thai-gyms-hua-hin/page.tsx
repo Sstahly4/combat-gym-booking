@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked Muay Thai camps in Hua Hin, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training with a calmer coastal routine.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -49,7 +49,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `How are gyms ranked on this Hua Hin page?`,
-    a: `We filter for verified/trusted CombatBooking listings that match the Hua Hin city filter and list Muay Thai, then rank primarily by review score and review volume.`,
+    a: `We filter for verified/trusted CombatStay listings that match the Hua Hin city filter and list Muay Thai, then rank primarily by review score and review volume.`,
   },
   {
     q: `How long should I stay in Hua Hin to improve?`,
@@ -73,7 +73,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `Does the ranking include every Muay Thai gym in Hua Hin?`,
-    a: `No. This list only includes verified/trusted CombatBooking listings that match the Hua Hin city filter and list Muay Thai. If a famous gym is missing, it may not have a live listing yet.`,
+    a: `No. This list only includes verified/trusted CombatStay listings that match the Hua Hin city filter and list Muay Thai. If a famous gym is missing, it may not have a live listing yet.`,
   },
 ]
 
@@ -137,7 +137,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Waves className="h-5 w-5" />}
       />
 

@@ -9,7 +9,7 @@ import { useEffect } from 'react'
 export default function FAQPage() {
   useEffect(() => {
     // Set document title
-    document.title = 'Help Center - CombatBooking.com'
+    document.title = 'Help Center - CombatStay.com'
     
     // Set or create meta description
     let metaDescription = document.querySelector('meta[name="description"]')
@@ -31,7 +31,7 @@ export default function FAQPage() {
       tag.setAttribute('content', content)
     }
     
-    setMetaTag('og:title', 'Help Center - CombatBooking.com')
+    setMetaTag('og:title', 'Help Center - CombatStay.com')
     setMetaTag('og:description', 'Find answers to common questions about bookings, safety, training, and more. Get help with your training camp bookings.')
     setMetaTag('og:type', 'website')
     if (typeof window !== 'undefined') {
@@ -40,7 +40,7 @@ export default function FAQPage() {
     
     // Set Twitter Card tags
     setMetaTag('twitter:card', 'summary')
-    setMetaTag('twitter:title', 'Help Center - CombatBooking.com')
+    setMetaTag('twitter:title', 'Help Center - CombatStay.com')
     setMetaTag('twitter:description', 'Find answers to common questions about bookings, safety, training, and more. Get help with your training camp bookings.')
     
     // Set canonical URL
@@ -127,7 +127,7 @@ const faqs: FAQItem[] = [
     category: 'payments',
     question: 'Who charges my card?',
     answer:
-      'CombatBooking is the merchant of record for payments on the platform. Your bank statement shows a charge from us. We collect payment under the cancellation and package terms you agree to at checkout; the gym provides your training or stay as an independent partner.',
+      'CombatStay is the merchant of record for payments on the platform. Your bank statement shows a charge from us. We collect payment under the cancellation and package terms you agree to at checkout; the gym provides your training or stay as an independent partner.',
   },
   {
     id: 'payments-2',
@@ -279,7 +279,7 @@ const faqs: FAQItem[] = [
     id: 'general-4',
     category: 'general',
     question: 'Can I trust the reviews on the platform?',
-    answer: 'Yes — all reviews on CombatBooking.com are from verified guests who have completed a real, confirmed booking at that gym. We do not allow anonymous or unverified reviews. This means every rating and review you read reflects a genuine experience. We do not edit or filter reviews (except to remove content that violates our community guidelines). Gyms cannot pay to remove or suppress negative reviews.'
+    answer: 'Yes — all reviews on CombatStay.com are from verified guests who have completed a real, confirmed booking at that gym. We do not allow anonymous or unverified reviews. This means every rating and review you read reflects a genuine experience. We do not edit or filter reviews (except to remove content that violates our community guidelines). Gyms cannot pay to remove or suppress negative reviews.'
   },
   {
     id: 'general-5',
@@ -290,7 +290,7 @@ const faqs: FAQItem[] = [
   {
     id: 'general-6',
     category: 'general',
-    question: 'Does CombatBooking.com take a commission from gyms?',
+    question: 'Does CombatStay.com take a commission from gyms?',
     answer: 'We charge gyms a small platform fee for bookings made through our platform. This allows us to keep the service free for users. The prices you see on gym packages are set by the gyms themselves — we do not inflate pricing. In fact, gyms can offer exclusive platform-only deals to attract more bookings. Our goal is to make quality combat sports training accessible to everyone.'
   },
 ]
@@ -390,7 +390,7 @@ const faqs: FAQItem[] = [
             {/* Important Disclaimer */}
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-xs text-gray-500 leading-relaxed">
-                <strong className="text-gray-600">Disclaimer:</strong> CombatBooking.com is a booking platform that facilitates connections between users and training facilities. We do not operate, control, or manage any gym facilities. Participation in combat sports training involves inherent risks. You participate at your own risk. Please review our <Link href="/terms" className="text-[#003580] hover:underline">Terms & Conditions</Link> for complete details.
+                <strong className="text-gray-600">Disclaimer:</strong> CombatStay.com is a booking platform that facilitates connections between users and training facilities. We do not operate, control, or manage any gym facilities. Participation in combat sports training involves inherent risks. You participate at your own risk. Please review our <Link href="/terms" className="text-[#003580] hover:underline">Terms & Conditions</Link> for complete details.
               </p>
             </div>
 

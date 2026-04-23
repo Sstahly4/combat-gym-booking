@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Terms & Conditions - CombatBooking.com',
+  title: 'Terms & Conditions - CombatStay.com',
   description: 'Read our terms and conditions to understand the rules and regulations for using our platform.',
   openGraph: {
-    title: 'Terms & Conditions - CombatBooking.com',
+    title: 'Terms & Conditions - CombatStay.com',
     description: 'Read our terms and conditions to understand the rules and regulations for using our platform.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Terms & Conditions - CombatBooking.com',
+    title: 'Terms & Conditions - CombatStay.com',
     description: 'Read our terms and conditions to understand the rules and regulations for using our platform.',
   },
   alternates: {
@@ -27,14 +27,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using CombatBooking.com ("the Platform"), you accept and agree to be bound by these Terms & Conditions. If you do not agree to these terms, please do not use our platform.
+              By accessing and using CombatStay.com ("the Platform"), you accept and agree to be bound by these Terms & Conditions. If you do not agree to these terms, please do not use our platform.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">2. Platform Description</h2>
             <p>
-              CombatBooking.com is a booking platform that connects users with training camps, gyms, and combat sports facilities. We facilitate bookings but are not a party to the actual training services provided by gyms.
+              CombatStay.com is a booking platform that connects users with training camps, gyms, and combat sports facilities. We facilitate bookings but are not a party to the actual training services provided by gyms.
             </p>
           </section>
 
@@ -97,7 +97,7 @@ export default function TermsPage() {
               <li>Users are solely responsible for their own safety and must follow trainer instructions and gym rules</li>
               <li>We strongly recommend comprehensive travel and health insurance covering combat sports activities</li>
               <li>We are not liable for any loss, damage, injury, or death arising from your use of gym services or participation in training</li>
-              <li>You release CombatBooking.com, its affiliates, and employees from any and all claims, damages, or liabilities arising from your participation in combat sports training</li>
+              <li>You release CombatStay.com, its affiliates, and employees from any and all claims, damages, or liabilities arising from your participation in combat sports training</li>
             </ul>
           </section>
 
@@ -105,7 +105,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Payment Terms</h2>
             <ul className="list-disc pl-6 space-y-1">
               <li>
-                <strong>Merchant of record:</strong> For card payments made through the platform, <strong>CombatBooking</strong>{' '}
+                <strong>Merchant of record:</strong> For card payments made through the platform, <strong>CombatStay</strong>{' '}
                 acts as the merchant of record. Your payment is processed with us; the gym provides the training or related
                 services as an independent supplier. What you agree to at checkout (including cancellation terms) is recorded
                 with the transaction for reference if a payment is disputed.
@@ -122,7 +122,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7a. Gym partners — chargeback recovery</h2>
             <p>
               If you operate a gym or training business on the platform: where permitted by law and your partner agreement with
-              us, <strong>CombatBooking may recover chargeback losses, refunds, or payment dispute costs from future payouts</strong>{' '}
+              us, <strong>CombatStay may recover chargeback losses, refunds, or payment dispute costs from future payouts</strong>{' '}
               or other amounts owed to you. This is intended to align financial exposure with the booking and payment evidence we
               hold. <strong>This clause must be reviewed by your own lawyer</strong> before you rely on it commercially; it is not
               legal advice.
@@ -132,7 +132,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Intellectual Property</h2>
             <p>
-              All content on the Platform, including text, graphics, logos, and software, is the property of CombatBooking.com or its licensors and is protected by copyright and trademark laws.
+              All content on the Platform, including text, graphics, logos, and software, is the property of CombatStay.com or its licensors and is protected by copyright and trademark laws.
             </p>
           </section>
 
@@ -159,7 +159,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by law, CombatBooking.com shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses. Our total liability for any claims arising from your use of the platform shall not exceed the amount you paid for the specific booking in question. We are not responsible for the actions, omissions, or conduct of gyms, trainers, or other third parties.
+              To the maximum extent permitted by law, CombatStay.com shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses. Our total liability for any claims arising from your use of the platform shall not exceed the amount you paid for the specific booking in question. We are not responsible for the actions, omissions, or conduct of gyms, trainers, or other third parties.
             </p>
           </section>
 

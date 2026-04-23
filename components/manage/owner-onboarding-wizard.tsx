@@ -1119,7 +1119,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       >
         <header className="flex flex-col gap-2 border-b border-gray-100 bg-gradient-to-b from-white to-gray-50/40 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-10 lg:px-12">
           <p className="text-lg font-semibold tracking-tight text-[#003580]">
-            {embedInAdmin ? 'Create new gym listing' : 'List your gym on CombatBooking'}
+            {embedInAdmin ? 'Create new gym listing' : 'List your gym on CombatStay'}
           </p>
           <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
             Step {step.index} of {wizardSteps.length}

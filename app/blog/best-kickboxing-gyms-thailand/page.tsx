@@ -34,11 +34,11 @@ const DESCRIPTION =
   'Kickboxing gyms in Thailand: ranked by reviews with real listings, photos, and planning advice. Discipline-filtered so you do not land in a Muay-Thai-only camp by mistake.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -52,7 +52,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Are these rankings paid placements?',
-    a: 'No. Rankings are driven by verified/trusted listings on CombatBooking and sorted primarily by review score and review volume, so community feedback matters.',
+    a: 'No. Rankings are driven by verified/trusted listings on CombatStay and sorted primarily by review score and review volume, so community feedback matters.',
   },
   {
     q: 'How much does kickboxing training cost in Thailand?',
@@ -156,7 +156,7 @@ export default async function BestKickboxingGymsThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription="Verified/trusted kickboxing-tagged gyms in Thailand on CombatBooking."
+        statDescription="Verified/trusted kickboxing-tagged gyms in Thailand on CombatStay."
         statIcon={<Target className="h-5 w-5" />}
       />
 

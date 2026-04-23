@@ -72,4 +72,4 @@ COMMENT ON COLUMN public.profiles.placeholder_account IS
 COMMENT ON COLUMN public.profiles.claim_password_set IS
   'False until a placeholder owner sets their own password via /api/manage/account/complete-claim.';
 COMMENT ON COLUMN public.profiles.placeholder_email IS
-  'Original synthetic auth email for the placeholder Supabase user (format is code-defined, e.g. claim+<gym_id>@claim.combatbooking.local). Not a mailbox you send owner comms through; claim links go to the real owner separately. Cleared when the owner sets a real email.';
+  'Original synthetic auth email for the placeholder Supabase user (format is code-defined, e.g. claim+<gym_id>@claim.combatstay.local). Not a mailbox you send owner comms through; claim links go to the real owner separately. Cleared when the owner sets a real email.';

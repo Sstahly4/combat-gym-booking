@@ -44,7 +44,7 @@ function SignInPageContent() {
               sessionStorage.removeItem(bounceKey)
               setCheckingSession(false)
               setError(
-                'Your browser session does not match the server yet. Sign in again below to continue to the owner area.'
+                'Your browser session does not match the server yet. Sign in again below to continue to Partner Hub.'
               )
               return
             }
@@ -234,7 +234,7 @@ function SignInPageContent() {
         {/* Brand */}
         <div className="text-center mb-8">
           <span className="text-base font-bold text-[#003580] tracking-tight">
-            CombatBooking.com
+            CombatStay.com
           </span>
         </div>
 

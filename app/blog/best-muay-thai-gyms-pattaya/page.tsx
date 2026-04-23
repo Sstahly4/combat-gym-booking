@@ -35,11 +35,11 @@ const DESCRIPTION =
   'Ranked Muay Thai camps in Pattaya, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near the beach.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | Combatbooking`, description: DESCRIPTION },
+  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
+  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
 }
 
 const FAQ_ITEMS = [
@@ -49,7 +49,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `How are these Pattaya gyms ranked?`,
-    a: `We filter for verified/trusted CombatBooking listings that match the Pattaya city filter and list Muay Thai, then rank primarily by review score and review volume.`,
+    a: `We filter for verified/trusted CombatStay listings that match the Pattaya city filter and list Muay Thai, then rank primarily by review score and review volume.`,
   },
   {
     q: `How long should I stay in Pattaya to improve?`,
@@ -128,7 +128,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={gyms.length}
-        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatBooking.`}
+        statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Waves className="h-5 w-5" />}
       />
 
@@ -140,7 +140,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
             Pattaya can work well for longer stays if you prioritize a repeatable commute, good sleep, and recovery habits.
           </p>
           <p>
-            This page filters for verified/trusted listings that match Pattaya on CombatBooking and list Muay Thai—so you’re
+            This page filters for verified/trusted listings that match Pattaya on CombatStay and list Muay Thai—so you’re
             not comparing random gyms with no booking-ready information.
           </p>
         </div>
@@ -322,7 +322,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Pattaya Muay Thai camp?"
-        subtitle="Filter every verified Pattaya gym by price, dates, and amenities — book directly on Combatbooking."
+        subtitle="Filter every verified Pattaya gym by price, dates, and amenities — book directly on CombatStay."
         href="/search?country=Thailand&location=Pattaya&discipline=Muay%20Thai"
         buttonLabel="Find your Pattaya camp"
       />

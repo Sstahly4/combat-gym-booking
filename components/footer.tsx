@@ -90,7 +90,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/manage" className="text-gray-600 hover:text-[#003580]">
-                  Owner Portal
+                  Partner Hub
                 </Link>
               </li>
               <li>
@@ -211,7 +211,7 @@ export function Footer() {
       <div className="border-t bg-white">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <p className="text-xs text-gray-600">
-            Copyright © 2026 CombatBooking.com™. All rights reserved.
+            Copyright © 2026 CombatStay.com™. All rights reserved.
           </p>
         </div>
       </div>

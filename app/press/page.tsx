@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Media Kit - CombatBooking.com',
+  title: 'Media Kit - CombatStay.com',
   description: 'Resources for journalists, bloggers, and media professionals. Press inquiries and brand assets.',
   openGraph: {
-    title: 'Media Kit - CombatBooking.com',
+    title: 'Media Kit - CombatStay.com',
     description: 'Resources for journalists, bloggers, and media professionals. Press inquiries and brand assets.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Media Kit - CombatBooking.com',
+    title: 'Media Kit - CombatStay.com',
     description: 'Resources for journalists, bloggers, and media professionals. Press inquiries and brand assets.',
   },
   alternates: {
@@ -31,9 +31,9 @@ export default function PressPage() {
 
         <div className="space-y-6">
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">About CombatBooking.com</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">About CombatStay.com</h2>
             <p className="text-sm text-gray-700">
-              CombatBooking.com is a leading platform connecting fighters and training enthusiasts with verified combat sports training camps and gyms worldwide. We facilitate safe, transparent bookings for training experiences across disciplines including Muay Thai, Boxing, MMA, BJJ, and more.
+              CombatStay.com is a leading platform connecting fighters and training enthusiasts with verified combat sports training camps and gyms worldwide. We facilitate safe, transparent bookings for training experiences across disciplines including Muay Thai, Boxing, MMA, BJJ, and more.
             </p>
           </section>
 

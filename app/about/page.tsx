@@ -1,17 +1,17 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'About Us - CombatBooking.com',
-  description: 'Learn about CombatBooking.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
+  title: 'About Us - CombatStay.com',
+  description: 'Learn about CombatStay.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
   openGraph: {
-    title: 'About Us - CombatBooking.com',
-    description: 'Learn about CombatBooking.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
+    title: 'About Us - CombatStay.com',
+    description: 'Learn about CombatStay.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'About Us - CombatBooking.com',
-    description: 'Learn about CombatBooking.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
+    title: 'About Us - CombatStay.com',
+    description: 'Learn about CombatStay.com, our mission to connect fighters with world-class training camps, and our commitment to safety and transparency.',
   },
   alternates: {
     canonical: '/about',
@@ -27,7 +27,7 @@ export default function AboutPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Our Mission</h2>
             <p>
-              CombatBooking.com is dedicated to connecting fighters, athletes, and training enthusiasts with the world's best combat sports training camps and gyms. We believe that finding the right training environment should be simple, transparent, and safe.
+              CombatStay.com is dedicated to connecting fighters, athletes, and training enthusiasts with the world's best combat sports training camps and gyms. We believe that finding the right training environment should be simple, transparent, and safe.
             </p>
           </section>
 

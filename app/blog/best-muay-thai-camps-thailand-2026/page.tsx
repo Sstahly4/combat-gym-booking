@@ -32,20 +32,20 @@ const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 const TITLE = '25 Best Muay Thai Camps in Thailand (2026)'
 const SEO_TITLE = '25 Best Muay Thai Camps in Thailand 2026 [Prices + Reviews]'
 const DESCRIPTION =
-  'Ranked 2026 guide to the best Muay Thai camps in Thailand. Compare real prices, guest reviews, and training packages in Bangkok, Phuket, Chiang Mai and more—book directly on Combatbooking.'
+  'Ranked 2026 guide to the best Muay Thai camps in Thailand. Compare real prices, guest reviews, and training packages in Bangkok, Phuket, Chiang Mai and more—book directly on CombatStay.'
 
 export const metadata: Metadata = {
-  title: `${SEO_TITLE} | Combatbooking`,
+  title: `${SEO_TITLE} | CombatStay`,
   description: DESCRIPTION,
   alternates: { canonical: PATH },
   openGraph: {
-    title: `${SEO_TITLE} | Combatbooking`,
+    title: `${SEO_TITLE} | CombatStay`,
     description: DESCRIPTION,
     type: 'article',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SEO_TITLE} | Combatbooking`,
+    title: `${SEO_TITLE} | CombatStay`,
     description: DESCRIPTION,
   },
 }
@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Why might a famous camp be missing from this list?',
-    a: 'Only gyms that are live on CombatBooking with Muay Thai in disciplines are eligible. If a legendary camp has not published a verified listing yet, it cannot appear here until it joins the marketplace.',
+    a: 'Only gyms that are live on CombatStay with Muay Thai in disciplines are eligible. If a legendary camp has not published a verified listing yet, it cannot appear here until it joins the marketplace.',
   },
   {
     q: 'Are prices on this page guaranteed?',
@@ -171,7 +171,7 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
       <>
         <p>
           The final slots round out a national shortlist so you have twenty-five names to compare without hunting through
-          forums. If none of these fit your dates, browse the full directory—CombatBooking lists every qualifying Muay Thai
+          forums. If none of these fit your dates, browse the full directory—CombatStay lists every qualifying Muay Thai
           camp in Thailand, not only this page.
         </p>
       </>
@@ -218,7 +218,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         imageSrc={HERO_IMAGE}
         imageAlt="Muay Thai training in Thailand"
         priority
-        overlayText="Find the right camp faster: ranked gyms, transparent pricing signals, and regional context—then book on CombatBooking."
+        overlayText="Find the right camp faster: ranked gyms, transparent pricing signals, and regional context—then book on CombatStay."
       />
 
       <GuideLeadRow
@@ -231,7 +231,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={totalListed}
-        statDescription="Verified/trusted Muay Thai camps in Thailand on CombatBooking (this article ranks the top 25)."
+        statDescription="Verified/trusted Muay Thai camps in Thailand on CombatStay (this article ranks the top 25)."
         statIcon={<Sparkles className="h-5 w-5" />}
       />
 
@@ -277,7 +277,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           </p>
           <p>
             Unlike generic travel blogs that cherry-pick seven famous names, this guide starts from a{' '}
-            <strong>live marketplace</strong>: gyms must be verified or trusted on CombatBooking and must list Muay Thai
+            <strong>live marketplace</strong>: gyms must be verified or trusted on CombatStay and must list Muay Thai
             as a discipline. We then rank the top twenty-five using review signals so the list stays accountable as new
             guests train and leave feedback.
           </p>

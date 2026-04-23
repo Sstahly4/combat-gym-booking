@@ -5,7 +5,7 @@
 > Last reviewed: 2026-04-19.
 
 The fully-signed external artifact lives at:
-`/Users/seth/Documents/Business/Combatbooking.com/Documents/combatbooking_readiness_contract.docx`.
+`/Users/seth/Documents/Business/CombatStay.com/Documents/combatstay_readiness_contract.docx`.
 
 If anything in this file disagrees with that document, the `.docx` wins and this file should be updated in the same commit as the code change.
 

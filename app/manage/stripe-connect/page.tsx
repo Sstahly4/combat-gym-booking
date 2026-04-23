@@ -263,7 +263,7 @@ function StripeConnectPageContent() {
           <ul className="mx-auto max-w-sm list-inside list-disc space-y-2 text-muted-foreground">
             <li>Receive payouts to your bank when bookings are paid</li>
             <li>See balances and payouts in your Stripe Dashboard</li>
-            <li>Let CombatBooking route customer payments to your account</li>
+            <li>Let CombatStay route customer payments to your account</li>
           </ul>
         </div>
 

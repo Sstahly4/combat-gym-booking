@@ -7,4 +7,4 @@
  * existing auth.users.email + profiles.placeholder_email for any unclaimed
  * placeholders still on the old domain.
  */
-export const PLACEHOLDER_EMAIL_DOMAIN = 'claim.combatbooking.local'
+export const PLACEHOLDER_EMAIL_DOMAIN = 'claim.combatstay.local'

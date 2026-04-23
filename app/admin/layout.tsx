@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { AdminLayoutShell } from '@/components/admin/admin-layout-shell'
 
 export const metadata: Metadata = {
-  title: 'Admin | Combatbooking Admin Hub',
+  title: 'Admin | CombatStay Admin Hub',
 }
 
 export const dynamic = 'force-dynamic'

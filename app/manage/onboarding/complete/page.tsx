@@ -70,9 +70,9 @@ export default function OnboardingCompletePage() {
   const isLiveReady = Boolean(readiness?.canGoLive)
 
   const heroTitle = useMemo(() => {
-    if (!gymId || error) return "You're almost live on CombatBooking"
-    if (loading || !readiness) return "You're almost live on CombatBooking"
-    return isLiveReady ? "You're live on CombatBooking" : "You're almost live on CombatBooking"
+    if (!gymId || error) return "You're almost live on CombatStay"
+    if (loading || !readiness) return "You're almost live on CombatStay"
+    return isLiveReady ? "You're live on CombatStay" : "You're almost live on CombatStay"
   }, [gymId, error, loading, readiness, isLiveReady])
 
   const heroSubtitle = useMemo(() => {
@@ -86,7 +86,7 @@ export default function OnboardingCompletePage() {
       return 'Checking your listing readiness…'
     }
     if (isLiveReady) {
-      return "You're live on CombatBooking."
+      return "You're live on CombatStay."
     }
     return "You're almost live — travellers can almost see your gym. Complete the checklist below, then open review when you're ready to publish and take bookings."
   }, [gymId, error, loading, readiness, isLiveReady])
