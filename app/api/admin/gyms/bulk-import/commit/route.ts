@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
   const { data: gyms, error: gymErr } = await admin
     .from('gyms')
-    .select('id, name, city, country, google_maps_link, disciplines, verification_status')
+    .select('id, name, address, city, country, google_maps_link, disciplines, verification_status')
 
   if (gymErr) {
     return NextResponse.json({ error: gymErr.message }, { status: 500 })
@@ -177,11 +177,11 @@ export async function POST(request: NextRequest) {
     owner_id: auth.user.id,
     name: row.name,
     description: null as string | null,
-    address: null as string | null,
+    address: row.address,
     city: row.city,
     country: row.country,
     disciplines: row.disciplines,
-    offers_accommodation: false,
+    offers_accommodation: row.offers_accommodation,
     google_maps_link: row.google_maps_link,
     instagram_link: null as string | null,
     facebook_link: null as string | null,
@@ -212,10 +212,12 @@ export async function POST(request: NextRequest) {
           .from('gyms')
           .update({
             name: row.name,
+            address: row.address,
             city: row.city,
             country: row.country,
             google_maps_link: row.google_maps_link,
             disciplines: row.disciplines,
+            offers_accommodation: row.offers_accommodation,
           })
           .eq('id', res.existing_gym_id)
 

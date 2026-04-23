@@ -35,6 +35,7 @@ const ALIAS_TO_CANONICAL: Record<string, string> = {
   kickboxing: 'Kickboxing',
   'kick boxing': 'Kickboxing',
   'all sports': 'All Sports',
+  grappling: 'BJJ',
 }
 
 const TRACKING_QUERY_PARAMS = new Set([
@@ -53,6 +54,7 @@ export type BulkDuplicateTier = 'maps' | 'identity'
 export interface BulkGymDuplicateGym {
   id: string
   name: string
+  address: string | null
   city: string
   country: string
   google_maps_link: string | null
@@ -63,6 +65,7 @@ export interface BulkGymDuplicateGym {
 export interface BulkGymCatalogEntry {
   id: string
   name: string
+  address: string | null
   city: string
   country: string
   google_maps_link: string | null
@@ -75,10 +78,14 @@ export interface BulkGymCatalogEntry {
 export interface BulkImportParsedRow {
   rowIndex: number
   name: string
+  /** Street / full address when the sheet has an address column. */
+  address: string | null
   city: string
   country: string
   google_maps_link: string | null
   disciplines: string[]
+  /** From an accommodation / stays column (Yes/No), else false. */
+  offers_accommodation: boolean
   /** Raw sports cell before mapping (for preview). */
   sports_raw: string
   errors: string[]
@@ -146,6 +153,7 @@ function identityFingerprint(name: string, city: string, country: string): strin
 export function toCatalogEntry(row: {
   id: string
   name: string
+  address?: string | null
   city: string
   country: string
   google_maps_link: string | null
@@ -158,6 +166,7 @@ export function toCatalogEntry(row: {
   return {
     id: row.id,
     name,
+    address: row.address ?? null,
     city,
     country,
     google_maps_link: row.google_maps_link,
@@ -172,6 +181,7 @@ function gymToDuplicateShape(g: BulkGymCatalogEntry): BulkGymDuplicateGym {
   return {
     id: g.id,
     name: g.name,
+    address: g.address,
     city: g.city,
     country: g.country,
     google_maps_link: g.google_maps_link,
@@ -249,6 +259,33 @@ export function mapDisciplineCell(raw: string): { disciplines: string[]; unknown
 }
 
 /** Minimal CSV parser (quoted fields, CRLF, UTF-8 BOM). */
+/** Coerce Excel / mixed cell values to strings for a uniform string[][]. */
+export function coerceGridToStrings(grid: unknown[][]): string[][] {
+  return grid.map((row) =>
+    (Array.isArray(row) ? row : []).map((cell) => {
+      if (cell == null || cell === '') return ''
+      if (cell instanceof Date) return cell.toISOString()
+      if (typeof cell === 'number' || typeof cell === 'boolean') return String(cell)
+      return String(cell).trim()
+    }),
+  )
+}
+
+/** Escape and join a grid for the same CSV pipeline preview/commit already use. */
+export function gridToCsv(grid: string[][]): string {
+  return grid
+    .map((row) =>
+      row
+        .map((cell) => {
+          const s = cell ?? ''
+          if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+          return s
+        })
+        .join(','),
+    )
+    .join('\n')
+}
+
 export function parseCsvRows(text: string): string[][] {
   const s = text.replace(/^\uFEFF/, '')
   const rows: string[][] = []
@@ -320,16 +357,19 @@ export function resolveHeaderIndices(headerRow: string[]) {
   const headers = headerRow.map((h) => h.trim())
   return {
     name: pickColumnIndex(headers, ['name', 'gym name', 'gym_name', 'title', 'gym']),
+    address: pickColumnIndex(headers, ['address', 'street', 'full address', 'location address']),
     google_maps_link: pickColumnIndex(headers, [
       'google_maps_link',
       'google maps link',
       'google maps',
       'google_maps',
       'maps link',
+      'maps url',
       'maps',
       'google location',
       'location url',
       'map url',
+      'google url',
     ]),
     city: pickColumnIndex(headers, ['city', 'town']),
     country: pickColumnIndex(headers, ['country', 'nation']),
@@ -341,7 +381,22 @@ export function resolveHeaderIndices(headerRow: string[]) {
       'training',
       'styles',
     ]),
+    accommodation: pickColumnIndex(headers, [
+      'accommodation',
+      'offers accommodation',
+      'offers_accommodation',
+      'stays',
+      'lodging',
+    ]),
   }
+}
+
+function parseYesNoLoose(raw: string): boolean | null {
+  const t = raw.trim().toLowerCase()
+  if (!t) return null
+  if (['yes', 'y', 'true', '1', 'on'].includes(t)) return true
+  if (['no', 'n', 'false', '0', 'off'].includes(t)) return false
+  return null
 }
 
 export function buildParsedRowsFromGrid(
@@ -349,7 +404,10 @@ export function buildParsedRowsFromGrid(
   defaultCountry: string,
 ): { rows: BulkImportParsedRow[]; header_error?: string } {
   if (grid.length < 2) {
-    return { rows: [], header_error: 'CSV must include a header row and at least one data row.' }
+    return {
+      rows: [],
+      header_error: 'The file must include a header row and at least one data row.',
+    }
   }
   const [header, ...body] = grid
   const idx = resolveHeaderIndices(header)
@@ -391,6 +449,10 @@ export function buildParsedRowsFromGrid(
     const google_maps_link = mapsRaw ? mapsRaw : null
     const countryCell = idx.country === -1 ? '' : (line[idx.country] ?? '').trim()
     const sportsRaw = idx.disciplines === -1 ? '' : (line[idx.disciplines] ?? '').trim()
+    const addressRaw = idx.address === -1 ? '' : (line[idx.address] ?? '').trim()
+    const address = addressRaw ? normalizeWhitespace(addressRaw) : null
+    const accommodationRaw =
+      idx.accommodation === -1 ? '' : (line[idx.accommodation] ?? '').trim()
 
     const errors: string[] = []
     if (!name) errors.push('Gym name is empty.')
@@ -414,13 +476,27 @@ export function buildParsedRowsFromGrid(
       errors.push('Sports / disciplines cell is empty.')
     }
 
+    let offers_accommodation = false
+    if (accommodationRaw) {
+      const yn = parseYesNoLoose(accommodationRaw)
+      if (yn === null) {
+        errors.push(
+          `Invalid accommodation value "${accommodationRaw}" — use Yes/No (or leave blank for No).`,
+        )
+      } else {
+        offers_accommodation = yn
+      }
+    }
+
     rows.push({
       rowIndex: r + 2,
       name: normalizeWhitespace(name),
+      address,
       city: normalizeWhitespace(city),
       country,
       google_maps_link,
       disciplines,
+      offers_accommodation,
       sports_raw: sportsRaw,
       errors,
       duplicate_matches: [],

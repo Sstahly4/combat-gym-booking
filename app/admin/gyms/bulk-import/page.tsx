@@ -5,13 +5,14 @@
  *
  * Auth guard: `AdminLayoutShell` in `app/admin/layout.tsx`.
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { parseXlsxBufferToCsvText } from '@/lib/admin/bulk-gym-import-xlsx'
 import type {
   BulkImportParsedRow,
   BulkImportRowResolution,
@@ -40,6 +41,7 @@ function gymBlock(label: string, row: BulkImportParsedRow | BulkGymDuplicateGym,
   const city = row.city
   const country = row.country
   const maps = 'sports_raw' in row ? row.google_maps_link : row.google_maps_link
+  const addr = row.address?.trim() ? row.address : null
   const disc = row.disciplines?.join(', ') || '—'
   const sportsRaw = 'sports_raw' in row ? row.sports_raw : null
   const ver = 'verification_status' in row && !('sports_raw' in row) ? row.verification_status : null
@@ -54,12 +56,24 @@ function gymBlock(label: string, row: BulkImportParsedRow | BulkGymDuplicateGym,
           <dt className="text-xs text-stone-500">Name</dt>
           <dd className="font-medium">{name || '—'}</dd>
         </div>
+        {addr ? (
+          <div>
+            <dt className="text-xs text-stone-500">Address</dt>
+            <dd className="text-xs">{addr}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs text-stone-500">City / country</dt>
           <dd>
             {city}, {country}
           </dd>
         </div>
+        {'offers_accommodation' in row && row.offers_accommodation ? (
+          <div>
+            <dt className="text-xs text-stone-500">Accommodation</dt>
+            <dd className="text-xs">Yes (from sheet)</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs text-stone-500">Google Maps</dt>
           <dd className="break-all text-xs">{maps || '—'}</dd>
@@ -104,6 +118,36 @@ export default function AdminBulkGymImportPage() {
   const [commitSummary, setCommitSummary] = useState<Record<string, unknown> | null>(null)
   const [modalRow, setModalRow] = useState<BulkImportParsedRow | null>(null)
   const [selectedExistingId, setSelectedExistingId] = useState<string | null>(null)
+  const [loadedFileLabel, setLoadedFileLabel] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [parsingFile, setParsingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const processFile = useCallback(async (file: File) => {
+    setError(null)
+    const lower = file.name.toLowerCase()
+    setParsingFile(true)
+    try {
+      if (lower.endsWith('.csv')) {
+        const t = await file.text()
+        setCsvText(t)
+        setLoadedFileLabel(file.name)
+        return
+      }
+      if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+        const buf = await file.arrayBuffer()
+        const csv = await parseXlsxBufferToCsvText(buf)
+        setCsvText(csv)
+        setLoadedFileLabel(file.name)
+        return
+      }
+      setError('Please use a .csv, .xlsx, or .xls file.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read that file.')
+    } finally {
+      setParsingFile(false)
+    }
+  }, [])
 
   const openDuplicateModal = useCallback((row: BulkImportParsedRow) => {
     setModalRow(row)
@@ -195,13 +239,16 @@ export default function AdminBulkGymImportPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Admin · Gyms</p>
-        <h1 className="mt-1 text-2xl font-semibold text-stone-900">Bulk import (CSV)</h1>
+        <h1 className="mt-1 text-2xl font-semibold text-stone-900">Bulk import (CSV or Excel)</h1>
         <p className="mt-2 max-w-3xl text-sm text-stone-600">
-          Paste a spreadsheet export with headers. Required columns: <span className="font-medium">name</span>,{' '}
-          <span className="font-medium">city</span>, and either a <span className="font-medium">country</span> column
-          or a default country below. Optional: <span className="font-medium">google_maps_link</span> (or aliases like
-          &quot;maps&quot;), <span className="font-medium">disciplines</span> (comma-separated: MMA, BJJ, Muay Thai,
-          …). Rows become draft gyms on your admin account (pre-listed). Duplicates must be resolved before commit.
+          Drag in a <span className="font-medium">.xlsx</span> / <span className="font-medium">.xls</span> file (first
+          sheet only) or paste CSV text. Prospect-style columns work:{' '}
+          <span className="font-medium">name</span>, <span className="font-medium">address</span>,{' '}
+          <span className="font-medium">city</span>, <span className="font-medium">sports</span>,{' '}
+          <span className="font-medium">accommodation</span> (Yes/No → listing flag), plus optional maps URL and{' '}
+          <span className="font-medium">country</span> or the default below. Extra columns (rating, phone, website,
+          …) are ignored. A Python <span className="font-mono text-xs">all_gyms=[...]</span> list is not supported —
+          export to Excel or CSV first.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button variant="outline" size="sm" asChild className="rounded-full">
@@ -237,18 +284,72 @@ export default function AdminBulkGymImportPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileSpreadsheet className="h-5 w-5 text-stone-600" aria-hidden />
-              Spreadsheet (CSV)
+              Spreadsheet
             </CardTitle>
             <CardDescription>
-              Export as UTF-8 CSV from Excel or Google Sheets. First row must be headers.
+              First row must be column headers. Excel uses the first worksheet only.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="sr-only"
+              aria-label="Choose CSV or Excel file"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void processFile(f)
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              onDragOver={(e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'copy'
+                setDragOver(true)
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOver(false)
+                const f = e.dataTransfer.files?.[0]
+                if (f) void processFile(f)
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                'flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 text-center text-sm transition-colors',
+                dragOver
+                  ? 'border-[#003580] bg-blue-50/60 text-stone-900'
+                  : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-300 hover:bg-stone-50',
+              )}
+            >
+              {parsingFile ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  Reading file…
+                </span>
+              ) : (
+                <>
+                  <span className="font-medium text-stone-800">Drop a file here or click to browse</span>
+                  <span className="mt-1 text-xs text-stone-500">.csv, .xlsx, or .xls</span>
+                  {loadedFileLabel ? (
+                    <span className="mt-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-700 shadow-sm">
+                      Loaded: {loadedFileLabel}
+                    </span>
+                  ) : null}
+                </>
+              )}
+            </button>
             <textarea
               className="min-h-[220px] w-full rounded-md border border-stone-200 bg-white px-3 py-2 font-mono text-xs text-stone-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
               placeholder={`name,city,country,google_maps_link,disciplines\nExample Gym,Bangkok,Thailand,https://maps.google.com/?place_id=...,MMA, BJJ`}
               value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
+              onChange={(e) => {
+                setCsvText(e.target.value)
+                setLoadedFileLabel(null)
+              }}
               spellCheck={false}
             />
             <div className="flex flex-wrap items-end gap-4">
@@ -263,7 +364,11 @@ export default function AdminBulkGymImportPage() {
                   onChange={(e) => setDefaultCountry(e.target.value)}
                 />
               </div>
-              <Button type="button" onClick={runPreview} disabled={loadingPreview || !csvText.trim()}>
+              <Button
+                type="button"
+                onClick={runPreview}
+                disabled={loadingPreview || parsingFile || !csvText.trim()}
+              >
                 {loadingPreview ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
@@ -405,8 +510,8 @@ export default function AdminBulkGymImportPage() {
               <DialogHeader>
                 <DialogTitle>Possible duplicate — row {modalRow.rowIndex}</DialogTitle>
                 <DialogDescription>
-                  Compare the spreadsheet row with the existing gym. Updating overwrites name, city, country, Google Maps
-                  link, and disciplines on the existing listing.
+                  Compare the spreadsheet row with the existing gym. Updating overwrites name, address, city, country,
+                  Google Maps link, disciplines, and the accommodation flag on the existing listing.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 grid gap-4 md:grid-cols-2">

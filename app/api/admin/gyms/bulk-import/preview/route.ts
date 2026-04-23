@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
   const { data: gyms, error } = await admin
     .from('gyms')
-    .select('id, name, city, country, google_maps_link, disciplines, verification_status')
+    .select('id, name, address, city, country, google_maps_link, disciplines, verification_status')
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

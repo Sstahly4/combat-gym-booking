@@ -3,6 +3,7 @@ import {
   attachDuplicates,
   buildParsedRowsFromGrid,
   findDuplicateMatches,
+  gridToCsv,
   mapDisciplineCell,
   normalizeCountryLabel,
   normalizeGoogleMapsFingerprint,
@@ -52,6 +53,23 @@ describe('mapDisciplineCell', () => {
     const r = mapDisciplineCell('MMA, underwater hockey')
     expect(r.disciplines).toEqual(['MMA'])
     expect(r.unknown_tokens).toEqual(['underwater hockey'])
+  })
+
+  it('maps grappling to BJJ', () => {
+    const r = mapDisciplineCell('BJJ, Grappling')
+    expect(r.disciplines).toEqual(['BJJ'])
+    expect(r.unknown_tokens).toEqual([])
+  })
+})
+
+describe('gridToCsv', () => {
+  it('round-trips through parseCsvRows when no special chars', () => {
+    const grid = [
+      ['name', 'city'],
+      ['A', 'B'],
+    ]
+    const csv = gridToCsv(grid)
+    expect(parseCsvRows(csv)).toEqual(grid)
   })
 })
 
@@ -114,10 +132,12 @@ describe('resolutionValidForRow', () => {
   const baseRow = (over: Partial<BulkImportParsedRow>): BulkImportParsedRow => ({
     rowIndex: 2,
     name: 'A',
+    address: null,
     city: 'B',
     country: 'Thailand',
     google_maps_link: null,
     disciplines: ['MMA'],
+    offers_accommodation: false,
     sports_raw: 'MMA',
     errors: [],
     duplicate_matches: [],
@@ -136,6 +156,7 @@ describe('resolutionValidForRow', () => {
           gym: {
             id: 'x',
             name: 'A',
+            address: null,
             city: 'B',
             country: 'Thailand',
             google_maps_link: null,
@@ -174,5 +195,15 @@ describe('buildParsedRowsFromGrid + attachDuplicates', () => {
     ]
     const withDup = attachDuplicates(rows, cat)
     expect(withDup[0].duplicate_matches.length).toBeGreaterThan(0)
+  })
+
+  it('reads address and accommodation from prospect-style headers', () => {
+    const grid = parseCsvRows(
+      'name,address,city,sports,accommodation\nTest Gym,1 Main St,Bangkok,Muay Thai,Yes\n',
+    )
+    const { rows, header_error } = buildParsedRowsFromGrid(grid, 'Thailand')
+    expect(header_error).toBeUndefined()
+    expect(rows[0].address).toBe('1 Main St')
+    expect(rows[0].offers_accommodation).toBe(true)
   })
 })
