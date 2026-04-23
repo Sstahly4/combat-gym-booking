@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
+import { validatePasswordRules } from '@/lib/auth/password-rules'
+import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 
 function SignInPageContent() {
   const router = useRouter()
@@ -19,6 +22,7 @@ function SignInPageContent() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   // 'signin' = default; 'signup' = auto-switched when no account found
@@ -105,11 +109,18 @@ function SignInPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
+    setPasswordErrors([])
 
     const supabase = createClient()
 
     if (mode === 'signup') {
+      const validation = validatePasswordRules(password)
+      if (!validation.valid) {
+        setPasswordErrors(validation.errors)
+        return
+      }
+
+      setLoading(true)
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -149,6 +160,7 @@ function SignInPageContent() {
     }
 
     // Sign-in attempt
+    setLoading(true)
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
@@ -171,6 +183,18 @@ function SignInPageContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ client_hint: 'password' }),
+        })
+      } catch {
+        // non-blocking
+      }
+      // Evaluate the (briefly visible) plaintext against the current password
+      // policy so we can flag legacy accounts whose stored password no longer
+      // meets the rules. Non-blocking — never prevents sign-in.
+      try {
+        await fetch('/api/auth/evaluate-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
         })
       } catch {
         // non-blocking
@@ -308,19 +332,35 @@ function SignInPageContent() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password
-              </Label>
-              <Input
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                  Password
+                </Label>
+                {mode === 'signin' && (
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs font-medium text-[#003580] hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder={mode === 'signup' ? 'Choose a password (min. 6 characters)' : 'Your password'}
+                placeholder={mode === 'signup' ? 'Choose a strong password' : 'Your password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (passwordErrors.length > 0) setPasswordErrors([])
+                }}
                 className="h-11"
                 required
-                minLength={mode === 'signup' ? 6 : undefined}
+                minLength={mode === 'signup' ? 10 : undefined}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
+              {mode === 'signup' && (
+                <PasswordStandardsHint errors={passwordErrors} className="mt-2" />
+              )}
             </div>
 
             {error && (

@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
 
     const profilePatch: Record<string, unknown> = {
       claim_password_set: true,
+      password_meets_current_policy: true,
       updated_at: new Date().toISOString(),
     }
     if (updates.email) {

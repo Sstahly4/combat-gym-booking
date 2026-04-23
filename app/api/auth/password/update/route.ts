@@ -69,6 +69,23 @@ export async function POST(request: NextRequest) {
       metadata: { signed_out_others: signedOutOthers },
     })
 
+    // The new password passed validatePasswordRules above, so the account now
+    // meets policy. Flip the flag and clear any open "please update" bell row.
+    await supabase
+      .from('profiles')
+      .update({
+        password_meets_current_policy: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+
+    await supabase
+      .from('owner_notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('type', 'password_policy_update')
+      .is('read_at', null)
+
     if (signedOutOthers) {
       await recordOwnerEvent(supabase as never, {
         event_type: 'password_changed_signed_out_others',

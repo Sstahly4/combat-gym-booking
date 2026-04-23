@@ -19,7 +19,10 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
+import { validatePasswordRules } from '@/lib/auth/password-rules'
+import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 const SOFT_PROMPT_DISMISS_KEY = 'cb:claim-email-soft-prompt-dismissed'
 
 function isPlaceholderEmail(email: string | null | undefined): boolean {
@@ -94,9 +97,15 @@ function HardClaimModal({
     () => password.length > 0 && password === confirm,
     [password, confirm],
   )
+  const passwordValidation = useMemo(() => validatePasswordRules(password), [password])
 
   async function submit() {
     setError(null); setDetails(null)
+    if (!passwordValidation.valid) {
+      setError('Password does not meet security requirements')
+      setDetails(passwordValidation.errors)
+      return
+    }
     if (!passwordsMatch) {
       setError('Passwords do not match'); return
     }
@@ -151,20 +160,19 @@ function HardClaimModal({
         <div className="space-y-4 px-6 py-5">
           <div>
             <Label htmlFor="claim-pw">New password</Label>
-            <Input
+            <PasswordInput
               id="claim-pw"
-              type="password"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 12 characters, with a number and symbol"
+              placeholder="Choose a strong password"
             />
+            <PasswordStandardsHint className="mt-2" showErrors={false} />
           </div>
           <div>
             <Label htmlFor="claim-pw2">Confirm password</Label>
-            <Input
+            <PasswordInput
               id="claim-pw2"
-              type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -216,7 +224,7 @@ function HardClaimModal({
         <div className="flex items-center justify-end gap-2 border-t border-stone-100 bg-stone-50 px-6 py-4">
           <Button
             onClick={submit}
-            disabled={submitting || !passwordsMatch || password.length < 12}
+            disabled={submitting || !passwordsMatch || !passwordValidation.valid}
             className="bg-[#003580] text-white hover:bg-[#002a5c]"
           >
             {submitting ? 'Saving…' : 'Save and continue'}

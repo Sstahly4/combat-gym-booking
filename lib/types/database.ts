@@ -37,6 +37,9 @@ export interface Profile {
   placeholder_account?: boolean
   /** False until a placeholder owner sets their own password via /api/manage/account/complete-claim. */
   claim_password_set?: boolean
+  /** Cached verdict of validatePasswordRules at the user's last sign-in.
+   *  False → show a "please update your password" prompt (bell for owners). */
+  password_meets_current_policy?: boolean
   /** Original synthetic email for the placeholder account (kept for reference). */
   placeholder_email?: string | null
   created_at: string

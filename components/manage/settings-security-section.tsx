@@ -6,7 +6,9 @@ import { MfaTotpInlineSection } from '@/components/manage/mfa-totp-inline-sectio
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useSettingsToast } from '@/components/manage/settings-toast'
 import { settingsCardClass } from '@/components/manage/settings-shared'
@@ -304,10 +306,17 @@ export function SettingsSecuritySection() {
         <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="current-password">Current password</Label>
-              <Input
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="current-password">Current password</Label>
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs font-medium text-[#003580] hover:underline"
+                >
+                  Forgot it?
+                </Link>
+              </div>
+              <PasswordInput
                 id="current-password"
-                type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
                 autoComplete="current-password"
@@ -315,9 +324,8 @@ export function SettingsSecuritySection() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-password">New password</Label>
-              <Input
+              <PasswordInput
                 id="new-password"
-                type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 autoComplete="new-password"
@@ -325,9 +333,8 @@ export function SettingsSecuritySection() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm new password</Label>
-              <Input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 autoComplete="new-password"
@@ -370,9 +377,8 @@ export function SettingsSecuritySection() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email-password">Current password</Label>
-              <Input
+              <PasswordInput
                 id="email-password"
-                type="password"
                 value={emailPassword}
                 onChange={(event) => setEmailPassword(event.target.value)}
                 autoComplete="current-password"

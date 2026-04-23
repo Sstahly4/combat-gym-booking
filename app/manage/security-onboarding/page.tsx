@@ -6,18 +6,13 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
+import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
-
-const PASSWORD_RULES = [
-  'Minimum 10 characters',
-  'At least one number',
-  'At least one symbol',
-  'Avoid common passwords',
-]
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -36,6 +31,7 @@ export default function SecurityOnboardingPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [updatingPassword, setUpdatingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [selfServeExpired, setSelfServeExpired] = useState(false)
 
   const [legalFirstName, setLegalFirstName] = useState('')
@@ -318,44 +314,69 @@ export default function SecurityOnboardingPage() {
 
             <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
               <p className="font-medium text-gray-900">Password standards</p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                {PASSWORD_RULES.map((rule) => (
-                  <li key={rule}>{rule}</li>
-                ))}
-              </ul>
+              <PasswordStandardsHint className="mt-2" showErrors={false} />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
-              <p className="font-medium text-gray-900">Update password (if needed)</p>
-              <p className="text-sm text-muted-foreground">
-                If your current password does not meet these rules, update it here before continuing.
-              </p>
-              <Input
-                type="password"
-                placeholder="Current password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="New password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-              />
-              <Button
-                variant="outline"
-                onClick={handleUpdatePassword}
-                disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
-              >
-                {updatingPassword ? 'Updating...' : 'Update password'}
-              </Button>
-              {passwordMessage && <p className="text-sm text-green-700">{passwordMessage}</p>}
+            <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
+              {!showPasswordReset ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordReset(true)}
+                  className="text-sm font-medium text-[#003580] hover:underline"
+                >
+                  Reset password if it doesn&apos;t meet the standards above
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-gray-900">Reset password</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Only needed if the password you set at signup doesn&apos;t meet the standards above.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasswordReset(false)
+                        setCurrentPassword('')
+                        setNewPassword('')
+                        setConfirmPassword('')
+                        setPasswordMessage(null)
+                      }}
+                      className="text-xs font-medium text-muted-foreground hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <PasswordInput
+                    placeholder="Current password"
+                    autoComplete="current-password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                  />
+                  <PasswordInput
+                    placeholder="New password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                  />
+                  <PasswordInput
+                    placeholder="Confirm new password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleUpdatePassword}
+                    disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
+                  >
+                    {updatingPassword ? 'Updating...' : 'Update password'}
+                  </Button>
+                  {passwordMessage && <p className="text-sm text-green-700">{passwordMessage}</p>}
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">

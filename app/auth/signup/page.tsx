@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
+import { validatePasswordRules } from '@/lib/auth/password-rules'
+import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 
 function SignUpForm() {
   const router = useRouter()
@@ -18,6 +21,7 @@ function SignUpForm() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -53,10 +57,22 @@ function SignUpForm() {
     e.preventDefault()
     setError(null)
     setMessage(null)
+    setPasswordErrors([])
+
+    const validation = validatePasswordRules(password)
+    if (!validation.valid) {
+      setPasswordErrors(validation.errors)
+      return
+    }
+
     setLoading(true)
 
     const role = intent === 'owner' ? 'owner' : 'fighter'
     const supabase = createClient()
+    const postVerifyRedirect =
+      role === 'owner'
+        ? '/manage/security-onboarding'
+        : redirectUrl || '/'
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -65,6 +81,7 @@ function SignUpForm() {
           full_name: fullName,
           role_intent: role,
         },
+        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(postVerifyRedirect)}`,
       },
     })
 
@@ -214,16 +231,20 @@ function SignUpForm() {
               <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                 Password
               </Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder="Choose a password (min. 6 characters)"
+                placeholder="Choose a strong password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (passwordErrors.length > 0) setPasswordErrors([])
+                }}
                 className="h-11"
                 required
-                minLength={6}
+                minLength={10}
+                autoComplete="new-password"
               />
+              <PasswordStandardsHint errors={passwordErrors} className="mt-2" />
             </div>
 
             {error && (

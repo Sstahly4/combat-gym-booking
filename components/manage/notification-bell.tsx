@@ -19,7 +19,12 @@ import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 interface OwnerNotificationRow {
   id: string
   gym_id: string | null
-  type: 'booking_created' | 'booking_cancelled' | 'review_posted' | 'payout_paid'
+  type:
+    | 'booking_created'
+    | 'booking_cancelled'
+    | 'review_posted'
+    | 'payout_paid'
+    | 'password_policy_update'
   title: string
   body: string | null
   link_href: string | null
@@ -49,6 +54,7 @@ const TYPE_DOT: Record<OwnerNotificationRow['type'], string> = {
   booking_cancelled: 'bg-rose-500',
   review_posted: 'bg-amber-500',
   payout_paid: 'bg-[#003580]',
+  password_policy_update: 'bg-rose-500',
 }
 
 export function NotificationBell() {

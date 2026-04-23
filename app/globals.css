@@ -56,6 +56,22 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /*
+   * iOS Safari auto-zooms when a focused input has a computed font-size below
+   * 16px, which shifts fixed-position modals off-centre and breaks the search
+   * bar + auth forms. Industry-standard fix (Airbnb, Booking, Stripe): pin the
+   * font-size at 16px on mobile for every text-accepting input. Desktop keeps
+   * the designed typography (text-sm etc.) because the media query caps at the
+   * Tailwind `md` breakpoint.
+   */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
 
 @layer utilities {

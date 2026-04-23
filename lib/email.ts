@@ -1,7 +1,38 @@
 /**
- * Email notification service
- * Supports Resend (recommended) or console logging for development
+ * Transactional booking emails.
+ *
+ * All user-facing HTML is composed from the primitives in `./email-layout`
+ * so the CombatStay brand stays consistent across every message. To edit
+ * colors, spacing, or button style, change the shared layout file — not here.
  */
+
+import {
+  APP_URL,
+  BRAND,
+  callout,
+  cardTitle,
+  checkList,
+  detailRows,
+  divider,
+  escape,
+  formatDate,
+  formatMoney,
+  heading,
+  linkFallback,
+  nightsBetween,
+  numberedList,
+  panel,
+  paragraph,
+  primaryButton,
+  renderEmail,
+  sectionLabel,
+  sendEmail,
+  uppercaseLabel,
+} from './email-layout'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface AdminBookingEmailData {
   bookingReference: string
@@ -31,6 +62,14 @@ interface AdminBookingEmailData {
   cardBrand?: string
 }
 
+interface MealPlanDetails {
+  breakfast?: boolean
+  lunch?: boolean
+  dinner?: boolean
+  meals_per_day?: number
+  description?: string
+}
+
 interface UserConfirmationEmailData {
   bookingReference: string
   bookingPin: string
@@ -47,477 +86,8 @@ interface UserConfirmationEmailData {
   cardLast4?: string
   cardBrand?: string
   paymentDate: string
-  mealPlanDetails?: {
-    breakfast?: boolean
-    lunch?: boolean
-    dinner?: boolean
-    meals_per_day?: number
-    description?: string
-  } | null
-  magicLink?: string // Optional magic link for booking access
-}
-
-/**
- * Send admin notification email with full booking details
- */
-export async function sendAdminBookingEmail(data: AdminBookingEmailData): Promise<boolean> {
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL
-
-  if (!adminEmail) {
-    console.warn('⚠️  ADMIN_EMAIL not set. Email notifications will be logged to console only.')
-  }
-
-  const emailContent = `
-═══════════════════════════════════════════════════════════
-🆕 NEW BOOKING REQUEST - ACTION REQUIRED
-═══════════════════════════════════════════════════════════
-
-📋 BOOKING DETAILS
-───────────────────────────────────────────────────────────
-Booking Reference: ${data.bookingReference}
-Booking PIN: ${data.bookingPin}
-Status: ${data.paymentStatus}
-
-🏋️ GYM INFORMATION
-───────────────────────────────────────────────────────────
-Gym: ${data.gymName}
-Location: ${data.gymCity}, ${data.gymCountry}
-Owner: ${data.gymOwnerName || 'N/A'} (${data.gymOwnerEmail || 'N/A'})
-
-📦 PACKAGE & ACCOMMODATION
-───────────────────────────────────────────────────────────
-Package: ${data.packageName || 'N/A'}
-${data.variantName ? `Accommodation: ${data.variantName}` : ''}
-
-📅 DATES & DURATION
-───────────────────────────────────────────────────────────
-Check-in: ${new Date(data.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-Check-out: ${new Date(data.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-Duration: ${data.duration} ${data.duration === 1 ? 'day' : 'days'}
-
-👤 GUEST INFORMATION
-───────────────────────────────────────────────────────────
-Name: ${data.guestName}
-Email: ${data.guestEmail}
-Phone: ${data.guestPhone || 'Not provided'}
-
-🥊 TRAINING DETAILS
-───────────────────────────────────────────────────────────
-Discipline: ${data.discipline}
-Experience Level: ${data.experienceLevel}
-${data.notes ? `Notes: ${data.notes}` : ''}
-
-💰 PAYMENT INFORMATION
-───────────────────────────────────────────────────────────
-Total Amount: ${data.currency} ${data.totalPrice.toFixed(2)}
-Platform Fee (15%): ${data.currency} ${data.platformFee.toFixed(2)}
-Gym Payout: ${data.currency} ${(data.totalPrice - data.platformFee).toFixed(2)}
-
-Payment Intent ID: ${data.paymentIntentId}
-Payment Status: ${data.paymentStatus}
-${data.cardLast4 ? `Card: ${data.cardBrand || 'Card'} •••• ${data.cardLast4}` : 'Card: Not available yet'}
-
-⚠️  ACTION REQUIRED
-───────────────────────────────────────────────────────────
-1. Review booking details above
-2. Contact gym owner: ${data.gymOwnerEmail || 'Email not available'}
-3. Confirm availability with gym
-4. Once confirmed, capture payment via admin dashboard
-5. Update booking status to 'confirmed'
-
-🔗 QUICK ACTIONS
-───────────────────────────────────────────────────────────
-View in Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin
-Capture Payment: POST /api/bookings/${data.bookingReference}/capture
-Decline Booking: POST /api/bookings/${data.bookingReference}/decline
-
-═══════════════════════════════════════════════════════════
-This is an automated notification from CombatBooking
-═══════════════════════════════════════════════════════════
-  `.trim()
-
-  // Try to send via Resend HTTP API if configured (no SDK required)
-  if (process.env.RESEND_API_KEY && adminEmail) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [adminEmail],
-          subject: `New Booking Request - ${data.bookingReference}`,
-          text: emailContent,
-        }),
-      })
-
-      if (res.ok) {
-        console.log(`✅ Admin email sent to ${adminEmail}`)
-        return true
-      }
-
-      const errText = await res.text()
-      console.error('❌ Resend admin email failed:', res.status, errText)
-      // Fall through to console logging
-    } catch (error) {
-      console.error('❌ Failed to send admin email via Resend:', error)
-      // Fall through to console logging
-    }
-  }
-
-  // Fallback: Log to console (for development)
-  console.log('\n' + '='.repeat(60))
-  console.log('📧 ADMIN BOOKING NOTIFICATION')
-  console.log('='.repeat(60))
-  console.log(emailContent)
-  console.log('='.repeat(60) + '\n')
-
-  if (adminEmail) {
-    console.log(`💡 To receive emails, set up Resend API key or check your email service configuration.`)
-    console.log(`   Expected recipient: ${adminEmail}`)
-  }
-
-  return true
-}
-
-/**
- * Send user confirmation email (Booking.com style)
- */
-export async function sendUserConfirmationEmail(data: UserConfirmationEmailData): Promise<boolean> {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    })
-  }
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    })
-  }
-
-  const checkInDate = formatDate(data.startDate)
-  const checkOutDate = formatDate(data.endDate)
-  const paymentDate = formatDate(data.paymentDate)
-  
-  const duration = Math.floor(
-    (new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24)
-  )
-
-  // Format meal plan details
-  let mealPlanText = 'There is no meal option with this booking.'
-  if (data.mealPlanDetails) {
-    const meals = []
-    if (data.mealPlanDetails.breakfast) meals.push('Breakfast')
-    if (data.mealPlanDetails.lunch) meals.push('Lunch')
-    if (data.mealPlanDetails.dinner) meals.push('Dinner')
-    
-    if (meals.length > 0) {
-      mealPlanText = meals.join(', ')
-      if (data.mealPlanDetails.description) {
-        mealPlanText += ` - ${data.mealPlanDetails.description}`
-      }
-    } else if (data.mealPlanDetails.description) {
-      mealPlanText = data.mealPlanDetails.description
-    }
-  }
-
-  // HTML Email Template (Booking.com style)
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking Confirmation - ${data.bookingReference}</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; max-width: 600px; width: 100%;">
-          
-          <!-- Banner -->
-          <tr>
-            <td style="background-color: #e6f2ff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #d1e7ff;">
-              <h1 style="margin: 0; color: #003580; font-size: 28px; font-weight: bold; letter-spacing: -0.5px;">CombatBooking.com</h1>
-              <p style="margin: 8px 0 0 0; color: #003580; font-size: 14px;">Confirmation: ${data.bookingReference}</p>
-              <p style="margin: 4px 0 0 0; color: #003580; font-size: 14px;">PIN: ${data.bookingPin} (Confidential)</p>
-            </td>
-          </tr>
-
-          <!-- Main Content -->
-          <tr>
-            <td style="padding: 30px 20px;">
-              
-              <!-- Title -->
-              <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 24px; font-weight: bold; line-height: 1.3;">
-                Thanks ${data.guestName}! Your booking request for ${data.gymName} in ${data.gymCountry} has been received.
-              </h2>
-
-              <!-- Important Notice -->
-              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin-bottom: 24px;">
-                <p style="margin: 0 0 8px 0; color: #92400e; font-size: 15px; line-height: 1.5; font-weight: 600;">
-                  ⚠️ Your card has been authorized but not charged yet
-                </p>
-                <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.5;">
-                  We're confirming availability with ${data.gymName} for your selected dates. Once the gym confirms your booking, we'll charge your card and send you a confirmation email. You'll only be charged if the gym confirms availability.
-                </p>
-              </div>
-
-              <!-- Checkmarks -->
-              <div style="margin-bottom: 30px;">
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  Your booking request has been received for ${checkInDate}
-                </p>
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  Your card has been authorized (funds reserved, not charged)
-                </p>
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #3b82f6; font-size: 18px; margin-right: 8px;">📧</span>
-                  You'll receive another email once ${data.gymName} confirms your booking and your card is charged
-                </p>
-                ${data.magicLink ? `
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  <a href="${data.magicLink}" style="color: #006ce4; text-decoration: none;">Make changes to your booking or ask the gym a question in just a few clicks</a>
-                </p>
-                ` : ''}
-                <p style="margin: 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #6b7280; font-size: 18px; margin-right: 8px;">🔒</span>
-                  Please keep your PIN confidential as it can be used to modify or cancel your booking.
-                </p>
-              </div>
-
-              <!-- Reservation Details -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 18px; font-weight: bold;">${data.gymName}</h3>
-                <h4 style="margin: 0 0 16px 0; color: #4b5563; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Reservation details</h4>
-                
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Check-in:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${checkInDate} (14:00 - 23:00)</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Check-out:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${checkOutDate} (until 10:00)</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Your reservation:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${duration} ${duration === 1 ? 'night' : 'nights'}${data.packageName ? `, ${data.packageName}` : ''}${data.variantName ? ` - ${data.variantName}` : ''}</p>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Payment Information -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 16px 0; color: #4b5563; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Payment information</h4>
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  Your card has been <strong style="color: #f59e0b;">authorized</strong> for <strong>${data.currency} ${data.totalPrice.toFixed(2)}</strong> but <strong>not charged yet</strong>.
-                </p>
-                <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
-                  Funds have been reserved on your card. You'll only be charged once the gym confirms availability. If the gym cannot accommodate your booking, the authorization will be released and no charge will be made.
-                </p>
-                <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 12px;">
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <span style="color: #4b5563; font-size: 14px;">${paymentDate}</span>
-                      ${data.cardLast4 ? `
-                      <span style="color: #4b5563; font-size: 14px; margin-left: 12px;">${data.cardBrand || 'Card'} •••• ${data.cardLast4}</span>
-                      ` : ''}
-                    </td>
-                    <td align="right" style="padding: 8px 0;">
-                      <span style="color: #f59e0b; font-size: 14px; font-weight: 600;">Authorized</span>
-                      <span style="color: #1a1a1a; font-size: 14px; font-weight: 600; margin-left: 8px;">${data.currency} ${data.totalPrice.toFixed(2)}</span>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Guest Details -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 18px; font-weight: bold;">${data.packageName || 'Booking Details'}</h4>
-                
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Guest name</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${data.guestName}</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Meal plan</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${mealPlanText}</p>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Next Steps -->
-              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
-                <h5 style="margin: 0 0 8px 0; color: #1e40af; font-size: 15px; font-weight: 600;">What Happens Next?</h5>
-                <p style="margin: 0 0 8px 0; color: #1e3a8a; font-size: 14px; line-height: 1.5;">
-                  We're confirming availability with ${data.gymName} for your selected dates. Once they confirm, we'll:
-                </p>
-                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #1e3a8a; font-size: 14px; line-height: 1.8;">
-                  <li>Charge your card for ${data.currency} ${data.totalPrice.toFixed(2)}</li>
-                  <li>Send you a confirmation email with all the details</li>
-                  <li>Confirm your booking is ready for your arrival</li>
-                </ul>
-                <p style="margin: 12px 0 0 0; color: #1e3a8a; font-size: 13px; line-height: 1.5;">
-                  This usually happens within 24-48 hours. If the gym cannot accommodate your booking, we'll notify you and release the authorization on your card.
-                </p>
-              </div>
-
-              <!-- Security Warning -->
-              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td width="24" valign="top" style="padding-right: 12px;">
-                      <span style="color: #f59e0b; font-size: 18px; font-weight: bold;">ℹ</span>
-                    </td>
-                    <td>
-                      <h5 style="margin: 0 0 8px 0; color: #92400e; font-size: 14px; font-weight: 600;">Stay safe online</h5>
-                      <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.5;">
-                        Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
-                      </p>
-                      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'}/privacy" style="color: #f59e0b; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">
-                If you have any questions, please contact us using your booking reference: <strong>${data.bookingReference}</strong>
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 11px;">
-                © ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim()
-
-  // Plain text fallback
-  const textContent = `
-CombatBooking.com
-Confirmation: ${data.bookingReference}
-PIN: ${data.bookingPin} (Confidential)
-
-Thanks ${data.guestName}! Your booking request for ${data.gymName} in ${data.gymCountry} has been received.
-
-⚠️ IMPORTANT: Your card has been authorized but not charged yet
-We're confirming availability with ${data.gymName} for your selected dates. Once the gym confirms your booking, we'll charge your card and send you a confirmation email. You'll only be charged if the gym confirms availability.
-
-✓ Your booking request has been received for ${checkInDate}
-✓ Your card has been authorized (funds reserved, not charged)
-📧 You'll receive another email once ${data.gymName} confirms your booking and your card is charged
-${data.magicLink ? `✓ Make changes to your booking: ${data.magicLink}` : ''}
-🔒 Please keep your PIN confidential as it can be used to modify or cancel your booking.
-
-${data.gymName}
-Reservation details
-Check-in: ${checkInDate} (14:00 - 23:00)
-Check-out: ${checkOutDate} (until 10:00)
-Your reservation: ${duration} ${duration === 1 ? 'night' : 'nights'}${data.packageName ? `, ${data.packageName}` : ''}${data.variantName ? ` - ${data.variantName}` : ''}
-
-Payment information
-Your card has been AUTHORIZED for ${data.currency} ${data.totalPrice.toFixed(2)} but NOT CHARGED yet.
-Funds have been reserved on your card. You'll only be charged once the gym confirms availability. If the gym cannot accommodate your booking, the authorization will be released and no charge will be made.
-
-${paymentDate}${data.cardLast4 ? ` ${data.cardBrand || 'Card'} •••• ${data.cardLast4}` : ''} - Authorized ${data.currency} ${data.totalPrice.toFixed(2)}
-
-${data.packageName || 'Booking Details'}
-Guest name: ${data.guestName}
-Meal plan: ${mealPlanText}
-
-What Happens Next?
-We're confirming availability with ${data.gymName} for your selected dates. Once they confirm, we'll:
-- Charge your card for ${data.currency} ${data.totalPrice.toFixed(2)}
-- Send you a confirmation email with all the details
-- Confirm your booking is ready for your arrival
-
-This usually happens within 24-48 hours. If the gym cannot accommodate your booking, we'll notify you and release the authorization on your card.
-
-Stay safe online
-Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
-
-If you have any questions, please contact us using your booking reference: ${data.bookingReference}
-
-© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-  `.trim()
-
-  // Try to send via Resend HTTP API if configured (no SDK required)
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [data.guestEmail],
-          subject: `Booking Request Received - ${data.bookingReference}`,
-          html: htmlContent,
-          text: textContent,
-        }),
-      })
-
-      if (res.ok) {
-        console.log(`✅ User confirmation email sent to ${data.guestEmail}`)
-        return true
-      }
-
-      const errText = await res.text()
-      console.error('❌ Resend user email failed:', res.status, errText)
-      // Fall through to console logging
-    } catch (error) {
-      console.error('❌ Failed to send user email via Resend:', error)
-      // Fall through to console logging
-    }
-  }
-
-  // Fallback: Log to console
-  console.log(`\n📧 USER CONFIRMATION EMAIL (would send to ${data.guestEmail}):`)
-  console.log(textContent)
-  console.log('\n')
-
-  return true
+  mealPlanDetails?: MealPlanDetails | null
+  magicLink?: string
 }
 
 interface BookingConfirmedEmailData {
@@ -536,339 +106,8 @@ interface BookingConfirmedEmailData {
   cardLast4?: string
   cardBrand?: string
   chargeDate: string
-  mealPlanDetails?: {
-    breakfast?: boolean
-    lunch?: boolean
-    dinner?: boolean
-    meals_per_day?: number
-    description?: string
-  } | null
+  mealPlanDetails?: MealPlanDetails | null
   magicLink?: string
-}
-
-/**
- * Send booking confirmed email (after payment is captured)
- * This is sent when the gym/admin confirms availability and payment is charged
- */
-export async function sendBookingConfirmedEmail(data: BookingConfirmedEmailData): Promise<boolean> {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    })
-  }
-
-  const checkInDate = formatDate(data.startDate)
-  const checkOutDate = formatDate(data.endDate)
-  const chargeDate = formatDate(data.chargeDate)
-  
-  const duration = Math.floor(
-    (new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24)
-  )
-
-  // Format meal plan details with all available information
-  let mealPlanText = 'There is no meal option with this booking.'
-  let mealPlanDetails = ''
-  if (data.mealPlanDetails) {
-    const meals = []
-    if (data.mealPlanDetails.breakfast) meals.push('Breakfast')
-    if (data.mealPlanDetails.lunch) meals.push('Lunch')
-    if (data.mealPlanDetails.dinner) meals.push('Dinner')
-    
-    if (meals.length > 0) {
-      mealPlanText = meals.join(', ')
-      if (data.mealPlanDetails.meals_per_day) {
-        mealPlanText += ` (${data.mealPlanDetails.meals_per_day} ${data.mealPlanDetails.meals_per_day === 1 ? 'meal' : 'meals'} per day)`
-      }
-      if (data.mealPlanDetails.description) {
-        mealPlanText += ` - ${data.mealPlanDetails.description}`
-      }
-    } else if (data.mealPlanDetails.meals_per_day) {
-      mealPlanText = `${data.mealPlanDetails.meals_per_day} ${data.mealPlanDetails.meals_per_day === 1 ? 'meal' : 'meals'} per day`
-      if (data.mealPlanDetails.description) {
-        mealPlanText += ` - ${data.mealPlanDetails.description}`
-      }
-    } else if (data.mealPlanDetails.description) {
-      mealPlanText = data.mealPlanDetails.description
-    }
-
-    // Build detailed meal plan info for display
-    if (data.mealPlanDetails.meals_per_day || meals.length > 0 || data.mealPlanDetails.description) {
-      mealPlanDetails = '<div style="margin-top: 8px; padding-top: 12px; border-top: 1px solid #e5e7eb;">'
-      if (data.mealPlanDetails.meals_per_day) {
-        mealPlanDetails += `<p style="margin: 0 0 8px 0; color: #4b5563; font-size: 14px;"><strong>Meals per day:</strong> ${data.mealPlanDetails.meals_per_day}</p>`
-      }
-      if (meals.length > 0) {
-        mealPlanDetails += `<p style="margin: 0 0 8px 0; color: #4b5563; font-size: 14px;"><strong>Meal types included:</strong> ${meals.join(', ')}</p>`
-      }
-      if (data.mealPlanDetails.description) {
-        mealPlanDetails += `<p style="margin: 0; color: #4b5563; font-size: 14px;"><strong>Details:</strong> ${data.mealPlanDetails.description}</p>`
-      }
-      mealPlanDetails += '</div>'
-    }
-  }
-
-  // HTML Email Template
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking Confirmed - ${data.bookingReference}</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; max-width: 600px; width: 100%;">
-          
-          <!-- Banner -->
-          <tr>
-            <td style="background-color: #e6f2ff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #d1e7ff;">
-              <h1 style="margin: 0; color: #003580; font-size: 28px; font-weight: bold; letter-spacing: -0.5px;">CombatBooking.com</h1>
-              <p style="margin: 8px 0 0 0; color: #003580; font-size: 14px;">Confirmation: ${data.bookingReference}</p>
-              <p style="margin: 4px 0 0 0; color: #003580; font-size: 14px;">PIN: ${data.bookingPin} (Confidential)</p>
-            </td>
-          </tr>
-
-          <!-- Main Content -->
-          <tr>
-            <td style="padding: 30px 20px;">
-              
-              <!-- Title -->
-              <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 24px; font-weight: bold; line-height: 1.3;">
-                You're On The Way! Your ${data.gymName} Has Confirmed Your Booking.
-              </h2>
-
-              <!-- Reassuring Message -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 16px; margin-bottom: 24px;">
-                <p style="margin: 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <strong>Great news!</strong> The gym has confirmed availability for your selected dates. Your booking is now confirmed and your card has been charged.
-                </p>
-              </div>
-
-              <!-- Checkmarks -->
-              <div style="margin-bottom: 30px;">
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  ${data.gymName} is expecting you on ${checkInDate}
-                </p>
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  Your payment of ${data.currency} ${data.totalPrice.toFixed(2)} has been successfully processed
-                </p>
-                ${data.magicLink ? `
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #22c55e; font-size: 18px; margin-right: 8px;">✓</span>
-                  <a href="${data.magicLink}" style="color: #006ce4; text-decoration: none;">Manage your booking or contact the gym</a>
-                </p>
-                ` : ''}
-                <p style="margin: 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  <span style="color: #6b7280; font-size: 18px; margin-right: 8px;">🔒</span>
-                  Please keep your PIN confidential as it can be used to modify or cancel your booking.
-                </p>
-              </div>
-
-              <!-- Reservation Details -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 18px; font-weight: bold;">${data.gymName}</h3>
-                <h4 style="margin: 0 0 16px 0; color: #4b5563; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Reservation details</h4>
-                
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Check-in:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${checkInDate} (14:00 - 23:00)</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Check-out:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${checkOutDate} (until 10:00)</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Your reservation:</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${duration} ${duration === 1 ? 'night' : 'nights'}${data.packageName ? `, ${data.packageName}` : ''}${data.variantName ? ` - ${data.variantName}` : ''}</p>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Payment Information -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 16px 0; color: #4b5563; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Payment information</h4>
-                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; line-height: 1.5;">
-                  Your card has been charged <strong style="color: #22c55e;">${data.currency} ${data.totalPrice.toFixed(2)}</strong> for this booking.
-                </p>
-                <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
-                  The gym has confirmed availability and your payment has been processed. You should see this charge on your card statement within 1-2 business days.
-                </p>
-                <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 12px;">
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <span style="color: #4b5563; font-size: 14px;">${chargeDate}</span>
-                      ${data.cardLast4 ? `
-                      <span style="color: #4b5563; font-size: 14px; margin-left: 12px;">${data.cardBrand || 'Card'} •••• ${data.cardLast4}</span>
-                      ` : ''}
-                    </td>
-                    <td align="right" style="padding: 8px 0;">
-                      <span style="color: #1a1a1a; font-size: 14px; font-weight: 600;">${data.currency} ${data.totalPrice.toFixed(2)}</span>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Guest Details -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 18px; font-weight: bold;">${data.packageName || 'Booking Details'}</h4>
-                
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Guest name</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${data.guestName}</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;">
-                      <strong style="color: #1a1a1a; font-size: 14px;">Meal plan</strong>
-                      <p style="margin: 4px 0 0 0; color: #4b5563; font-size: 14px;">${mealPlanText}</p>
-                      ${mealPlanDetails}
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Next Steps -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
-                <h5 style="margin: 0 0 8px 0; color: #1a1a1a; font-size: 15px; font-weight: 600;">What's Next?</h5>
-                <p style="margin: 0 0 8px 0; color: #4b5563; font-size: 14px; line-height: 1.5;">
-                  Your booking is confirmed! The gym is expecting you on ${checkInDate}. If you need to make any changes or have questions, you can contact the gym directly or use your booking reference.
-                </p>
-                ${data.magicLink ? `
-                <a href="${data.magicLink}" style="color: #006ce4; text-decoration: none; font-size: 14px; font-weight: 500; margin-top: 8px; display: inline-block;">Manage your booking →</a>
-                ` : ''}
-              </div>
-
-              <!-- Security Warning -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
-                <h5 style="margin: 0 0 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600;">Stay safe online</h5>
-                <p style="margin: 0; color: #4b5563; font-size: 13px; line-height: 1.5;">
-                  Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
-                </p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatbooking.com'}/privacy" style="color: #006ce4; text-decoration: none; font-size: 13px; margin-top: 8px; display: inline-block;">Learn more</a>
-              </div>
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">
-                If you have any questions, please contact us using your booking reference: <strong>${data.bookingReference}</strong>
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 11px;">
-                © ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim()
-
-  // Plain text fallback
-  const textContent = `
-CombatBooking.com
-Confirmation: ${data.bookingReference}
-PIN: ${data.bookingPin} (Confidential)
-
-You're On The Way! Your ${data.gymName} Has Confirmed Your Booking.
-
-Great news! The gym has confirmed availability for your selected dates. Your booking is now confirmed and your card has been charged.
-
-✓ ${data.gymName} is expecting you on ${checkInDate}
-✓ Your payment of ${data.currency} ${data.totalPrice.toFixed(2)} has been successfully processed
-${data.magicLink ? `✓ Manage your booking: ${data.magicLink}` : ''}
-🔒 Please keep your PIN confidential as it can be used to modify or cancel your booking.
-
-${data.gymName}
-Reservation details
-Check-in: ${checkInDate} (14:00 - 23:00)
-Check-out: ${checkOutDate} (until 10:00)
-Your reservation: ${duration} ${duration === 1 ? 'night' : 'nights'}${data.packageName ? `, ${data.packageName}` : ''}${data.variantName ? ` - ${data.variantName}` : ''}
-
-Payment information
-Your card has been charged ${data.currency} ${data.totalPrice.toFixed(2)} for this booking.
-The gym has confirmed availability and your payment has been processed. You should see this charge on your card statement within 1-2 business days.
-
-${chargeDate}${data.cardLast4 ? ` ${data.cardBrand || 'Card'} •••• ${data.cardLast4}` : ''} - Charged ${data.currency} ${data.totalPrice.toFixed(2)}
-
-${data.packageName || 'Booking Details'}
-Guest name: ${data.guestName}
-Meal plan: ${mealPlanText}
-
-What's Next?
-Your booking is confirmed! The gym is expecting you on ${checkInDate}. If you need to make any changes or have questions, you can contact the gym directly or use your booking reference.
-
-Stay safe online
-Protect your security by never sharing your personal or credit card information over the phone, by email or chat.
-
-If you have any questions, please contact us using your booking reference: ${data.bookingReference}
-
-© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-  `.trim()
-
-  // Try to send via Resend HTTP API if configured
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [data.guestEmail],
-          subject: `Booking Confirmed - ${data.bookingReference}`,
-          html: htmlContent,
-          text: textContent,
-        }),
-      })
-
-      if (res.ok) {
-        console.log(`✅ Booking confirmed email sent to ${data.guestEmail}`)
-        return true
-      }
-
-      const errText = await res.text()
-      console.error('❌ Resend confirmed email failed:', res.status, errText)
-      // Fall through to console logging
-    } catch (error) {
-      console.error('❌ Failed to send confirmed email via Resend:', error)
-      // Fall through to console logging
-    }
-  }
-
-  // Fallback: Log to console
-  console.log(`\n📧 BOOKING CONFIRMED EMAIL (would send to ${data.guestEmail}):`)
-  console.log(textContent)
-  console.log('\n')
-
-  return true
 }
 
 interface BookingRequestAcceptedEmailData {
@@ -883,151 +122,6 @@ interface BookingRequestAcceptedEmailData {
   paymentLink: string
 }
 
-/**
- * Send email when gym accepts a booking request
- * Transitions: pending -> confirmed
- */
-export async function sendBookingRequestAcceptedEmail(data: BookingRequestAcceptedEmailData): Promise<boolean> {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    })
-  }
-
-  const checkInDate = formatDate(data.startDate)
-  const checkOutDate = formatDate(data.endDate)
-
-  const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking Request Accepted</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #003580; color: white; padding: 20px; text-align: center;">
-    <h1 style="margin: 0;">CombatBooking.com</h1>
-  </div>
-  
-  <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0;">
-    <h2 style="color: #003580; margin-top: 0;">Great news! Your booking request has been accepted</h2>
-    <p style="font-size: 18px; font-weight: bold; color: #28a745;">Booking Reference: ${data.bookingReference}</p>
-  </div>
-
-  <div style="padding: 20px;">
-    <p>Hi ${data.guestName},</p>
-    
-    <p>Great news! <strong>${data.gymName}</strong> has accepted your booking request.</p>
-    
-    <div style="background-color: #e7f3ff; border-left: 4px solid #003580; padding: 15px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #003580;">Next Step: Complete Your Payment</h3>
-      <p style="margin-bottom: 10px;">To secure your booking, please complete payment within 48 hours:</p>
-      <a href="${data.paymentLink}" style="display: inline-block; background-color: #003580; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 10px;">Complete Payment</a>
-    </div>
-
-    <h3 style="color: #003580;">Booking Details</h3>
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Check-in:</strong></td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${checkInDate}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Check-out:</strong></td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${checkOutDate}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Price:</strong></td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${data.currency} ${data.totalPrice.toFixed(2)}</strong></td>
-      </tr>
-    </table>
-
-    <p style="color: #666; font-size: 14px; margin-top: 30px;">
-      <strong>Important:</strong> Your booking is not confirmed until payment is completed. 
-      If payment is not completed within 48 hours, your request may be cancelled.
-    </p>
-
-    <p>If you have any questions, please contact us using your booking reference: ${data.bookingReference}</p>
-
-    <p>Best regards,<br>The CombatBooking.com Team</p>
-  </div>
-
-  <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin-top: 20px; font-size: 12px; color: #666;">
-    <p>© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.</p>
-  </div>
-</body>
-</html>
-  `.trim()
-
-  const textContent = `
-CombatBooking.com
-Booking Request Accepted - ${data.bookingReference}
-
-Hi ${data.guestName},
-
-Great news! ${data.gymName} has accepted your booking request.
-
-NEXT STEP: Complete Your Payment
-To secure your booking, please complete payment within 48 hours:
-${data.paymentLink}
-
-Booking Details:
-- Check-in: ${checkInDate}
-- Check-out: ${checkOutDate}
-- Total Price: ${data.currency} ${data.totalPrice.toFixed(2)}
-
-IMPORTANT: Your booking is not confirmed until payment is completed. 
-If payment is not completed within 48 hours, your request may be cancelled.
-
-If you have any questions, please contact us using your booking reference: ${data.bookingReference}
-
-Best regards,
-The CombatBooking.com Team
-
-© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-  `.trim()
-
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [data.guestEmail],
-          subject: `Booking Request Accepted - ${data.bookingReference}`,
-          html: htmlContent,
-          text: textContent,
-        }),
-      })
-
-      if (res.ok) {
-        console.log(`✅ Request accepted email sent to ${data.guestEmail}`)
-        return true
-      }
-
-      const errText = await res.text()
-      console.error('❌ Resend request accepted email failed:', res.status, errText)
-    } catch (error) {
-      console.error('❌ Failed to send request accepted email via Resend:', error)
-    }
-  }
-
-  console.log(`\n📧 REQUEST ACCEPTED EMAIL (would send to ${data.guestEmail}):`)
-  console.log(textContent)
-  console.log('\n')
-
-  return true
-}
-
 interface BookingRequestDeclinedEmailData {
   bookingReference: string
   guestName: string
@@ -1036,118 +130,466 @@ interface BookingRequestDeclinedEmailData {
   reason: string
 }
 
-/**
- * Send email when gym declines a booking request
- * Transitions: pending → declined
- */
-export async function sendBookingRequestDeclinedEmail(data: BookingRequestDeclinedEmailData): Promise<boolean> {
-  const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking Request Declined</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #003580; color: white; padding: 20px; text-align: center;">
-    <h1 style="margin: 0;">CombatBooking.com</h1>
-  </div>
-  
-  <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
-    <h2 style="color: #856404; margin-top: 0;">Booking Request Update</h2>
-    <p style="font-size: 18px; font-weight: bold; color: #856404;">Booking Reference: ${data.bookingReference}</p>
-  </div>
+// ============================================================================
+// Shared helpers
+// ============================================================================
 
-  <div style="padding: 20px;">
-    <p>Hi ${data.guestName},</p>
-    
-    <p>We're sorry to inform you that <strong>${data.gymName}</strong> is unable to accommodate your booking request at this time.</p>
-    
-    <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 4px;">
-      <p style="margin: 0;"><strong>Reason:</strong></p>
-      <p style="margin-top: 5px;">${data.reason}</p>
-    </div>
+function formatMealPlan(details?: MealPlanDetails | null): string {
+  if (!details) return 'No meal plan included with this booking.'
+  const meals: string[] = []
+  if (details.breakfast) meals.push('Breakfast')
+  if (details.lunch) meals.push('Lunch')
+  if (details.dinner) meals.push('Dinner')
+  const parts: string[] = []
+  if (meals.length) parts.push(meals.join(', '))
+  if (details.meals_per_day) {
+    parts.push(
+      `${details.meals_per_day} ${details.meals_per_day === 1 ? 'meal' : 'meals'} per day`,
+    )
+  }
+  if (details.description) parts.push(details.description)
+  return parts.length ? parts.join(' · ') : 'No meal plan included with this booking.'
+}
 
-    <p>We understand this is disappointing. We encourage you to:</p>
-    <ul>
-      <li>Browse other available gyms on our platform</li>
-      <li>Try different dates if your schedule is flexible</li>
-      <li>Contact us if you need assistance finding alternatives</li>
-    </ul>
+function reservationSummary(opts: {
+  gymName: string
+  startDate: string
+  endDate: string
+  packageName?: string
+  variantName?: string
+}): string {
+  const nights = nightsBetween(opts.startDate, opts.endDate)
+  const stay = `${nights} ${nights === 1 ? 'night' : 'nights'}${opts.packageName ? ` · ${opts.packageName}` : ''}${opts.variantName ? ` — ${opts.variantName}` : ''}`
+  return (
+    cardTitle(opts.gymName) +
+    uppercaseLabel('Reservation') +
+    detailRows([
+      { label: 'Check-in', value: `${escape(formatDate(opts.startDate))} <span style="color:${BRAND.metaText};">(14:00 – 23:00)</span>` },
+      { label: 'Check-out', value: `${escape(formatDate(opts.endDate))} <span style="color:${BRAND.metaText};">(until 10:00)</span>` },
+      { label: 'Stay', value: escape(stay) },
+    ])
+  )
+}
 
-    <p>If you have any questions, please contact us using your booking reference: ${data.bookingReference}</p>
+function guestPanel(opts: {
+  guestName: string
+  mealPlanDetails?: MealPlanDetails | null
+  packageName?: string
+}): string {
+  return (
+    uppercaseLabel('Guest') +
+    detailRows([
+      { label: 'Name', value: escape(opts.guestName) },
+      { label: 'Meal plan', value: escape(formatMealPlan(opts.mealPlanDetails)) },
+      ...(opts.packageName ? [{ label: 'Package', value: escape(opts.packageName) }] : []),
+    ])
+  )
+}
 
-    <p>Best regards,<br>The CombatBooking.com Team</p>
-  </div>
+function referenceStrip(ref: string, pin?: string): string {
+  const pinRow = pin
+    ? `<span style="color:${BRAND.metaText};font-size:13px;margin-left:12px;">PIN <strong style="color:${BRAND.headingText};letter-spacing:1px;">${escape(pin)}</strong></span>`
+    : ''
+  return `<div style="margin:0 0 24px 0;padding:12px 14px;background-color:${BRAND.subtleBg};border:1px solid ${BRAND.subtleBorder};border-radius:10px;">
+    <span style="color:${BRAND.metaText};font-size:13px;">Reference <strong style="color:${BRAND.headingText};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escape(ref)}</strong></span>
+    ${pinRow}
+  </div>`
+}
 
-  <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin-top: 20px; font-size: 12px; color: #666;">
-    <p>© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.</p>
-  </div>
-</body>
-</html>
-  `.trim()
+// ============================================================================
+// 1. Admin booking notification (internal ops email — kept compact)
+// ============================================================================
 
-  const textContent = `
-CombatBooking.com
-Booking Request Declined - ${data.bookingReference}
+export async function sendAdminBookingEmail(data: AdminBookingEmailData): Promise<boolean> {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL
+  const dashboardUrl = `${APP_URL()}/admin`
+
+  const text = `New booking request — ${data.bookingReference}
+
+Gym:        ${data.gymName} (${data.gymCity}, ${data.gymCountry})
+Owner:      ${data.gymOwnerName || 'N/A'} <${data.gymOwnerEmail || 'N/A'}>
+Package:    ${data.packageName || 'N/A'}${data.variantName ? ` — ${data.variantName}` : ''}
+Dates:      ${formatDate(data.startDate)} → ${formatDate(data.endDate)} (${data.duration} ${data.duration === 1 ? 'day' : 'days'})
+
+Guest:      ${data.guestName} <${data.guestEmail}>
+Phone:      ${data.guestPhone || 'Not provided'}
+Discipline: ${data.discipline} (${data.experienceLevel})
+${data.notes ? `Notes:      ${data.notes}\n` : ''}
+Total:      ${formatMoney(data.totalPrice, data.currency)}
+Platform:   ${formatMoney(data.platformFee, data.currency)}
+Payout:     ${formatMoney(data.totalPrice - data.platformFee, data.currency)}
+Status:     ${data.paymentStatus}
+PI:         ${data.paymentIntentId}
+PIN:        ${data.bookingPin}
+
+Open: ${dashboardUrl}
+`
+
+  const innerHtml = [
+    heading(`New booking request`),
+    paragraph(
+      `<strong>${escape(data.guestName)}</strong> just requested <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCity)}, ${escape(data.gymCountry)}. Review and action below.`,
+    ),
+    referenceStrip(data.bookingReference, data.bookingPin),
+    panel(
+      uppercaseLabel('Booking') +
+        detailRows([
+          { label: 'Dates', value: `${escape(formatDate(data.startDate))} → ${escape(formatDate(data.endDate))} <span style="color:${BRAND.metaText};">(${data.duration} ${data.duration === 1 ? 'day' : 'days'})</span>` },
+          { label: 'Package', value: escape(`${data.packageName || '—'}${data.variantName ? ` — ${data.variantName}` : ''}`) },
+          { label: 'Discipline', value: `${escape(data.discipline)} <span style="color:${BRAND.metaText};">(${escape(data.experienceLevel)})</span>` },
+          ...(data.notes ? [{ label: 'Notes', value: escape(data.notes) }] : []),
+        ]),
+    ),
+    panel(
+      uppercaseLabel('Gym & Guest') +
+        detailRows([
+          { label: 'Gym', value: `${escape(data.gymName)}<br/><span style="color:${BRAND.metaText};">${escape(data.gymCity)}, ${escape(data.gymCountry)}</span>` },
+          { label: 'Owner', value: `${escape(data.gymOwnerName || 'N/A')}<br/><a href="mailto:${escape(data.gymOwnerEmail || '')}" style="color:${BRAND.linkColor};text-decoration:none;">${escape(data.gymOwnerEmail || 'N/A')}</a>` },
+          { label: 'Guest', value: `${escape(data.guestName)}<br/><a href="mailto:${escape(data.guestEmail)}" style="color:${BRAND.linkColor};text-decoration:none;">${escape(data.guestEmail)}</a>${data.guestPhone ? ` · ${escape(data.guestPhone)}` : ''}` },
+        ]),
+    ),
+    panel(
+      uppercaseLabel('Payment') +
+        detailRows([
+          { label: 'Total', value: escape(formatMoney(data.totalPrice, data.currency)) },
+          { label: 'Platform fee', value: escape(formatMoney(data.platformFee, data.currency)) },
+          { label: 'Gym payout', value: escape(formatMoney(data.totalPrice - data.platformFee, data.currency)) },
+          { label: 'Status', value: escape(data.paymentStatus) },
+          { label: 'Payment intent', value: `<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;">${escape(data.paymentIntentId)}</span>` },
+          ...(data.cardLast4 ? [{ label: 'Card', value: escape(`${data.cardBrand || 'Card'} •••• ${data.cardLast4}`) }] : []),
+        ]),
+    ),
+    primaryButton(dashboardUrl, 'Open admin dashboard'),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Admin · new booking',
+    title: `New booking — ${data.bookingReference}`,
+    preheader: `${data.guestName} requested ${data.gymName}, ${formatDate(data.startDate)}.`,
+    innerHtml,
+  })
+
+  if (!adminEmail) {
+    console.warn('⚠️  ADMIN_EMAIL not set; logging admin email to console only.')
+    console.log(`\n📧 [admin-booking]\n${text}\n`)
+    return true
+  }
+  return sendEmail({
+    to: adminEmail,
+    subject: `New booking — ${data.bookingReference} · ${data.gymName}`,
+    html,
+    text,
+    tag: 'admin-booking',
+  })
+}
+
+// ============================================================================
+// 2. Guest — booking request received (card authorized, not charged)
+// ============================================================================
+
+export async function sendUserConfirmationEmail(data: UserConfirmationEmailData): Promise<boolean> {
+  const innerHtml = [
+    heading(`Thanks, ${data.guestName.split(' ')[0]} — your request is in.`),
+    paragraph(
+      `We've sent your booking request to <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCountry)}. Your card is authorized but <strong>not charged yet</strong> — we only take payment once the gym confirms.`,
+    ),
+    referenceStrip(data.bookingReference, data.bookingPin),
+    callout({
+      tone: 'warning',
+      title: 'Card authorized · not charged',
+      bodyHtml: `We've placed a hold for <strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>. You'll only be charged if ${escape(data.gymName)} confirms availability. If they can't accommodate you, the hold is released within a few business days — no charge.`,
+    }),
+    ...(data.magicLink
+      ? [primaryButton(data.magicLink, 'Manage your booking')]
+      : []),
+    panel(
+      reservationSummary({
+        gymName: data.gymName,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        packageName: data.packageName,
+        variantName: data.variantName,
+      }),
+    ),
+    panel(
+      uppercaseLabel('Payment') +
+        detailRows([
+          { label: 'Status', value: `<span style="color:#92400e;font-weight:600;">Authorized · awaiting gym confirmation</span>` },
+          { label: 'Amount on hold', value: escape(formatMoney(data.totalPrice, data.currency)) },
+          { label: 'Date', value: escape(formatDate(data.paymentDate)) },
+          ...(data.cardLast4 ? [{ label: 'Card', value: escape(`${data.cardBrand || 'Card'} •••• ${data.cardLast4}`) }] : []),
+        ]),
+    ),
+    panel(guestPanel({ guestName: data.guestName, mealPlanDetails: data.mealPlanDetails, packageName: data.packageName })),
+    divider(),
+    sectionLabel('What happens next'),
+    numberedList([
+      `${escape(data.gymName)} reviews your request — usually within 24–48 hours.`,
+      `If confirmed, we charge your card and send a final confirmation email.`,
+      `If the gym can't accommodate you, the hold is released and we'll help you find alternatives.`,
+    ]),
+    callout({
+      tone: 'neutral',
+      title: 'Keep your PIN private',
+      bodyHtml: `Your PIN can be used to modify or cancel this booking. Don't share it by email, chat, or phone — not even with ${BRAND.name} staff.`,
+    }),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Booking request',
+    title: `Your ${BRAND.name} booking request · ${data.bookingReference}`,
+    preheader: `Request sent to ${data.gymName}. Your card is authorized, not charged — we'll confirm within 24–48 hours.`,
+    innerHtml,
+  })
+
+  const text = `Thanks ${data.guestName} — your booking request at ${data.gymName} is in.
+
+Reference: ${data.bookingReference}
+PIN: ${data.bookingPin} (keep private)
+
+Your card is AUTHORIZED for ${formatMoney(data.totalPrice, data.currency)} but NOT CHARGED YET.
+We'll only charge you once the gym confirms availability.
+
+Check-in:  ${formatDate(data.startDate)} (14:00–23:00)
+Check-out: ${formatDate(data.endDate)} (until 10:00)
+Stay:      ${nightsBetween(data.startDate, data.endDate)} ${nightsBetween(data.startDate, data.endDate) === 1 ? 'night' : 'nights'}${data.packageName ? ` · ${data.packageName}` : ''}${data.variantName ? ` — ${data.variantName}` : ''}
+Guest:     ${data.guestName}
+Meal plan: ${formatMealPlan(data.mealPlanDetails)}
+${data.cardLast4 ? `Card:      ${data.cardBrand || 'Card'} •••• ${data.cardLast4}\n` : ''}
+What happens next:
+ 1. ${data.gymName} reviews your request (usually within 24–48 hours).
+ 2. If confirmed, we charge your card and send a final confirmation.
+ 3. If they can't accommodate you, the hold is released — no charge.
+${data.magicLink ? `\nManage your booking: ${data.magicLink}\n` : ''}
+Keep your PIN private — it can be used to modify or cancel the booking.
+`
+
+  return sendEmail({
+    to: data.guestEmail,
+    subject: `Your ${BRAND.name} request at ${data.gymName} · ${data.bookingReference}`,
+    html,
+    text,
+    tag: 'guest-request-received',
+  })
+}
+
+// ============================================================================
+// 3. Guest — booking confirmed (card charged)
+// ============================================================================
+
+export async function sendBookingConfirmedEmail(data: BookingConfirmedEmailData): Promise<boolean> {
+  const innerHtml = [
+    heading(`You're confirmed — ${data.gymName} is expecting you.`),
+    paragraph(
+      `Good news: <strong>${escape(data.gymName)}</strong> confirmed your dates and we've charged your card. Below is everything you need for arrival.`,
+    ),
+    referenceStrip(data.bookingReference, data.bookingPin),
+    checkList([
+      `${escape(data.gymName)} is expecting you on <strong>${escape(formatDate(data.startDate))}</strong>.`,
+      `Payment of <strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong> successfully processed.`,
+      `Full booking details available anytime via the manage link below.`,
+    ]),
+    ...(data.magicLink
+      ? [primaryButton(data.magicLink, 'Manage your booking')]
+      : []),
+    panel(
+      reservationSummary({
+        gymName: data.gymName,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        packageName: data.packageName,
+        variantName: data.variantName,
+      }),
+    ),
+    panel(
+      uppercaseLabel('Payment') +
+        detailRows([
+          { label: 'Status', value: `<span style="color:#065f46;font-weight:600;">Charged</span>` },
+          { label: 'Amount', value: escape(formatMoney(data.totalPrice, data.currency)) },
+          { label: 'Date', value: escape(formatDate(data.chargeDate)) },
+          ...(data.cardLast4 ? [{ label: 'Card', value: escape(`${data.cardBrand || 'Card'} •••• ${data.cardLast4}`) }] : []),
+        ]),
+    ),
+    panel(guestPanel({ guestName: data.guestName, mealPlanDetails: data.mealPlanDetails, packageName: data.packageName })),
+    divider(),
+    sectionLabel('Before you arrive'),
+    numberedList([
+      `Save this email — you'll need the reference if you contact the gym or us.`,
+      `Check passport, visa, and insurance for your trip to ${escape(data.gymCountry)}.`,
+      `Questions for the gym? Use <a href="${data.magicLink || APP_URL()}" style="color:${BRAND.linkColor};text-decoration:none;">manage your booking</a> to message them directly.`,
+    ]),
+    callout({
+      tone: 'neutral',
+      title: 'Keep your PIN private',
+      bodyHtml: `Your PIN can be used to modify or cancel this booking. Never share it by email, chat, or phone.`,
+    }),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Booking confirmed',
+    title: `Confirmed · ${data.gymName} · ${data.bookingReference}`,
+    preheader: `${data.gymName} confirmed your stay. Card charged. See details inside.`,
+    innerHtml,
+  })
+
+  const text = `You're confirmed — ${data.gymName} is expecting you.
+
+Reference: ${data.bookingReference}
+PIN: ${data.bookingPin} (keep private)
+
+Check-in:  ${formatDate(data.startDate)} (14:00–23:00)
+Check-out: ${formatDate(data.endDate)} (until 10:00)
+Stay:      ${nightsBetween(data.startDate, data.endDate)} ${nightsBetween(data.startDate, data.endDate) === 1 ? 'night' : 'nights'}${data.packageName ? ` · ${data.packageName}` : ''}${data.variantName ? ` — ${data.variantName}` : ''}
+Guest:     ${data.guestName}
+Meal plan: ${formatMealPlan(data.mealPlanDetails)}
+
+Payment:   CHARGED ${formatMoney(data.totalPrice, data.currency)}${data.cardLast4 ? ` (${data.cardBrand || 'Card'} •••• ${data.cardLast4})` : ''} on ${formatDate(data.chargeDate)}
+${data.magicLink ? `\nManage your booking: ${data.magicLink}\n` : ''}
+Before you arrive:
+ 1. Save this email — you may need the reference on arrival.
+ 2. Check passport, visa, and insurance for ${data.gymCountry}.
+ 3. Questions for the gym? Message them via the manage link.
+
+Keep your PIN private.
+`
+
+  return sendEmail({
+    to: data.guestEmail,
+    subject: `Confirmed: ${data.gymName} · ${data.bookingReference}`,
+    html,
+    text,
+    tag: 'guest-confirmed',
+  })
+}
+
+// ============================================================================
+// 4. Guest — gym accepted the request (action needed: complete payment)
+// ============================================================================
+
+export async function sendBookingRequestAcceptedEmail(data: BookingRequestAcceptedEmailData): Promise<boolean> {
+  const innerHtml = [
+    heading(`${data.gymName} accepted your request.`),
+    paragraph(
+      `Hi ${escape(data.guestName.split(' ')[0])} — good news, <strong>${escape(data.gymName)}</strong> accepted your booking request. Complete payment below within <strong>48 hours</strong> to lock it in.`,
+    ),
+    referenceStrip(data.bookingReference),
+    primaryButton(data.paymentLink, `Complete payment · ${formatMoney(data.totalPrice, data.currency)}`),
+    linkFallback(data.paymentLink),
+    panel(
+      uppercaseLabel('Reservation') +
+        detailRows([
+          { label: 'Gym', value: escape(data.gymName) },
+          { label: 'Check-in', value: escape(formatDate(data.startDate)) },
+          { label: 'Check-out', value: escape(formatDate(data.endDate)) },
+          { label: 'Total', value: `<strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>` },
+        ]),
+    ),
+    callout({
+      tone: 'warning',
+      title: '48-hour window',
+      bodyHtml: `If payment isn't completed within 48 hours, the gym may release your dates to other guests. Questions? Just reply to this email.`,
+    }),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Action required',
+    title: `${data.gymName} accepted · complete payment`,
+    preheader: `${data.gymName} accepted your booking. Complete payment within 48 hours to confirm.`,
+    innerHtml,
+  })
+
+  const text = `${data.gymName} accepted your booking request.
 
 Hi ${data.guestName},
 
-We're sorry to inform you that ${data.gymName} is unable to accommodate your booking request at this time.
+Reference: ${data.bookingReference}
 
-Reason:
+Complete payment within 48 HOURS to secure your booking:
+${data.paymentLink}
+
+Check-in:  ${formatDate(data.startDate)}
+Check-out: ${formatDate(data.endDate)}
+Total:     ${formatMoney(data.totalPrice, data.currency)}
+
+If payment isn't completed within 48 hours, the gym may release your dates.
+Questions? Reply to this email.
+`
+
+  return sendEmail({
+    to: data.guestEmail,
+    subject: `${data.gymName} accepted · complete payment · ${data.bookingReference}`,
+    html,
+    text,
+    tag: 'guest-request-accepted',
+  })
+}
+
+// ============================================================================
+// 5. Guest — gym declined the request
+// ============================================================================
+
+export async function sendBookingRequestDeclinedEmail(data: BookingRequestDeclinedEmailData): Promise<boolean> {
+  const browseUrl = `${APP_URL()}/search`
+
+  const innerHtml = [
+    heading(`Your request couldn't be confirmed.`),
+    paragraph(
+      `Hi ${escape(data.guestName.split(' ')[0])} — we're sorry, <strong>${escape(data.gymName)}</strong> can't accommodate your booking at this time. No charge was made.`,
+    ),
+    referenceStrip(data.bookingReference),
+    callout({
+      tone: 'neutral',
+      title: `Reason from ${data.gymName}`,
+      bodyHtml: escape(data.reason),
+    }),
+    primaryButton(browseUrl, 'Browse similar gyms'),
+    divider(),
+    sectionLabel('Still want to train in the area?'),
+    numberedList([
+      `Try flexible dates if your schedule allows — many gyms fill up fast.`,
+      `Browse other verified ${BRAND.name} gyms in the same country or region.`,
+      `Reply to this email and our team will help you find alternatives.`,
+    ]),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Request update',
+    title: `Update on your ${data.gymName} request`,
+    preheader: `${data.gymName} can't confirm your booking. No charge was made — let's find alternatives.`,
+    innerHtml,
+  })
+
+  const text = `Your ${data.gymName} request couldn't be confirmed.
+
+Hi ${data.guestName},
+
+Reference: ${data.bookingReference}
+
+Reason from ${data.gymName}:
 ${data.reason}
 
-We understand this is disappointing. We encourage you to:
-- Browse other available gyms on our platform
-- Try different dates if your schedule is flexible
-- Contact us if you need assistance finding alternatives
+No charge was made.
 
-If you have any questions, please contact us using your booking reference: ${data.bookingReference}
+Browse similar gyms: ${browseUrl}
 
-Best regards,
-The CombatBooking.com Team
+Still want to train in the area?
+ - Try flexible dates.
+ - Browse other verified ${BRAND.name} gyms nearby.
+ - Reply to this email and our team will help.
+`
 
-© ${new Date().getFullYear()} CombatBooking.com. All rights reserved.
-  `.trim()
-
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [data.guestEmail],
-          subject: `Booking Request Update - ${data.bookingReference}`,
-          html: htmlContent,
-          text: textContent,
-        }),
-      })
-
-      if (res.ok) {
-        console.log(`✅ Request declined email sent to ${data.guestEmail}`)
-        return true
-      }
-
-      const errText = await res.text()
-      console.error('❌ Resend request declined email failed:', res.status, errText)
-    } catch (error) {
-      console.error('❌ Failed to send request declined email via Resend:', error)
-    }
-  }
-
-  console.log(`\n📧 REQUEST DECLINED EMAIL (would send to ${data.guestEmail}):`)
-  console.log(textContent)
-  console.log('\n')
-
-  return true
+  return sendEmail({
+    to: data.guestEmail,
+    subject: `Update on your ${data.gymName} request · ${data.bookingReference}`,
+    html,
+    text,
+    tag: 'guest-request-declined',
+  })
 }
+
+// ============================================================================
+// 6. Owner — payouts disabled by Stripe (action required)
+// ============================================================================
 
 export async function sendOwnerPayoutDisabledEmail(data: {
   ownerEmail: string
@@ -1156,56 +598,63 @@ export async function sendOwnerPayoutDisabledEmail(data: {
   disabledReason?: string | null
   requirementsDue?: string[]
 }): Promise<boolean> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const dashboardUrl = `${APP_URL()}/manage/stripe-connect`
+  const reason = data.disabledReason?.trim() || 'Not specified by Stripe'
   const due =
     data.requirementsDue && data.requirementsDue.length > 0
       ? data.requirementsDue.join(', ')
       : 'None listed'
-  const reason = data.disabledReason?.trim() || 'Not specified by Stripe'
 
-  const text = `
-Payouts paused for ${data.gymName}
+  const innerHtml = [
+    heading(`Payouts paused for ${data.gymName}`),
+    paragraph(
+      `Stripe has disabled payouts on your connected account. Your listing remains live, but earnings won't transfer until this is resolved.`,
+    ),
+    callout({
+      tone: 'danger',
+      title: 'Reason from Stripe',
+      bodyHtml: escape(reason),
+    }),
+    primaryButton(dashboardUrl, 'Finish Stripe setup'),
+    panel(
+      uppercaseLabel('Account') +
+        detailRows([
+          { label: 'Gym', value: escape(data.gymName) },
+          { label: 'Stripe account', value: `<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;">${escape(data.stripeAccountId)}</span>` },
+          { label: 'Outstanding requirements', value: escape(due) },
+        ]),
+    ),
+    paragraph(
+      `If you didn't change your bank or identity details, reply to this email and we'll investigate with Stripe on your behalf.`,
+      { muted: true },
+    ),
+  ].join('')
 
-Stripe has disabled payouts for your connected account (${data.stripeAccountId}).
+  const html = renderEmail({
+    eyebrow: 'Action required',
+    title: `Payouts paused · ${data.gymName}`,
+    preheader: `Stripe disabled payouts. Finish Connect setup to resume transfers.`,
+    innerHtml,
+  })
+
+  const text = `Payouts paused for ${data.gymName}
+
+Stripe has disabled payouts on your connected account (${data.stripeAccountId}).
 
 Reason (Stripe): ${reason}
 Outstanding requirements: ${due}
 
-Open your owner portal to finish Stripe Connect setup:
-${appUrl}/manage/stripe-connect
+Finish Stripe setup:
+${dashboardUrl}
 
-If you did not change your bank or account details, contact support.
+If you didn't change bank or identity details, reply to this email and we'll investigate.
+`
 
-© ${new Date().getFullYear()} CombatBooking.com
-  `.trim()
-
-  if (process.env.RESEND_API_KEY && data.ownerEmail) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [data.ownerEmail],
-          subject: `Action required: payouts paused — ${data.gymName}`,
-          text,
-        }),
-      })
-      if (res.ok) {
-        console.log(`✅ Payout-disabled email sent to ${data.ownerEmail}`)
-        return true
-      }
-      const errText = await res.text()
-      console.error('❌ Resend payout-disabled email failed:', res.status, errText)
-    } catch (error) {
-      console.error('❌ Failed to send payout-disabled email:', error)
-    }
-  }
-
-  console.log(`\n📧 PAYOUT DISABLED EMAIL (would send to ${data.ownerEmail}):\n${text}\n`)
-  return true
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: `Action required: payouts paused · ${data.gymName}`,
+    html,
+    text,
+    tag: 'owner-payout-disabled',
+  })
 }
