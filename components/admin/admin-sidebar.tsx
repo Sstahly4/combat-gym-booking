@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Upload,
 } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
 import { cn } from '@/lib/utils'
@@ -83,7 +84,15 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         href: '/admin/gyms',
         label: 'Gyms',
         icon: Building2,
-        isActive: (p) => p === '/admin/gyms' || p.startsWith('/admin/gyms/'),
+        isActive: (p) =>
+          p === '/admin/gyms' ||
+          (p.startsWith('/admin/gyms/') && !p.startsWith('/admin/gyms/bulk-import')),
+      },
+      {
+        href: '/admin/gyms/bulk-import',
+        label: 'Bulk import',
+        icon: Upload,
+        isActive: (p) => p.startsWith('/admin/gyms/bulk-import'),
       },
       {
         href: '/admin/reviews',

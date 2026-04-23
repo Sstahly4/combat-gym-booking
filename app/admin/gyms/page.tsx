@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound, PlusCircle, Sparkles } from 'lucide-react'
+import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -102,6 +102,13 @@ export default function AdminGymsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/gyms/bulk-import"
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-800 hover:bg-stone-50"
+          >
+            <Upload className="h-4 w-4" />
+            Bulk import
+          </Link>
           <Link
             href={ADMIN_CREATE_GYM_ONBOARDING_HREF}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"

@@ -60,6 +60,8 @@ export interface Gym {
   offers_accommodation?: boolean
   /** Admin pre-listed this gym for handoff to a real owner via a claim link. */
   is_pre_listed?: boolean
+  /** Set when this row was created via admin CSV bulk import (rollback + idempotency). */
+  bulk_import_batch_id?: string | null
   address: string | null
   latitude: number | null
   longitude: number | null
