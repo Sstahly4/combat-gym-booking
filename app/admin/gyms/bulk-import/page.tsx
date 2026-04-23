@@ -242,7 +242,8 @@ export default function AdminBulkGymImportPage() {
         <h1 className="mt-1 text-2xl font-semibold text-stone-900">Bulk import (CSV or Excel)</h1>
         <p className="mt-2 max-w-3xl text-sm text-stone-600">
           Drag in a <span className="font-medium">.xlsx</span> / <span className="font-medium">.xls</span> file (first
-          sheet only) or paste CSV text. Prospect-style columns work:{' '}
+          sheet only) or paste CSV text. A title row above the column headers (for example a sheet banner) is
+          detected automatically. Prospect-style columns work:{' '}
           <span className="font-medium">name</span>, <span className="font-medium">address</span>,{' '}
           <span className="font-medium">city</span>, <span className="font-medium">sports</span>,{' '}
           <span className="font-medium">accommodation</span> (Yes/No → listing flag), plus optional maps URL and{' '}

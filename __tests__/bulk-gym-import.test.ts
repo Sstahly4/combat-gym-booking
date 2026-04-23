@@ -3,6 +3,7 @@ import {
   attachDuplicates,
   buildParsedRowsFromGrid,
   findDuplicateMatches,
+  findHeaderRowIndex,
   gridToCsv,
   mapDisciplineCell,
   normalizeCountryLabel,
@@ -174,6 +175,15 @@ describe('resolutionValidForRow', () => {
   })
 })
 
+describe('findHeaderRowIndex', () => {
+  it('skips a title row before column headers', () => {
+    const grid = parseCsvRows(
+      'Combatrip.com — Thailand Gym Prospects,,,,,\nGym Name,Location / Address,City,Sports Offered,Accommodation?\nBangkok Fight Lab,"137 Soi",Bangkok,MMA,No\n',
+    )
+    expect(findHeaderRowIndex(grid)).toBe(1)
+  })
+})
+
 describe('buildParsedRowsFromGrid + attachDuplicates', () => {
   it('parses headers and attaches duplicates', () => {
     const grid = parseCsvRows(
@@ -205,5 +215,23 @@ describe('buildParsedRowsFromGrid + attachDuplicates', () => {
     expect(header_error).toBeUndefined()
     expect(rows[0].address).toBe('1 Main St')
     expect(rows[0].offers_accommodation).toBe(true)
+  })
+
+  it('parses Combatrip-style sheet with title row and Gym Name / Sports Offered', () => {
+    const grid = parseCsvRows(
+      [
+        'Combatrip.com — Thailand Gym Prospects,,,,,,,,,,',
+        'Gym Name,Location / Address,City,Sports Offered,Google Rating,Reviews,Phone / WhatsApp,Website,Hours (Mon),Accommodation?,Notes',
+        'Bangkok Fight Lab,"137 Soi Sukhumvit 50",Bangkok,"MMA, BJJ",4.7,270,+66,,,No,Pending',
+      ].join('\n'),
+    )
+    const { rows, header_error } = buildParsedRowsFromGrid(grid, 'Thailand')
+    expect(header_error).toBeUndefined()
+    expect(rows[0].name).toBe('Bangkok Fight Lab')
+    expect(rows[0].address).toContain('137 Soi')
+    expect(rows[0].city).toBe('Bangkok')
+    expect(rows[0].disciplines).toContain('MMA')
+    expect(rows[0].offers_accommodation).toBe(false)
+    expect(rows[0].rowIndex).toBe(3)
   })
 })

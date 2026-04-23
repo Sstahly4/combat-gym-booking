@@ -356,8 +356,21 @@ function pickColumnIndex(headers: string[], candidates: string[]): number {
 export function resolveHeaderIndices(headerRow: string[]) {
   const headers = headerRow.map((h) => h.trim())
   return {
-    name: pickColumnIndex(headers, ['name', 'gym name', 'gym_name', 'title', 'gym']),
-    address: pickColumnIndex(headers, ['address', 'street', 'full address', 'location address']),
+    name: pickColumnIndex(headers, [
+      'name',
+      'gym name',
+      'gym_name',
+      'title',
+      'gym',
+      'venue name',
+    ]),
+    address: pickColumnIndex(headers, [
+      'address',
+      'street',
+      'full address',
+      'location address',
+      'location / address',
+    ]),
     google_maps_link: pickColumnIndex(headers, [
       'google_maps_link',
       'google maps link',
@@ -378,17 +391,37 @@ export function resolveHeaderIndices(headerRow: string[]) {
       'discipline',
       'sports',
       'sport',
+      'sports offered',
       'training',
       'styles',
     ]),
     accommodation: pickColumnIndex(headers, [
       'accommodation',
+      'accommodation?',
       'offers accommodation',
       'offers_accommodation',
       'stays',
       'lodging',
     ]),
   }
+}
+
+/** First grid row index that looks like a real header (has name + city columns). */
+export function findHeaderRowIndex(grid: string[][]): number {
+  const max = Math.min(30, Math.max(0, grid.length - 1))
+  for (let i = 0; i <= max; i++) {
+    const row = grid[i]
+    if (!row || row.every((c) => !String(c ?? '').trim())) continue
+    const idx = resolveHeaderIndices(row.map((c) => String(c ?? '')))
+    if (idx.name !== -1 && idx.city !== -1) return i
+  }
+  return 0
+}
+
+function padRowToHeaderWidth(row: string[] | undefined, headerLen: number): string[] {
+  const cells = (row ?? []).map((c) => String(c ?? ''))
+  while (cells.length < headerLen) cells.push('')
+  return cells
 }
 
 function parseYesNoLoose(raw: string): boolean | null {
@@ -409,7 +442,9 @@ export function buildParsedRowsFromGrid(
       header_error: 'The file must include a header row and at least one data row.',
     }
   }
-  const [header, ...body] = grid
+  const headerIdx = findHeaderRowIndex(grid)
+  const header = (grid[headerIdx] ?? []).map((c) => String(c ?? ''))
+  const body = grid.slice(headerIdx + 1)
   const idx = resolveHeaderIndices(header)
   if (idx.name === -1) {
     return {
@@ -432,8 +467,10 @@ export function buildParsedRowsFromGrid(
 
   const rows: BulkImportParsedRow[] = []
   let dataRowIndex = 0
+  const headerLen = Math.max(header.length, 1)
+
   for (let r = 0; r < body.length; r++) {
-    const line = body[r]
+    const line = padRowToHeaderWidth(body[r], headerLen)
     if (line.every((c) => c.trim() === '')) continue
     dataRowIndex++
     if (dataRowIndex > BULK_IMPORT_MAX_ROWS) {
@@ -489,7 +526,7 @@ export function buildParsedRowsFromGrid(
     }
 
     rows.push({
-      rowIndex: r + 2,
+      rowIndex: headerIdx + r + 2,
       name: normalizeWhitespace(name),
       address,
       city: normalizeWhitespace(city),
