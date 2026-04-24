@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
+import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 
 interface Hit {
   id: string
@@ -69,16 +70,17 @@ export function AdminHeaderSearch() {
       .select('id, name, city, country')
       .order('created_at', { ascending: false })
       .limit(80)
+    const returnTo = pathname || '/admin'
     setGymHits(
       (data ?? []).map((g) => ({
         id: `gym-${g.id}`,
         title: g.name || 'Untitled gym',
         subtitle: [g.city, g.country].filter(Boolean).join(', ') || 'Gym',
-        href: `/manage/gym/edit?id=${g.id}`,
+        href: manageGymEditHref(g.id, { returnTo }),
         keywords: [g.name, g.city, g.country].filter(Boolean) as string[],
       })),
     )
-  }, [user?.id, profile?.role])
+  }, [user?.id, profile?.role, pathname])
 
   useEffect(() => {
     if (!user?.id || profile?.role !== 'admin') return

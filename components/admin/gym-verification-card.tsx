@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import { CheckCircle2, XCircle, Loader2, ExternalLink } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +15,7 @@ interface GymVerificationCardProps {
 }
 
 export function GymVerificationCard({ gym, onVerify, isVerifying }: GymVerificationCardProps) {
+  const pathname = usePathname() ?? '/admin/verification'
   const [stripeStatus, setStripeStatus] = useState<{
     verified: boolean
     has_account: boolean
@@ -171,7 +174,9 @@ export function GymVerificationCard({ gym, onVerify, isVerifying }: GymVerificat
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => window.open(`/manage/gym/edit?id=${gym.id}`, '_blank')}
+            onClick={() =>
+              window.open(manageGymEditHref(gym.id, { returnTo: pathname }), '_blank')
+            }
           >
             Edit Gym
           </Button>

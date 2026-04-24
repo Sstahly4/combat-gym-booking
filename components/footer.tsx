@@ -24,7 +24,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/contact" className="text-gray-600 hover:text-[#003580]">
-                  Get Support
+                  Customer service
                 </Link>
               </li>
               <li>

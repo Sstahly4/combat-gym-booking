@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,53 +8,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function ContactPage() {
-  useEffect(() => {
-    // Set document title
-    document.title = 'Contact Customer Service - CombatStay.com'
-    
-    // Set or create meta description
-    let metaDescription = document.querySelector('meta[name="description"]')
-    if (!metaDescription) {
-      metaDescription = document.createElement('meta')
-      metaDescription.setAttribute('name', 'description')
-      document.head.appendChild(metaDescription)
-    }
-    metaDescription.setAttribute('content', 'Get in touch with our customer service team. We\'re here to help with your booking questions and support needs.')
-    
-    // Set Open Graph tags
-    const setMetaTag = (property: string, content: string) => {
-      let tag = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`)
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute(property.startsWith('og:') ? 'property' : 'name', property)
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', content)
-    }
-    
-    setMetaTag('og:title', 'Contact Customer Service - CombatStay.com')
-    setMetaTag('og:description', 'Get in touch with our customer service team. We\'re here to help with your booking questions and support needs.')
-    setMetaTag('og:type', 'website')
-    if (typeof window !== 'undefined') {
-      setMetaTag('og:url', window.location.href)
-    }
-    
-    // Set Twitter Card tags
-    setMetaTag('twitter:card', 'summary')
-    setMetaTag('twitter:title', 'Contact Customer Service - CombatStay.com')
-    setMetaTag('twitter:description', 'Get in touch with our customer service team. We\'re here to help with your booking questions and support needs.')
-    
-    // Set canonical URL
-    let canonical = document.querySelector('link[rel="canonical"]')
-    if (!canonical) {
-      canonical = document.createElement('link')
-      canonical.setAttribute('rel', 'canonical')
-      document.head.appendChild(canonical)
-    }
-    if (typeof window !== 'undefined') {
-      canonical.setAttribute('href', window.location.href)
-    }
-  }, [])
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -114,9 +67,10 @@ export default function ContactPage() {
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Contact Customer Service</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Customer service</h1>
           <p className="text-base text-gray-600">
-            We're here to help. Send us a message and we'll get back to you as soon as possible.
+            Bookings, payments, and account questions — send a message below. We aim to reply within one business day;
+            include your booking reference when you have one so we can help faster.
           </p>
         </div>
 
@@ -130,9 +84,10 @@ export default function ContactPage() {
               <CardContent>
                 {success ? (
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-6">
-                    <p className="text-green-800 font-semibold mb-1">Thank you for contacting us!</p>
+                    <p className="text-green-800 font-semibold mb-1">Message received</p>
                     <p className="text-sm text-green-700">
-                      We've received your message and will get back to you within 24 hours.
+                      We&apos;ve received your message and will get back to you as soon as we can — typically within
+                      one business day.
                     </p>
                   </div>
                 ) : null}
@@ -274,7 +229,7 @@ export default function ContactPage() {
                 <div className="pt-4 border-t border-gray-200">
                   <h4 className="font-medium text-gray-900 mb-2">Response Time</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    We typically respond within 24 hours during business days.
+                    We aim to reply within one business day.
                   </p>
                 </div>
               </CardContent>
@@ -283,7 +238,7 @@ export default function ContactPage() {
             {/* Booking Access */}
             <Card className="border border-gray-200 rounded-lg shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-gray-900">Manage Your Booking</CardTitle>
+                <CardTitle className="text-lg font-semibold text-gray-900">Manage your booking</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-4 leading-relaxed">

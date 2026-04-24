@@ -53,6 +53,8 @@ export interface Gym {
   verification_status: VerificationStatus
   is_live: boolean
   name: string
+  /** Optional strings matched by gym_suggest (abbreviations, former names, etc.). */
+  search_aliases?: string[]
   description: string | null
   city: string
   country: string

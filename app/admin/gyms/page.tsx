@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
+import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -235,7 +236,7 @@ export default function AdminGymsPage() {
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2 border-t border-stone-100 bg-stone-50/50 pt-4">
                   <div className="flex w-full gap-2">
-                    <Link href={`/manage/gym/edit?id=${gym.id}`} className="flex-1">
+                    <Link href={manageGymEditHref(gym.id, { returnTo: '/admin/gyms' })} className="flex-1">
                       <Button variant="outline" className="w-full rounded-full">
                         Edit
                       </Button>

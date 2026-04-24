@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -16,6 +16,7 @@ import {
   Dumbbell,
   BedDouble,
   GraduationCap,
+  Building2,
 } from 'lucide-react'
 import { useBooking } from '@/lib/contexts/booking-context'
 import {
@@ -70,6 +71,8 @@ const TIMELINE_OPTIONS = [
 
 type ActiveSlot = 'where' | 'when' | 'who' | null
 type MobilePanel = 'where' | 'when' | 'who'
+
+type GymSuggestRow = { id: string; name: string; city: string; country: string }
 
 // ─── Guest Counter sub-component ─────────────────────────────────────────────
 
@@ -148,6 +151,10 @@ export function SearchBarRedesign({
   const [mounted, setMounted] = useState(false)
   const [showAllDests, setShowAllDests] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
+  const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
+  /** True when every hit was pg_trgm fuzzy (no substring match on name or aliases). */
+  const [gymDidYouMean, setGymDidYouMean] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -214,6 +221,60 @@ export function SearchBarRedesign({
       setTimeout(() => whereInputRef.current?.focus(), 60)
     }
   }, [activeSlot])
+
+  // Debounced gym name autocomplete (catalog search only — same idea as Netflix matching *their* titles).
+  useEffect(() => {
+    if (activeCategory === 'seminars') {
+      setGymSuggestions([])
+      setGymSuggestLoading(false)
+      setGymDidYouMean(false)
+      return
+    }
+    const q = whereQuery.trim()
+    if (q.length < 2) {
+      setGymSuggestions([])
+      setGymSuggestLoading(false)
+      setGymDidYouMean(false)
+      return
+    }
+
+    const ac = new AbortController()
+    const t = window.setTimeout(async () => {
+      setGymSuggestLoading(true)
+      setGymDidYouMean(false)
+      try {
+        const res = await fetch(`/api/gyms/suggest?q=${encodeURIComponent(q)}`, { signal: ac.signal })
+        const json = (await res.json()) as { gyms?: GymSuggestRow[]; did_you_mean?: boolean }
+        if (!ac.signal.aborted) {
+          setGymSuggestions(Array.isArray(json.gyms) ? json.gyms : [])
+          setGymDidYouMean(Boolean(json.did_you_mean))
+        }
+      } catch {
+        if (!ac.signal.aborted) {
+          setGymSuggestions([])
+          setGymDidYouMean(false)
+        }
+      } finally {
+        if (!ac.signal.aborted) setGymSuggestLoading(false)
+      }
+    }, 280)
+
+    return () => {
+      window.clearTimeout(t)
+      ac.abort()
+    }
+  }, [whereQuery, activeCategory])
+
+  const openGymProfile = useCallback(
+    (gymId: string) => {
+      router.push(`/gyms/${gymId}`)
+      setActiveSlot(null)
+      setMobileModalOpen(false)
+    },
+    [router],
+  )
+
+  const showGymSuggest = activeCategory !== 'seminars'
 
   // ── Derived values ────────────────────────────────────────────────────────
   const checkinDate = checkin ? new Date(checkin + 'T00:00:00') : null
@@ -447,6 +508,75 @@ export function SearchBarRedesign({
     )
   }
 
+  function renderGymSuggestBlock(variant: 'desktop' | 'mobile') {
+    if (!showGymSuggest) return null
+    const q = whereQuery.trim()
+    if (q.length < 2) return null
+
+    const rowClass =
+      variant === 'desktop'
+        ? 'flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-gray-50 group'
+        : 'flex w-full items-center gap-3 py-1 text-left touch-manipulation'
+
+    const iconWrap =
+      variant === 'desktop'
+        ? 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#003580]/10 transition-colors group-hover:bg-[#003580]/15'
+        : 'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#003580]/10'
+
+    return (
+      <div className={variant === 'desktop' ? 'mb-4' : 'mb-5'}>
+        <p
+          className={`mb-3 font-semibold uppercase tracking-widest text-gray-400 ${
+            variant === 'desktop' ? 'text-[11px]' : 'text-xs'
+          }`}
+        >
+          Gyms on CombatStay
+        </p>
+        {gymDidYouMean && gymSuggestions.length > 0 ? (
+          <p
+            className={`mb-2 rounded-lg bg-[#003580]/5 px-2.5 py-2 text-[#003580] ${
+              variant === 'desktop' ? 'text-xs leading-snug' : 'text-[13px] leading-snug'
+            }`}
+          >
+            No exact name match — showing similar gyms (fuzzy match on our catalog).
+          </p>
+        ) : null}
+        {gymSuggestLoading ? (
+          <p className="text-sm text-gray-500">Searching gyms…</p>
+        ) : gymSuggestions.length > 0 ? (
+          <div className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
+            {gymSuggestions.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => openGymProfile(g.id)}
+                className={rowClass}
+              >
+                <div className={iconWrap}>
+                  <Building2
+                    className={variant === 'desktop' ? 'h-4 w-4 text-[#003580]' : 'h-5 w-5 text-[#003580]'}
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="truncate text-sm font-semibold text-gray-900">{g.name}</div>
+                  <div className="mt-0.5 text-xs text-gray-500">
+                    {[g.city, g.country].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm leading-snug text-gray-500">
+            No gym by that exact name yet. Try a city, or tap Search to see similar camps.
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="w-full">
 
@@ -587,8 +717,8 @@ export function SearchBarRedesign({
 
         {/* WHERE Dropdown */}
         {activeSlot === 'where' && (
-          <div className="absolute top-[calc(100%+10px)] left-0 w-1/2 min-w-[280px] bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
-            <div className="p-5">
+          <div className="absolute top-[calc(100%+10px)] left-0 z-50 max-h-[min(480px,78vh)] w-1/2 min-w-[280px] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl">
+            <div className="max-h-[min(480px,78vh)] overflow-y-auto overscroll-contain p-5">
               <input
                 ref={whereInputRef}
                 type="text"
@@ -599,13 +729,14 @@ export function SearchBarRedesign({
                 }}
                 placeholder={
                   activeCategory === 'gyms'
-                    ? 'Search gyms'
+                    ? 'City, area, or gym name'
                     : activeCategory === 'train-stay'
-                      ? 'Search camps with accommodation'
+                      ? 'City, area, or gym name'
                       : 'Search seminars'
                 }
-                className="w-full text-sm text-gray-800 placeholder-gray-400 outline-none mb-4 border-b border-gray-100 pb-3"
+                className="mb-4 w-full border-b border-gray-100 pb-3 text-sm text-gray-800 outline-none placeholder-gray-400"
               />
+              {renderGymSuggestBlock('desktop')}
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
                 Suggested destinations
               </p>
@@ -803,7 +934,7 @@ export function SearchBarRedesign({
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') setMobilePanel('when') }}
-                      placeholder="Search destinations"
+                      placeholder="City, area, or gym name"
                       className="flex-1 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
                     />
                     {whereQuery && (
@@ -812,6 +943,8 @@ export function SearchBarRedesign({
                       </button>
                     )}
                   </div>
+
+                  {renderGymSuggestBlock('mobile')}
 
                   {/* Recent searches */}
                   {recentSearches.length > 0 && !whereQuery && (

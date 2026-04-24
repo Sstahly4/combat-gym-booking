@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronDown, Shield, Dumbbell, FileText, HelpCircle, Banknote } from 'lucide-react'
-import { useEffect } from 'react'
 
 export default function FAQPage() {
   useEffect(() => {
@@ -58,7 +57,8 @@ export default function FAQPage() {
 interface FAQItem {
   id: string
   question: string
-  answer: string
+  /** Plain text (pre-line) or rich content with links. */
+  answer: string | ReactNode
   category: string
 }
 
@@ -70,228 +70,473 @@ const faqCategories = [
   { id: 'general', label: 'General', icon: HelpCircle },
 ]
 
+/** Inline text links in help answers (no raw URL paths in copy). */
+const faqInlineLink =
+  'font-semibold text-[#003580] underline decoration-[#003580]/35 underline-offset-2 hover:decoration-[#003580]'
+
+/** Primary self-service tiles (Booking-style “Manage booking” entry points). */
+const faqJumpTile =
+  'inline-flex w-full flex-col items-stretch justify-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-center shadow-sm transition-colors hover:border-[#003580]/35 hover:bg-[#f8fafc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/25'
+
 const faqs: FAQItem[] = [
   // Safety & Security
   {
     id: 'safety-1',
     category: 'safety',
     question: 'What safety measures do gyms have in place?',
-    answer: 'All gyms listed on our platform are required to maintain proper safety standards including certified trainers, appropriate equipment, and emergency protocols. We verify gym credentials and conduct regular safety reviews. Each gym must provide proof of insurance and safety certifications before being approved on our platform. However, we are a booking platform and do not directly operate or control the gym facilities. Users participate at their own risk.'
+    answer:
+      'Listed gyms must meet our standards: qualified coaches, suitable equipment, and basic emergency procedures. We check credentials and insurance before approval. CombatStay connects you with the gym — we do not run the facility. Training carries risk; you participate at your own risk.',
   },
   {
     id: 'safety-2',
     category: 'safety',
     question: 'What should I do if I feel unsafe at a gym?',
-    answer: 'Your safety is our top priority. If you feel unsafe at any time, please: 1) Remove yourself from the situation immediately, 2) Contact local emergency services if needed, 3) Report the incident to us immediately via our support page with your booking reference, 4) Document any concerns with photos or notes. We take all safety reports seriously and will investigate promptly.'
+    answer: (
+      <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-gray-700">
+        <li>Leave the situation.</li>
+        <li>If it is an emergency, call local emergency services.</li>
+        <li>
+          Tell us through{' '}
+          <Link href="/contact" className={faqInlineLink}>
+            Customer service
+          </Link>{' '}
+          with your booking reference and any photos or notes.
+        </li>
+      </ol>
+    ),
   },
   {
     id: 'safety-3',
     category: 'safety',
     question: 'Are trainers certified and qualified?',
-    answer: 'Yes, all gyms must verify that their trainers hold appropriate certifications for the disciplines they teach. This includes recognized certifications from governing bodies such as the World Muay Thai Council, International Boxing Federation, or equivalent organizations. We verify these credentials during the gym approval process. However, we cannot guarantee the ongoing validity of certifications or the quality of training provided. Users should verify trainer credentials directly with the gym if needed.'
+    answer:
+      'Yes. Gyms must show appropriate coaching credentials for what they teach (e.g. recognised bodies for Muay Thai, boxing, BJJ). We check this at approval. Ongoing quality and current certs are between you and the gym — ask them directly if you need proof.',
   },
   {
     id: 'safety-4',
     category: 'safety',
     question: 'What medical requirements should I be aware of?',
-    answer: 'Before participating in any combat sports training, we strongly recommend: 1) Consulting with a healthcare provider to ensure you are physically fit for combat sports, 2) Disclosing any pre-existing medical conditions, injuries, or medications to your trainer, 3) Ensuring you have appropriate travel/health insurance that covers combat sports activities, 4) Being aware of your physical limitations and not exceeding them. Gyms are required to have basic first aid supplies and emergency contact procedures, but medical care is ultimately your responsibility. We are not responsible for any medical issues that arise during training.'
+    answer:
+      'Get medical clearance if you are unsure you are fit for combat sports. Tell your coach about injuries, conditions, and medication. Buy travel/health cover that explicitly includes combat sports — many policies exclude it. Know your limits. First aid at the gym is basic; medical decisions and costs are yours.',
   },
   {
     id: 'safety-5',
     category: 'safety',
     question: 'What insurance coverage do I need?',
-    answer: 'We strongly recommend comprehensive travel insurance that covers medical emergencies, sports injuries (specifically combat sports), and trip cancellation. While gyms may maintain their own liability insurance, this does not cover participant injuries. You are responsible for obtaining adequate personal health and travel insurance. Check with your insurance provider to ensure combat sports training is explicitly covered in your policy, as many standard policies exclude combat sports. We are not responsible for any medical costs or expenses incurred during training.'
+    answer:
+      'Use travel insurance that covers medical emergencies, sports injury (including combat sports), and trip changes. The gym’s liability cover does not replace your personal cover. Confirm wording with your insurer — many standard policies exclude combat sports.',
   },
   {
     id: 'safety-6',
     category: 'safety',
     question: 'How are gym facilities inspected?',
-    answer: 'Gyms undergo initial verification before being listed, including facility inspection, trainer certification checks, and safety protocol review. We conduct periodic reviews and respond immediately to any safety concerns reported by users. Gyms must maintain their safety standards to remain on our platform. However, we are a booking platform and do not continuously monitor or inspect facilities. We rely on gym representations and user reports. We are not responsible for the condition of facilities or any issues that may arise.'
+    answer:
+      'We verify each gym before listing (facility, credentials, safety basics) and review reports from guests. We do not run daily on-site inspections. If something looks wrong, stop training and tell us — we investigate serious reports.',
   },
   // Bookings
+  {
+    id: 'booking-nav',
+    category: 'bookings',
+    question: 'Where do I find and manage my bookings (and saved gyms)?',
+    answer: (
+      <div className="space-y-5 text-gray-700">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Self-service</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Link href="/bookings" className={faqJumpTile}>
+              <span className="text-sm font-semibold text-gray-900">Manage your booking</span>
+              <span className="text-xs font-normal text-gray-500">
+                View all trips on your account, or look up one booking with reference and PIN
+              </span>
+            </Link>
+            <Link href="/saved" className={faqJumpTile}>
+              <span className="text-sm font-semibold text-gray-900">Saved gyms</span>
+              <span className="text-xs font-normal text-gray-500">Favourites you saved on this device</span>
+            </Link>
+            <Link href="/contact" className={faqJumpTile}>
+              <span className="text-sm font-semibold text-gray-900">Customer service</span>
+              <span className="text-xs font-normal text-gray-500">Changes, cancellations, and questions</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-100 bg-gray-50/90 p-4">
+          <p className="mb-2 text-sm font-semibold text-gray-900">Signed in</p>
+          <p className="text-sm leading-relaxed">
+            Menu (top right): <strong>Find bookings</strong> or footer <strong>My bookings</strong> — same screen as{' '}
+            <strong>Manage your booking</strong> above. <strong>Saved gyms</strong> in the menu lists favourites.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-gray-100 bg-gray-50/90 p-4">
+          <p className="mb-2 text-sm font-semibold text-gray-900">Signed out</p>
+          <p className="text-sm leading-relaxed">
+            Menu → <strong>Help</strong> → <strong>Find your booking</strong> (guest flow ={' '}
+            <strong>Manage your booking</strong> above). <strong>Saved gyms</strong> there = favourites on this
+            device.
+          </p>
+        </div>
+
+        <p className="text-sm leading-relaxed">
+          Confirmation emails include reference, PIN, and direct links. Anything you cannot finish online:{' '}
+          <Link href="/contact" className={faqInlineLink}>
+            Customer service
+          </Link>{' '}
+          + booking reference.
+        </p>
+      </div>
+    ),
+  },
   {
     id: 'booking-1',
     category: 'bookings',
     question: 'How do I modify or cancel my booking?',
-    answer: 'You can request modifications or cancellations by contacting us through the support page with your booking reference. Cancellation policies vary by gym and package type - check your booking confirmation for specific terms. Free cancellation policies are clearly displayed on each package. Refunds are processed according to the gym\'s cancellation policy.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Message{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        with your booking reference. Changes and refunds follow the package rules on your confirmation and what you
+        accepted at checkout (including any free-cancellation window).
+      </p>
+    ),
   },
   {
     id: 'booking-2',
     category: 'bookings',
     question: 'When will I be charged for my booking?',
     answer:
-      'Your card is usually authorised at checkout. The actual charge (capture) happens after the free-cancellation window shown on your package has closed — so if you cancel in time, the authorisation is released and you pay nothing. If your package has no free-cancellation window, capture may happen sooner. You\'ll see the exact policy before you pay, and the gym still confirms availability where your booking flow requires it.',
+      'We usually place a temporary hold on your card at checkout. You are charged only after the free-cancellation deadline on your package (if there is one). Cancel before that time and the hold is released. No free-cancellation window? You may be charged sooner — the checkout screen states the exact rule. Some flows still need the gym to confirm dates first.',
   },
   {
     id: 'payments-1',
     category: 'payments',
     question: 'Who charges my card?',
     answer:
-      'CombatStay is the merchant of record for payments on the platform. Your bank statement shows a charge from us. We collect payment under the cancellation and package terms you agree to at checkout; the gym provides your training or stay as an independent partner.',
+      'CombatStay appears on your bank statement. We collect payment under the terms you accept at checkout. The gym delivers your training or stay as an independent partner.',
   },
   {
     id: 'payments-2',
     category: 'payments',
     question: 'When does the gym get paid?',
     answer:
-      'Today we typically settle with gyms on an agreed manual schedule (platform-first flow). What matters for you as a guest: your cancellation rights follow the policy shown at checkout, and your card is only captured after the free-cancellation deadline for your package has passed (unless there is no free-cancellation window). Automated payouts to gyms may change over time; your checkout terms stay what you agreed to for that booking.',
+      'For you as a guest, only two things matter: (1) cancellation rules are exactly what you saw at checkout, and (2) your card is captured after the free-cancellation deadline when one applies. How and when we settle with the gym may change operationally; your booking terms do not change after you pay.',
   },
   {
     id: 'payments-3',
     category: 'payments',
     question: 'What if I cancel inside or outside the cancellation window?',
-    answer:
-      'Inside the window — before the deadline shown for your package — you can cancel without being charged: we release the card authorisation. After that window, your payment may be captured and you are committed per the policy you agreed to at checkout. Contact support with your booking reference if you are unsure where you sit.',
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        <strong>Inside the free window</strong> — cancel before the date and time on your package: we release the
+        card hold; you are not charged. <strong>After the window</strong> — your payment may be captured and the
+        package rules you agreed to apply. If you are not sure which applies, open{' '}
+        <Link href="/bookings" className={faqInlineLink}>
+          Manage your booking
+        </Link>{' '}
+        or message{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        with your booking reference.
+      </p>
+    ),
   },
   {
     id: 'payments-4',
     category: 'payments',
     question: 'What if I dispute the charge with my bank?',
-    answer:
-      'Please contact our support team first with your booking reference; many issues are resolved faster than a bank dispute. If you open a chargeback, we may submit evidence of what you agreed to at checkout (including policy and timing). Misuse of chargebacks can affect future bookings. Nothing here limits your statutory rights where they apply.',
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Message{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        first with your booking reference — most problems are fixed faster than a card dispute. If you still
+        charge back, we may send your bank the checkout terms you accepted. Abuse of disputes can limit future
+        bookings. Your statutory rights still apply where the law says so.
+      </p>
+    ),
   },
   {
     id: 'booking-3',
     category: 'bookings',
     question: 'What if the gym declines my booking?',
-    answer: 'If a gym is unable to accommodate your booking, your payment authorization will be released immediately and you won\'t be charged. We\'ll notify you by email and help you find alternative options if needed. Your authorization typically releases within 5-7 business days depending on your bank.'
+    answer:
+      'You are not charged. We email you straight away and can suggest other gyms when possible. Your bank usually releases the hold within a few business days.',
   },
   {
     id: 'booking-4',
     category: 'bookings',
     question: 'How do I access my booking without an account?',
-    answer: 'You can access your booking using your booking reference and PIN, which are provided in your confirmation email. Visit the "My Bookings" page and enter these details. You can also use the magic link sent to your email for instant access without a password.'
+    answer: (
+      <div className="space-y-4 text-gray-700">
+        <p className="text-sm leading-relaxed">
+          Open{' '}
+          <Link href="/bookings" className={faqInlineLink}>
+            Manage your booking
+          </Link>
+          , then enter the reference number and PIN from your confirmation email. Your email also includes a magic
+          link for one-tap access — no password needed.
+        </p>
+        <p className="text-sm leading-relaxed">
+          On a phone while signed out: open the menu, go to <strong>Help</strong>, then tap{' '}
+          <strong>Find your booking</strong> — same screen as the link above.
+        </p>
+        <p className="text-sm leading-relaxed">
+          For every way to reach bookings and saved gyms (menu, footer, email), see{' '}
+          <Link href="#faq-booking-nav" className={faqInlineLink}>
+            Where do I find and manage my bookings (and saved gyms)?
+          </Link>{' '}
+          in this Help Center.
+        </p>
+      </div>
+    ),
   },
   // Gyms & Training
   {
     id: 'gym-1',
     category: 'gyms',
     question: 'What equipment do I need to bring?',
-    answer: 'Equipment requirements vary by discipline and gym. Most gyms provide basic training equipment, but you may need to bring: hand wraps, gloves (for boxing/Muay Thai), mouthguard, shin guards (for Muay Thai), and appropriate training attire. Check with your specific gym or review their package details for equipment requirements.'
+    answer:
+      'It depends on the gym and style. Often you bring wraps, gloves, mouthguard, shins (Muay Thai), and training clothes. Read the package page or ask the gym before you pack.',
   },
   {
     id: 'gym-2',
     category: 'gyms',
     question: 'What skill level do I need?',
-    answer: 'Our platform caters to all skill levels, from complete beginners to professional fighters. Each gym and package clearly indicates the recommended experience level. Many gyms offer beginner-friendly programs, while others focus on advanced training. Always communicate your experience level with trainers to ensure appropriate training intensity.'
+    answer:
+      'All levels — pick a package that matches your experience. Tell your coach honestly how long you have trained so they can set the right pace.',
   },
   {
     id: 'gym-3',
     category: 'gyms',
     question: 'Can I train multiple disciplines at one gym?',
-    answer: 'Many gyms offer training in multiple disciplines. Check the gym\'s profile to see which disciplines they offer. Some packages include cross-training options, while others focus on a single discipline. Contact the gym directly or use our support page if you have specific training requirements.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Many gyms offer more than one discipline. Check the gym profile and package. For special requests, email
+        the gym from your confirmation, or use{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>
+        .
+      </p>
+    ),
   },
   // Safety & Security (extra)
   {
     id: 'safety-7',
     category: 'safety',
     question: 'How is my personal data protected?',
-    answer: 'We take data privacy seriously. All personal information you provide is encrypted in transit using TLS and stored securely. We only share data with the gym you book with — and only the information they need to prepare for your stay (name, dates, experience level). We never sell your data to third parties. You can request a copy of your data or ask for it to be deleted at any time by contacting our support team. For full details, see our Privacy Policy.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        TLS in transit, restricted access in storage. We only pass the gym what they need for your stay (for example
+        name, dates, level). We do not sell personal data. For access or deletion requests, use{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>
+        . Full detail:{' '}
+        <Link href="/privacy" className={faqInlineLink}>
+          Privacy policy
+        </Link>
+        .
+      </p>
+    ),
   },
   {
     id: 'safety-8',
     category: 'safety',
     question: 'Is my payment information stored securely?',
-    answer: 'Yes. All payments are processed through our PCI-DSS compliant payment processor. We never store your full card number, CVV, or sensitive payment details on our servers. Your card details are tokenised by the payment processor, meaning even in the unlikely event of a data breach, your actual card information is protected. You\'ll see a familiar, secure checkout experience powered by industry-standard encryption.'
+    answer:
+      'Yes. PCI-compliant processor, tokenised cards — we never store your full number or CVV on our servers. Checkout is encrypted like any major travel site.',
   },
   {
     id: 'safety-9',
     category: 'safety',
     question: 'How do I know a gym is legitimate before I book?',
-    answer: 'Every gym on our platform goes through a verification process before being listed. This includes confirming business registration, verifying trainer credentials, reviewing facility photos and descriptions, and cross-checking reviews. Gyms must agree to our standards of conduct and maintain active insurance. We also monitor guest reviews and will remove gyms that receive consistent safety or quality complaints. Look for the verified badge on gym profiles for additional assurance.'
+    answer:
+      'We list only gyms that pass our checks (business, coaches, photos, insurance, conduct rules). Guest reviews and repeated complaints can remove a listing. On the site, prefer profiles marked verified.',
   },
   {
     id: 'safety-10',
     category: 'safety',
     question: 'What happens if a gym closes or cancels after I\'ve booked?',
-    answer: 'If a gym cancels your booking or closes unexpectedly, you will receive a full refund — no questions asked. We will notify you immediately by email and provide a list of alternative gyms in the same area if available. In cases of sudden closure, we work directly with affected guests to resolve the situation as quickly as possible. Our support team is available to assist you with re-booking or processing your refund.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Full refund if the gym cancels or shuts before you train. We email you immediately and suggest alternatives
+        when we can. Rebook or refund questions:{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>
+        .
+      </p>
+    ),
   },
   // Bookings (extra)
   {
     id: 'booking-5',
     category: 'bookings',
     question: 'How long does a refund take?',
-    answer: 'Refunds are initiated as soon as a cancellation is confirmed. Depending on your bank or card provider, funds typically appear back in your account within 5–10 business days. For some cards or regions this may take slightly longer. You\'ll receive an email confirmation as soon as the refund has been processed on our end. If you haven\'t received your refund after 10 business days, please contact our support team with your booking reference.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        We start the refund as soon as cancellation is confirmed. Banks usually show it in{' '}
+        <strong>5–10 business days</strong>. You get an email when we have sent it. Nothing after 10 days?{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        + booking reference.
+      </p>
+    ),
   },
   {
     id: 'booking-6',
     category: 'bookings',
     question: 'What exactly is included in my booking?',
-    answer: 'Each package clearly lists what\'s included on the gym\'s profile page and in your confirmation email. This typically includes a set number of training sessions per day, any accommodation if the package is a "Train & Stay", and meals where specified. Anything not explicitly listed (e.g. airport transfers, personal equipment, extra sessions) is not included unless confirmed in writing with the gym. If you\'re unsure, contact the gym via our platform before booking.'
+    answer:
+      'Only what the package page and your confirmation list — sessions per day, room type if “Train & Stay”, meals if stated. Airport transfers, gear, and extra sessions are not included unless the gym confirms in writing. Ask the gym before you pay if anything is unclear.',
   },
   {
     id: 'booking-7',
     category: 'bookings',
     question: 'Can I transfer or gift my booking to someone else?',
-    answer: 'Bookings are non-transferable in most cases as gyms prepare specifically for the guest named at checkout. If you need to make a name change or transfer to a training partner, please contact our support team as early as possible. Some gyms allow name changes with reasonable notice — we\'ll liaise with the gym on your behalf. Last-minute name changes may not be possible and standard cancellation terms may apply.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Usually <strong>no</strong> — the gym plans for the name on the booking. Some gyms allow a name change with
+        notice. Ask early via{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>
+        , and we will ask the gym. Last-minute changes may follow cancellation rules.
+      </p>
+    ),
   },
   {
     id: 'booking-8',
     category: 'bookings',
     question: 'Will I receive a booking confirmation?',
-    answer: 'Yes. You\'ll receive two emails: first, a booking request confirmation immediately after checkout, and second, a booking confirmation once the gym approves availability (usually within 24–48 hours). Both emails will contain your booking reference number, PIN, full package details, and the gym\'s address and contact information. If you haven\'t received these emails, check your spam folder or contact support with your email address.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Yes — request received right after checkout, then a final confirmation when the gym accepts (often within{' '}
+        <strong>24–48 hours</strong>). Both include reference, PIN, package, and gym contact. Missing mail? Check spam,
+        then{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        with the email you used to book.
+      </p>
+    ),
   },
   // Gyms & Training (extra)
   {
     id: 'gym-4',
     category: 'gyms',
     question: 'What should I expect on my first day?',
-    answer: 'Most gyms will greet you on arrival, show you around the facility, and introduce you to your trainer. Expect an initial session where your trainer assesses your current fitness and skill level. This helps them tailor the training intensity to suit you. It\'s completely normal to feel out of your depth on day one — every fighter started somewhere. Arrive hydrated, don\'t train to exhaustion on day one, and communicate openly with your trainer about how you\'re feeling.'
+    answer:
+      'Meet-and-greet, quick tour, then an easy first session so your coach can gauge fitness and skill. Hydrate, do not max out on day one, and say how you feel.',
   },
   {
     id: 'gym-5',
     category: 'gyms',
     question: 'Is the training suitable for complete beginners?',
-    answer: 'Absolutely. Many gyms on our platform cater specifically to beginners and first-time visitors. Filter packages by experience level on the search page to find options that match you. Beginners will typically start with foundational technique, fitness conditioning, and pad work at a controlled pace. Never feel embarrassed to say you\'re new — great trainers adjust to every student. If you\'re unsure which package is right for you, contact our support team and we\'ll help you find the right fit.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Yes — filter for beginner-friendly packages. Coaches expect first-timers. Still unsure?{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        can narrow options.
+      </p>
+    ),
   },
   {
     id: 'gym-6',
     category: 'gyms',
     question: 'What if I have dietary requirements or food allergies?',
-    answer: 'For packages that include meals or accommodation, always communicate your dietary requirements directly to the gym before arrival — ideally at the time of booking. Contact the gym through our platform or email them directly using the contact details in your confirmation. Most reputable gyms will do their best to accommodate common dietary needs (vegetarian, vegan, gluten-free, halal, etc.), but this should be confirmed in advance. We cannot guarantee dietary accommodation as this is managed by each individual gym.'
+    answer:
+      'Tell the gym in writing before you arrive (ideally when you book). Use the email in your confirmation. Halal, vegan, allergies, etc. need explicit “yes” from them — we cannot guarantee what we do not control.',
   },
   {
     id: 'gym-7',
     category: 'gyms',
     question: 'How do I communicate with the gym before I arrive?',
-    answer: 'Once your booking is confirmed, the gym\'s contact details (email and sometimes phone or WhatsApp) are included in your confirmation email. You can reach out to them directly to discuss training goals, accommodation details, arrival times, equipment needs, and any other questions. For any issues with communication or if a gym is unresponsive, contact our support team and we\'ll assist you.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        After confirmation, email / phone / WhatsApp is in your confirmation mail — message them directly. No reply?{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>
+        .
+      </p>
+    ),
   },
   // General (extra)
   {
     id: 'general-1',
     category: 'general',
     question: 'How do I leave a review?',
-    answer: 'After completing your training stay, you\'ll receive an email invitation to leave a review. You can also access the review page through your booking details. Reviews help other fighters make informed decisions and help gyms improve their services. Only verified bookings can leave reviews to ensure authenticity.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        After your stay we email an invite. Or open the review link from{' '}
+        <Link href="/bookings" className={faqInlineLink}>
+          Manage your booking
+        </Link>
+        . Only guests with a completed, verified stay can review.
+      </p>
+    ),
   },
   {
     id: 'general-2',
     category: 'general',
     question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit and debit cards (Visa, Mastercard, American Express) through our secure payment processor. Your card is authorised at booking and charged only after the gym confirms availability. All transactions are encrypted and secure. We do not store your full card details on our servers.'
+    answer:
+      'Major debit and credit cards (Visa, Mastercard, American Express) through our secure checkout. Hold at booking; charge after rules you see at checkout. We never store full card data.',
   },
   {
     id: 'general-3',
     category: 'general',
-    question: 'How do I contact customer support?',
-    answer: 'You can reach our support team through the "Get Support" page, available in the footer. Include your booking reference for faster assistance. We typically respond within 24 hours during business days. For urgent matters related to active bookings, please include "URGENT" in your message.'
+    question: 'How do I reach Customer service?',
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Use{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          Customer service
+        </Link>{' '}
+        (same link as <strong>Customer service</strong> in the footer). Add your booking reference. Typical reply:
+        within one
+        business day. On-site emergency: call local emergency services first; for platform help the same day, start
+        your message with <strong>URGENT</strong>.
+      </p>
+    ),
   },
   {
     id: 'general-4',
     category: 'general',
     question: 'Can I trust the reviews on the platform?',
-    answer: 'Yes — all reviews on CombatStay.com are from verified guests who have completed a real, confirmed booking at that gym. We do not allow anonymous or unverified reviews. This means every rating and review you read reflects a genuine experience. We do not edit or filter reviews (except to remove content that violates our community guidelines). Gyms cannot pay to remove or suppress negative reviews.'
+    answer:
+      'Reviews are only from guests who finished a confirmed stay at that gym — no anonymous posts. We remove abuse; we do not sell “delete bad review” to gyms.',
   },
   {
     id: 'general-5',
     category: 'general',
     question: 'How do I create an account?',
-    answer: 'You can sign up using your Google account for one-click registration, or create an account with your email address and a password. An account is not required to make a booking — you can book as a guest and access your booking details using your reference number and PIN. However, creating an account lets you view all bookings in one place, save favourite gyms, and get faster checkout on future bookings.'
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        Sign up with Google or email + password. Booking without an account? Use{' '}
+        <Link href="/bookings" className={faqInlineLink}>
+          Manage your booking
+        </Link>{' '}
+        with reference + PIN from your email, or tap the magic link in that email. With an account: all trips in one
+        list, saved gyms, faster checkout.
+      </p>
+    ),
   },
   {
     id: 'general-6',
     category: 'general',
     question: 'Does CombatStay.com take a commission from gyms?',
-    answer: 'We charge gyms a small platform fee for bookings made through our platform. This allows us to keep the service free for users. The prices you see on gym packages are set by the gyms themselves — we do not inflate pricing. In fact, gyms can offer exclusive platform-only deals to attract more bookings. Our goal is to make quality combat sports training accessible to everyone.'
+    answer:
+      'Gyms pay us a platform fee so travellers can use the site for free. Listed prices are set by the gym — we do not mark them up.',
   },
 ]
 
@@ -308,6 +553,30 @@ const faqs: FAQItem[] = [
     setOpenItems(newOpen)
   }
 
+  /** Deep-link e.g. /faq#faq-booking-nav — switch category, expand, scroll (OTA help pattern). */
+  useEffect(() => {
+    const applyHash = () => {
+      if (typeof window === 'undefined') return
+      const raw = window.location.hash.replace(/^#/, '')
+      if (!raw.startsWith('faq-')) return
+      const faqId = raw.slice(4)
+      const entry = faqs.find((f) => f.id === faqId)
+      if (entry) setSelectedCategory(entry.category)
+      setOpenItems((prev) => {
+        const next = new Set(prev)
+        next.add(faqId)
+        return next
+      })
+      window.requestAnimationFrame(() => {
+        document.getElementById(raw)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- faqs is static content for this page
+  }, [])
+
   const filteredFAQs = faqs.filter(faq => faq.category === selectedCategory)
 
   return (
@@ -317,7 +586,7 @@ const faqs: FAQItem[] = [
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Help Center</h1>
           <p className="text-base text-gray-600">
-            Find answers to common questions about bookings, safety, and training
+            Short answers on bookings, payments, gyms, and safety — same self-service style as major travel sites.
           </p>
         </div>
 
@@ -360,7 +629,11 @@ const faqs: FAQItem[] = [
           <div className="md:col-span-3">
             <div className="space-y-4">
               {filteredFAQs.map((faq) => (
-                <Card key={faq.id} className="border border-gray-200 rounded-lg shadow-sm">
+                <Card
+                  key={faq.id}
+                  id={`faq-${faq.id}`}
+                  className="border border-gray-200 rounded-lg shadow-sm scroll-mt-24"
+                >
                   <CardHeader
                     className="pb-4 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => toggleItem(faq.id)}
@@ -378,9 +651,11 @@ const faqs: FAQItem[] = [
                   </CardHeader>
                   {openItems.has(faq.id) && (
                     <CardContent className="pt-0 pb-6">
-                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                        {faq.answer}
-                      </p>
+                      {typeof faq.answer === 'string' ? (
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{faq.answer}</p>
+                      ) : (
+                        <div className="text-sm text-gray-600 leading-relaxed">{faq.answer}</div>
+                      )}
                     </CardContent>
                   )}
                 </Card>
@@ -401,12 +676,10 @@ const faqs: FAQItem[] = [
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Still need help?</h3>
                     <p className="text-sm text-gray-600 mb-4">
-                      Can't find what you're looking for? Our support team is here to assist you.
+                      Tell us what you need — we reply faster when you add your booking reference.
                     </p>
-                    <Link href="/contact">
-                      <button className="text-sm text-[#003580] font-medium hover:underline">
-                        Contact Support →
-                      </button>
+                    <Link href="/contact" className={`text-sm ${faqInlineLink}`}>
+                      Customer service →
                     </Link>
                   </div>
                   <HelpCircle className="w-12 h-12 text-[#003580] flex-shrink-0 opacity-20" />

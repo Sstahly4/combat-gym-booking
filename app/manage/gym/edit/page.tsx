@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense, useRef } from 'react'
+import { useEffect, useState, Suspense, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -24,6 +24,10 @@ import {
   mergeGymAmenitiesFromDb,
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
+import {
+  manageGymEditHubBreadcrumb,
+  resolvePostGymEditReturnPath,
+} from '@/lib/navigation/manage-gym-edit-return'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -41,7 +45,10 @@ function EditGymForm() {
   const searchParams = useSearchParams()
   const gymId = searchParams.get('id')
   const sectionFromUrl = searchParams.get('section')
-  
+  const returnToRaw = searchParams.get('returnTo')
+  const afterEditPath = useMemo(() => resolvePostGymEditReturnPath(returnToRaw), [returnToRaw])
+  const hubCrumb = useMemo(() => manageGymEditHubBreadcrumb(afterEditPath), [afterEditPath])
+
   const { user, profile, loading: authLoading } = useAuth()
   const [gym, setGym] = useState<GymWithImages | null>(null)
   const [loading, setLoading] = useState(true)
@@ -718,7 +725,7 @@ function EditGymForm() {
       // a failure here shouldn't block the save flow.
       fetch(`/api/gyms/${gym.id}/revalidate`, { method: 'POST' }).catch(() => {})
 
-      router.push('/manage')
+      router.push(afterEditPath)
     } catch (err: any) {
       console.error('Error updating gym:', err)
       setErrorMsg(`Update failed: ${err.message}`)
@@ -754,7 +761,7 @@ function EditGymForm() {
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
               <p className="text-gray-700 mb-4">{errorMsg}</p>
-              <Button onClick={() => router.push('/manage')}>Back to Dashboard</Button>
+              <Button onClick={() => router.push(afterEditPath)}>Back</Button>
             </CardContent>
           </Card>
         </div>
@@ -790,7 +797,7 @@ function EditGymForm() {
       {/* Mobile header */}
       <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Link href="/manage" className="inline-flex items-center text-gray-600 hover:text-gray-900">
+          <Link href={afterEditPath} className="inline-flex items-center text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-4 h-4 mr-1" />
             <span className="text-sm font-medium">Back</span>
           </Link>
@@ -801,7 +808,7 @@ function EditGymForm() {
       <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
         <div className="hidden md:block mb-6">
           <ManageBreadcrumbs
-            items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Edit gym' }]}
+            items={[{ label: hubCrumb.label, href: hubCrumb.href }, { label: 'Edit gym' }]}
           />
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit gym profile</h1>
           <p className="text-gray-600 text-sm mt-1">Update your listing — changes sync to your preview and public page.</p>
@@ -1563,7 +1570,7 @@ function EditGymForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push('/manage')}
+                onClick={() => router.push(afterEditPath)}
                 className="flex-1 md:flex-initial"
               >
                 Cancel

@@ -26,7 +26,7 @@ import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-n
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
 
-/** Plain sandwich-menu row (matches “Customer support” — text only, one weight). */
+/** Plain sandwich-menu row (matches “Customer service” — text only, one weight). */
 const menuPlainClass =
   'flex items-center px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
 const menuPlainBetweenClass =
@@ -343,9 +343,9 @@ export function Navbar() {
                     </Link>
                   )}
 
-                  {/* Customer support, then Help Centre */}
+                  {/* Customer service, then Help Centre */}
                   <Link href="/contact" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
-                    Customer support
+                    Customer service
                   </Link>
                   <Link href="/faq" onClick={() => setDesktopMenuOpen(false)} className={menuPlainClass}>
                     Help Centre
@@ -532,8 +532,8 @@ export function Navbar() {
                   {/* Divider */}
                   <div className="h-px bg-gray-200 my-2" />
 
-                  {/* Guests: find trips + saved (plain, matches desktop) */}
-                  {!isOwner ? (
+                  {/* Guests (signed in): quick links — hidden when signed out (Booking-style; lookup lives under Help). */}
+                  {!isOwner && user ? (
                     <div className="space-y-0 pt-2">
                       <Link
                         href="/bookings"
@@ -552,7 +552,7 @@ export function Navbar() {
                     </div>
                   ) : null}
 
-                  {!isOwner ? <div className="h-px bg-gray-200 my-2" /> : null}
+                  {!isOwner && user ? <div className="h-px bg-gray-200 my-2" /> : null}
 
                   {/* Owner: same plain rows as desktop (calendar → full bookings page) */}
                   {isOwner ? (
@@ -681,17 +681,17 @@ export function Navbar() {
                   {/* Divider */}
                   <div className="h-px bg-gray-200 my-2" />
 
-                  {/* Help and support — Customer support first, then Help Centre (plain rows) */}
+                  {/* Help — Customer service first, then Help Centre (plain rows) */}
                   <div className="pt-2">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-0">
-                      Help and support
+                      Help
                     </div>
                     <Link
                       href="/contact"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
                     >
-                      Customer support
+                      Customer service
                     </Link>
                     <Link
                       href="/faq"
@@ -700,6 +700,24 @@ export function Navbar() {
                     >
                       Help Centre
                     </Link>
+                    {!user ? (
+                      <>
+                        <Link
+                          href="/bookings"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                        >
+                          Find your booking
+                        </Link>
+                        <Link
+                          href="/saved"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block w-full py-3 text-left text-sm font-normal text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                        >
+                          Saved gyms
+                        </Link>
+                      </>
+                    ) : null}
                   </div>
 
                   {/* User Account Section - Only for signed-in users */}
@@ -738,7 +756,7 @@ export function Navbar() {
                           </>
                         )}
 
-                        {/* Find bookings / saved live above for guests; owners use “Your property” block */}
+                        {/* Signed-in guests: find/saved above; signed-out: same links under Help */}
 
                         {/* Sign Out */}
                         <button
