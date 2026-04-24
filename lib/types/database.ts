@@ -222,6 +222,7 @@ export interface Package {
 export interface PackageVariant {
   id: string
   package_id: string
+  accommodation_id?: string | null
   name: string
   description: string | null
   price_per_day: number | null

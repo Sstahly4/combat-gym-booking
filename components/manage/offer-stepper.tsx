@@ -114,6 +114,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [linkedAccommodationIds, setLinkedAccommodationIds] = useState<string[]>([])
   const [availableAccommodations, setAvailableAccommodations] = useState<any[]>([])
   const [accommodationModalOpen, setAccommodationModalOpen] = useState(false)
+  const [bundlePricesByAccommodationId, setBundlePricesByAccommodationId] = useState<
+    Record<string, { week: string; month: string }>
+  >({})
   
   // Step 5: Availability
   const [availableYearRound, setAvailableYearRound] = useState(true)
@@ -222,14 +225,34 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   // Load linked accommodations for existing package
   const loadLinkedAccommodations = async (packageId: string) => {
     const supabase = createClient()
+    // New model: Train & Stay / All-inclusive use package_variants as priced room options.
+    // We still support legacy package_accommodations links for older data.
+    const { data: variants } = await supabase
+      .from('package_variants')
+      .select('id, accommodation_id, name, price_per_week, price_per_month')
+      .eq('package_id', packageId)
+
+    if (variants && variants.length > 0) {
+      const accIds = variants.map((v: any) => v.accommodation_id).filter(Boolean)
+      setLinkedAccommodationIds(accIds)
+      const next: Record<string, { week: string; month: string }> = {}
+      variants.forEach((v: any) => {
+        if (!v.accommodation_id) return
+        next[v.accommodation_id] = {
+          week: v.price_per_week != null ? String(v.price_per_week) : '',
+          month: v.price_per_month != null ? String(v.price_per_month) : '',
+        }
+      })
+      setBundlePricesByAccommodationId(next)
+      return
+    }
+
     const { data } = await supabase
       .from('package_accommodations')
       .select('accommodation_id')
       .eq('package_id', packageId)
-    
-    if (data) {
-      setLinkedAccommodationIds(data.map(link => link.accommodation_id))
-    }
+
+    if (data) setLinkedAccommodationIds(data.map((link: any) => link.accommodation_id))
   }
   
   // Load accommodations when needed
@@ -371,9 +394,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       payload.min_stay_days = selectedOfferType === 'TYPE_TRAINING_ONLY' ? 1 : minStayDays
       payload.available_year_round = availableYearRound
       payload.blackout_dates = blackoutDates.length > 0 ? blackoutDates : []
-      payload.price_per_day = pricePerDay ? parseFloat(pricePerDay) : null
-      payload.price_per_week = pricePerWeek ? parseFloat(pricePerWeek) : null
-      payload.price_per_month = pricePerMonth ? parseFloat(pricePerMonth) : null
+      // Pricing model:
+      // - Training-only + custom experiences: price lives on the package.
+      // - Train & Stay / All-inclusive: price lives on room variants (package_variants), not the package row.
+      const usesRoomVariants =
+        selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'
+      payload.price_per_day = usesRoomVariants ? null : pricePerDay ? parseFloat(pricePerDay) : null
+      payload.price_per_week = usesRoomVariants ? null : pricePerWeek ? parseFloat(pricePerWeek) : null
+      payload.price_per_month = usesRoomVariants ? null : pricePerMonth ? parseFloat(pricePerMonth) : null
       payload.event_date = null
       payload.event_end_date = null
       payload.max_attendees = null
@@ -400,7 +428,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
           await supabase.from('package_variants').delete().eq('package_id', packageId)
         } else {
+          // For Train & Stay / All-inclusive, we rebuild room variants.
+          // For other non-event types, keep legacy behavior (no variants).
           await supabase.from('package_accommodations').delete().eq('package_id', packageId)
+          await supabase.from('package_variants').delete().eq('package_id', packageId)
         }
       } else {
         const { error, data } = await supabase
@@ -437,23 +468,37 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             console.error('Error saving ticket tiers:', variantError)
           }
         }
-      } else if (
-        linkedAccommodationIds.length > 0 &&
-        (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE')
-      ) {
-        const links = linkedAccommodationIds.map((accId, index) => ({
-          package_id: packageId,
-          accommodation_id: accId,
-          is_default: index === 0,
-        }))
-
-        const { error: linkError } = await supabase
-          .from('package_accommodations')
-          .insert(links)
-
-        if (linkError) {
-          console.error('Error linking accommodations:', linkError)
+      } else if (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') {
+        // Room-priced bundles: create a priced variant per linked accommodation.
+        if (linkedAccommodationIds.length === 0) {
+          throw new Error('Please link at least one accommodation option.')
         }
+
+        const selectedAccs = availableAccommodations.filter((a) => linkedAccommodationIds.includes(a.id))
+        const missing = selectedAccs.filter((a) => !bundlePricesByAccommodationId[a.id]?.week?.trim())
+        if (missing.length > 0) {
+          throw new Error('Please set a weekly bundle price for every linked room option.')
+        }
+
+        const variantRows = selectedAccs.map((acc: any) => {
+          const bundle = bundlePricesByAccommodationId[acc.id]
+          const roomType = acc.room_type === 'private' ? 'private' : acc.room_type ? 'shared' : null
+          return {
+            package_id: packageId,
+            accommodation_id: acc.id,
+            name: acc.name,
+            description: acc.description || null,
+            room_type: roomType,
+            price_per_day: null,
+            price_per_week: bundle.week ? parseFloat(bundle.week) : null,
+            price_per_month: bundle.month ? parseFloat(bundle.month) : null,
+            images: acc.images || [],
+            capacity: acc.capacity ?? null,
+          }
+        })
+
+        const { error: variantError } = await supabase.from('package_variants').insert(variantRows)
+        if (variantError) throw variantError
       }
 
       const { error: gymCurrencyError } = await supabase
@@ -485,6 +530,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         }
         if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
           return pricePerDay !== ''
+        }
+        if (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') {
+          if (linkedAccommodationIds.length === 0) return false
+          return linkedAccommodationIds.every((id) => Boolean(bundlePricesByAccommodationId[id]?.week?.trim()))
         }
         return pricePerWeek !== ''
       case 4:
@@ -805,7 +854,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
               ) : (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-800">
-                    <strong>Minimum stay:</strong> 1 week. Stays are rounded up to the nearest week for billing.
+                    <strong>Bundle pricing:</strong> The price you set here is the <strong>full package price</strong> guests pay
+                    (includes training + accommodation{selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? ' + meals' : ''}).
+                    Linked room prices don&apos;t change checkout totals — they are used for room selection and display only.
                   </p>
                 </div>
               )}
@@ -821,6 +872,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     onChange={e => setPricePerDay(e.target.value)}
                         placeholder="0.00"
                     required={selectedOfferType === 'TYPE_TRAINING_ONLY'}
+                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     {selectedOfferType === 'TYPE_TRAINING_ONLY' 
@@ -838,6 +890,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     onChange={e => setPricePerWeek(e.target.value)}
                         placeholder="0.00"
                     required={selectedOfferType !== 'TYPE_TRAINING_ONLY'}
+                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     Total price for a 7-day stay. This is the base rate for booking calculations.
@@ -852,6 +905,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     value={pricePerMonth}
                     onChange={e => setPricePerMonth(e.target.value)}
                         placeholder="0.00"
+                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     Optional. Discounted rate for 30-day stays.
@@ -877,29 +931,76 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   <p className="text-xs text-gray-600 mb-3">
                     {selectedOfferType === 'TYPE_TRAINING_ACCOM' 
                       ? 'Select which room types apply to this package. Guests will choose a room when booking.'
-                      : 'Select which room types are included in this all-inclusive package. Guests will choose a room when booking.'}
+                      : 'Select which room types are included in this all-inclusive package. Guests will choose a room when booking.'}{' '}
+                    <span className="text-gray-500">
+                      (Set the total bundle price for each room below.)
+                    </span>
                   </p>
                   {availableAccommodations.length > 0 ? (
                     <div className="space-y-2">
                       {availableAccommodations.map(acc => (
-                        <label key={acc.id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded">
-                          <input
-                            type="checkbox"
-                            checked={linkedAccommodationIds.includes(acc.id)}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                setLinkedAccommodationIds([...linkedAccommodationIds, acc.id])
-                              } else {
-                                setLinkedAccommodationIds(linkedAccommodationIds.filter(id => id !== acc.id))
-                              }
-                            }}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{acc.name}</span>
-                          <span className="text-xs text-gray-500 ml-auto">
-                            {acc.price_per_week ? `${packageCurrency} ${acc.price_per_week}/week` : 'Price TBD'}
-                          </span>
-                        </label>
+                        <div key={acc.id} className="rounded-lg border border-gray-100 p-3 hover:bg-gray-50">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={linkedAccommodationIds.includes(acc.id)}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setLinkedAccommodationIds([...linkedAccommodationIds, acc.id])
+                                } else {
+                                  setLinkedAccommodationIds(linkedAccommodationIds.filter(id => id !== acc.id))
+                                }
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-sm font-medium">{acc.name}</span>
+                            <span className="text-xs text-gray-500 ml-auto">
+                              {acc.room_type ? `${acc.room_type}` : ''}
+                            </span>
+                          </label>
+
+                          {linkedAccommodationIds.includes(acc.id) ? (
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs text-gray-600">
+                                  Total bundle price / week ({packageCurrency}) <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={bundlePricesByAccommodationId[acc.id]?.week ?? ''}
+                                  onChange={(e) =>
+                                    setBundlePricesByAccommodationId((prev) => ({
+                                      ...prev,
+                                      [acc.id]: { week: e.target.value, month: prev[acc.id]?.month ?? '' },
+                                    }))
+                                  }
+                                  placeholder={acc.price_per_week ? String(acc.price_per_week) : '0.00'}
+                                />
+                                <p className="mt-1 text-[11px] text-gray-500">
+                                  Guests pay this price when they choose this room.
+                                </p>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-gray-600">
+                                  Total bundle price / month ({packageCurrency}) <span className="text-gray-400">(Optional)</span>
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={bundlePricesByAccommodationId[acc.id]?.month ?? ''}
+                                  onChange={(e) =>
+                                    setBundlePricesByAccommodationId((prev) => ({
+                                      ...prev,
+                                      [acc.id]: { week: prev[acc.id]?.week ?? '', month: e.target.value },
+                                    }))
+                                  }
+                                  placeholder={acc.price_per_month ? String(acc.price_per_month) : '0.00'}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -1331,6 +1432,17 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         amount: parseFloat(pricePerDay) || 0, 
         period: 'per session', 
         label: 'Per session (starting from)' 
+      }
+    }
+    if (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') {
+      const weeks = linkedAccommodationIds
+        .map((id) => parseFloat(bundlePricesByAccommodationId[id]?.week || ''))
+        .filter((n) => !isNaN(n) && n > 0)
+      if (weeks.length === 0) return null
+      return {
+        amount: Math.min(...weeks),
+        period: 'per week',
+        label: weeks.length > 1 ? 'From (lowest room bundle)' : 'Per week',
       }
     }
     if (pricePerWeek) {
