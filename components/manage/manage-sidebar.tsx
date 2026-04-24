@@ -39,53 +39,75 @@ type NavItem = {
   }>
 }
 
+function withGymId(href: string, gymId: string | null): string {
+  if (!gymId) return href
+  if (!href.startsWith('/manage')) return href
+  const [path, query] = href.split('?')
+  const q = new URLSearchParams(query || '')
+  if (!q.has('gym_id')) q.set('gym_id', gymId)
+  const qs = q.toString()
+  return qs ? `${path}?${qs}` : path
+}
+
 function getNavGroups(
   editGymHref: string,
   viewListingHref: string,
   firstGymId: string | null,
   verificationDone: boolean
 ): { primary: NavItem[]; secondary: NavItem[]; settings: NavItem } {
+  const manageHome = withGymId('/manage', firstGymId)
+  const bookingsHref = withGymId('/manage/bookings', firstGymId)
+  const calendarHref = withGymId('/manage/calendar', firstGymId)
+  const balancesHref = withGymId('/manage/balances', firstGymId)
+  const payoutsHref = withGymId('/manage/balances/payouts', firstGymId)
+  const promotionsHref = withGymId('/manage/promotions', firstGymId)
+  const reviewsHref = withGymId('/manage/reviews', firstGymId)
+  const accommodationHref = withGymId('/manage/accommodation', firstGymId)
+  const helpHref = withGymId('/manage/help', firstGymId)
+  const verificationHref = withGymId('/manage/verification', firstGymId)
+  const settingsHref = withGymId('/manage/settings', firstGymId)
+
   return {
     primary: [
       {
-        href: '/manage',
+        href: manageHome,
         label: 'Home',
         icon: Home,
         isActive: (p) => p === '/manage',
       },
       {
-        href: '/manage/bookings',
+        href: bookingsHref,
         label: 'Bookings',
         icon: ClipboardList,
         isActive: (p) => p === '/manage/bookings' || p.startsWith('/manage/bookings/'),
       },
       {
-        href: '/manage/calendar',
+        href: calendarHref,
         label: 'Calendar',
         icon: CalendarRange,
         isActive: (p) => p === '/manage/calendar' || p.startsWith('/manage/calendar/'),
       },
       {
-        href: '/manage/balances',
+        href: balancesHref,
         label: 'Balances',
         icon: Wallet,
         isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
         children: [
           {
-            href: '/manage/balances/payouts',
+            href: payoutsHref,
             label: 'Payouts',
             isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
           },
         ],
       },
       {
-        href: '/manage/promotions',
+        href: promotionsHref,
         label: 'Promotions',
         icon: Tag,
         isActive: (p) => p === '/manage/promotions' || p.startsWith('/manage/promotions/'),
       },
       {
-        href: '/manage/reviews',
+        href: reviewsHref,
         label: 'Reviews',
         icon: Star,
         isActive: (p) => p === '/manage/reviews' || p.startsWith('/manage/reviews/'),
@@ -106,26 +128,26 @@ function getNavGroups(
         isActive: (p) => p.startsWith('/manage/gym/edit'),
       },
       {
-        href: '/manage/accommodation',
+        href: accommodationHref,
         label: 'Accommodation',
         icon: BedDouble,
         isActive: (p) => p === '/manage/accommodation' || p.startsWith('/manage/accommodation/'),
       },
       {
-        href: '/manage/help',
+        href: helpHref,
         label: 'Help center',
         icon: HelpCircle,
         isActive: (p) => p === '/manage/help' || p.startsWith('/manage/help/'),
       },
       {
-        href: '/manage/verification',
+        href: verificationHref,
         label: verificationDone ? 'Verified' : 'Verification',
         icon: verificationDone ? BadgeCheck : ShieldCheck,
         isActive: (p) => p === '/manage/verification',
       },
     ],
     settings: {
-      href: '/manage/settings',
+      href: settingsHref,
       label: 'Settings',
       icon: Settings,
       isActive: (p) => p === '/manage/settings' || p.startsWith('/manage/settings/'),

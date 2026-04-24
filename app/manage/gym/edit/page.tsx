@@ -98,7 +98,17 @@ function EditGymForm() {
     saturday: [],
     sunday: [],
   })
-  const [trainers, setTrainers] = useState<Array<{ name: string; discipline: string; experience: string }>>([])
+  const [trainers, setTrainers] = useState<
+    Array<{
+      name: string
+      discipline: string
+      experience: string
+      photo_url?: string | null
+      description?: string
+    }>
+  >([])
+  const [trainerPhotoFiles, setTrainerPhotoFiles] = useState<Record<number, File | null>>({})
+  const [trainerPhotoPreviews, setTrainerPhotoPreviews] = useState<Record<number, string | null>>({})
   const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([])
 
   // Get cache key for this gym
@@ -588,17 +598,36 @@ function EditGymForm() {
   }
 
   const addTrainer = () => {
-    setTrainers([...trainers, { name: '', discipline: '', experience: '' }])
+    setTrainers([...trainers, { name: '', discipline: '', experience: '', photo_url: null, description: '' }])
   }
 
   const removeTrainer = (index: number) => {
     setTrainers(trainers.filter((_, i) => i !== index))
+    setTrainerPhotoFiles((prev) => {
+      const next = { ...prev }
+      delete next[index]
+      return next
+    })
+    setTrainerPhotoPreviews((prev) => {
+      const next = { ...prev }
+      delete next[index]
+      return next
+    })
   }
 
   const updateTrainer = (index: number, field: string, value: string) => {
     const updated = [...trainers]
     updated[index] = { ...updated[index], [field]: value }
     setTrainers(updated)
+  }
+
+  const setTrainerPhotoFile = (index: number, file: File | null) => {
+    setTrainerPhotoFiles((prev) => ({ ...prev, [index]: file }))
+    setTrainerPhotoPreviews((prev) => {
+      const next = { ...prev }
+      if (next[index]) URL.revokeObjectURL(next[index]!)
+      return { ...next, [index]: file ? URL.createObjectURL(file) : null }
+    })
   }
 
   const addFaq = () => {
@@ -632,6 +661,33 @@ function EditGymForm() {
     }
     
     const formData = new FormData(formElement)
+
+    // Upload trainer photos (optional) before saving gym JSONB.
+    // Use unique keys and avoid upsert to keep Storage RLS requirements minimal.
+    const trainersWithUploadedPhotos = await (async () => {
+      if (!gym?.id) return [...trainers]
+      const out = [...trainers]
+      for (let i = 0; i < out.length; i++) {
+        const file = trainerPhotoFiles[i]
+        if (!file) continue
+        try {
+          const ext = file.name.split('.').pop() || 'jpg'
+          const safeExt = ext.length <= 10 ? ext : 'jpg'
+          const fileName = `trainers/${gym.id}/${Date.now()}-${i}.${safeExt}`
+          const { error: uploadError } = await supabase.storage
+            .from('gym-images')
+            .upload(fileName, file, { cacheControl: '3600', upsert: false })
+          if (uploadError) throw uploadError
+          const { data: urlData } = supabase.storage.from('gym-images').getPublicUrl(fileName)
+          out[i] = { ...out[i], photo_url: urlData.publicUrl }
+        } catch (err: any) {
+          console.error('Failed to upload trainer photo:', err)
+          throw new Error(`Failed to upload trainer photo (${out[i]?.name || `Trainer ${i + 1}`}): ${err?.message || 'Unknown error'}`)
+        }
+      }
+      return out
+    })()
+
     const updates = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -655,7 +711,15 @@ function EditGymForm() {
           [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
         ])
       ),
-      trainers: [...trainers].filter(t => t.name && t.discipline), // Create new array
+      trainers: [...trainersWithUploadedPhotos]
+        .map((t) => ({
+          name: t.name,
+          discipline: t.discipline,
+          experience: t.experience,
+          photo_url: t.photo_url ?? null,
+          description: (t.description ?? '').trim() || null,
+        }))
+        .filter((t) => t.name && t.discipline),
       faq: [...faq].filter(f => f.question && f.answer), // Create new array
     }
 
@@ -678,6 +742,15 @@ function EditGymForm() {
         console.error('Error updating gym:', error)
         throw error
       }
+
+      // Clear any pending local photo files after a successful save.
+      setTrainerPhotoFiles({})
+      setTrainerPhotoPreviews((prev) => {
+        Object.values(prev).forEach((u) => {
+          if (u) URL.revokeObjectURL(u)
+        })
+        return {}
+      })
       
       console.log('Gym updated successfully. Saved amenities:', data?.[0]?.amenities)
 
@@ -1470,32 +1543,86 @@ function EditGymForm() {
                 </Button>
               </div>
               {trainers.map((trainer, index) => (
-                <div key={index} className="grid md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg max-w-4xl">
-                  <Input
-                    placeholder="Trainer name"
-                    value={trainer.name}
-                    onChange={(e) => updateTrainer(index, 'name', e.target.value)}
-                  />
-                  <Input
-                    placeholder="Discipline"
-                    value={trainer.discipline}
-                    onChange={(e) => updateTrainer(index, 'discipline', e.target.value)}
-                  />
-                  <div className="flex gap-2">
+                <div key={index} className="p-4 bg-gray-50 rounded-lg max-w-4xl space-y-3">
+                  <div className="grid md:grid-cols-3 gap-3">
                     <Input
-                      placeholder="Experience (e.g., 10 years)"
-                      value={trainer.experience}
-                      onChange={(e) => updateTrainer(index, 'experience', e.target.value)}
-                      className="flex-1"
+                      placeholder="Trainer name"
+                      value={trainer.name}
+                      onChange={(e) => updateTrainer(index, 'name', e.target.value)}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeTrainer(index)}
-                    >
-                      Remove
-                    </Button>
+                    <Input
+                      placeholder="Discipline"
+                      value={trainer.discipline}
+                      onChange={(e) => updateTrainer(index, 'discipline', e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Experience (e.g., 10 years)"
+                        value={trainer.experience}
+                        onChange={(e) => updateTrainer(index, 'experience', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeTrainer(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-[10rem_1fr] gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-600">Photo (optional)</Label>
+                      <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
+                        {trainerPhotoPreviews[index] || trainer.photo_url ? (
+                          <img
+                            src={(trainerPhotoPreviews[index] as string) || (trainer.photo_url as string)}
+                            alt={trainer.name ? `${trainer.name} photo` : 'Trainer photo'}
+                            className="h-28 w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-28 items-center justify-center text-xs text-gray-400">
+                            No photo
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] ?? null
+                            setTrainerPhotoFile(index, f)
+                          }}
+                        />
+                        {(trainerPhotoPreviews[index] || trainer.photo_url) ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setTrainerPhotoFile(index, null)
+                              updateTrainer(index, 'photo_url', '')
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-600">Description (optional)</Label>
+                      <Textarea
+                        placeholder="Short bio, specialties, titles, notable fights, coaching style…"
+                        value={trainer.description || ''}
+                        onChange={(e) => updateTrainer(index, 'description', e.target.value)}
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
