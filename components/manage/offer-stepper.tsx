@@ -309,14 +309,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
 
     if (imageFile) {
       const fileExt = imageFile.name.split('.').pop()
-      const fileName = `packages/${gymId}-${Date.now()}.${fileExt}`
+      const safeExt = fileExt && fileExt.length <= 10 ? fileExt : 'jpg'
+      // Use a unique per-gym path and avoid upserts (upserts require UPDATE policies on storage.objects).
+      const fileName = `packages/${gymId}/${Date.now()}.${safeExt}`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('gym-images')
-        .upload(fileName, imageFile, { upsert: true })
+        .upload(fileName, imageFile, { upsert: false })
 
       if (uploadError) {
         console.error('Image upload error:', uploadError)
-        // Continue without image rather than blocking the save
+        throw new Error(`Cover image upload failed: ${uploadError.message}`)
       } else if (uploadData) {
         const { data: { publicUrl } } = supabase.storage
           .from('gym-images')

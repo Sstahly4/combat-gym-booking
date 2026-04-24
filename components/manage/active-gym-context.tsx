@@ -41,21 +41,21 @@ export function ActiveGymProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    setGymIdParam(params.get('gym_id'))
+    setGymIdParam(params.get('gym_id') || params.get('id'))
   }, [pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onPop = () => {
       const params = new URLSearchParams(window.location.search)
-      setGymIdParam(params.get('gym_id'))
+      setGymIdParam(params.get('gym_id') || params.get('id'))
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
   useEffect(() => {
-    if (authLoading || !user || profile?.role !== 'owner') {
+    if (authLoading || !user || (profile?.role !== 'owner' && profile?.role !== 'admin')) {
       setGyms([])
       setActiveState(null)
       setLoading(false)
@@ -64,25 +64,35 @@ export function ActiveGymProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     ;(async () => {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('gyms')
-        .select('id, name, verification_status')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false })
+      const isAdmin = profile?.role === 'admin'
+      const { data } = isAdmin
+        ? await supabase
+            .from('gyms')
+            .select('id, name, verification_status')
+            .eq('id', gymIdParam ?? '__missing__')
+            .maybeSingle()
+        : await supabase
+            .from('gyms')
+            .select('id, name, verification_status')
+            .eq('owner_id', user.id)
+            .order('created_at', { ascending: false })
       if (cancelled) return
-      const rows = (data || []) as ManageGymRow[]
+      const rows = (Array.isArray(data) ? data : data ? [data] : []) as ManageGymRow[]
       setGyms(rows)
 
       let next: string | null = null
-      if (gymIdParam && rows.some((g) => g.id === gymIdParam)) {
-        next = gymIdParam
-      } else if (typeof window !== 'undefined') {
+      if (gymIdParam) {
+        // For admins, we trust the URL param as the active gym id.
+        // For owners, we only accept ids in their gym list.
+        if (isAdmin || rows.some((g) => g.id === gymIdParam)) next = gymIdParam
+      }
+      if (!next && !isAdmin && typeof window !== 'undefined') {
         const stored = sessionStorage.getItem(STORAGE_KEY)
         if (stored && rows.some((g) => g.id === stored)) next = stored
       }
       if (!next && rows[0]) next = rows[0].id
       setActiveState(next)
-      if (next && typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, next)
+      if (next && !isAdmin && typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, next)
       setLoading(false)
     })()
     return () => {
@@ -92,10 +102,11 @@ export function ActiveGymProvider({ children }: { children: ReactNode }) {
 
   const setActiveGymId = useCallback(
     (id: string) => {
-      if (!gyms.some((g) => g.id === id)) return
+      const isAdmin = profile?.role === 'admin'
+      if (!isAdmin && !gyms.some((g) => g.id === id)) return
       setActiveState(id)
       setGymIdParam(id)
-      if (typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, id)
+      if (!isAdmin && typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, id)
       const q =
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
@@ -104,27 +115,35 @@ export function ActiveGymProvider({ children }: { children: ReactNode }) {
       const qs = q.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname)
     },
-    [gyms, pathname, router]
+    [gyms, pathname, profile?.role, router]
   )
 
   const refreshGyms = useCallback(async () => {
-    if (!user?.id || profile?.role !== 'owner') return
+    if (!user?.id || (profile?.role !== 'owner' && profile?.role !== 'admin')) return
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('gyms')
-      .select('id, name, verification_status')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false })
+    const isAdmin = profile?.role === 'admin'
+    const { data, error } = isAdmin
+      ? await supabase
+          .from('gyms')
+          .select('id, name, verification_status')
+          .eq('id', gymIdParam ?? '__missing__')
+          .maybeSingle()
+      : await supabase
+          .from('gyms')
+          .select('id, name, verification_status')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false })
     if (error) return
-    const rows = (data || []) as ManageGymRow[]
+    const rows = (Array.isArray(data) ? data : data ? [data] : []) as ManageGymRow[]
     setGyms(rows)
     setActiveState((prev) => {
       if (prev && rows.some((g) => g.id === prev)) return prev
+      if (isAdmin) return gymIdParam ?? rows[0]?.id ?? null
       const next = rows[0]?.id ?? null
       if (next && typeof window !== 'undefined') sessionStorage.setItem(STORAGE_KEY, next)
       return next
     })
-  }, [user?.id, profile?.role])
+  }, [gymIdParam, user?.id, profile?.role])
 
   const value = useMemo(
     () => ({ gyms, activeGymId, setActiveGymId, loading, refreshGyms }),
