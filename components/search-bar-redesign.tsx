@@ -307,6 +307,9 @@ export function SearchBarRedesign({
   const [mounted, setMounted] = useState(false)
   /** Full-screen “Where” sheet (Airbnb-style): hides category tabs + footer; back or swipe-down on header exits. */
   const [mobileWhereImmersive, setMobileWhereImmersive] = useState(false)
+  const [immersiveSheetTranslateY, setImmersiveSheetTranslateY] = useState(0)
+  const [immersiveSheetDragging, setImmersiveSheetDragging] = useState(false)
+  const [immersiveSheetClosing, setImmersiveSheetClosing] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
@@ -343,6 +346,14 @@ export function SearchBarRedesign({
   const mobileWhereInputRef = useRef<HTMLInputElement>(null)
   const immersiveHeaderTouchY = useRef(0)
   const immersiveScrollTouch = useRef({ y: 0, scrollTop: 0 })
+  const immersiveSheetRef = useRef<HTMLDivElement>(null)
+  const immersiveScrollRef = useRef<HTMLDivElement>(null)
+  const immersiveDrag = useRef({
+    startY: 0,
+    startT: 0,
+    started: false,
+    lastDy: 0,
+  })
 
   // Lock scroll when mobile modal is open (html + body: iOS Safari often still
   // rubber-bands / shows content behind a fixed overlay until a repaint).
@@ -374,6 +385,101 @@ export function SearchBarRedesign({
   useEffect(() => {
     if (mobilePanel !== 'where') setMobileWhereImmersive(false)
   }, [mobilePanel])
+
+  // Immersive Where: Airbnb-style drag-to-dismiss (sheet translate) with non-passive touchmove to prevent iOS rubber-band.
+  useEffect(() => {
+    if (!mobileModalOpen || !mobileWhereImmersive || mobilePanel !== 'where') return
+    const sheetEl = immersiveSheetRef.current
+    if (!sheetEl) return
+
+    // Reset any stale state on open.
+    setImmersiveSheetTranslateY(0)
+    setImmersiveSheetDragging(false)
+    setImmersiveSheetClosing(false)
+
+    const getScrollTop = () => immersiveScrollRef.current?.scrollTop ?? 0
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (immersiveSheetClosing) return
+      if (e.touches.length !== 1) return
+      const t = e.touches[0]
+      if (!t) return
+      immersiveDrag.current = {
+        startY: t.clientY,
+        startT: performance.now(),
+        started: false,
+        lastDy: 0,
+      }
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (immersiveSheetClosing) return
+      if (e.touches.length !== 1) return
+      const t = e.touches[0]
+      if (!t) return
+      const dy = t.clientY - immersiveDrag.current.startY
+      const atTop = getScrollTop() <= 0
+
+      // Only start dragging downward if the scroll region is fully at top.
+      if (!immersiveDrag.current.started) {
+        if (!atTop || dy <= 0) return
+        immersiveDrag.current.started = true
+        setImmersiveSheetDragging(true)
+      }
+
+      // From this point, we own the gesture: prevent scroll rubber-band and translate the sheet.
+      e.preventDefault()
+
+      // Gentle resistance so it feels like a sheet, not a free scroll.
+      const resisted = Math.min(dy, 420)
+      const eased = resisted * 0.92
+      immersiveDrag.current.lastDy = eased
+      setImmersiveSheetTranslateY(eased)
+    }
+
+    const settle = (dismiss: boolean) => {
+      setImmersiveSheetDragging(false)
+      if (!dismiss) {
+        setImmersiveSheetTranslateY(0)
+        return
+      }
+      setImmersiveSheetClosing(true)
+      // Slide down out of view, then close immersive.
+      const out = Math.max(window.innerHeight * 0.85, 520)
+      setImmersiveSheetTranslateY(out)
+      window.setTimeout(() => {
+        setMobileWhereImmersive(false)
+        setImmersiveSheetTranslateY(0)
+        setImmersiveSheetClosing(false)
+      }, 220)
+    }
+
+    const onTouchEnd = () => {
+      if (!immersiveDrag.current.started) return
+      const dy = immersiveDrag.current.lastDy
+      const dt = Math.max(1, performance.now() - immersiveDrag.current.startT)
+      const v = dy / dt // px/ms
+      settle(dy > 120 || v > 0.9)
+    }
+
+    const onTouchCancel = () => {
+      if (!immersiveDrag.current.started) return
+      settle(false)
+    }
+
+    sheetEl.addEventListener('touchstart', onTouchStart, { passive: true })
+    sheetEl.addEventListener('touchmove', onTouchMove, { passive: false })
+    sheetEl.addEventListener('touchend', onTouchEnd, { passive: true })
+    sheetEl.addEventListener('touchcancel', onTouchCancel, { passive: true })
+
+    return () => {
+      sheetEl.removeEventListener('touchstart', onTouchStart)
+      sheetEl.removeEventListener('touchmove', onTouchMove)
+      sheetEl.removeEventListener('touchend', onTouchEnd)
+      sheetEl.removeEventListener('touchcancel', onTouchCancel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobileModalOpen, mobileWhereImmersive, mobilePanel, immersiveSheetClosing])
 
   const mobileFilteredSuggested = useMemo(
     () =>
@@ -1067,8 +1173,18 @@ export function SearchBarRedesign({
         >
           {mobileWhereImmersive && mobilePanel === 'where' ? (
             /* Immersive Where: inset from top so rounded sheet reads like Airbnb (not flush full-bleed) */
-            <div className="flex min-h-0 flex-1 flex-col pt-[max(10px,calc(env(safe-area-inset-top)+8px))]">
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-10px_40px_-12px_rgba(15,23,42,0.18)] ring-1 ring-black/[0.06]">
+            <div className="flex min-h-0 flex-1 flex-col pt-[max(18px,calc(env(safe-area-inset-top)+14px))]">
+              <div
+                ref={immersiveSheetRef}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-10px_40px_-12px_rgba(15,23,42,0.18)] ring-1 ring-black/[0.06]"
+                style={{
+                  transform: immersiveSheetTranslateY ? `translate3d(0, ${immersiveSheetTranslateY}px, 0)` : undefined,
+                  transition: immersiveSheetDragging
+                    ? 'none'
+                    : 'transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1)',
+                  willChange: immersiveSheetDragging ? 'transform' : undefined,
+                }}
+              >
                 <div
                   className="flex-shrink-0 px-4 pt-3 pb-2"
                   onTouchStart={(e) => {
@@ -1119,6 +1235,7 @@ export function SearchBarRedesign({
                 </div>
                 </div>
                 <div
+                  ref={immersiveScrollRef}
                   className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
                   onTouchStart={(e) => {
                     const el = e.currentTarget
@@ -1281,7 +1398,7 @@ export function SearchBarRedesign({
 
                   {/* Recents + suggested: preview with fade; immersive = full list */}
                   {((recentSearches.length > 0 && !whereQuery.trim()) || mobileFilteredSuggested.length > 0) ? (
-                    <div className="relative mt-1 overflow-hidden max-h-[min(42dvh,20rem)]">
+                    <div className="relative mt-1 overflow-hidden max-h-[min(40dvh,18rem)]">
                       {recentSearches.length > 0 && !whereQuery.trim() ? (
                         <div className="mb-3 flex-shrink-0">
                           <p className="mb-2 text-sm font-semibold text-gray-900">Recent searches</p>
@@ -1310,7 +1427,7 @@ export function SearchBarRedesign({
                       ) : null}
                       {mobileFilteredSuggested.length > 0 ? (
                         <div
-                          className={`overflow-hidden opacity-60 ${
+                          className={`overflow-hidden ${
                             recentSearches.length > 0 && !whereQuery.trim()
                               ? 'mt-1 border-t border-gray-100 pt-3'
                               : ''
@@ -1320,7 +1437,7 @@ export function SearchBarRedesign({
                             Suggested destinations
                           </p>
                           <div className="space-y-1">
-                            {mobileFilteredSuggested.slice(0, 4).map((dest) => (
+                            {mobileFilteredSuggested.slice(0, 8).map((dest) => (
                               <button
                                 key={dest.name}
                                 type="button"
@@ -1341,7 +1458,7 @@ export function SearchBarRedesign({
                         </div>
                       ) : null}
                       <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/95 to-transparent"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/95 to-transparent"
                         aria-hidden
                       />
                     </div>
