@@ -50,9 +50,11 @@ interface Accommodation {
 interface AccommodationManagerProps {
   gymId: string
   currency: string
+  /** When true, render without the internal page header (for full-page usage). */
+  hideHeader?: boolean
 }
 
-export function AccommodationManager({ gymId, currency }: AccommodationManagerProps) {
+export function AccommodationManager({ gymId, currency, hideHeader = false }: AccommodationManagerProps) {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -384,47 +386,66 @@ export function AccommodationManager({ gymId, currency }: AccommodationManagerPr
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <BedDouble className="w-5 h-5" />
-            Accommodation Manager
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage your room types independently. These can be linked to multiple packages.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCsvModal(true)}
-          >
-            <Upload className="w-4 h-4 mr-1" />
-            Import CSV
-          </Button>
-          {accommodations.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportCsv}
-            >
-              <Download className="w-4 h-4 mr-1" />
-              Export CSV
+      {!hideHeader ? (
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <BedDouble className="w-5 h-5" />
+              Accommodation Manager
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Manage your room types independently. These can be linked to multiple packages.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowCsvModal(true)}>
+              <Upload className="w-4 h-4 mr-1" />
+              Import CSV
             </Button>
-          )}
-          <Button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
-            className="bg-[#003580] hover:bg-[#003580]/90"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Accommodation
-          </Button>
+            {accommodations.length > 0 && (
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="w-4 h-4 mr-1" />
+                Export CSV
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="bg-[#003580] hover:bg-[#003580]/90"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Accommodation
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowCsvModal(true)}>
+              <Upload className="w-4 h-4 mr-1" />
+              Import CSV
+            </Button>
+            {accommodations.length > 0 ? (
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="w-4 h-4 mr-1" />
+                Export CSV
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="bg-[#003580] hover:bg-[#003580]/90"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Accommodation
+            </Button>
+          </div>
+        </div>
+      )}
       
       {loading ? (
         <div className="text-center py-12">

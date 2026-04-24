@@ -24,7 +24,7 @@ export function HomepageHero() {
   }, [category])
 
   return (
-    <div className="relative z-20 bg-[#003580] pt-10 pb-0 md:pt-14">
+    <div className="relative z-20 bg-[#003580] pt-8 pb-0 md:pt-14">
       <div className="max-w-6xl mx-auto px-4">
         {/* Left-aligned headline + subtitle */}
         <h1 className="text-2xl md:text-5xl font-bold mb-3 md:mb-4 tracking-tight text-white">

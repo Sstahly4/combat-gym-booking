@@ -427,11 +427,14 @@ export function SearchBarRedesign({
 
   const [immersiveCloseAnimating, setImmersiveCloseAnimating] = useState(false)
 
-  const openImmersiveWhereAndFocus = useCallback(() => {
+  const [mobileWhereShouldAutoFocus, setMobileWhereShouldAutoFocus] = useState(true)
+
+  const openImmersiveWhere = useCallback((focus: boolean) => {
+    setMobileWhereShouldAutoFocus(focus)
     // iOS Safari won’t always open the keyboard unless focus happens synchronously
     // within the user gesture. flushSync ensures the immersive input is mounted.
     flushSync(() => setMobileWhereImmersive(true))
-    mobileWhereInputRef.current?.focus({ preventScroll: true })
+    if (focus) mobileWhereInputRef.current?.focus({ preventScroll: true })
   }, [])
 
   // Lock scroll when mobile modal is open.
@@ -475,10 +478,10 @@ export function SearchBarRedesign({
 
   // Auto-focus mobile where input when panel opens or immersive Where opens
   useEffect(() => {
-    if (mobileModalOpen && mobilePanel === 'where') {
+    if (mobileModalOpen && mobilePanel === 'where' && mobileWhereShouldAutoFocus) {
       setTimeout(() => mobileWhereInputRef.current?.focus(), mobileWhereImmersive ? 120 : 60)
     }
-  }, [mobileModalOpen, mobilePanel, mobileWhereImmersive])
+  }, [mobileModalOpen, mobilePanel, mobileWhereImmersive, mobileWhereShouldAutoFocus])
 
   useEffect(() => {
     if (!mobileModalOpen) setMobileWhereImmersive(false)
@@ -1655,7 +1658,7 @@ export function SearchBarRedesign({
                   <div
                     ref={compactWhereSearchBarRef}
                     className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
-                    onClick={openImmersiveWhereAndFocus}
+                    onClick={() => openImmersiveWhere(true)}
                   >
                     <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
                     <input
@@ -1663,7 +1666,7 @@ export function SearchBarRedesign({
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
-                      onClick={openImmersiveWhereAndFocus}
+                      onClick={() => openImmersiveWhere(true)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') setMobilePanel('when')
                       }}
@@ -1750,7 +1753,7 @@ export function SearchBarRedesign({
                       <div className="border-t border-gray-100/90">
                         <button
                           type="button"
-                          onClick={openImmersiveWhereAndFocus}
+                          onClick={() => openImmersiveWhere(false)}
                           className="flex w-full justify-center py-1 touch-manipulation opacity-80"
                           aria-label="Expand destination search"
                         >

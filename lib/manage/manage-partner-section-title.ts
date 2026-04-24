@@ -12,6 +12,7 @@ export function managePartnerSectionTitle(pathname: string): string {
   if (pathname.startsWith('/manage/calendar')) return 'Calendar'
   if (pathname.startsWith('/manage/gym/edit')) return 'Edit listing'
   if (pathname.startsWith('/manage/gym/preview')) return 'Preview listing'
+  if (pathname.startsWith('/manage/accommodation')) return 'Accommodation'
   if (pathname.startsWith('/manage/promotions')) return 'Promotions'
   if (pathname.startsWith('/manage/reviews')) return 'Reviews'
   if (pathname.startsWith('/manage/verification')) return 'Verification'

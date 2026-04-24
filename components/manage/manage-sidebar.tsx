@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   CalendarRange,
   BadgeCheck,
+  BedDouble,
   ClipboardList,
   Eye,
   HelpCircle,
@@ -103,6 +104,12 @@ function getNavGroups(
         label: 'Edit gym',
         icon: Pencil,
         isActive: (p) => p.startsWith('/manage/gym/edit'),
+      },
+      {
+        href: '/manage/accommodation',
+        label: 'Accommodation',
+        icon: BedDouble,
+        isActive: (p) => p === '/manage/accommodation' || p.startsWith('/manage/accommodation/'),
       },
       {
         href: '/manage/help',
