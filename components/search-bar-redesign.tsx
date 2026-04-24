@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { createPortal, flushSync } from 'react-dom'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Search,
   MapPin,
@@ -301,6 +301,7 @@ export function SearchBarRedesign({
   onCategoryChange?: (category: 'gyms' | 'train-stay' | 'seminars') => void
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { checkin, setCheckin, checkout, setCheckout } = useBooking()
 
   const [activeCategory, setActiveCategory] = useState<'gyms' | 'train-stay' | 'seminars'>('gyms')
@@ -340,6 +341,15 @@ export function SearchBarRedesign({
   useEffect(() => {
     if (controlledCategory) setActiveCategory(controlledCategory)
   }, [controlledCategory])
+
+  // Keep the last searched destination while on /search, but reset the homepage experience.
+  useEffect(() => {
+    if (pathname === '/') {
+      setWhereQuery('')
+      setMobilePanel('where')
+      setMobileWhereImmersive(false)
+    }
+  }, [pathname])
 
   // iOS Safari tab/app switching can leave fixed overlays shorter until the next scroll.
   // While the mobile modal is open, drive its height from innerHeight / visualViewport.
@@ -416,6 +426,13 @@ export function SearchBarRedesign({
   })
 
   const [immersiveCloseAnimating, setImmersiveCloseAnimating] = useState(false)
+
+  const openImmersiveWhereAndFocus = useCallback(() => {
+    // iOS Safari won’t always open the keyboard unless focus happens synchronously
+    // within the user gesture. flushSync ensures the immersive input is mounted.
+    flushSync(() => setMobileWhereImmersive(true))
+    mobileWhereInputRef.current?.focus({ preventScroll: true })
+  }, [])
 
   // Lock scroll when mobile modal is open (html + body: iOS Safari often still
   // rubber-bands / shows content behind a fixed overlay until a repaint).
@@ -1615,7 +1632,7 @@ export function SearchBarRedesign({
                   <div
                     ref={compactWhereSearchBarRef}
                     className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
-                    onClick={() => setMobileWhereImmersive(true)}
+                    onClick={openImmersiveWhereAndFocus}
                   >
                     <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
                     <input
@@ -1623,18 +1640,13 @@ export function SearchBarRedesign({
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
-                      onClick={() => setMobileWhereImmersive(true)}
+                      onClick={openImmersiveWhereAndFocus}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') setMobilePanel('when')
                       }}
                       placeholder="Search destinations"
                       className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
                     />
-                    {whereQuery && (
-                      <button type="button" onClick={() => setWhereQuery('')} className="p-1">
-                        <X className="h-4 w-4 text-gray-400" />
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex-shrink-0">
@@ -1715,7 +1727,7 @@ export function SearchBarRedesign({
                       <div className="border-t border-gray-100/90">
                         <button
                           type="button"
-                          onClick={() => setMobileWhereImmersive(true)}
+                          onClick={openImmersiveWhereAndFocus}
                           className="flex w-full justify-center py-1 touch-manipulation opacity-80"
                           aria-label="Expand destination search"
                         >
