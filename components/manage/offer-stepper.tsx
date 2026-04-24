@@ -844,6 +844,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             </div>
             
             <div className="space-y-4">
+              {selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-800">
+                    <strong>Priced per room:</strong> This offer is priced per accommodation option.
+                    Set the <strong>total bundle price</strong> (training{selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? ' + meals' : ''} + this room)
+                    for each room you link below. Guests will see a &ldquo;From&rdquo; price based on your cheapest room and pay
+                    the bundle price of the room they select at checkout.
+                  </p>
+                </div>
+              ) : null}
               {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-800">
@@ -851,20 +861,21 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     Set your daily rate below.
                   </p>
                 </div>
-              ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs text-blue-800">
-                    <strong>Bundle pricing:</strong> The price you set here is the <strong>full package price</strong> guests pay
-                    (includes training + accommodation{selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? ' + meals' : ''}).
-                    Linked room prices don&apos;t change checkout totals — they are used for room selection and display only.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
-              {/* Pricing - day/week/month rates */}
+              {/* Pricing - day/week/month rates.
+                  Hidden for Train & Stay / All-inclusive because those are priced per room bundle below. */}
+              {selectedOfferType !== 'TYPE_TRAINING_ACCOM' && selectedOfferType !== 'TYPE_ALL_INCLUSIVE' && (
               <div className="border-t pt-4 space-y-4">
                     <div>
-                  <Label>Price per Day ({packageCurrency}) {selectedOfferType === 'TYPE_TRAINING_ONLY' ? <span className="text-red-500">*</span> : <span className="text-gray-400">(Optional)</span>}</Label>
+                  <Label>
+                    Price per Day ({packageCurrency}){' '}
+                    {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
+                      <span className="text-red-500">*</span>
+                    ) : (
+                      <span className="text-gray-400">(Optional)</span>
+                    )}
+                  </Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -872,7 +883,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     onChange={e => setPricePerDay(e.target.value)}
                         placeholder="0.00"
                     required={selectedOfferType === 'TYPE_TRAINING_ONLY'}
-                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     {selectedOfferType === 'TYPE_TRAINING_ONLY' 
@@ -882,7 +892,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     </div>
                     
                     <div>
-                  <Label>Price per Week ({packageCurrency}) {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? <span className="text-red-500">*</span> : <span className="text-gray-400">(Optional)</span>}</Label>
+                  <Label>
+                    Price per Week ({packageCurrency}){' '}
+                    {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
+                      <span className="text-red-500">*</span>
+                    ) : (
+                      <span className="text-gray-400">(Optional)</span>
+                    )}
+                  </Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -890,7 +907,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     onChange={e => setPricePerWeek(e.target.value)}
                         placeholder="0.00"
                     required={selectedOfferType !== 'TYPE_TRAINING_ONLY'}
-                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     Total price for a 7-day stay. This is the base rate for booking calculations.
@@ -905,7 +921,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     value={pricePerMonth}
                     onChange={e => setPricePerMonth(e.target.value)}
                         placeholder="0.00"
-                    disabled={selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                     Optional. Discounted rate for 30-day stays.
@@ -921,6 +936,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   </div>
                 )}
               </div>
+              )}
 
               {/* Accommodation Linking - for TRAINING_ACCOM and ALL_INCLUSIVE */}
 
