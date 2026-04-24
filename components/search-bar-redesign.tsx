@@ -1253,8 +1253,7 @@ export function SearchBarRedesign({
               <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-4 pb-4">
                 {/* ══ WHERE card ══ */}
                 {mobilePanel === 'where' ? (
-                /* Expanded WHERE — flex-1 so the sheet fills down toward the footer */
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100/90 bg-white px-4 pt-4 pb-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
+                <div className="flex flex-col overflow-hidden rounded-3xl border border-gray-100/90 bg-white px-4 pt-4 pb-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
                   <h2 className="mb-3 flex-shrink-0 text-2xl font-bold text-gray-900">Where?</h2>
 
                   {/* Search input */}
@@ -1280,9 +1279,9 @@ export function SearchBarRedesign({
 
                   <div className="flex-shrink-0">{renderGymSuggestBlock('mobile')}</div>
 
-                  {/* Recents + suggested: grows with the card, clips with fade; immersive = full list */}
+                  {/* Recents + suggested: preview with fade; immersive = full list */}
                   {((recentSearches.length > 0 && !whereQuery.trim()) || mobileFilteredSuggested.length > 0) ? (
-                    <div className="relative mt-1 flex min-h-[min(36dvh,15rem)] flex-1 flex-col overflow-hidden max-h-[min(62dvh,34rem)]">
+                    <div className="relative mt-1 overflow-hidden max-h-[min(42dvh,20rem)]">
                       {recentSearches.length > 0 && !whereQuery.trim() ? (
                         <div className="mb-3 flex-shrink-0">
                           <p className="mb-2 text-sm font-semibold text-gray-900">Recent searches</p>
@@ -1311,7 +1310,7 @@ export function SearchBarRedesign({
                       ) : null}
                       {mobileFilteredSuggested.length > 0 ? (
                         <div
-                          className={`min-h-0 flex-1 overflow-hidden ${
+                          className={`overflow-hidden opacity-60 ${
                             recentSearches.length > 0 && !whereQuery.trim()
                               ? 'mt-1 border-t border-gray-100 pt-3'
                               : ''
@@ -1321,7 +1320,7 @@ export function SearchBarRedesign({
                             Suggested destinations
                           </p>
                           <div className="space-y-1">
-                            {mobileFilteredSuggested.map((dest) => (
+                            {mobileFilteredSuggested.slice(0, 4).map((dest) => (
                               <button
                                 key={dest.name}
                                 type="button"
@@ -1342,13 +1341,13 @@ export function SearchBarRedesign({
                         </div>
                       ) : null}
                       <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-white via-white/95 to-transparent"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/95 to-transparent"
                         aria-hidden
                       />
                     </div>
                   ) : (
                     <div
-                      className="min-h-[min(32dvh,14rem)] flex-1 flex-shrink-0"
+                      className="min-h-[8rem] flex-shrink-0"
                       aria-hidden
                     />
                   )}
