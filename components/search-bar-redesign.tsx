@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -17,6 +17,11 @@ import {
   BedDouble,
   GraduationCap,
   Building2,
+  Palmtree,
+  Waves,
+  Umbrella,
+  Trees,
+  type LucideIcon,
 } from 'lucide-react'
 import { useBooking } from '@/lib/contexts/booking-context'
 import {
@@ -43,14 +48,165 @@ const CATEGORY_SUBTITLES: Record<string, string> = {
   seminars: 'Search seminars',
 }
 
-const SUGGESTED_DESTINATIONS = [
-  { name: 'Nearby', subtitle: 'Find gyms close to you', type: 'nearby' as const },
-  { name: 'Phuket', subtitle: 'Thailand', type: 'place' as const },
-  { name: 'Bangkok', subtitle: 'Thailand', type: 'place' as const },
-  { name: 'Krabi', subtitle: 'Thailand', type: 'place' as const },
-  { name: 'Pattaya', subtitle: 'Thailand', type: 'place' as const },
-  { name: 'Chiang Mai', subtitle: 'Thailand', type: 'place' as const },
+/** Airbnb-style pastel tile + line icon for curated / location rows (not gyms). */
+type WhereLocationVisual =
+  | 'nearby'
+  | 'island'
+  | 'metro'
+  | 'coast'
+  | 'beachTown'
+  | 'mountain'
+
+const WHERE_LOCATION_STYLES: Record<
+  WhereLocationVisual,
+  { Icon: LucideIcon; bg: string; iconClass: string }
+> = {
+  nearby: { Icon: Navigation, bg: 'bg-sky-100', iconClass: 'text-sky-600' },
+  island: { Icon: Palmtree, bg: 'bg-cyan-100', iconClass: 'text-cyan-700' },
+  metro: { Icon: Building2, bg: 'bg-amber-100', iconClass: 'text-amber-800' },
+  coast: { Icon: Waves, bg: 'bg-teal-100', iconClass: 'text-teal-700' },
+  beachTown: { Icon: Umbrella, bg: 'bg-rose-100', iconClass: 'text-rose-600' },
+  mountain: { Icon: Trees, bg: 'bg-emerald-100', iconClass: 'text-emerald-800' },
+}
+
+/** Fallback palettes for recent searches that are not known places (stable hash → color). */
+const WHERE_RECENT_FALLBACK: Array<{ Icon: LucideIcon; bg: string; iconClass: string }> = [
+  { Icon: MapPin, bg: 'bg-slate-100', iconClass: 'text-slate-600' },
+  { Icon: Waves, bg: 'bg-blue-100', iconClass: 'text-blue-600' },
+  { Icon: Building2, bg: 'bg-violet-100', iconClass: 'text-violet-700' },
+  { Icon: Palmtree, bg: 'bg-orange-100', iconClass: 'text-orange-700' },
+  { Icon: Trees, bg: 'bg-lime-100', iconClass: 'text-lime-800' },
 ]
+
+const SUGGESTED_DESTINATIONS = [
+  {
+    name: 'Nearby',
+    subtitle: "Find what's around you",
+    type: 'nearby' as const,
+    visual: 'nearby' as const,
+  },
+  {
+    name: 'Phuket',
+    subtitle: 'Popular beach & island destination',
+    type: 'place' as const,
+    visual: 'island' as const,
+  },
+  {
+    name: 'Bangkok',
+    subtitle: 'Great for city stays and night markets',
+    type: 'place' as const,
+    visual: 'metro' as const,
+  },
+  {
+    name: 'Krabi',
+    subtitle: 'Quiet beaches and dramatic limestone coast',
+    type: 'place' as const,
+    visual: 'coast' as const,
+  },
+  {
+    name: 'Pattaya',
+    subtitle: 'Lively beach city with long resort strips',
+    type: 'place' as const,
+    visual: 'beachTown' as const,
+  },
+  {
+    name: 'Chiang Mai',
+    subtitle: 'Cooler mountain city with a slower pace',
+    type: 'place' as const,
+    visual: 'mountain' as const,
+  },
+] as const
+
+/** Subtitle under any Where row (recents or free text) — matches suggested copy when we recognize a place. */
+function whereRowSubtitleForLabel(raw: string): string {
+  const q = raw.trim().toLowerCase()
+  if (!q) return ''
+  const nearbyPhrases = ['near me', 'nearby', 'close to me', 'around me']
+  if (nearbyPhrases.some((w) => q.includes(w))) {
+    return "Find what's around you"
+  }
+
+  const places = [...SUGGESTED_DESTINATIONS.filter((d) => d.type === 'place')].sort(
+    (a, b) => b.name.length - a.name.length,
+  )
+  for (const d of places) {
+    const name = d.name.toLowerCase()
+    if (
+      q === name ||
+      q.startsWith(`${name} `) ||
+      q.startsWith(`${name},`) ||
+      q.includes(`, ${name}`) ||
+      q.includes(` ${name}`) ||
+      q.includes(name)
+    ) {
+      return d.subtitle
+    }
+  }
+
+  if (/\bthailand\b/.test(q)) return 'Training camps and long-stay stays'
+
+  return 'From your recent searches'
+}
+
+function hashWhereRecentLabel(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function styleForWhereLocationLabel(query: string): { Icon: LucideIcon; bg: string; iconClass: string } {
+  const q = query.trim().toLowerCase()
+  if (!q) return WHERE_LOCATION_STYLES.nearby
+  const nearbyHint = ['near me', 'nearby', 'close to me', 'around me'].some((w) => q.includes(w))
+  if (nearbyHint) return WHERE_LOCATION_STYLES.nearby
+
+  const places = [...SUGGESTED_DESTINATIONS.filter((d) => d.type === 'place')].sort(
+    (a, b) => b.name.length - a.name.length,
+  )
+  for (const d of places) {
+    const name = d.name.toLowerCase()
+    if (
+      q === name ||
+      q.startsWith(`${name} `) ||
+      q.startsWith(`${name},`) ||
+      q.includes(`, ${name}`) ||
+      q.includes(` ${name}`) ||
+      q.includes(name)
+    ) {
+      return WHERE_LOCATION_STYLES[d.visual]
+    }
+  }
+  const idx = hashWhereRecentLabel(q) % WHERE_RECENT_FALLBACK.length
+  return WHERE_RECENT_FALLBACK[idx]!
+}
+
+function WhereLocationIconTile({
+  visual,
+  size,
+}: {
+  visual: WhereLocationVisual
+  size: 'sm' | 'md'
+}) {
+  const { Icon, bg, iconClass } = WHERE_LOCATION_STYLES[visual]
+  const box = size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-xl'
+  const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'
+  return (
+    <div className={`flex flex-shrink-0 items-center justify-center ${box} ${bg}`}>
+      <Icon className={`${icon} ${iconClass}`} strokeWidth={1.85} aria-hidden />
+    </div>
+  )
+}
+
+function WhereRecentSearchIconTile({ label, size }: { label: string; size: 'sm' | 'md' }) {
+  const { Icon, bg, iconClass } = styleForWhereLocationLabel(label)
+  const box = size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-xl'
+  const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'
+  return (
+    <div className={`flex flex-shrink-0 items-center justify-center ${box} ${bg}`}>
+      <Icon className={`${icon} ${iconClass}`} strokeWidth={1.85} aria-hidden />
+    </div>
+  )
+}
 
 const CATEGORIES = [
   { id: 'gyms', label: 'Gyms', emoji: '🥊', Icon: Dumbbell, isNew: false },
@@ -149,7 +305,8 @@ export function SearchBarRedesign({
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('where')
   const [mounted, setMounted] = useState(false)
-  const [showAllDests, setShowAllDests] = useState(false)
+  /** Full-screen “Where” sheet (Airbnb-style): hides category tabs + footer; back or swipe-down on header exits. */
+  const [mobileWhereImmersive, setMobileWhereImmersive] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
@@ -184,23 +341,50 @@ export function SearchBarRedesign({
   const containerRef = useRef<HTMLDivElement>(null)
   const whereInputRef = useRef<HTMLInputElement>(null)
   const mobileWhereInputRef = useRef<HTMLInputElement>(null)
+  const immersiveHeaderTouchY = useRef(0)
+  const immersiveScrollTouch = useRef({ y: 0, scrollTop: 0 })
 
-  // Lock body scroll when mobile modal is open
+  // Lock scroll when mobile modal is open (html + body: iOS Safari often still
+  // rubber-bands / shows content behind a fixed overlay until a repaint).
   useEffect(() => {
-    if (mobileModalOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
+    if (!mobileModalOpen) {
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+      return
+    }
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
     }
-    return () => { document.body.style.overflow = '' }
   }, [mobileModalOpen])
 
-  // Auto-focus mobile where input when panel opens
+  // Auto-focus mobile where input when panel opens or immersive Where opens
   useEffect(() => {
     if (mobileModalOpen && mobilePanel === 'where') {
-      setTimeout(() => mobileWhereInputRef.current?.focus(), 60)
+      setTimeout(() => mobileWhereInputRef.current?.focus(), mobileWhereImmersive ? 120 : 60)
     }
-  }, [mobileModalOpen, mobilePanel])
+  }, [mobileModalOpen, mobilePanel, mobileWhereImmersive])
+
+  useEffect(() => {
+    if (!mobileModalOpen) setMobileWhereImmersive(false)
+  }, [mobileModalOpen])
+
+  useEffect(() => {
+    if (mobilePanel !== 'where') setMobileWhereImmersive(false)
+  }, [mobilePanel])
+
+  const mobileFilteredSuggested = useMemo(
+    () =>
+      SUGGESTED_DESTINATIONS.filter(
+        (d) =>
+          !whereQuery ||
+          d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
+          d.subtitle.toLowerCase().includes(whereQuery.toLowerCase()),
+      ),
+    [whereQuery],
+  )
 
   // Close desktop dropdowns on outside click
   useEffect(() => {
@@ -421,6 +605,7 @@ export function SearchBarRedesign({
     setUserHasSelectedDates(false)
     setSelectedTimeline('exact')
     setMobilePanel('where')
+    setMobileWhereImmersive(false)
   }
 
   // ── Slot toggle helper ────────────────────────────────────────────────────
@@ -508,43 +693,53 @@ export function SearchBarRedesign({
     )
   }
 
-  function renderGymSuggestBlock(variant: 'desktop' | 'mobile') {
+  function renderGymSuggestBlock(
+    variant: 'desktop' | 'mobile',
+    opts?: { compact?: boolean },
+  ) {
     if (!showGymSuggest) return null
     const q = whereQuery.trim()
     if (q.length < 2) return null
 
+    const mobileCompact = variant === 'mobile' && opts?.compact
+
     const rowClass =
       variant === 'desktop'
         ? 'flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-gray-50 group'
-        : 'flex w-full items-center gap-3 py-1 text-left touch-manipulation'
+        : mobileCompact
+          ? 'flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left touch-manipulation'
+          : 'flex w-full items-center gap-3 py-1 text-left touch-manipulation'
 
     const iconWrap =
       variant === 'desktop'
-        ? 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#003580]/10 transition-colors group-hover:bg-[#003580]/15'
-        : 'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#003580]/10'
+        ? 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 transition-colors group-hover:bg-gray-200'
+        : mobileCompact
+          ? 'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100'
+          : 'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100'
+
+    const outerMb = variant === 'desktop' ? 'mb-4' : mobileCompact ? 'mb-2' : 'mb-5'
+    const titleMb = mobileCompact ? 'mb-1.5' : 'mb-3'
+    const titleSize = variant === 'desktop' ? 'text-[11px]' : mobileCompact ? 'text-[10px]' : 'text-xs'
+    const listMaxH = mobileCompact ? 'max-h-28' : 'max-h-56'
 
     return (
-      <div className={variant === 'desktop' ? 'mb-4' : 'mb-5'}>
-        <p
-          className={`mb-3 font-semibold uppercase tracking-widest text-gray-400 ${
-            variant === 'desktop' ? 'text-[11px]' : 'text-xs'
-          }`}
-        >
+      <div className={outerMb}>
+        <p className={`${titleMb} font-semibold uppercase tracking-widest text-gray-400 ${titleSize}`}>
           Gyms on CombatStay
         </p>
         {gymDidYouMean && gymSuggestions.length > 0 ? (
           <p
             className={`mb-2 rounded-lg bg-[#003580]/5 px-2.5 py-2 text-[#003580] ${
-              variant === 'desktop' ? 'text-xs leading-snug' : 'text-[13px] leading-snug'
+              variant === 'desktop' ? 'text-xs leading-snug' : mobileCompact ? 'text-[11px] leading-snug' : 'text-[13px] leading-snug'
             }`}
           >
             No exact name match — showing similar gyms (fuzzy match on our catalog).
           </p>
         ) : null}
         {gymSuggestLoading ? (
-          <p className="text-sm text-gray-500">Searching gyms…</p>
+          <p className={`text-gray-500 ${mobileCompact ? 'text-xs' : 'text-sm'}`}>Searching gyms…</p>
         ) : gymSuggestions.length > 0 ? (
-          <div className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
+          <div className={`${listMaxH} space-y-0.5 overflow-y-auto pr-1`}>
             {gymSuggestions.map((g) => (
               <button
                 key={g.id}
@@ -554,14 +749,26 @@ export function SearchBarRedesign({
               >
                 <div className={iconWrap}>
                   <Building2
-                    className={variant === 'desktop' ? 'h-4 w-4 text-[#003580]' : 'h-5 w-5 text-[#003580]'}
+                    className={
+                      variant === 'desktop'
+                        ? 'h-4 w-4 text-gray-600'
+                        : mobileCompact
+                          ? 'h-3.5 w-3.5 text-gray-600'
+                          : 'h-5 w-5 text-gray-600'
+                    }
                     strokeWidth={1.75}
                     aria-hidden
                   />
                 </div>
                 <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-sm font-semibold text-gray-900">{g.name}</div>
-                  <div className="mt-0.5 text-xs text-gray-500">
+                  <div
+                    className={`truncate font-semibold text-gray-900 ${
+                      mobileCompact ? 'text-xs' : 'text-sm'
+                    }`}
+                  >
+                    {g.name}
+                  </div>
+                  <div className={`text-gray-500 ${mobileCompact ? 'mt-0 text-[10px]' : 'mt-0.5 text-xs'}`}>
                     {[g.city, g.country].filter(Boolean).join(' · ')}
                   </div>
                 </div>
@@ -569,7 +776,7 @@ export function SearchBarRedesign({
             ))}
           </div>
         ) : (
-          <p className="text-sm leading-snug text-gray-500">
+          <p className={`leading-snug text-gray-500 ${mobileCompact ? 'text-xs' : 'text-sm'}`}>
             No gym by that exact name yet. Try a city, or tap Search to see similar camps.
           </p>
         )}
@@ -624,6 +831,7 @@ export function SearchBarRedesign({
         <button
           type="button"
           onClick={() => {
+            setMobileWhereImmersive(false)
             setMobileModalOpen(true)
             setMobilePanel('where')
           }}
@@ -756,16 +964,10 @@ export function SearchBarRedesign({
                     }}
                     className="flex items-center gap-3 w-full px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 group-hover:bg-gray-200 transition-colors">
-                      {dest.type === 'nearby' ? (
-                        <Navigation className="w-4 h-4 text-gray-600" />
-                      ) : (
-                        <MapPin className="w-4 h-4 text-gray-600" />
-                      )}
-                    </div>
+                    <WhereLocationIconTile visual={dest.visual} size="sm" />
                     <div className="text-left">
                       <div className="text-sm font-semibold text-gray-900">{dest.name}</div>
-                      <div className="text-xs text-gray-400">{dest.subtitle}</div>
+                      <div className="text-xs text-gray-500">{dest.subtitle}</div>
                     </div>
                   </button>
                 ))}
@@ -860,172 +1062,306 @@ export function SearchBarRedesign({
           Rendered in a portal so parent transforms don't trap it.
           ══════════════════════════════════════════════════════════ */}
       {mobileModalOpen && mounted && createPortal(
-        <div className="fixed inset-0 z-[200] md:hidden flex flex-col bg-gray-100 animate-slide-down">
-          {/* Header: safe-area top padding, category tabs, close control */}
-          <div className="relative flex-shrink-0 px-4 pt-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] pb-4">
-            <button
-              type="button"
-              aria-label="Close search"
-              onClick={() => setMobileModalOpen(false)}
-              className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
-            >
-              <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
-            </button>
-            <nav
-              className="flex justify-center gap-5 sm:gap-9 px-12"
-              aria-label="Search category"
-            >
-              {CATEGORIES.map((cat) => {
-                const CatIcon = cat.Icon
-                const isActive = activeCategory === cat.id
-                return (
+        <div
+          className={`fixed inset-0 z-[200] flex min-h-[100dvh] flex-col overflow-hidden overscroll-none animate-slide-down md:hidden bg-gray-100`}
+        >
+          {mobileWhereImmersive && mobilePanel === 'where' ? (
+            /* Immersive Where: inset from top so rounded sheet reads like Airbnb (not flush full-bleed) */
+            <div className="flex min-h-0 flex-1 flex-col pt-[max(10px,calc(env(safe-area-inset-top)+8px))]">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-10px_40px_-12px_rgba(15,23,42,0.18)] ring-1 ring-black/[0.06]">
+                <div
+                  className="flex-shrink-0 px-4 pt-3 pb-2"
+                  onTouchStart={(e) => {
+                    immersiveHeaderTouchY.current = e.touches[0]?.clientY ?? 0
+                  }}
+                  onTouchEnd={(e) => {
+                    const t = e.changedTouches[0]
+                    if (!t) return
+                    if (t.clientY - immersiveHeaderTouchY.current > 72) setMobileWhereImmersive(false)
+                  }}
+                >
+                <div className="flex items-stretch gap-0.5 rounded-2xl border border-gray-200 bg-white px-1 py-1 shadow-sm ring-1 ring-black/[0.04]">
                   <button
-                    key={cat.id}
                     type="button"
-                    onClick={() => {
-                      const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
-                      setActiveCategory(id)
-                      onCategoryChange?.(id)
-                    }}
-                    className="relative flex min-w-0 flex-col items-center gap-1.5 pb-2.5 pt-1"
+                    aria-label="Back"
+                    onClick={() => setMobileWhereImmersive(false)}
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-900 active:bg-gray-100"
                   >
-                    {cat.isNew && (
-                      <span className="absolute -top-0.5 right-0 translate-x-1/2 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                        NEW
-                      </span>
-                    )}
-                    <CatIcon
-                      className={`w-8 h-8 flex-shrink-0 ${isActive ? 'text-gray-900' : 'text-gray-500'}`}
-                      strokeWidth={1.85}
-                    />
-                    <span
-                      className={`text-sm font-medium tracking-tight whitespace-nowrap ${
-                        isActive ? 'text-gray-900' : 'text-gray-500'
-                      }`}
-                    >
-                      {cat.label}
-                    </span>
-                    <span
-                      className={`absolute bottom-0 left-1/2 h-[3px] w-10 max-w-full -translate-x-1/2 rounded-full transition-opacity ${
-                        isActive ? 'bg-gray-900 opacity-100' : 'opacity-0'
-                      }`}
-                    />
+                    <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
                   </button>
-                )
-              })}
-            </nav>
-          </div>
-
-          {/* ── Scrollable cards area ── */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
-
-              {/* ══ WHERE card ══ */}
-              {mobilePanel === 'where' ? (
-                /* Expanded WHERE */
-                <div className="bg-white rounded-3xl shadow-sm px-5 pt-5 pb-3">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Where?</h2>
-
-                  {/* Search input */}
-                  <div className="flex items-center gap-3 border border-gray-300 rounded-xl px-4 py-3 mb-5">
-                    <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2">
+                    <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
                     <input
                       ref={mobileWhereInputRef}
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') setMobilePanel('when') }}
-                      placeholder="City, area, or gym name"
-                      className="flex-1 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setMobileWhereImmersive(false)
+                          setMobilePanel('when')
+                        }
+                      }}
+                      placeholder="Search destinations"
+                      className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
+                    />
+                    {whereQuery ? (
+                      <button
+                        type="button"
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full active:bg-gray-100"
+                        onClick={() => setWhereQuery('')}
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                </div>
+                <div
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+                  onTouchStart={(e) => {
+                    const el = e.currentTarget
+                    immersiveScrollTouch.current = {
+                      y: e.touches[0]?.clientY ?? 0,
+                      scrollTop: el.scrollTop,
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    const el = e.currentTarget
+                    const t = e.changedTouches[0]
+                    if (!t) return
+                    const dy = t.clientY - immersiveScrollTouch.current.y
+                    if (immersiveScrollTouch.current.scrollTop <= 0 && el.scrollTop <= 0 && dy > 88) {
+                      setMobileWhereImmersive(false)
+                    }
+                  }}
+                >
+                {renderGymSuggestBlock('mobile')}
+                {recentSearches.length > 0 && !whereQuery ? (
+                  <div className="mb-6 mt-1">
+                    <p className="mb-3 text-sm font-semibold text-gray-900">Recent searches</p>
+                    <div className="space-y-1">
+                      {recentSearches.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            setWhereQuery(s)
+                            setMobileWhereImmersive(false)
+                            setMobilePanel('when')
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-100"
+                        >
+                          <WhereRecentSearchIconTile label={s} size="md" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold text-gray-900">{s}</div>
+                            <div className="mt-0.5 text-xs text-gray-500">{whereRowSubtitleForLabel(s)}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div>
+                  <p className="mb-3 text-sm font-semibold text-gray-900">Suggested destinations</p>
+                  <div className="space-y-1">
+                    {mobileFilteredSuggested.map((dest) => (
+                      <button
+                        key={dest.name}
+                        type="button"
+                        onClick={() => {
+                          setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                          setMobileWhereImmersive(false)
+                          setMobilePanel('when')
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-100"
+                      >
+                        <WhereLocationIconTile visual={dest.visual} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-bold text-gray-900">{dest.name}</div>
+                          <div className="mt-0.5 text-xs text-gray-500">{dest.subtitle}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header: safe-area top padding, category tabs, close control */}
+              <div className="relative flex-shrink-0 px-4 pt-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] pb-4">
+                <button
+                  type="button"
+                  aria-label="Close search"
+                  onClick={() => {
+                    setMobileWhereImmersive(false)
+                    setMobileModalOpen(false)
+                  }}
+                  className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
+                >
+                  <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
+                </button>
+                <nav
+                  className="flex justify-center gap-5 sm:gap-9 px-12"
+                  aria-label="Search category"
+                >
+                  {CATEGORIES.map((cat) => {
+                    const CatIcon = cat.Icon
+                    const isActive = activeCategory === cat.id
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
+                          setActiveCategory(id)
+                          onCategoryChange?.(id)
+                        }}
+                        className="relative flex min-w-0 flex-col items-center gap-1.5 pb-2.5 pt-1"
+                      >
+                        {cat.isNew && (
+                          <span className="absolute -top-0.5 right-0 translate-x-1/2 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                            NEW
+                          </span>
+                        )}
+                        <CatIcon
+                          className={`w-8 h-8 flex-shrink-0 ${isActive ? 'text-gray-900' : 'text-gray-500'}`}
+                          strokeWidth={1.85}
+                        />
+                        <span
+                          className={`text-sm font-medium tracking-tight whitespace-nowrap ${
+                            isActive ? 'text-gray-900' : 'text-gray-500'
+                          }`}
+                        >
+                          {cat.label}
+                        </span>
+                        <span
+                          className={`absolute bottom-0 left-1/2 h-[3px] w-10 max-w-full -translate-x-1/2 rounded-full transition-opacity ${
+                            isActive ? 'bg-gray-900 opacity-100' : 'opacity-0'
+                          }`}
+                        />
+                      </button>
+                    )
+                  })}
+                </nav>
+              </div>
+
+              {/* ── Scrollable cards: Where grows to use space above When/Who (Airbnb-style sheet fill) ── */}
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-4 pb-4">
+                {/* ══ WHERE card ══ */}
+                {mobilePanel === 'where' ? (
+                /* Expanded WHERE — flex-1 so the sheet fills down toward the footer */
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100/90 bg-white px-4 pt-4 pb-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
+                  <h2 className="mb-3 flex-shrink-0 text-2xl font-bold text-gray-900">Where?</h2>
+
+                  {/* Search input */}
+                  <div className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+                    <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
+                    <input
+                      ref={mobileWhereInputRef}
+                      type="text"
+                      value={whereQuery}
+                      onChange={(e) => setWhereQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setMobilePanel('when')
+                      }}
+                      placeholder="Search destinations"
+                      className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
                     />
                     {whereQuery && (
-                      <button type="button" onClick={() => setWhereQuery('')}>
-                        <X className="w-4 h-4 text-gray-400" />
+                      <button type="button" onClick={() => setWhereQuery('')} className="p-1">
+                        <X className="h-4 w-4 text-gray-400" />
                       </button>
                     )}
                   </div>
 
-                  {renderGymSuggestBlock('mobile')}
+                  <div className="flex-shrink-0">{renderGymSuggestBlock('mobile')}</div>
 
-                  {/* Recent searches */}
-                  {recentSearches.length > 0 && !whereQuery && (
-                    <div className="mb-5">
-                      <p className="text-sm font-semibold text-gray-900 mb-3">Recent searches</p>
-                      <div className="space-y-2">
-                        {recentSearches.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => { setWhereQuery(s); setMobilePanel('when') }}
-                            className="flex items-center gap-3 w-full text-left py-1 touch-manipulation"
-                          >
-                            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                              <MapPin className="w-5 h-5 text-gray-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-bold text-gray-900">{s}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+                  {/* Recents + suggested: grows with the card, clips with fade; immersive = full list */}
+                  {((recentSearches.length > 0 && !whereQuery.trim()) || mobileFilteredSuggested.length > 0) ? (
+                    <div className="relative mt-1 flex min-h-[min(36dvh,15rem)] flex-1 flex-col overflow-hidden max-h-[min(62dvh,34rem)]">
+                      {recentSearches.length > 0 && !whereQuery.trim() ? (
+                        <div className="mb-3 flex-shrink-0">
+                          <p className="mb-2 text-sm font-semibold text-gray-900">Recent searches</p>
+                          <div className="space-y-1">
+                            {recentSearches.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  setWhereQuery(s)
+                                  setMobilePanel('when')
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-50"
+                              >
+                                <WhereRecentSearchIconTile label={s} size="md" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-bold text-gray-900">{s}</div>
+                                  <div className="mt-0.5 truncate text-xs text-gray-500">
+                                    {whereRowSubtitleForLabel(s)}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {mobileFilteredSuggested.length > 0 ? (
+                        <div
+                          className={`min-h-0 flex-1 overflow-hidden ${
+                            recentSearches.length > 0 && !whereQuery.trim()
+                              ? 'mt-1 border-t border-gray-100 pt-3'
+                              : ''
+                          }`}
+                        >
+                          <p className="mb-2 flex-shrink-0 text-sm font-semibold text-gray-900">
+                            Suggested destinations
+                          </p>
+                          <div className="space-y-1">
+                            {mobileFilteredSuggested.map((dest) => (
+                              <button
+                                key={dest.name}
+                                type="button"
+                                onClick={() => {
+                                  setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                                  setMobilePanel('when')
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-50"
+                              >
+                                <WhereLocationIconTile visual={dest.visual} size="md" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-bold text-gray-900">{dest.name}</div>
+                                  <div className="mt-0.5 truncate text-xs text-gray-500">{dest.subtitle}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-white via-white/95 to-transparent"
+                        aria-hidden
+                      />
                     </div>
+                  ) : (
+                    <div
+                      className="min-h-[min(32dvh,14rem)] flex-1 flex-shrink-0"
+                      aria-hidden
+                    />
                   )}
 
-                  {/* Suggested destinations */}
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 mb-3">Suggested destinations</p>
-                    <div className="space-y-2">
-                      {SUGGESTED_DESTINATIONS
-                        .filter((d) =>
-                          !whereQuery ||
-                          d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
-                          d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
-                        )
-                        .slice(0, showAllDests ? undefined : 2)
-                        .map((dest) => (
-                          <button
-                            key={dest.name}
-                            type="button"
-                            onClick={() => {
-                              setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
-                              setMobilePanel('when')
-                            }}
-                            className="flex items-center gap-3 w-full text-left py-1 touch-manipulation"
-                          >
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                              dest.type === 'nearby' ? 'bg-blue-50' : 'bg-amber-50'
-                            }`}>
-                              {dest.type === 'nearby' ? (
-                                <Navigation className="w-5 h-5 text-blue-500" />
-                              ) : (
-                                <MapPin className="w-5 h-5 text-amber-600" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-sm font-bold text-gray-900">{dest.name}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">{dest.subtitle}</div>
-                            </div>
-                          </button>
-                        ))}
-                    </div>
-
-                    {/* Show more / less chevron */}
-                    {SUGGESTED_DESTINATIONS.filter((d) =>
-                      !whereQuery ||
-                      d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
-                      d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
-                    ).length > 2 && (
-                      <div className="mt-3 pt-3">
-                        <div className="h-px w-full bg-gray-200" aria-hidden />
-                        <button
-                          type="button"
-                          onClick={() => setShowAllDests(v => !v)}
-                          className="w-full flex justify-center pt-2 pb-0 touch-manipulation"
-                          aria-label={showAllDests ? 'Show less' : 'Show more'}
-                        >
-                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showAllDests ? 'rotate-180' : ''}`} />
-                        </button>
-                      </div>
-                    )}
+                  <div className="flex-shrink-0 border-t border-gray-100 pt-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => setMobileWhereImmersive(true)}
+                      className="flex w-full justify-center py-2 touch-manipulation"
+                      aria-label="Expand destination search"
+                    >
+                      <ChevronDown className="h-5 w-5 text-gray-400" strokeWidth={2} />
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1033,7 +1369,7 @@ export function SearchBarRedesign({
                 <button
                   type="button"
                   onClick={() => setMobilePanel('where')}
-                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                  className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
                   <span className="text-sm text-gray-500 font-medium">Where</span>
                   <span className="text-sm font-semibold text-gray-900">{whereQuery || 'Anywhere'}</span>
@@ -1043,7 +1379,7 @@ export function SearchBarRedesign({
               {/* ══ WHEN card ══ */}
               {mobilePanel === 'when' ? (
                 /* Expanded WHEN */
-                <div className="bg-white rounded-3xl shadow-sm p-5">
+                <div className="rounded-3xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">When?</h2>
 
                   {/* Timeline chips */}
@@ -1100,7 +1436,7 @@ export function SearchBarRedesign({
                 <button
                   type="button"
                   onClick={() => setMobilePanel('when')}
-                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                  className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
                   <span className="text-sm text-gray-500 font-medium">When</span>
                   <span className={`text-sm font-semibold ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
@@ -1112,7 +1448,7 @@ export function SearchBarRedesign({
               {/* ══ WHO card ══ */}
               {mobilePanel === 'who' ? (
                 /* Expanded WHO */
-                <div className="bg-white rounded-3xl shadow-sm p-5">
+                <div className="rounded-3xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Who?</h2>
                   <GuestCounter label="Adults" subtitle="Ages 13 or above" value={adults} onChange={setAdults} min={1} />
                   <GuestCounter label="Children" subtitle="Ages 2–12" value={children} onChange={setChildren} />
@@ -1124,7 +1460,7 @@ export function SearchBarRedesign({
                 <button
                   type="button"
                   onClick={() => setMobilePanel('who')}
-                  className="w-full bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center justify-between shadow-sm touch-manipulation"
+                  className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
                   <span className="text-sm text-gray-500 font-medium">Who</span>
                   <span className={`text-sm font-semibold ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
@@ -1153,6 +1489,8 @@ export function SearchBarRedesign({
               Search
             </button>
           </div>
+            </>
+          )}
         </div>,
         document.body
       )}
