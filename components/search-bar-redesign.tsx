@@ -1598,7 +1598,6 @@ export function SearchBarRedesign({
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
-                      onFocus={() => setMobileWhereImmersive(true)}
                       onClick={() => setMobileWhereImmersive(true)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') setMobilePanel('when')
