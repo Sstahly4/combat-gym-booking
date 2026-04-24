@@ -318,7 +318,12 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         return
       }
     } else {
-      if (!pricePerWeek) {
+      const usesRoomVariants =
+        selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'
+
+      // Train & Stay / All-inclusive are priced per linked room bundle (variants).
+      // Other multi-day offers need a package-level weekly rate.
+      if (!usesRoomVariants && !pricePerWeek) {
         alert('Please enter a weekly rate. This is required for price calculation.')
         return
       }
