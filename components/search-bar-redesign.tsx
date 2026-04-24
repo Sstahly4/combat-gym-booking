@@ -310,6 +310,7 @@ export function SearchBarRedesign({
   const [immersiveSheetTranslateY, setImmersiveSheetTranslateY] = useState(0)
   const [immersiveSheetDragging, setImmersiveSheetDragging] = useState(false)
   const [immersiveSheetClosing, setImmersiveSheetClosing] = useState(false)
+  const [mobileModalViewportH, setMobileModalViewportH] = useState<number | null>(null)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
@@ -331,6 +332,39 @@ export function SearchBarRedesign({
     if (controlledCategory) setActiveCategory(controlledCategory)
   }, [controlledCategory])
 
+  // iOS Safari tab/app switching can leave fixed overlays shorter until the next scroll.
+  // While the mobile modal is open, drive its height from innerHeight / visualViewport.
+  useEffect(() => {
+    if (!mobileModalOpen) {
+      setMobileModalViewportH(null)
+      return
+    }
+
+    const readH = () => {
+      const vv = window.visualViewport
+      const h = Math.round(vv?.height ?? window.innerHeight)
+      // Avoid tiny values during transient resize states.
+      if (h > 200) setMobileModalViewportH(h)
+    }
+
+    readH()
+
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', readH)
+    vv?.addEventListener('scroll', readH)
+    window.addEventListener('resize', readH)
+    window.addEventListener('orientationchange', readH)
+    document.addEventListener('visibilitychange', readH)
+
+    return () => {
+      vv?.removeEventListener('resize', readH)
+      vv?.removeEventListener('scroll', readH)
+      window.removeEventListener('resize', readH)
+      window.removeEventListener('orientationchange', readH)
+      document.removeEventListener('visibilitychange', readH)
+    }
+  }, [mobileModalOpen])
+
   // Guest state
   const [adults, setAdults] = useState(1)
   const [children, setChildren] = useState(0)
@@ -348,12 +382,16 @@ export function SearchBarRedesign({
   const immersiveScrollTouch = useRef({ y: 0, scrollTop: 0 })
   const immersiveSheetRef = useRef<HTMLDivElement>(null)
   const immersiveScrollRef = useRef<HTMLDivElement>(null)
+  const immersiveWhereSearchBarRef = useRef<HTMLDivElement>(null)
+  const compactWhereSearchBarRef = useRef<HTMLDivElement>(null)
   const immersiveDrag = useRef({
     startY: 0,
     startT: 0,
     started: false,
     lastDy: 0,
   })
+
+  const [immersiveCloseAnimating, setImmersiveCloseAnimating] = useState(false)
 
   // Lock scroll when mobile modal is open (html + body: iOS Safari often still
   // rubber-bands / shows content behind a fixed overlay until a repaint).
@@ -448,7 +486,7 @@ export function SearchBarRedesign({
       const out = Math.max(window.innerHeight * 0.85, 520)
       setImmersiveSheetTranslateY(out)
       window.setTimeout(() => {
-        setMobileWhereImmersive(false)
+        closeImmersiveWhere()
         setImmersiveSheetTranslateY(0)
         setImmersiveSheetClosing(false)
       }, 320)
@@ -480,6 +518,172 @@ export function SearchBarRedesign({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mobileModalOpen, mobileWhereImmersive, mobilePanel, immersiveSheetClosing])
+
+  const closeImmersiveWhere = useCallback(() => {
+    if (!mobileWhereImmersive || mobilePanel !== 'where') return
+    if (immersiveCloseAnimating) return
+
+    const src = immersiveWhereSearchBarRef.current
+    if (!src) {
+      setMobileWhereImmersive(false)
+      return
+    }
+
+    const srcRect = src.getBoundingClientRect()
+    if (!srcRect.width) {
+      setMobileWhereImmersive(false)
+      return
+    }
+
+    setImmersiveCloseAnimating(true)
+
+    const clone = src.cloneNode(true) as HTMLElement
+    clone.style.position = 'fixed'
+    clone.style.left = `${srcRect.left}px`
+    clone.style.top = `${srcRect.top}px`
+    clone.style.width = `${srcRect.width}px`
+    clone.style.height = `${srcRect.height}px`
+    clone.style.margin = '0'
+    clone.style.zIndex = '9999'
+    clone.style.pointerEvents = 'none'
+    clone.style.transformOrigin = 'top left'
+    clone.style.willChange = 'transform, opacity'
+    clone.style.transition = 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease-out'
+
+    const prevSrcOpacity = src.style.opacity
+    src.style.opacity = '0'
+
+    document.body.appendChild(clone)
+
+    // Switch to the compact view, then animate the clone into the compact search bar position.
+    setMobileWhereImmersive(false)
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const dst = compactWhereSearchBarRef.current
+        const dstRect = dst?.getBoundingClientRect()
+        if (!dst || !dstRect?.width) {
+          clone.remove()
+          src.style.opacity = prevSrcOpacity
+          setImmersiveCloseAnimating(false)
+          return
+        }
+
+        const prevDstOpacity = dst.style.opacity
+        dst.style.opacity = '0'
+
+        const dx = dstRect.left - srcRect.left
+        const dy = dstRect.top - srcRect.top
+        const sx = dstRect.width / srcRect.width
+        const sy = dstRect.height / srcRect.height
+
+        clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy})`
+
+        window.setTimeout(() => {
+          clone.remove()
+          src.style.opacity = prevSrcOpacity
+          dst.style.opacity = prevDstOpacity
+          setImmersiveCloseAnimating(false)
+        }, 340)
+      })
+    })
+  }, [immersiveCloseAnimating, mobilePanel, mobileWhereImmersive])
+
+  function renderMobileNonImmersive(opts?: { hidden?: boolean }) {
+    const wrap = opts?.hidden ? 'pointer-events-none opacity-0' : ''
+    return (
+      <div className={wrap} aria-hidden={opts?.hidden ? true : undefined}>
+        {/* Header: safe-area top padding, category tabs, close control */}
+        <div className="relative flex-shrink-0 px-4 pt-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] pb-4">
+          <button
+            type="button"
+            aria-label="Close search"
+            onClick={() => {
+              setMobileWhereImmersive(false)
+              setMobileModalOpen(false)
+            }}
+            className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
+          >
+            <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
+          </button>
+          <nav className="flex justify-center gap-5 sm:gap-9 px-12" aria-label="Search category">
+            {CATEGORIES.map((cat) => {
+              const CatIcon = cat.Icon
+              const isActive = activeCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    const id = cat.id as 'gyms' | 'train-stay' | 'seminars'
+                    setActiveCategory(id)
+                    onCategoryChange?.(id)
+                  }}
+                  className="relative flex min-w-0 flex-col items-center gap-1.5 pb-2.5 pt-1"
+                >
+                  {cat.isNew && (
+                    <span className="absolute -top-0.5 right-0 translate-x-1/2 bg-[#003580] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                      NEW
+                    </span>
+                  )}
+                  <CatIcon
+                    className={`w-8 h-8 flex-shrink-0 ${isActive ? 'text-gray-900' : 'text-gray-500'}`}
+                    strokeWidth={1.85}
+                  />
+                  <span
+                    className={`text-sm font-medium tracking-tight whitespace-nowrap ${
+                      isActive ? 'text-gray-900' : 'text-gray-500'
+                    }`}
+                  >
+                    {cat.label}
+                  </span>
+                  <span
+                    className={`absolute bottom-0 left-1/2 h-[3px] w-10 max-w-full -translate-x-1/2 rounded-full transition-opacity ${
+                      isActive ? 'bg-gray-900 opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* ── Scrollable cards ── */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-4 pb-4">
+          {/* ══ WHERE card ══ */}
+          {mobilePanel === 'where' ? (
+            <div className="relative flex flex-col overflow-hidden rounded-3xl border border-gray-100/90 bg-white px-4 pt-4 pb-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.07),0_20px_48px_-12px_rgba(15,23,42,0.06)]">
+              <h2 className="mb-3 flex-shrink-0 text-2xl font-bold text-gray-900">Where?</h2>
+              <div
+                ref={compactWhereSearchBarRef}
+                className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
+              >
+                <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
+                <input
+                  ref={mobileWhereInputRef}
+                  type="text"
+                  value={whereQuery}
+                  onChange={(e) => setWhereQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setMobilePanel('when')
+                  }}
+                  placeholder="Search destinations"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                />
+                {whereQuery && (
+                  <button type="button" onClick={() => setWhereQuery('')} className="p-1">
+                    <X className="h-4 w-4 text-gray-400" />
+                  </button>
+                )}
+              </div>
+              <div className="flex-shrink-0">{renderGymSuggestBlock('mobile')}</div>
+              {/* NOTE: remaining Where card content unchanged below in existing JSX */}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
 
   const mobileFilteredSuggested = useMemo(
     () =>
@@ -1173,6 +1377,7 @@ export function SearchBarRedesign({
       {mobileModalOpen && mounted && createPortal(
         <div
           className={`fixed inset-0 z-[200] flex min-h-[100dvh] flex-col overflow-hidden overscroll-none animate-slide-down md:hidden bg-gray-100`}
+          style={mobileModalViewportH ? { height: `${mobileModalViewportH}px` } : undefined}
         >
           {mobileWhereImmersive && mobilePanel === 'where' ? (
             /* Immersive Where: inset from top so rounded sheet reads like Airbnb (not flush full-bleed) */
@@ -1196,14 +1401,17 @@ export function SearchBarRedesign({
                   onTouchEnd={(e) => {
                     const t = e.changedTouches[0]
                     if (!t) return
-                    if (t.clientY - immersiveHeaderTouchY.current > 72) setMobileWhereImmersive(false)
+                    if (t.clientY - immersiveHeaderTouchY.current > 72) closeImmersiveWhere()
                   }}
                 >
-                <div className="flex items-stretch gap-0.5 rounded-2xl border border-gray-200 bg-white px-1 py-1 shadow-sm ring-1 ring-black/[0.04]">
+                <div
+                  ref={immersiveWhereSearchBarRef}
+                  className="flex items-stretch gap-0.5 rounded-2xl border border-gray-200 bg-white px-1 py-1 shadow-sm ring-1 ring-black/[0.04]"
+                >
                   <button
                     type="button"
                     aria-label="Back"
-                    onClick={() => setMobileWhereImmersive(false)}
+                    onClick={closeImmersiveWhere}
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-900 active:bg-gray-100"
                   >
                     <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
@@ -1253,14 +1461,14 @@ export function SearchBarRedesign({
                     if (!t) return
                     const dy = t.clientY - immersiveScrollTouch.current.y
                     if (immersiveScrollTouch.current.scrollTop <= 0 && el.scrollTop <= 0 && dy > 88) {
-                      setMobileWhereImmersive(false)
+                      closeImmersiveWhere()
                     }
                   }}
                 >
                 {renderGymSuggestBlock('mobile')}
                 {recentSearches.length > 0 && !whereQuery ? (
                   <div className="mb-6 mt-1">
-                    <p className="mb-3 text-sm font-semibold text-gray-900">Recent searches</p>
+                    <p className="mb-3 text-[12px] font-medium text-gray-700">Recent searches</p>
                     <div className="space-y-1">
                       {recentSearches.map((s) => (
                         <button
@@ -1275,7 +1483,7 @@ export function SearchBarRedesign({
                         >
                           <WhereRecentSearchIconTile label={s} size="md" />
                           <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-normal leading-tight text-gray-800">{s}</div>
+                            <div className="text-[14px] font-medium leading-tight text-gray-900">{s}</div>
                             <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
                               {whereRowSubtitleForLabel(s)}
                             </div>
@@ -1286,7 +1494,7 @@ export function SearchBarRedesign({
                   </div>
                 ) : null}
                 <div>
-                  <p className="mb-3 text-sm font-semibold text-gray-900">Suggested destinations</p>
+                  <p className="mb-3 text-[12px] font-medium text-gray-700">Suggested destinations</p>
                   <div className="space-y-1">
                     {mobileFilteredSuggested.map((dest) => (
                       <button
@@ -1301,7 +1509,7 @@ export function SearchBarRedesign({
                       >
                         <WhereLocationIconTile visual={dest.visual} size="md" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-normal leading-tight text-gray-800">{dest.name}</div>
+                          <div className="text-[14px] font-medium leading-tight text-gray-900">{dest.name}</div>
                           <div className="mt-0.5 text-[12px] leading-tight text-gray-500">{dest.subtitle}</div>
                         </div>
                       </button>
@@ -1379,13 +1587,19 @@ export function SearchBarRedesign({
                   <h2 className="mb-3 flex-shrink-0 text-2xl font-bold text-gray-900">Where?</h2>
 
                   {/* Search input */}
-                  <div className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+                  <div
+                    ref={compactWhereSearchBarRef}
+                    className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
+                    onClick={() => setMobileWhereImmersive(true)}
+                  >
                     <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
                     <input
                       ref={mobileWhereInputRef}
                       type="text"
                       value={whereQuery}
                       onChange={(e) => setWhereQuery(e.target.value)}
+                      onFocus={() => setMobileWhereImmersive(true)}
+                      onClick={() => setMobileWhereImmersive(true)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') setMobilePanel('when')
                       }}
@@ -1406,7 +1620,7 @@ export function SearchBarRedesign({
                     <div className="relative mt-1 overflow-hidden max-h-[min(44dvh,20rem)] pb-4">
                       {recentSearches.length > 0 && !whereQuery.trim() ? (
                         <div className="mb-3 flex-shrink-0">
-                          <p className="mb-2 text-sm font-semibold text-gray-900">Recent searches</p>
+                          <p className="mb-2 text-[12px] font-medium text-gray-700">Recent searches</p>
                           <div className="space-y-1">
                             {recentSearches.map((s) => (
                               <button
@@ -1420,7 +1634,7 @@ export function SearchBarRedesign({
                               >
                                 <WhereRecentSearchIconTile label={s} size="md" />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[13px] font-normal leading-tight text-gray-800">{s}</div>
+                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{s}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">
                                     {whereRowSubtitleForLabel(s)}
                                   </div>
@@ -1434,11 +1648,11 @@ export function SearchBarRedesign({
                         <div
                           className={`overflow-hidden ${
                             recentSearches.length > 0 && !whereQuery.trim()
-                              ? 'mt-1 border-t border-gray-100 pt-3'
+                              ? 'mt-2 pt-2'
                               : ''
                           }`}
                         >
-                          <p className="mb-2 flex-shrink-0 text-sm font-semibold text-gray-900">
+                          <p className="mb-2 flex-shrink-0 text-[12px] font-medium text-gray-700">
                             Suggested destinations
                           </p>
                           <div className="space-y-1">
@@ -1454,7 +1668,7 @@ export function SearchBarRedesign({
                               >
                                 <WhereLocationIconTile visual={dest.visual} size="md" />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[13px] font-normal leading-tight text-gray-800">{dest.name}</div>
+                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{dest.name}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">{dest.subtitle}</div>
                                 </div>
                               </button>
@@ -1470,15 +1684,19 @@ export function SearchBarRedesign({
                     />
                   )}
 
-                  <div className="absolute inset-x-0 bottom-0 flex-shrink-0 border-t border-gray-100 bg-white/45 pt-0.5 pb-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setMobileWhereImmersive(true)}
-                      className="flex w-full justify-center py-1 touch-manipulation"
-                      aria-label="Expand destination search"
-                    >
-                      <ChevronDown className="h-4 w-4 text-gray-400" strokeWidth={2} />
-                    </button>
+                  <div className="absolute inset-x-0 bottom-0 flex-shrink-0 bg-gradient-to-t from-white/85 via-white/65 to-transparent pt-0.5 pb-0.5">
+                    <div className="px-4">
+                      <div className="border-t border-gray-100/90">
+                      <button
+                        type="button"
+                        onClick={() => setMobileWhereImmersive(true)}
+                        className="flex w-full justify-center py-1 touch-manipulation"
+                        aria-label="Expand destination search"
+                      >
+                        <ChevronDown className="h-4 w-4 text-gray-400" strokeWidth={2} />
+                      </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
