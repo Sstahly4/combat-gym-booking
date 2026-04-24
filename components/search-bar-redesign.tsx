@@ -148,6 +148,15 @@ function whereRowSubtitleForLabel(raw: string): string {
   return 'From your recent searches'
 }
 
+function isDestinationLikeWhereQuery(raw: string): boolean {
+  const q = raw.trim().toLowerCase()
+  if (!q) return false
+  const nearbyPhrases = ['near me', 'nearby', 'close to me', 'around me']
+  if (nearbyPhrases.some((w) => q.includes(w))) return true
+  if (/\bthailand\b/.test(q)) return true
+  return SUGGESTED_DESTINATIONS.some((d) => q === d.name.toLowerCase())
+}
+
 function hashWhereRecentLabel(s: string): number {
   let h = 0
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
@@ -349,12 +358,25 @@ export function SearchBarRedesign({
 
     readH()
 
+    // BFCache restore path (leaving site → returning): Safari often reports stale viewport
+    // metrics for a frame or two, and visualViewport resize may not fire. Double rAF lets
+    // the browser “settle” its UI chrome before we measure.
+    const wake = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          readH()
+        })
+      })
+    }
+
     const vv = window.visualViewport
     vv?.addEventListener('resize', readH)
     vv?.addEventListener('scroll', readH)
     window.addEventListener('resize', readH)
     window.addEventListener('orientationchange', readH)
     document.addEventListener('visibilitychange', readH)
+    window.addEventListener('pageshow', wake)
+    window.addEventListener('focus', wake)
 
     return () => {
       vv?.removeEventListener('resize', readH)
@@ -362,6 +384,8 @@ export function SearchBarRedesign({
       window.removeEventListener('resize', readH)
       window.removeEventListener('orientationchange', readH)
       document.removeEventListener('visibilitychange', readH)
+      window.removeEventListener('pageshow', wake)
+      window.removeEventListener('focus', wake)
     }
   }, [mobileModalOpen])
 
@@ -676,7 +700,9 @@ export function SearchBarRedesign({
                   </button>
                 )}
               </div>
-              <div className="flex-shrink-0">{renderGymSuggestBlock('mobile')}</div>
+              <div className="flex-shrink-0">
+                {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
+              </div>
               {/* NOTE: remaining Where card content unchanged below in existing JSX */}
             </div>
           ) : null}
@@ -903,7 +929,6 @@ export function SearchBarRedesign({
     setMobileModalOpen(false)
     setMobileWhereImmersive(false)
     setMobilePanel('where')
-    setWhereQuery('')
   }
 
   const handleClearAll = () => {
@@ -1465,8 +1490,8 @@ export function SearchBarRedesign({
                     }
                   }}
                 >
-                {renderGymSuggestBlock('mobile')}
-                {recentSearches.length > 0 && !whereQuery ? (
+                {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
+                {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
                   <div className="mb-6 mt-1">
                     <p className="mb-3 text-[12px] font-medium text-gray-700">Recent searches</p>
                     <div className="space-y-1">
@@ -1612,12 +1637,14 @@ export function SearchBarRedesign({
                     )}
                   </div>
 
-                  <div className="flex-shrink-0">{renderGymSuggestBlock('mobile')}</div>
+                  <div className="flex-shrink-0">
+                    {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
+                  </div>
 
                   {/* Recents + suggested: preview with fade; immersive = full list */}
                   {((recentSearches.length > 0 && !whereQuery.trim()) || mobileFilteredSuggested.length > 0) ? (
                     <div className="relative mt-1 overflow-hidden max-h-[min(44dvh,20rem)] pb-4">
-                      {recentSearches.length > 0 && !whereQuery.trim() ? (
+                      {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
                         <div className="mb-3 flex-shrink-0">
                           <p className="mb-2 text-[12px] font-medium text-gray-700">Recent searches</p>
                           <div className="space-y-1">
@@ -1686,14 +1713,14 @@ export function SearchBarRedesign({
                   <div className="absolute inset-x-0 bottom-0 flex-shrink-0 bg-gradient-to-t from-white/85 via-white/65 to-transparent pt-0.5 pb-0.5">
                     <div className="px-4">
                       <div className="border-t border-gray-100/90">
-                      <button
-                        type="button"
-                        onClick={() => setMobileWhereImmersive(true)}
-                        className="flex w-full justify-center py-1 touch-manipulation"
-                        aria-label="Expand destination search"
-                      >
-                        <ChevronDown className="h-4 w-4 text-gray-400" strokeWidth={2} />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setMobileWhereImmersive(true)}
+                          className="flex w-full justify-center py-1 touch-manipulation opacity-80"
+                          aria-label="Expand destination search"
+                        >
+                          <ChevronDown className="h-4 w-4 text-gray-400" strokeWidth={2} />
+                        </button>
                       </div>
                     </div>
                   </div>
