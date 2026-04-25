@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -13,7 +12,7 @@ import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, ArrowRight, ChevronDown } from 'lucide-react'
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -229,97 +228,117 @@ export default function SecurityOnboardingPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f6f9]">
-        <p className="text-muted-foreground">Loading security onboarding...</p>
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-[#f4f6f9] py-8 md:py-12">
-      <div className="mx-auto w-full max-w-2xl px-3 sm:px-5 lg:px-8">
+  const emailVerified = Boolean(user?.email_confirmed_at)
 
-        {/* Email-verified welcome banner — shown only when arriving from the verification link */}
+  return (
+    <div className="min-h-screen bg-[#f7f8fa] pb-32">
+      <div className="mx-auto w-full max-w-[640px] px-4 pt-6 pb-10 sm:pt-10">
+
+        {/* Slim verified banner — quiet, OTA-style, only on first arrival */}
         {justVerified && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" strokeWidth={1.75} />
-            <div>
-              <p className="text-sm font-semibold text-green-900">Email verified — welcome to CombatStay Partner Hub!</p>
-              <p className="mt-0.5 text-xs text-green-800 leading-snug">
-                Your account is active. Complete the details below to start listing your gym.
-              </p>
-            </div>
+          <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-emerald-100 bg-emerald-50/80 px-3.5 py-2.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2} />
+            <p className="text-[13px] font-medium text-emerald-900">
+              Email verified — welcome to CombatStay Partner Hub.
+            </p>
           </div>
         )}
 
-        <Card className="overflow-hidden rounded-xl border-gray-200/90 shadow-md">
-          <CardHeader className="space-y-2 border-b border-gray-100 bg-gradient-to-b from-white to-gray-50/40 px-6 py-8 md:px-10">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]/80">
-              Account &amp; security
-            </p>
-            <CardTitle className="text-2xl font-bold tracking-tight text-[#003580] md:text-3xl">
-              Security onboarding
-            </CardTitle>
-            <CardDescription className="text-base text-gray-600">
-              We need the <strong>account holder</strong> on record (legal accountability and support contact).
-              This is separate from your gym&apos;s public listing details. Payout KYC is still completed in Stripe
-              Connect.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8 px-6 py-8 md:px-10 md:py-10">
-            <div
-              id="account-holder-details"
-              className="space-y-4 rounded-xl border-2 border-[#003580]/20 bg-white p-5 shadow-sm md:p-6"
-            >
-              <div>
-                <h2 className="text-lg font-bold text-[#003580] md:text-xl">Account holder details</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Who is responsible for this listing if there is a dispute or we need to reach someone directly.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="legal-first">Legal first name</Label>
-                  <Input
-                    id="legal-first"
-                    autoComplete="given-name"
-                    value={legalFirstName}
-                    onChange={(e) => setLegalFirstName(e.target.value)}
-                    placeholder="As on official ID"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="legal-last">Legal last name</Label>
-                  <Input
-                    id="legal-last"
-                    autoComplete="family-name"
-                    value={legalLastName}
-                    onChange={(e) => setLegalLastName(e.target.value)}
-                    placeholder="As on official ID"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="direct-phone">Direct mobile number</Label>
+        {/* Stepper — Stripe / Booking partner style */}
+        <div className="mb-7 flex items-center gap-2 text-[12px] font-medium text-gray-500">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#003580] text-[10px] font-bold text-white">
+            1
+          </span>
+          <span className="text-gray-900">Account &amp; security</span>
+          <span className="text-gray-300">›</span>
+          <span>Property profile</span>
+          <span className="text-gray-300">›</span>
+          <span>Review</span>
+        </div>
+
+        {/* Title */}
+        <header className="mb-8">
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
+            Set up your partner account
+          </h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-gray-600">
+            We need the <span className="font-medium text-gray-900">account holder</span> on record — for
+            legal accountability and a contact we can reach. This is separate from your gym&apos;s public
+            listing. Payout details are completed later in Stripe Connect.
+          </p>
+        </header>
+
+        {/* ── Account holder details ─────────────────────────────────── */}
+        <section id="account-holder-details" className="mb-10">
+          <h2 className="text-[15px] font-semibold text-gray-900">Account holder details</h2>
+          <p className="mt-1 text-[13px] text-gray-500">
+            Who is responsible if there&apos;s a dispute or we need to reach someone directly.
+          </p>
+
+          <div className="mt-5 space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="legal-first" className="text-[13px] font-medium text-gray-700">
+                  Legal first name
+                </Label>
                 <Input
-                  id="direct-phone"
-                  type="tel"
-                  autoComplete="tel"
-                  value={accountHolderPhone}
-                  onChange={(e) => setAccountHolderPhone(e.target.value)}
-                  placeholder="Your mobile, not the gym reception"
+                  id="legal-first"
+                  autoComplete="given-name"
+                  value={legalFirstName}
+                  onChange={(e) => setLegalFirstName(e.target.value)}
+                  placeholder="As on official ID"
+                  className="h-10"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Include country code where possible (e.g. +61 …). We use this for trust and urgent owner contact
-                  only.
-                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="role-at-property">Your role at the property</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="legal-last" className="text-[13px] font-medium text-gray-700">
+                  Legal last name
+                </Label>
+                <Input
+                  id="legal-last"
+                  autoComplete="family-name"
+                  value={legalLastName}
+                  onChange={(e) => setLegalLastName(e.target.value)}
+                  placeholder="As on official ID"
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="direct-phone" className="text-[13px] font-medium text-gray-700">
+                Direct mobile number
+              </Label>
+              <Input
+                id="direct-phone"
+                type="tel"
+                autoComplete="tel"
+                value={accountHolderPhone}
+                onChange={(e) => setAccountHolderPhone(e.target.value)}
+                placeholder="+61 412 345 678"
+                className="h-10"
+              />
+              <p className="text-[12px] text-gray-500">
+                Include the country code. Used only for trust and urgent owner contact.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="role-at-property" className="text-[13px] font-medium text-gray-700">
+                  Your role at the property
+                </Label>
                 <Select
                   id="role-at-property"
                   value={roleAtProperty}
                   onChange={(e) => setRoleAtProperty(e.target.value as AccountHolderPropertyRole | '')}
+                  className="h-10"
                 >
                   <option value="">Select one</option>
                   {ROLE_OPTIONS.map((opt) => (
@@ -329,12 +348,15 @@ export default function SecurityOnboardingPage() {
                   ))}
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="country-residence">Country of residence</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="country-residence" className="text-[13px] font-medium text-gray-700">
+                  Country of residence
+                </Label>
                 <Select
                   id="country-residence"
                   value={countryOfResidence}
                   onChange={(e) => setCountryOfResidence(e.target.value)}
+                  className="h-10"
                 >
                   <option value="">Select country</option>
                   {RESIDENCE_COUNTRIES.map((c) => (
@@ -343,128 +365,162 @@ export default function SecurityOnboardingPage() {
                     </option>
                   ))}
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Pre-filled from your connection when available — please confirm or change if needed.
-                </p>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
-              <p className="font-medium text-gray-900">Email verification</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {user?.email_confirmed_at
-                  ? 'Your email is verified.'
-                  : 'Please verify your email from the link in your inbox before continuing.'}
-              </p>
-            </div>
+        <div className="my-8 h-px bg-gray-200/70" />
 
-            <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
-              <p className="font-medium text-gray-900">Password standards</p>
-              <PasswordStandardsHint className="mt-2" />
-            </div>
+        {/* ── Account security row — quiet status pills ──────────────── */}
+        <section className="mb-2">
+          <h2 className="text-[15px] font-semibold text-gray-900">Account security</h2>
+          <p className="mt-1 text-[13px] text-gray-500">Your account&apos;s current safeguards.</p>
 
-            <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
-              {!showPasswordReset ? (
+          <ul className="mt-5 divide-y divide-gray-200/70 rounded-xl border border-gray-200/80 bg-white">
+            <li className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="flex min-w-0 items-center gap-3">
+                <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                <div className="min-w-0">
+                  <p className="text-[13.5px] font-medium text-gray-900">Email address</p>
+                  <p className="truncate text-[12.5px] text-gray-500">{user?.email}</p>
+                </div>
+              </div>
+              {emailVerified ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                  <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
+                  Verified
+                </span>
+              ) : (
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                  Pending
+                </span>
+              )}
+            </li>
+
+            <li className="px-4 py-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-medium text-gray-900">Password</p>
+                    <p className="text-[12.5px] text-gray-500">
+                      Meets standards if you signed up with a strong password.
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowPasswordReset(true)}
-                  className="text-sm font-medium text-[#003580] hover:underline"
+                  onClick={() => setShowPasswordReset((v) => !v)}
+                  aria-expanded={showPasswordReset}
+                  className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[#003580] hover:underline"
                 >
-                  Reset password if it doesn&apos;t meet the standards above
+                  {showPasswordReset ? 'Cancel' : 'Change'}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${showPasswordReset ? 'rotate-180' : ''}`}
+                    strokeWidth={2}
+                  />
                 </button>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-gray-900">Reset password</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Only needed if the password you set at signup doesn&apos;t meet the standards above.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPasswordReset(false)
-                        setCurrentPassword('')
-                        setNewPassword('')
-                        setConfirmPassword('')
-                        setPasswordMessage(null)
-                      }}
-                      className="text-xs font-medium text-muted-foreground hover:text-gray-700"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+              </div>
+
+              {showPasswordReset && (
+                <div className="mt-4 space-y-3 rounded-lg bg-gray-50/70 p-4">
+                  <PasswordStandardsHint className="mb-1" password={newPassword} />
                   <PasswordInput
                     placeholder="Current password"
                     autoComplete="current-password"
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
+                    className="h-10 bg-white"
                   />
                   <PasswordInput
                     placeholder="New password"
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
+                    className="h-10 bg-white"
                   />
                   <PasswordInput
                     placeholder="Confirm new password"
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
+                    className="h-10 bg-white"
                   />
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={handleUpdatePassword}
                     disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
                   >
-                    {updatingPassword ? 'Updating...' : 'Update password'}
+                    {updatingPassword ? 'Updating…' : 'Update password'}
                   </Button>
-                  {passwordMessage && <p className="text-sm text-green-700">{passwordMessage}</p>}
+                  {passwordMessage && (
+                    <p className="text-[12.5px] text-emerald-700">{passwordMessage}</p>
+                  )}
                 </div>
               )}
-            </div>
+            </li>
 
-            <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
-              <p className="font-medium text-gray-900">Two-factor authentication (optional)</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                You can enable TOTP now or later from settings to better protect payout actions.
-              </p>
-            </div>
+            <li className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="flex min-w-0 items-center gap-3">
+                <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                <div className="min-w-0">
+                  <p className="text-[13.5px] font-medium text-gray-900">
+                    Two-factor authentication
+                  </p>
+                  <p className="text-[12.5px] text-gray-500">
+                    Recommended before payouts. You can add this later in settings.
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11.5px] font-medium text-gray-600">
+                Optional
+              </span>
+            </li>
+          </ul>
+        </section>
 
-            {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
-            )}
+        {error && (
+          <p className="mt-6 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-700">
+            {error}
+          </p>
+        )}
 
-            <Button
-              onClick={() => setShowReAuth(true)}
-              disabled={
-                submitting ||
-                !Boolean(user?.email_confirmed_at) ||
-                selfServeExpired ||
-                !accountHolderComplete
-              }
-              className="w-full bg-[#003580] hover:bg-[#002a66]"
-            >
-              {submitting ? 'Saving...' : 'Confirm password and continue'}
-            </Button>
-            {!accountHolderComplete && (
-              <p className="text-center text-xs text-muted-foreground">
-                Complete all account holder fields above to continue.
-              </p>
-            )}
-            {selfServeExpired && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => router.replace('/manage/list-your-gym?error=verification_link_expired')}
-              >
-                Request a new verification link
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        {selfServeExpired && (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={() => router.replace('/manage/list-your-gym?error=verification_link_expired')}
+          >
+            Request a new verification link
+          </Button>
+        )}
+      </div>
+
+      {/* Sticky footer continue bar — Stripe / Booking partner pattern */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <div className="mx-auto flex w-full max-w-[640px] items-center justify-between gap-4 px-4 py-3.5">
+          <p className="hidden text-[12.5px] text-gray-500 sm:block">
+            {accountHolderComplete
+              ? 'All set — confirm your password to continue.'
+              : 'Complete the fields above to continue.'}
+          </p>
+          <Button
+            onClick={() => setShowReAuth(true)}
+            disabled={
+              submitting ||
+              !emailVerified ||
+              selfServeExpired ||
+              !accountHolderComplete
+            }
+            className="ml-auto inline-flex h-10 items-center gap-2 rounded-full bg-[#003580] px-5 text-[13.5px] font-medium hover:bg-[#002a66] disabled:opacity-50"
+          >
+            {submitting ? 'Saving…' : 'Continue'}
+            <ArrowRight className="h-4 w-4" strokeWidth={2} />
+          </Button>
+        </div>
       </div>
 
       <ReAuthDialog

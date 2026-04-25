@@ -20,8 +20,18 @@ import { cn } from '@/lib/utils'
 export interface PasswordInputProps extends Omit<InputProps, 'type'> {}
 
 export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, onChange, onInput, ...props }, ref) => {
     const [visible, setVisible] = React.useState(false)
+    const innerRef = React.useRef<HTMLInputElement | null>(null)
+
+    const setRefs = React.useCallback(
+      (node: HTMLInputElement | null) => {
+        innerRef.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = node
+      },
+      [ref],
+    )
 
     const toggle = (e: React.PointerEvent<HTMLButtonElement>) => {
       // Prevent the input from losing focus and stop any touch scroll/zoom defaults.
@@ -29,12 +39,21 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
       setVisible((v) => !v)
     }
 
+    const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
+      // Some password managers / “use strong password” flows update the DOM value
+      // without reliably triggering React's onChange in all browsers.
+      onInput?.(e)
+      onChange?.(e as unknown as React.ChangeEvent<HTMLInputElement>)
+    }
+
     return (
       <div className="relative">
         <Input
-          ref={ref}
+          ref={setRefs}
           type={visible ? 'text' : 'password'}
           className={cn('pr-10', className)}
+          onInput={handleInput}
+          onChange={onChange}
           {...props}
         />
         <button
