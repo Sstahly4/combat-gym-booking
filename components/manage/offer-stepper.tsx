@@ -115,7 +115,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [availableAccommodations, setAvailableAccommodations] = useState<any[]>([])
   const [accommodationModalOpen, setAccommodationModalOpen] = useState(false)
   const [bundlePricesByAccommodationId, setBundlePricesByAccommodationId] = useState<
-    Record<string, { week: string; month: string }>
+    Record<string, { night: string; week: string; month: string }>
   >({})
   
   // Step 5: Availability
@@ -229,16 +229,17 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     // We still support legacy package_accommodations links for older data.
     const { data: variants } = await supabase
       .from('package_variants')
-      .select('id, accommodation_id, name, price_per_week, price_per_month')
+      .select('id, accommodation_id, name, price_per_day, price_per_week, price_per_month')
       .eq('package_id', packageId)
 
     if (variants && variants.length > 0) {
       const accIds = variants.map((v: any) => v.accommodation_id).filter(Boolean)
       setLinkedAccommodationIds(accIds)
-      const next: Record<string, { week: string; month: string }> = {}
+      const next: Record<string, { night: string; week: string; month: string }> = {}
       variants.forEach((v: any) => {
         if (!v.accommodation_id) return
         next[v.accommodation_id] = {
+          night: v.price_per_day != null ? String(v.price_per_day) : '',
           week: v.price_per_week != null ? String(v.price_per_week) : '',
           month: v.price_per_month != null ? String(v.price_per_month) : '',
         }
@@ -480,9 +481,13 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         }
 
         const selectedAccs = availableAccommodations.filter((a) => linkedAccommodationIds.includes(a.id))
-        const missing = selectedAccs.filter((a) => !bundlePricesByAccommodationId[a.id]?.week?.trim())
-        if (missing.length > 0) {
+        const missingWeek = selectedAccs.filter((a) => !bundlePricesByAccommodationId[a.id]?.week?.trim())
+        if (missingWeek.length > 0) {
           throw new Error('Please set a weekly bundle price for every linked room option.')
+        }
+        const missingNight = selectedAccs.filter((a) => !bundlePricesByAccommodationId[a.id]?.night?.trim())
+        if (missingNight.length > 0) {
+          throw new Error('Please set a nightly bundle price for every linked room option (used for extra nights past a full week).')
         }
 
         const variantRows = selectedAccs.map((acc: any) => {
@@ -494,7 +499,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             name: acc.name,
             description: acc.description || null,
             room_type: roomType,
-            price_per_day: null,
+            price_per_day: bundle.night ? parseFloat(bundle.night) : null,
             price_per_week: bundle.week ? parseFloat(bundle.week) : null,
             price_per_month: bundle.month ? parseFloat(bundle.month) : null,
             images: acc.images || [],
@@ -538,7 +543,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         }
         if (selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE') {
           if (linkedAccommodationIds.length === 0) return false
-          return linkedAccommodationIds.every((id) => Boolean(bundlePricesByAccommodationId[id]?.week?.trim()))
+          return linkedAccommodationIds.every((id) => {
+            const b = bundlePricesByAccommodationId[id]
+            return Boolean(b?.week?.trim() && b?.night?.trim())
+          })
         }
         return pricePerWeek !== ''
       case 4:
@@ -981,44 +989,76 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                           </label>
 
                           {linkedAccommodationIds.includes(acc.id) ? (
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <Label className="text-xs text-gray-600">
-                                  Total bundle price / week ({packageCurrency}) <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={bundlePricesByAccommodationId[acc.id]?.week ?? ''}
-                                  onChange={(e) =>
-                                    setBundlePricesByAccommodationId((prev) => ({
-                                      ...prev,
-                                      [acc.id]: { week: e.target.value, month: prev[acc.id]?.month ?? '' },
-                                    }))
-                                  }
-                                  placeholder={acc.price_per_week ? String(acc.price_per_week) : '0.00'}
-                                />
-                                <p className="mt-1 text-[11px] text-gray-500">
-                                  Guests pay this price when they choose this room.
-                                </p>
+                            <div className="mt-3 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <Label className="text-xs text-gray-600">
+                                    Nightly ({packageCurrency}) <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={bundlePricesByAccommodationId[acc.id]?.night ?? ''}
+                                    onChange={(e) =>
+                                      setBundlePricesByAccommodationId((prev) => ({
+                                        ...prev,
+                                        [acc.id]: {
+                                          night: e.target.value,
+                                          week: prev[acc.id]?.week ?? '',
+                                          month: prev[acc.id]?.month ?? '',
+                                        },
+                                      }))
+                                    }
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-600">
+                                    Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={bundlePricesByAccommodationId[acc.id]?.week ?? ''}
+                                    onChange={(e) =>
+                                      setBundlePricesByAccommodationId((prev) => ({
+                                        ...prev,
+                                        [acc.id]: {
+                                          night: prev[acc.id]?.night ?? '',
+                                          week: e.target.value,
+                                          month: prev[acc.id]?.month ?? '',
+                                        },
+                                      }))
+                                    }
+                                    placeholder={acc.price_per_week ? String(acc.price_per_week) : '0.00'}
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-gray-600">
+                                    Monthly bundle ({packageCurrency}) <span className="text-gray-400">(Optional)</span>
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={bundlePricesByAccommodationId[acc.id]?.month ?? ''}
+                                    onChange={(e) =>
+                                      setBundlePricesByAccommodationId((prev) => ({
+                                        ...prev,
+                                        [acc.id]: {
+                                          night: prev[acc.id]?.night ?? '',
+                                          week: prev[acc.id]?.week ?? '',
+                                          month: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder={acc.price_per_month ? String(acc.price_per_month) : '0.00'}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <Label className="text-xs text-gray-600">
-                                  Total bundle price / month ({packageCurrency}) <span className="text-gray-400">(Optional)</span>
-                                </Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={bundlePricesByAccommodationId[acc.id]?.month ?? ''}
-                                  onChange={(e) =>
-                                    setBundlePricesByAccommodationId((prev) => ({
-                                      ...prev,
-                                      [acc.id]: { week: prev[acc.id]?.week ?? '', month: e.target.value },
-                                    }))
-                                  }
-                                  placeholder={acc.price_per_month ? String(acc.price_per_month) : '0.00'}
-                                />
-                              </div>
+                              <p className="text-[11px] text-gray-500">
+                                Weekly and monthly bundles unlock at 7 and 28 nights. Nightly applies for shorter stays
+                                and any extra nights beyond a full week — same pattern as Booking.com / Airbnb.
+                              </p>
                             </div>
                           ) : null}
                         </div>

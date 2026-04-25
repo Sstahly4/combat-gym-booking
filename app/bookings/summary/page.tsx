@@ -445,41 +445,29 @@ function BookingSummaryPageContent() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-3">
                   <div className="space-y-3 text-sm">
-                    {package_.type === 'training' && (
-                      <div className="flex justify-between">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">
+                      {variant ? variant.name : package_.name} · {duration} {duration === 1 ? 'night' : 'nights'}
+                    </div>
+                    {priceInfo.lines.map((line, i) => (
+                      <div key={i} className="flex justify-between">
                         <span className="text-gray-700">
-                          {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
+                          {line.label}
+                          {line.qty > 1 && line.unitPrice > 0 ? (
+                            <span className="text-gray-400">
+                              {' '}· {formatPrice(convertPrice(line.unitPrice, gym.currency))} each
+                            </span>
+                          ) : null}
                         </span>
                         <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(totalPrice, gym.currency))}
+                          {formatPrice(convertPrice(line.subtotal, gym.currency))}
                         </span>
                       </div>
-                    )}
-                    {(package_.type === 'accommodation' || package_.type === 'all_inclusive') && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">
-                            Training package ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            {formatPrice(convertPrice(Math.round(totalPrice * 0.6), gym.currency))}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">
-                            {variant ? variant.name : 'Accommodation'} ({duration} {duration === 1 ? 'night' : 'nights'})
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            {formatPrice(convertPrice(Math.round(totalPrice * 0.4), gym.currency))}
-                          </span>
-                        </div>
-                      </>
-                    )}
+                    ))}
                     {(package_.includes_meals || package_.type === 'all_inclusive') && (
                       <div className="flex justify-between">
                         <span className="text-gray-700 flex items-center gap-2">
                           <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          Meals
+                          Meals included
                         </span>
                       </div>
                     )}
@@ -497,6 +485,11 @@ function BookingSummaryPageContent() {
                         {formatPrice(convertPrice(finalTotal, gym.currency))}
                       </span>
                     </div>
+                    {priceInfo.savedVsNightly > 0 ? (
+                      <p className="text-xs font-medium text-emerald-700 mt-1">
+                        You saved {formatPrice(convertPrice(priceInfo.savedVsNightly, gym.currency))} with the bundle rate
+                      </p>
+                    ) : null}
                     <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
                   </div>
                 </CardContent>
@@ -1060,51 +1053,32 @@ function BookingSummaryPageContent() {
                 {priceInfo ? (
                   <>
                     <div className="space-y-3 text-sm">
-                      {/* Training Package */}
-                      {package_.type === 'training' && (
-                      <div className="flex justify-between">
-                          <span className="text-gray-700">
-                            {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
-                        </span>
-                          <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(totalPrice, gym.currency))}
-                        </span>
+                      <div className="text-xs uppercase tracking-wide text-gray-500">
+                        {variant ? variant.name : package_.name} · {duration} {duration === 1 ? 'night' : 'nights'}
                       </div>
-                      )}
-                      
-                      {/* Accommodation Packages */}
-                      {(package_.type === 'accommodation' || package_.type === 'all_inclusive') && (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-gray-700">
-                              {package_.name} ({pricingDuration} {pricingDuration === 1 ? 'day' : 'days'})
-                            </span>
-                            <span className="font-medium text-gray-900">
-                              {formatPrice(convertPrice(Math.round(totalPrice * 0.6), gym.currency))}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-700">
-                              {variant ? variant.name : 'Accommodation'} ({duration} {duration === 1 ? 'night' : 'nights'})
-                            </span>
-                            <span className="font-medium text-gray-900">
-                              {formatPrice(convertPrice(Math.round(totalPrice * 0.4), gym.currency))}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                      
-                      {/* Meals */}
+                      {priceInfo.lines.map((line, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-gray-700">
+                            {line.label}
+                            {line.qty > 1 && line.unitPrice > 0 ? (
+                              <span className="text-gray-400">
+                                {' '}· {formatPrice(convertPrice(line.unitPrice, gym.currency))} each
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            {formatPrice(convertPrice(line.subtotal, gym.currency))}
+                          </span>
+                        </div>
+                      ))}
                       {(package_.includes_meals || package_.type === 'all_inclusive') && (
                         <div className="flex justify-between">
                           <span className="text-gray-700 flex items-center gap-2">
                             <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            Meals
+                            Meals included
                           </span>
                         </div>
                       )}
-                      
-                      {/* Booking Guarantee */}
                       <div className="flex justify-between">
                         <span className="text-gray-700 flex items-center gap-2">
                           <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
@@ -1112,7 +1086,7 @@ function BookingSummaryPageContent() {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="pt-4 border-t border-gray-300">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-lg text-gray-900">Total</span>
@@ -1120,6 +1094,11 @@ function BookingSummaryPageContent() {
                           {formatPrice(convertPrice(finalTotal, gym.currency))}
                         </span>
                       </div>
+                      {priceInfo.savedVsNightly > 0 ? (
+                        <p className="text-xs font-medium text-emerald-700 mt-1">
+                          You saved {formatPrice(convertPrice(priceInfo.savedVsNightly, gym.currency))} with the bundle rate
+                        </p>
+                      ) : null}
                       <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
                     </div>
                   </>
