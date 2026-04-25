@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle, Mail, CheckCircle2, ArrowRight } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 
@@ -48,79 +48,75 @@ function VerifyEmailScreen({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-[500px]">
-
-        {/* Brand */}
-        <div className="text-center mb-8">
-          <span className="text-base font-bold text-[#003580] tracking-tight">
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Slim brand bar — Airbnb-style minimal header */}
+      <header className="border-b border-gray-100">
+        <div className="mx-auto w-full max-w-[1120px] px-6 py-4">
+          <Link href="/" className="text-[15px] font-bold tracking-tight text-[#003580]">
             CombatStay.com
-          </span>
+          </Link>
         </div>
+      </header>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-10 pt-10 pb-8 text-center">
-
-          {/* Icon */}
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#003580]/8">
-            <Mail className="h-8 w-8 text-[#003580]" strokeWidth={1.5} />
-          </div>
-
-          <h1 className="text-[1.6rem] font-semibold leading-tight tracking-tight text-gray-900 mb-2">
-            Check your inbox
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-[480px] px-6 pt-16 pb-24 sm:pt-24">
+          <h1 className="text-[32px] font-semibold leading-[1.15] tracking-tight text-gray-900">
+            Confirm your email
           </h1>
-          <p className="text-sm text-gray-500 leading-relaxed mb-1">
-            We sent a verification link to
+          <p className="mt-3 text-[15px] leading-relaxed text-gray-600">
+            We&apos;ve sent a confirmation link to{' '}
+            <span className="font-medium text-gray-900 break-all">{email}</span>. Open it on this
+            device to finish creating your account.
           </p>
-          <p className="text-sm font-semibold text-gray-900 mb-6 break-all">{email}</p>
-
-          {/* Steps */}
-          {isOwner && (
-            <div className="mb-7 rounded-xl border border-gray-100 bg-gray-50 px-5 py-4 text-left space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                What happens next
-              </p>
-              {[
-                'Click the link in your email to verify your account',
-                'Complete your property profile',
-                'Get approved and start accepting bookings',
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#003580] text-[10px] font-bold text-white">
-                    {i + 1}
-                  </span>
-                  <p className="text-xs text-gray-600 leading-snug">{step}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Resend */}
-          {resent ? (
-            <div className="mb-5 flex items-center justify-center gap-2 text-sm text-green-700">
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-              Email resent — check your inbox again.
-            </div>
-          ) : resendError ? (
-            <p className="mb-4 text-xs text-red-600">{resendError}</p>
-          ) : null}
 
           <button
             type="button"
             onClick={handleResend}
             disabled={resending || resent}
-            className="w-full h-11 rounded-full bg-[#003580] text-white text-sm font-medium hover:bg-[#002d6b] disabled:opacity-50 transition mb-4"
+            className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-lg bg-[#003580] px-5 text-[15px] font-medium text-white transition hover:bg-[#002d6b] disabled:opacity-60"
           >
-            {resending ? 'Sending…' : resent ? 'Email sent' : 'Resend verification email'}
+            {resending ? 'Sending…' : resent ? 'Email sent' : 'Resend confirmation email'}
           </button>
 
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Can't find it? Check your spam folder.{' '}
-            <Link href="/auth/signin" className="text-[#003580] hover:underline font-medium">
-              Sign in instead
+          {resent ? (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+              We sent a new link — check your inbox again.
+            </p>
+          ) : resendError ? (
+            <p className="mt-3 text-[13px] text-red-600">{resendError}</p>
+          ) : null}
+
+          {/* What's next — partner-only, quiet inline list */}
+          {isOwner && (
+            <div className="mt-10 border-t border-gray-100 pt-8">
+              <p className="text-[13px] font-semibold text-gray-900">What happens next</p>
+              <ol className="mt-4 space-y-3">
+                {[
+                  'Open the link in your email to verify it&apos;s you.',
+                  'Add your property profile, photos, and pricing.',
+                  'Get approved and start accepting bookings.',
+                ].map((stepText, i) => (
+                  <li key={i} className="flex items-start gap-3 text-[14px] leading-relaxed text-gray-700">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-semibold text-gray-700">
+                      {i + 1}
+                    </span>
+                    <span dangerouslySetInnerHTML={{ __html: stepText }} />
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          <div className="mt-10 border-t border-gray-100 pt-6 text-[13px] text-gray-500">
+            Can&apos;t find the email? Check your spam folder, or{' '}
+            <Link href="/auth/signin" className="font-medium text-gray-900 underline underline-offset-2 hover:text-[#003580]">
+              sign in instead
             </Link>
-          </p>
+            .
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

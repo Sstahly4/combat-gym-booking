@@ -36,6 +36,26 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
     const toggle = (e: React.PointerEvent<HTMLButtonElement>) => {
       // Prevent the input from losing focus and stop any touch scroll/zoom defaults.
       e.preventDefault()
+
+      // Browser password managers (1Password, Chrome saved passwords, Safari
+      // Keychain, "Use Strong Password") populate the DOM value WITHOUT firing
+      // React's onChange/onInput in some browsers — particularly on desktop when
+      // the user hasn't yet interacted with the field. If we just flip the type
+      // to "text" while React's controlled value is still empty, the input
+      // appears blank. Sync the live DOM value into React state first.
+      const el = innerRef.current
+      const domValue = el?.value ?? ''
+      const reactValue =
+        typeof props.value === 'string' || typeof props.value === 'number'
+          ? String(props.value)
+          : ''
+      if (el && onChange && domValue && domValue !== reactValue) {
+        onChange({
+          target: el,
+          currentTarget: el,
+        } as unknown as React.ChangeEvent<HTMLInputElement>)
+      }
+
       setVisible((v) => !v)
     }
 

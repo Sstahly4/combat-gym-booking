@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { ManageSidebar } from '@/components/manage/manage-sidebar'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
@@ -9,6 +9,7 @@ import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-
 import { AccountClaimPrompts } from '@/components/manage/account-claim-prompts'
 import { formatHubDocumentTitle } from '@/lib/metadata/site-hubs'
 import { managePartnerSectionTitle } from '@/lib/manage/manage-partner-section-title'
+import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
 
 const NO_SIDEBAR_PREFIXES = [
   '/manage/invite',
@@ -17,8 +18,44 @@ const NO_SIDEBAR_PREFIXES = [
   '/manage/list-your-gym',
 ]
 
+/**
+ * Routes a pending owner is allowed to visit. Anything else under `/manage/*`
+ * (dashboard, calendar, bookings, settings, etc.) is gated until they have a
+ * listing draft — same OTA pattern Booking.com / Airbnb / Stripe Connect use.
+ */
+const PENDING_OWNER_ALLOWED_PREFIXES = [
+  '/manage/onboarding',
+  '/manage/security-onboarding',
+  '/manage/list-your-gym',
+  '/manage/invite',
+  '/manage/help',
+]
+
 function shouldHideSidebar(pathname: string): boolean {
   return NO_SIDEBAR_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+function isPendingOwnerAllowed(pathname: string): boolean {
+  return PENDING_OWNER_ALLOWED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
+
+/** Redirect pending owners (verified email but no listing yet) to the wizard. */
+function PendingOwnerGuard() {
+  const router = useRouter()
+  const pathname = usePathname() ?? ''
+  const { stage, nextStepHref, loading } = useOwnerOnboardingStatus()
+
+  useEffect(() => {
+    if (loading) return
+    if (stage !== 'pending') return
+    if (!pathname.startsWith('/manage')) return
+    if (isPendingOwnerAllowed(pathname)) return
+    router.replace(nextStepHref)
+  }, [stage, loading, pathname, nextStepHref, router])
+
+  return null
 }
 
 function ManageNoSidebarHubTitle() {
@@ -81,6 +118,7 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
   if (shouldHideSidebar(pathname)) {
     return (
       <>
+        <PendingOwnerGuard />
         <AccountClaimPrompts />
         <ManageNoSidebarHubTitle />
         {children}
@@ -90,6 +128,7 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ActiveGymProvider>
+      <PendingOwnerGuard />
       <ManageLayoutSidebarShell>{children}</ManageLayoutSidebarShell>
     </ActiveGymProvider>
   )

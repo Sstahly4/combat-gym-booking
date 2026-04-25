@@ -22,6 +22,7 @@ import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { AdminHeaderSearch } from '@/components/admin/admin-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
+import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
@@ -121,15 +122,28 @@ export function Navbar() {
   }
 
   const isOwnersPage = pathname === '/owners'
-  const isOwner = Boolean(user && profile?.role === 'owner')
+  /** Owner identity (email-verified partner). True even before onboarding completes. */
+  const isOwnerIdentity = Boolean(user && profile?.role === 'owner')
+  const ownerOnboarding = useOwnerOnboardingStatus()
+  /**
+   * Capability-gated owner: only treat as a "real" partner for navigation/menu
+   * purposes once they have a listing draft (industry-standard OTA pattern —
+   * Booking.com / Airbnb / Stripe Connect all hide the dashboard until the
+   * partner has completed at least the first onboarding step).
+   */
+  const isOwner = isOwnerIdentity && ownerOnboarding.stage === 'active'
+  /** Email-verified partner who hasn't created their listing yet. */
+  const isOwnerPending = isOwnerIdentity && ownerOnboarding.stage === 'pending'
   const isAdmin = Boolean(user && profile?.role === 'admin')
   const isManageOwnerShell =
-    Boolean(isOwner && pathname && pathname.startsWith('/manage'))
+    Boolean(isOwnerIdentity && pathname && pathname.startsWith('/manage'))
   /** Admin Hub shell — same tall layout as Partner Hub but for `/admin/*`. */
   const isAdminShell =
     Boolean(isAdmin && pathname && pathname.startsWith('/admin'))
   /** Block dashboard / header search shortcuts while finishing gym onboarding. */
-  const ownerOnboardingNavLock = Boolean(isOwner && pathname && isManageGymOnboardingNavLocked(pathname))
+  const ownerOnboardingNavLock =
+    Boolean(isOwnerIdentity && pathname && isManageGymOnboardingNavLocked(pathname)) ||
+    isOwnerPending
   const ownersAwarePartnerLabel = isOwnersPage ? 'Already a partner' : 'List your gym'
   const ownersAwarePartnerHref = isOwnersPage
     ? (user
@@ -143,10 +157,23 @@ export function Navbar() {
     isOwner && !isOwnersPage ? 'Dashboard' : ownersAwarePartnerLabel
   const showOwnerDashboardIcon = isOwner && topPartnerHref === '/manage'
 
-  /** During gym onboarding, show “List your gym” (→ /owners) instead of Dashboard. */
-  const navPartnerHref = ownerOnboardingNavLock ? '/owners' : topPartnerHref
-  const navPartnerLabel = ownerOnboardingNavLock ? 'List your gym' : topPartnerLabel
-  const navPartnerShowDashboardIcon = showOwnerDashboardIcon && !ownerOnboardingNavLock
+  /**
+   * - Pending owner (verified email, no listing yet): "Finish your listing" → onboarding wizard.
+   * - Owner mid-onboarding inside `/manage/*`: same as above.
+   * - Otherwise: defer to the standard partner CTA / dashboard logic.
+   */
+  const navPartnerHref = isOwnerPending
+    ? ownerOnboarding.nextStepHref
+    : ownerOnboardingNavLock
+      ? '/owners'
+      : topPartnerHref
+  const navPartnerLabel = isOwnerPending
+    ? 'Finish your listing'
+    : ownerOnboardingNavLock
+      ? 'List your gym'
+      : topPartnerLabel
+  const navPartnerShowDashboardIcon =
+    showOwnerDashboardIcon && !ownerOnboardingNavLock && !isOwnerPending
 
   const [ownerPendingCount, setOwnerPendingCount] = useState<number | null>(null)
   useEffect(() => {
@@ -254,18 +281,22 @@ export function Navbar() {
               {desktopMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] py-1">
 
-                  {/* List your gym — featured row (guests, or owners still in gym onboarding) */}
+                  {/* Featured row — pending owners get "Finish your listing", guests get "List your gym" */}
                   {!isOwner || ownerOnboardingNavLock ? (
                     <>
                       <Link
-                        href="/owners"
+                        href={isOwnerPending ? ownerOnboarding.nextStepHref : '/owners'}
                         onClick={() => setDesktopMenuOpen(false)}
                         className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-50 transition-colors"
                       >
                         <div>
-                          <div className="text-sm font-semibold text-gray-900">List your gym</div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {isOwnerPending ? 'Finish your listing' : 'List your gym'}
+                          </div>
                           <div className="text-xs text-gray-500 mt-0.5 leading-snug">
-                            Start earning by listing your combat sports gym.
+                            {isOwnerPending
+                              ? 'Complete a few short steps to start accepting bookings.'
+                              : 'Start earning by listing your combat sports gym.'}
                           </div>
                         </div>
                         <img
@@ -506,6 +537,25 @@ export function Navbar() {
                             </div>
                           </div>
                         </div>
+                      </Link>
+                    ) : isOwnerPending ? (
+                      <Link
+                        href={ownerOnboarding.nextStepHref}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center justify-between gap-4 rounded-xl px-2 py-4 transition-colors hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+                      >
+                        <div>
+                          <div className="text-[15px] font-semibold text-gray-900">Finish your listing</div>
+                          <div className="mt-1 text-[13px] leading-snug text-gray-500">
+                            Complete a few short steps to start accepting bookings.
+                          </div>
+                        </div>
+                        <img
+                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          alt=""
+                          aria-hidden
+                          className="h-14 w-14 flex-shrink-0 object-contain"
+                        />
                       </Link>
                     ) : (
                       <Link
