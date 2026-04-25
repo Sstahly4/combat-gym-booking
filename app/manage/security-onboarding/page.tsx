@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
+import { CheckCircle2 } from 'lucide-react'
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -22,6 +23,8 @@ const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> =
 
 export default function SecurityOnboardingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const justVerified = searchParams.get('verified') === '1'
   const { user, profile, loading: authLoading } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,9 +54,14 @@ export default function SecurityOnboardingPage() {
       return
     }
     if (profile.role !== 'owner') {
+      // When arriving straight from email verification (?verified=1), the callback
+      // updates the profile server-side just before redirecting here. The client-side
+      // useAuth hook can lag by one render cycle. Give it a brief grace period before
+      // bouncing, so a legitimate new owner isn't sent to the homepage.
+      if (justVerified) return
       router.replace('/')
     }
-  }, [authLoading, user, profile, router])
+  }, [authLoading, user, profile, router, justVerified])
 
   useEffect(() => {
     if (!profile) return
@@ -206,6 +214,20 @@ export default function SecurityOnboardingPage() {
   return (
     <div className="min-h-screen bg-[#f4f6f9] py-8 md:py-12">
       <div className="mx-auto w-full max-w-2xl px-3 sm:px-5 lg:px-8">
+
+        {/* Email-verified welcome banner — shown only when arriving from the verification link */}
+        {justVerified && (
+          <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" strokeWidth={1.75} />
+            <div>
+              <p className="text-sm font-semibold text-green-900">Email verified — welcome to CombatStay Partner Hub!</p>
+              <p className="mt-0.5 text-xs text-green-800 leading-snug">
+                Your account is active. Complete the details below to start listing your gym.
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card className="overflow-hidden rounded-xl border-gray-200/90 shadow-md">
           <CardHeader className="space-y-2 border-b border-gray-100 bg-gradient-to-b from-white to-gray-50/40 px-6 py-8 md:px-10">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]/80">

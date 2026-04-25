@@ -179,7 +179,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Load from localStorage
-    const saved = localStorage.getItem('selectedCurrency')
+    const saved = localStorage.getItem('selectedCurrency')?.toUpperCase()
     if (saved && (exchangeRates[saved] || FALLBACK_RATES[saved])) {
       setSelectedCurrencyState(saved)
     }
@@ -190,8 +190,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }, [exchangeRates])
 
   const setSelectedCurrency = (currency: Currency) => {
-    setSelectedCurrencyState(currency)
-    localStorage.setItem('selectedCurrency', currency)
+    const code = currency.toUpperCase()
+    setSelectedCurrencyState(code)
+    localStorage.setItem('selectedCurrency', code)
   }
 
   const setSelectedLanguage = (language: string) => {
@@ -199,19 +200,29 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('selectedLanguage', language)
   }
 
+  // Hint for accessibility / browser translation (UI copy is still English-only).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.lang = selectedLanguage || 'en-GB'
+  }, [selectedLanguage])
+
   const convertPrice = (amount: number, fromCurrency: string): number => {
-    if (!fromCurrency || !exchangeRates[fromCurrency]) return amount
-    if (selectedCurrency === fromCurrency) return amount
+    const from = (fromCurrency || 'USD').toUpperCase()
+    const to = (selectedCurrency || 'USD').toUpperCase()
+    if (!exchangeRates[from]) return amount
+    if (to === from) return amount
 
     // Convert to USD first, then to target currency
-    const usdAmount = amount / exchangeRates[fromCurrency]
-    const targetAmount = usdAmount * exchangeRates[selectedCurrency]
-    
+    const usdAmount = amount / exchangeRates[from]
+    const rateTo = exchangeRates[to]
+    if (rateTo == null || !Number.isFinite(rateTo)) return amount
+    const targetAmount = usdAmount * rateTo
+
     return Math.round(targetAmount * 100) / 100 // Round to 2 decimals
   }
 
   const formatPrice = (amount: number, currency?: string): string => {
-    const curr = currency || selectedCurrency
+    const curr = (currency || selectedCurrency).toUpperCase()
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     return `${curr} ${formatted}`
   }

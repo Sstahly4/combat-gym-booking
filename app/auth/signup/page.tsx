@@ -7,14 +7,130 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Mail, CheckCircle2, ArrowRight } from 'lucide-react'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
+
+// ─── Email verification screen ────────────────────────────────────────────────
+
+function VerifyEmailScreen({
+  email,
+  isOwner,
+}: {
+  email: string
+  isOwner: boolean
+}) {
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [resendError, setResendError] = useState<string | null>(null)
+
+  const handleResend = async () => {
+    setResending(true)
+    setResendError(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(
+            isOwner ? '/manage/security-onboarding' : '/'
+          )}`,
+        },
+      })
+      if (error) throw error
+      setResent(true)
+    } catch (e: unknown) {
+      setResendError(e instanceof Error ? e.message : 'Could not resend. Try again shortly.')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-[500px]">
+
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <span className="text-base font-bold text-[#003580] tracking-tight">
+            CombatStay.com
+          </span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-10 pt-10 pb-8 text-center">
+
+          {/* Icon */}
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#003580]/8">
+            <Mail className="h-8 w-8 text-[#003580]" strokeWidth={1.5} />
+          </div>
+
+          <h1 className="text-[1.6rem] font-semibold leading-tight tracking-tight text-gray-900 mb-2">
+            Check your inbox
+          </h1>
+          <p className="text-sm text-gray-500 leading-relaxed mb-1">
+            We sent a verification link to
+          </p>
+          <p className="text-sm font-semibold text-gray-900 mb-6 break-all">{email}</p>
+
+          {/* Steps */}
+          {isOwner && (
+            <div className="mb-7 rounded-xl border border-gray-100 bg-gray-50 px-5 py-4 text-left space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                What happens next
+              </p>
+              {[
+                'Click the link in your email to verify your account',
+                'Complete your property profile',
+                'Get approved and start accepting bookings',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#003580] text-[10px] font-bold text-white">
+                    {i + 1}
+                  </span>
+                  <p className="text-xs text-gray-600 leading-snug">{step}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Resend */}
+          {resent ? (
+            <div className="mb-5 flex items-center justify-center gap-2 text-sm text-green-700">
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+              Email resent — check your inbox again.
+            </div>
+          ) : resendError ? (
+            <p className="mb-4 text-xs text-red-600">{resendError}</p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || resent}
+            className="w-full h-11 rounded-full bg-[#003580] text-white text-sm font-medium hover:bg-[#002d6b] disabled:opacity-50 transition mb-4"
+          >
+            {resending ? 'Sending…' : resent ? 'Email sent' : 'Resend verification email'}
+          </button>
+
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Can't find it? Check your spam folder.{' '}
+            <Link href="/auth/signin" className="text-[#003580] hover:underline font-medium">
+              Sign in instead
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Sign-up form ─────────────────────────────────────────────────────────────
 
 function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const intent = searchParams.get('intent') // 'owner' or null
+  const intent = searchParams.get('intent')
   const redirectUrl = searchParams.get('redirect')
 
   const [email, setEmail] = useState('')
@@ -22,23 +138,19 @@ function SignUpForm() {
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
-  const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (!message) return
-    const timer = setTimeout(() => {
-      router.push('/auth/signin?intent=owner')
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [message, router])
+  // When this is truthy we show the "check your email" screen
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/'))}`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(
+          redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/')
+        )}`,
       },
     })
   }
@@ -48,7 +160,9 @@ function SignUpForm() {
     await supabase.auth.signInWithOAuth({
       provider: 'facebook',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/'))}`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(
+          redirectUrl || (intent === 'owner' ? '/manage/list-your-gym' : '/')
+        )}`,
       },
     })
   }
@@ -56,7 +170,6 @@ function SignUpForm() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setMessage(null)
     setPasswordErrors([])
 
     const validation = validatePasswordRules(password)
@@ -70,18 +183,16 @@ function SignUpForm() {
     const role = intent === 'owner' ? 'owner' : 'fighter'
     const supabase = createClient()
     const postVerifyRedirect =
-      role === 'owner'
-        ? '/manage/security-onboarding'
-        : redirectUrl || '/'
+      role === 'owner' ? '/manage/security-onboarding' : redirectUrl || '/'
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-          role_intent: role,
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(postVerifyRedirect)}`,
+        data: { full_name: fullName, role_intent: role },
+        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(
+          postVerifyRedirect
+        )}`,
       },
     })
 
@@ -101,7 +212,7 @@ function SignUpForm() {
     }
 
     if (data.user) {
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
       try {
         const response = await fetch('/api/auth/update-profile-role', {
@@ -111,9 +222,8 @@ function SignUpForm() {
         })
 
         if (response.status === 401) {
-          setMessage(
-            'Account created. Please verify your email and sign in to finish setting up your profile.'
-          )
+          // Email verification required — show the proper verify-email screen
+          setVerifyEmail(email)
           setLoading(false)
           return
         }
@@ -125,9 +235,8 @@ function SignUpForm() {
           return
         }
       } catch {
-        setMessage(
-          'Account created. Please verify your email and sign in to finish setting up your profile.'
-        )
+        // Network error after signup — still show verify screen (account was created)
+        setVerifyEmail(email)
         setLoading(false)
         return
       }
@@ -144,6 +253,11 @@ function SignUpForm() {
   }
 
   const isOwner = intent === 'owner'
+
+  // Show the OTA-style verify-email screen instead of the form
+  if (verifyEmail) {
+    return <VerifyEmailScreen email={verifyEmail} isOwner={isOwner} />
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
@@ -244,7 +358,14 @@ function SignUpForm() {
                 minLength={10}
                 autoComplete="new-password"
               />
-              <PasswordStandardsHint errors={passwordErrors} className="mt-2" />
+              {/* Live rule indicators — always shown once the user starts typing */}
+              {(password.length > 0 || passwordErrors.length > 0) && (
+                <PasswordStandardsHint
+                  password={password}
+                  errors={passwordErrors}
+                  className="mt-3"
+                />
+              )}
             </div>
 
             {error && (
@@ -254,24 +375,25 @@ function SignUpForm() {
               </div>
             )}
 
-            {message && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                {message}
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full h-11 bg-[#003580] hover:bg-[#002d6b] disabled:opacity-60 text-white text-sm font-medium rounded-full transition"
+              className="mt-1 w-full h-11 bg-[#003580] hover:bg-[#002d6b] disabled:opacity-60 text-white text-sm font-medium rounded-full transition flex items-center justify-center gap-2"
             >
-              {loading ? 'Creating account…' : isOwner ? 'Create partner account' : 'Create account'}
+              {loading ? (
+                'Creating account…'
+              ) : (
+                <>
+                  {isOwner ? 'Create partner account' : 'Create account'}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </form>
 
           {/* Fine print */}
           <p className="mt-6 text-[11px] text-gray-400 leading-relaxed text-center">
-            By signing in or creating an account, you agree with our{' '}
+            By creating an account you agree to our{' '}
             <Link href="/terms" className="text-[#003580] hover:underline">
               Terms &amp; conditions
             </Link>
@@ -282,6 +404,14 @@ function SignUpForm() {
             .
           </p>
         </div>
+
+        {/* Already have an account */}
+        <p className="mt-5 text-center text-sm text-gray-500">
+          Already have an account?{' '}
+          <Link href="/auth/signin" className="font-medium text-[#003580] hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   )

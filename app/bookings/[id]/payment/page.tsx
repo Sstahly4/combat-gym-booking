@@ -11,6 +11,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/types/database'
 import { MapPin, Dumbbell, ArrowRight, CreditCard, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
+import { BookingProgressBar } from '@/components/booking-progress-bar'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -257,18 +258,7 @@ export default function PaymentPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-gray-100 border-b">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-center gap-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <BookingProgressBar currentStep={3} loading />
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
@@ -331,18 +321,7 @@ export default function PaymentPage() {
   if (!booking) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-gray-100 border-b">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-center gap-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <BookingProgressBar currentStep={3} loading />
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
@@ -377,26 +356,7 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Progress Bar */}
-      <div className="bg-gray-100 border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#003580] text-white flex items-center justify-center text-xs font-bold">✓</div>
-              <span className="text-sm font-medium text-gray-700">1 Your selection</span>
-            </div>
-            <div className="w-12 h-0.5 bg-[#003580]"></div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#003580] text-white flex items-center justify-center text-xs font-bold">✓</div>
-              <span className="text-sm font-medium text-gray-700">2 Your details</span>
-            </div>
-            <div className="w-12 h-0.5 bg-[#003580]"></div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#003580] text-white flex items-center justify-center text-xs font-bold">3</div>
-              <span className="text-sm font-medium text-[#003580]">3 Finish booking</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <BookingProgressBar currentStep={3} />
 
       {/* Mobile Layout */}
       <div className="md:hidden space-y-6 pb-24">

@@ -35,34 +35,69 @@ export function generatePropertyHighlights({
   const mainHighlights: PropertyHighlight[] = []
   const roomsWith: PropertyHighlight[] = []
 
-  // Calculate trip duration
-  let durationText = ''
+  // Calculate trip duration and build a training-appropriate label
+  let durationHighlight: { title: string; description: string } | null = null
   let durationDays = 0
   if (checkin && checkout) {
     const start = new Date(checkin)
     const end = new Date(checkout)
     durationDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (durationDays >= 30) {
+
+    if (durationDays === 1) {
+      // Single day — frame as a session, not a "night trip"
+      durationHighlight = {
+        title: 'Perfect for a single session!',
+        description: 'Drop-in or taster training available'
+      }
+    } else if (durationDays >= 2 && durationDays <= 3) {
+      durationHighlight = {
+        title: `Great for a ${durationDays}-day training stint!`,
+        description: 'Short intensive training block'
+      }
+    } else if (durationDays >= 4 && durationDays <= 6) {
+      durationHighlight = {
+        title: `Perfect for a ${durationDays}-day camp!`,
+        description: 'A solid block of focused training'
+      }
+    } else if (durationDays >= 7 && durationDays < 14) {
+      durationHighlight = {
+        title: 'Great for a 1-week stay!',
+        description: 'A popular length for first-time camp visits'
+      }
+    } else if (durationDays >= 14 && durationDays < 21) {
+      durationHighlight = {
+        title: 'Perfect for a 2-week camp!',
+        description: 'Enough time to see real progress in training'
+      }
+    } else if (durationDays >= 21 && durationDays < 28) {
+      durationHighlight = {
+        title: 'Great for a 3-week training block!',
+        description: 'Serious commitment — real results follow'
+      }
+    } else if (durationDays >= 28 && durationDays < 56) {
       const months = Math.floor(durationDays / 30)
-      durationText = months === 1 ? '1-month' : `${months}-month`
-    } else if (durationDays >= 7) {
-      const weeks = Math.floor(durationDays / 7)
-      durationText = weeks === 1 ? '1-week' : `${weeks}-week`
-    } else if (durationDays > 1) {
-      durationText = `${durationDays}-night`
-    } else if (durationDays === 1) {
-      durationText = '1-night'
+      durationHighlight = {
+        title: months === 1 ? 'Perfect for a 1-month stay!' : `Great for a ${months}-month stay!`,
+        description: months === 1
+          ? 'The sweet spot for transformative training'
+          : 'Long-term immersion for serious athletes'
+      }
+    } else if (durationDays >= 56) {
+      const months = Math.floor(durationDays / 30)
+      durationHighlight = {
+        title: `Great for a ${months}-month training camp!`,
+        description: 'Full immersion — ideal for dedicated athletes'
+      }
     }
   }
 
   // Main highlights section
-  // 1. Perfect for X trip (if dates selected)
-  if (durationText) {
+  // 1. Duration-aware training label (if dates selected)
+  if (durationHighlight) {
     mainHighlights.push({
       icon: 'calendar',
-      title: `Perfect for a ${durationText} trip!`,
-      description: ''
+      title: durationHighlight.title,
+      description: durationHighlight.description
     })
   }
 

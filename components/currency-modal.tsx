@@ -175,14 +175,14 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
                   <div className="flex items-center gap-3">
                     <Languages className="w-5 h-5 text-gray-500 flex-shrink-0" />
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Translation</div>
+                      <div className="text-sm font-medium text-gray-900">Region</div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        Automatically translate descriptions and reviews to English.
+                        Saved for your account on this device. The site interface is English for now; prices follow your currency choice.
                       </div>
                     </div>
                   </div>
-                  <div className="w-11 h-6 rounded-full bg-gray-900 flex items-center justify-end px-0.5 flex-shrink-0">
-                    <div className="w-5 h-5 rounded-full bg-white" />
+                  <div className="w-11 h-6 rounded-full bg-gray-200 flex items-center justify-start px-0.5 flex-shrink-0" aria-hidden>
+                    <div className="w-5 h-5 rounded-full bg-white shadow-sm" />
                   </div>
                 </div>
               </div>
@@ -290,15 +290,13 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Translation</div>
+                      <div className="text-sm font-medium text-gray-900">Region</div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        Automatically translate descriptions and reviews to English.
+                        Saved on this device. Interface copy is English; prices use the currency you pick.
                       </div>
                     </div>
-                    <div className="w-11 h-6 rounded-full bg-[#222] flex items-center justify-end px-0.5">
-                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-[10px] text-gray-700">
-                        ✓
-                      </div>
+                    <div className="w-11 h-6 rounded-full bg-gray-200 flex items-center justify-start px-0.5" aria-hidden>
+                      <div className="w-5 h-5 rounded-full bg-white shadow-sm" />
                     </div>
                   </div>
                 </div>

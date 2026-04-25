@@ -9,6 +9,7 @@ import type { Gym, GymImage } from '@/lib/types/database'
 import { Filter, X, Star, Search, ChevronDown, MapPin, Check, ChevronsUpDown, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { BookingProvider } from '@/lib/contexts/booking-context'
+import { useCurrency } from '@/lib/contexts/currency-context'
 import { CategoryTabs } from '@/components/category-tabs'
 import { SearchBarRedesign } from '@/components/search-bar-redesign'
 import { SaveButton } from '@/components/save-button'
@@ -125,6 +126,7 @@ function ScoreBadge({ score }: { score: number }) {
 
 function SearchPageContent() {
   const searchParams = useSearchParams()
+  const { convertPrice, formatPrice } = useCurrency()
   const [gyms, setGyms] = useState<GymWithImages[]>([])
   const [loading, setLoading] = useState(true)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -451,7 +453,9 @@ function SearchPageContent() {
       : null
 
     const href = `/gyms/${gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`
-    const primaryPrice = estimatedPrice ? estimatedPrice.toFixed(0) : String(gym.price_per_day)
+    const rawPrice =
+      estimatedPrice != null && estimatedPrice > 0 ? estimatedPrice : gym.price_per_day || 0
+    const priceDisplay = formatPrice(convertPrice(rawPrice, gym.currency || 'USD'))
     const priceLabelTop = estimatedPrice ? 'Estimated total' : 'Starting from'
     const priceLabelBottom = estimatedPrice ? `for ${duration} nights` : 'per session'
     const guestsCount = (() => {
@@ -587,7 +591,7 @@ function SearchPageContent() {
             <div className="mt-3 text-right">
               <div className="text-[11px] text-gray-500">{priceLabelTop}</div>
               <div className="text-[22px] font-semibold text-gray-900 leading-tight">
-                {gym.currency} {primaryPrice}
+                {priceDisplay}
               </div>
               <div className="text-[11px] text-gray-500">
                 {priceLabelBottom}{guestsCount ? `, ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
@@ -613,7 +617,7 @@ function SearchPageContent() {
               </div>
               <div className="text-right">
                 <div className="text-[11px] text-gray-500">{priceLabelTop}</div>
-                <div className="text-[22px] font-semibold text-gray-900 leading-tight">{gym.currency} {primaryPrice}</div>
+                <div className="text-[22px] font-semibold text-gray-900 leading-tight">{priceDisplay}</div>
                 <div className="text-[11px] text-gray-500">
                   {priceLabelBottom}{guestsCount ? `, ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
                 </div>

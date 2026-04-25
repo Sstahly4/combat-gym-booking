@@ -30,6 +30,8 @@ export async function GET(request: Request) {
       }
 
       if (roleIntent === 'owner') {
+        // Ensure the profile role is set to owner before the client loads the page.
+        // This update runs server-side so the client sees the correct role immediately.
         await supabase
           .from('profiles')
           .update({
@@ -38,6 +40,21 @@ export async function GET(request: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', user.id)
+
+        await supabase.from('security_events').insert({
+          user_id: user.id,
+          event_type: 'oauth_sign_in',
+          metadata: { source: 'auth_callback' },
+        })
+
+        // Industry standard for partner platforms (Booking.com, Airbnb for Hosts):
+        // clicking the verification email logs the partner in and lands them directly
+        // in their partner workspace — never the public homepage or sign-in page.
+        // We always force the owner destination regardless of the `redirect` param,
+        // which can be dropped or mangled by some email clients.
+        return NextResponse.redirect(
+          new URL('/manage/security-onboarding?verified=1', requestUrl.origin)
+        )
       }
 
       await supabase.from('security_events').insert({

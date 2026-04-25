@@ -58,6 +58,26 @@
   }
 
   /*
+   * Suppress browser-native password reveal/clear buttons so they don't
+   * overlap our custom PasswordInput toggle eye. Edge renders ::-ms-reveal
+   * at the exact same position as our button; Chrome/-webkit can do similar.
+   */
+  input[type='password']::-ms-reveal,
+  input[type='password']::-ms-clear {
+    display: none;
+  }
+  input::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+  }
+  input::-webkit-contacts-auto-fill-button {
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  /*
    * iOS Safari auto-zooms when a focused input has a computed font-size below
    * 16px, which shifts fixed-position modals off-centre and breaks the search
    * bar + auth forms. Industry-standard fix (Airbnb, Booking, Stripe): pin the

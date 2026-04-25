@@ -358,8 +358,12 @@ function SignInPageContent() {
                 minLength={mode === 'signup' ? 10 : undefined}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
-              {mode === 'signup' && (
-                <PasswordStandardsHint errors={passwordErrors} className="mt-2" />
+              {mode === 'signup' && (password.length > 0 || passwordErrors.length > 0) && (
+                <PasswordStandardsHint
+                  password={password}
+                  errors={passwordErrors}
+                  className="mt-3"
+                />
               )}
             </div>
 
