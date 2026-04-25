@@ -167,7 +167,7 @@ function HardClaimModal({
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Choose a strong password"
             />
-            <PasswordStandardsHint className="mt-2" showErrors={false} />
+            <PasswordStandardsHint className="mt-2" password={password} />
           </div>
           <div>
             <Label htmlFor="claim-pw2">Confirm password</Label>

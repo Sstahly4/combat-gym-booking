@@ -336,7 +336,7 @@ export default function SecurityOnboardingPage() {
 
             <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
               <p className="font-medium text-gray-900">Password standards</p>
-              <PasswordStandardsHint className="mt-2" showErrors={false} />
+              <PasswordStandardsHint className="mt-2" />
             </div>
 
             <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:p-6">
