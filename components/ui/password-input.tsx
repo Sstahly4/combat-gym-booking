@@ -27,11 +27,6 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
         />
         <button
           type="button"
-          onMouseDown={(e) => {
-            // Prevent the input losing focus on click, which could trigger
-            // parent re-renders and reset state before onClick fires.
-            e.preventDefault()
-          }}
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Hide password' : 'Show password'}
           aria-pressed={visible}
