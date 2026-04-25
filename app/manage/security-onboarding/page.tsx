@@ -43,6 +43,8 @@ export default function SecurityOnboardingPage() {
   const [roleAtProperty, setRoleAtProperty] = useState<AccountHolderPropertyRole | ''>('')
   const [countryOfResidence, setCountryOfResidence] = useState('')
 
+  const [healingRole, setHealingRole] = useState(false)
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -54,14 +56,36 @@ export default function SecurityOnboardingPage() {
       return
     }
     if (profile.role !== 'owner') {
-      // When arriving straight from email verification (?verified=1), the callback
-      // updates the profile server-side just before redirecting here. The client-side
-      // useAuth hook can lag by one render cycle. Give it a brief grace period before
-      // bouncing, so a legitimate new owner isn't sent to the homepage.
-      if (justVerified) return
+      // Self-heal: a user landing here with verified=1 or with role_intent === 'owner'
+      // in their metadata is a legitimate partner whose profile.role didn't get promoted
+      // (stale verification email, race condition, or signup that skipped the metadata
+      // update). Call the server-side promotion endpoint instead of bouncing them to /,
+      // which would leave them stuck and confused.
+      const intentOwner = user.user_metadata?.role_intent === 'owner'
+      if ((justVerified || intentOwner) && !healingRole) {
+        setHealingRole(true)
+        void fetch('/api/auth/update-profile-role', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: 'owner',
+            full_name: user.user_metadata?.full_name || profile.full_name || null,
+          }),
+        })
+          .then(() => {
+            // Force a hard reload so useAuth re-fetches the profile with role=owner.
+            window.location.replace('/manage/security-onboarding?verified=1')
+          })
+          .catch(() => {
+            setHealingRole(false)
+            router.replace('/')
+          })
+        return
+      }
+      if (healingRole) return
       router.replace('/')
     }
-  }, [authLoading, user, profile, router, justVerified])
+  }, [authLoading, user, profile, router, justVerified, healingRole])
 
   useEffect(() => {
     if (!profile) return

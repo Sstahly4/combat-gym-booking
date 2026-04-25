@@ -29,7 +29,23 @@ export async function GET(request: Request) {
         )
       }
 
-      if (roleIntent === 'owner') {
+      // Owner detection — be defensive so stale links and signups missing
+      // role_intent metadata still land in the partner workspace:
+      //   1. Explicit role_intent === 'owner' on the user metadata
+      //   2. The redirect param targets /manage/* (the partner workspace)
+      //   3. The user already has profile.role === 'owner' (re-verifying)
+      let isOwnerFlow = roleIntent === 'owner' || redirect.startsWith('/manage')
+
+      if (!isOwnerFlow) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        if (existingProfile?.role === 'owner') isOwnerFlow = true
+      }
+
+      if (isOwnerFlow) {
         // Ensure the profile role is set to owner before the client loads the page.
         // This update runs server-side so the client sees the correct role immediately.
         await supabase
