@@ -28,7 +28,7 @@ export function OwnerWizardSidebar({
 
           return (
             <li key={step.key}>
-              <div className="flex gap-3 py-1">
+              <div className="flex gap-3 py-1.5">
                 <div className="flex flex-col items-center">
                   <button
                     type="button"
@@ -36,7 +36,7 @@ export function OwnerWizardSidebar({
                     onClick={() => onStepClick?.(step.index)}
                     className={cn(
                       'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-                      complete && 'bg-[#003580] text-white shadow-sm',
+                      complete && 'bg-[#003580] text-white',
                       !complete &&
                         current &&
                         'border-2 border-[#003580] bg-white text-[#003580]',
@@ -58,14 +58,14 @@ export function OwnerWizardSidebar({
                     disabled={!canNavigate}
                     onClick={() => onStepClick?.(step.index)}
                     className={cn(
-                      'w-full rounded-md text-left text-sm leading-normal transition-colors',
-                      current && 'font-semibold text-[#003580]',
+                      'w-full rounded-md text-left text-[13px] leading-normal transition-colors',
+                      current && 'font-semibold text-gray-900',
                       !current &&
                         complete &&
-                        'font-medium text-green-700 hover:bg-gray-50 hover:text-green-800',
+                        'font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900',
                       !current &&
                         !complete &&
-                        'text-gray-600 hover:bg-gray-50 hover:text-[#003580]'
+                        'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )}
                   >
                     {step.label}

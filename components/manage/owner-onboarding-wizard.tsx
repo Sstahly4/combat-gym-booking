@@ -14,7 +14,7 @@ import { OnboardingPackagesPanel } from '@/components/manage/onboarding-packages
 import { GymCountryField } from '@/components/manage/gym-country-field'
 import { MfaTotpInlineSection } from '@/components/manage/mfa-totp-inline-section'
 import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
-import { Info } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Info, ShieldCheck, Wallet } from 'lucide-react'
 import {
   buildOnboardingWizardUrl,
   buildWizardStepDeepLink,
@@ -423,6 +423,37 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
     return n
   }, [basicsMergedComplete, completedKeys])
+
+  const verificationSummary = useMemo(() => {
+    const emailVerified = Boolean(user?.email_confirmed_at)
+    const needsEmail = !emailVerified
+    const needsAccountHolder = !accountHolderComplete
+    const packagesOk = packageCount > 0
+    const photosOk = photoCount >= 3
+    const payoutsOk = stripeConnected
+    const securityOk = embedInAdmin ? true : completedKeys.includes('security')
+
+    const coreOkCount = [packagesOk, photosOk, payoutsOk, securityOk].filter(Boolean).length
+
+    return {
+      emailVerified,
+      needsEmail,
+      needsAccountHolder,
+      packagesOk,
+      photosOk,
+      payoutsOk,
+      securityOk,
+      coreOkCount,
+    }
+  }, [
+    user?.email_confirmed_at,
+    accountHolderComplete,
+    packageCount,
+    photoCount,
+    stripeConnected,
+    completedKeys,
+    embedInAdmin,
+  ])
 
   const goToWizardStep = useCallback(
     (stepNumber: number) => {
@@ -1110,24 +1141,15 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       className={
         embedInAdmin
           ? 'min-h-0 px-2 py-4 sm:px-4 md:py-6'
-          : 'min-h-screen bg-[#f4f6f9] px-4 py-8 sm:px-6 md:py-12 lg:px-10'
+          : 'min-h-screen bg-[#f7f8fa] px-4 pt-6 pb-32 sm:pt-10'
       }
     >
       <main
-        className="mx-auto w-full max-w-7xl overflow-visible rounded-xl border border-gray-200/90 bg-white shadow-md"
+        className="mx-auto w-full max-w-6xl overflow-visible"
         aria-label="Gym listing onboarding"
       >
-        <header className="flex flex-col gap-2 border-b border-gray-100 bg-gradient-to-b from-white to-gray-50/40 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-10 lg:px-12">
-          <p className="text-lg font-semibold tracking-tight text-[#003580]">
-            {embedInAdmin ? 'Create new gym listing' : 'List your gym on CombatStay'}
-          </p>
-          <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
-            Step {step.index} of {wizardSteps.length}
-          </p>
-        </header>
-
-        <div className="flex flex-col lg:flex-row lg:items-stretch">
-          <aside className="border-b border-gray-100 bg-gray-50/50 p-6 md:p-8 lg:w-[min(280px,100%)] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-gray-100 lg:py-10">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
+          <aside className="rounded-xl border border-gray-200/80 bg-white p-5 sm:p-6">
             <OwnerWizardSidebar
               steps={wizardSteps}
               currentIndex={step.index}
@@ -1136,14 +1158,95 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             />
           </aside>
 
-          <div className="flex-1 px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">{step.label}</h1>
-            <p className="mt-2 max-w-3xl text-base leading-relaxed text-gray-600">
-              {step.description}
-            </p>
+          <div className="rounded-xl border border-gray-200/80 bg-white px-5 py-6 sm:px-7 sm:py-8">
+            {/* Stepper — Stripe-style */}
+            <div className="mb-6 flex items-center gap-2 text-[12px] font-medium text-gray-500">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#003580] text-[10px] font-bold text-white">
+                {step.index}
+              </span>
+              <span className="text-gray-900">{step.label}</span>
+              <span className="text-gray-300">·</span>
+              <span aria-live="polite">Step {step.index} of {wizardSteps.length}</span>
+            </div>
 
-            <div className="mt-8 space-y-8">
-              <div className="space-y-6 rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm md:space-y-8 md:p-8">
+            <header className="mb-7">
+              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
+                {embedInAdmin ? 'Create a new gym listing' : 'List your gym'}
+              </h1>
+              <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-gray-600">
+                {step.description}
+              </p>
+            </header>
+
+            <div className="space-y-8">
+              {/* Status summary — consistent rules across steps */}
+              {!embedInAdmin ? (
+                <section
+                  aria-label="Listing requirements"
+                  className="rounded-xl border border-gray-200/80 bg-white"
+                >
+                  <ul className="divide-y divide-gray-200/70">
+                    <li className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-medium text-gray-900">Email</p>
+                          <p className="truncate text-[12.5px] text-gray-500">{user?.email ?? '—'}</p>
+                        </div>
+                      </div>
+                      {verificationSummary.emailVerified ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                          Verify to continue
+                        </span>
+                      )}
+                    </li>
+
+                    <li className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-medium text-gray-900">Account holder</p>
+                          <p className="text-[12.5px] text-gray-500">
+                            Legal name, direct phone, role, and country of residence.
+                          </p>
+                        </div>
+                      </div>
+                      {accountHolderComplete ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
+                          Ready
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                          Required
+                        </span>
+                      )}
+                    </li>
+
+                    <li className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Wallet className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-medium text-gray-900">Go‑live readiness</p>
+                          <p className="text-[12.5px] text-gray-500">
+                            Packages, photos, payouts and security: {verificationSummary.coreOkCount}/4 complete.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11.5px] font-medium text-gray-600">
+                        Track progress
+                      </span>
+                    </li>
+                  </ul>
+                </section>
+              ) : null}
+
+              <div className="space-y-6 rounded-xl border border-gray-200/70 bg-white p-5 md:space-y-8 md:p-7">
                 {step.key === 'basics' && (
                   <div className="space-y-10">
                     <div className="space-y-4">
@@ -1837,69 +1940,86 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                   {error}
                 </p>
               ) : null}
-
-              <div className="flex flex-col gap-3 border-t border-gray-100 pt-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-3">
-                  {previousStep ? (
-                    <Link
-                      href={buildWizUrl(previousStep.slug, editorGymId)}
-                    >
-                      <Button variant="outline" className={btnGhost}>
-                        Back
-                      </Button>
-                    </Link>
-                  ) : null}
-
-                  {stepIsComplete && !isMigratedStep && !(embedInAdmin && step.key === 'finalize') ? (
-                    <Button
-                      onClick={() => void saveStepCompletion(false)}
-                      disabled={saving || loading}
-                      variant="outline"
-                      className={btnGhost}
-                    >
-                      {saving ? 'Saving…' : 'Mark incomplete'}
-                    </Button>
-                  ) : isMigratedStep ? (
-                    <Button
-                      className={btnPrimary}
-                      onClick={() => {
-                        void startBasicInfoSubmit()
-                      }}
-                      disabled={saving || loading || (!embedInAdmin && selfServeExpired)}
-                    >
-                      {saving ? 'Saving…' : 'Save and continue →'}
-                    </Button>
-                  ) : !(embedInAdmin && step.key === 'finalize') ? (
-                    <Button
-                      className={btnPrimary}
-                      onClick={() => void saveStepCompletion(true)}
-                      disabled={saving || loading}
-                    >
-                      {saving
-                        ? 'Saving…'
-                        : step.key === 'finalize'
-                          ? 'Finish — see my score →'
-                          : step.key === 'packages'
-                            ? 'Confirm & continue →'
-                            : 'Mark complete and continue →'}
-                    </Button>
-                  ) : null}
-                </div>
-
-                {!embedInAdmin ? (
-                  <Link
-                    href={`/manage/onboarding/review${editorGymId ? `?gym_id=${encodeURIComponent(editorGymId)}` : ''}`}
-                  >
-                    <Button variant="ghost" className="text-muted-foreground hover:text-[#003580]">
-                      Go to review
-                    </Button>
-                  </Link>
-                ) : null}
-              </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Sticky footer action bar — consistent with security onboarding */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3.5">
+          <div className="flex items-center gap-2">
+            {previousStep ? (
+              <Link href={buildWizUrl(previousStep.slug, editorGymId)}>
+                <Button variant="outline" className="h-10 rounded-full border-gray-200 bg-white text-gray-900 hover:bg-gray-50">
+                  Back
+                </Button>
+              </Link>
+            ) : (
+              <span />
+            )}
+
+            {!embedInAdmin ? (
+              <Link
+                href={`/manage/onboarding/review${editorGymId ? `?gym_id=${encodeURIComponent(editorGymId)}` : ''}`}
+              >
+                <Button
+                  variant="ghost"
+                  className="h-10 rounded-full text-gray-500 hover:text-[#003580]"
+                >
+                  Review
+                </Button>
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {stepIsComplete && !isMigratedStep && !(embedInAdmin && step.key === 'finalize') ? (
+              <Button
+                onClick={() => void saveStepCompletion(false)}
+                disabled={saving || loading}
+                variant="outline"
+                className="h-10 rounded-full border-gray-200 bg-white text-gray-900 hover:bg-gray-50"
+              >
+                {saving ? 'Saving…' : 'Mark incomplete'}
+              </Button>
+            ) : null}
+
+            {isMigratedStep ? (
+              <Button
+                className="h-10 items-center gap-2 rounded-full bg-[#003580] px-5 text-[13.5px] font-medium text-white hover:bg-[#002a66] disabled:opacity-50"
+                onClick={() => {
+                  void startBasicInfoSubmit()
+                }}
+                disabled={
+                  saving ||
+                  loading ||
+                  (!embedInAdmin && selfServeExpired) ||
+                  (!embedInAdmin && (!verificationSummary.emailVerified || !accountHolderComplete))
+                }
+              >
+                {saving ? 'Saving…' : 'Save & continue'}
+                <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+              </Button>
+            ) : !(embedInAdmin && step.key === 'finalize') ? (
+              <Button
+                className="h-10 items-center gap-2 rounded-full bg-[#003580] px-5 text-[13.5px] font-medium text-white hover:bg-[#002a66] disabled:opacity-50"
+                onClick={() => void saveStepCompletion(true)}
+                disabled={saving || loading}
+              >
+                {saving
+                  ? 'Saving…'
+                  : step.key === 'finalize'
+                    ? 'Finish'
+                    : step.key === 'packages'
+                      ? 'Confirm & continue'
+                      : 'Continue'}
+                <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       {packagesPanelOpen && editorGymId ? (
         <OnboardingPackagesPanel
