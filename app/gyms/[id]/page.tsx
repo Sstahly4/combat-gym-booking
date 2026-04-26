@@ -25,6 +25,7 @@ import { GymAddressCopy } from '@/components/gym-address-copy'
 import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
+import { ThingsToDoCard } from '@/components/things-to-do-card'
 
 // Helper function to format review date as "time ago"
 function formatReviewDate(createdAt: string): string {
@@ -532,6 +533,11 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                   googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''} 
                 />
               </div>
+
+              {/* Things to do nearby — pre-populated from OpenStreetMap, zero runtime cost */}
+              {gym.things_to_do && gym.things_to_do.length >= 2 && (
+                <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
+              )}
 
               {/* Opening Hours - Mobile and Desktop */}
               {(gym.opening_hours || gym.training_schedule) && (

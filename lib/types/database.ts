@@ -101,6 +101,8 @@ export interface Gym {
   verified_at: string | null
   trusted_at: string | null
   nearby_attractions?: Array<{ name: string; distance: number }> | null
+  /** Pre-fetched nearby POIs from OpenStreetMap Overpass API. Populated via admin enrichment endpoint. */
+  things_to_do?: Array<{ name: string; category: 'eat' | 'nature' | 'training' | 'explore'; distanceKm: number }> | null
   /** IANA timezone for schedules and reports. */
   timezone?: string | null
   /** Public reception / front-desk phone shown on listing (not owner personal phone). */
