@@ -24,6 +24,7 @@ import {
   mergeGymAmenitiesFromDb,
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
+import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
 import {
   manageGymEditHubBreadcrumb,
   resolvePostGymEditReturnPath,
@@ -78,7 +79,11 @@ function EditGymForm() {
   const [countrySearch, setCountrySearch] = useState('')
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState<string>('')
-  
+  const [locationAddress, setLocationAddress] = useState('')
+  const [locationCity, setLocationCity] = useState('')
+  const [locationLat, setLocationLat] = useState('')
+  const [locationLng, setLocationLng] = useState('')
+
   // Additional optional fields
   const [openingHours, setOpeningHours] = useState<Record<string, string>>({
     monday: '07:00-20:00',
@@ -124,6 +129,10 @@ function EditGymForm() {
         disciplines,
         amenities,
         selectedCountry,
+        locationAddress,
+        locationCity,
+        locationLat,
+        locationLng,
         openingHours,
         trainingSchedule,
         trainers,
@@ -137,22 +146,22 @@ function EditGymForm() {
     }
   }
 
-  // Restore form state from localStorage
-  const restoreFormState = () => {
+  /** Restores cached edit state. `restoredLocationFromCache` is true when cache included location fields (in-progress address survives refresh). */
+  const restoreFormState = (): { hasCachedState: boolean; restoredLocationFromCache: boolean } => {
     const cacheKey = getCacheKey()
-    if (!cacheKey) return false
+    if (!cacheKey) return { hasCachedState: false, restoredLocationFromCache: false }
 
     try {
       const cached = localStorage.getItem(cacheKey)
-      if (!cached) return false
+      if (!cached) return { hasCachedState: false, restoredLocationFromCache: false }
 
       const formState = JSON.parse(cached)
-      
+
       // Only restore if cache is less than 24 hours old
       const cacheAge = Date.now() - (formState.timestamp || 0)
       if (cacheAge > 24 * 60 * 60 * 1000) {
         localStorage.removeItem(cacheKey)
-        return false
+        return { hasCachedState: false, restoredLocationFromCache: false }
       }
 
       // Restore form state
@@ -164,10 +173,25 @@ function EditGymForm() {
       if (formState.trainers) setTrainers(formState.trainers)
       if (formState.faq) setFaq(formState.faq)
 
-      return true
+      const loc = formState as Record<string, unknown>
+      const hasLocationCache =
+        'locationAddress' in loc ||
+        'locationCity' in loc ||
+        'locationLat' in loc ||
+        'locationLng' in loc
+      let restoredLocationFromCache = false
+      if (hasLocationCache) {
+        setLocationAddress(typeof loc.locationAddress === 'string' ? loc.locationAddress : '')
+        setLocationCity(typeof loc.locationCity === 'string' ? loc.locationCity : '')
+        setLocationLat(typeof loc.locationLat === 'string' ? loc.locationLat : '')
+        setLocationLng(typeof loc.locationLng === 'string' ? loc.locationLng : '')
+        restoredLocationFromCache = true
+      }
+
+      return { hasCachedState: true, restoredLocationFromCache }
     } catch (error) {
       console.error('Failed to restore form state from localStorage:', error)
-      return false
+      return { hasCachedState: false, restoredLocationFromCache: false }
     }
   }
 
@@ -183,7 +207,21 @@ function EditGymForm() {
   useEffect(() => {
     if (!gymId || loading) return
     saveFormState()
-  }, [disciplines, amenities, selectedCountry, openingHours, trainingSchedule, trainers, faq, gymId, loading])
+  }, [
+    disciplines,
+    amenities,
+    selectedCountry,
+    locationAddress,
+    locationCity,
+    locationLat,
+    locationLng,
+    openingHours,
+    trainingSchedule,
+    trainers,
+    faq,
+    gymId,
+    loading,
+  ])
 
   // Warn user before leaving page with unsaved changes
   useEffect(() => {
@@ -285,10 +323,21 @@ function EditGymForm() {
       mutableGym.images = [...mutableGym.images]
     }
     setGym(mutableGym as any)
-    
+
     // Try to restore cached form state first
-    const hasCachedState = restoreFormState()
-    
+    const { hasCachedState, restoredLocationFromCache } = restoreFormState()
+
+    if (!restoredLocationFromCache) {
+      setLocationAddress(data.address || '')
+      setLocationCity(data.city || '')
+      setLocationLat(
+        data.latitude != null && !Number.isNaN(Number(data.latitude)) ? String(data.latitude) : ''
+      )
+      setLocationLng(
+        data.longitude != null && !Number.isNaN(Number(data.longitude)) ? String(data.longitude) : ''
+      )
+    }
+
     // If no cached state, use data from database
     if (!hasCachedState) {
       setSelectedCountry(data.country || '')
@@ -847,7 +896,7 @@ function EditGymForm() {
   // Calculate section completion status
   const sectionStatus = {
     basic: { completed: !!(gym.name && gym.description && gym.price_per_day), required: true },
-    location: { completed: !!(gym.address && gym.city && selectedCountry), required: true },
+    location: { completed: !!(locationAddress && locationCity && selectedCountry), required: true },
     images: { completed: !!(gym.images && gym.images.length > 0), required: true },
     disciplines: { completed: disciplines.length > 0, required: true },
     schedule: { completed: false, required: false },
@@ -977,23 +1026,45 @@ function EditGymForm() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <GymLocationAddressSearch
+                  disabled={saving}
+                  onApply={({ address, city, latitude, longitude, country }) => {
+                    setLocationAddress(address)
+                    setLocationCity(city)
+                    setLocationLat(latitude)
+                    setLocationLng(longitude)
+                    if (country) setSelectedCountry(country)
+                  }}
+                />
+
                 <Label htmlFor="address">Full Address <span className="text-red-500">*</span></Label>
-                <Input 
-                  id="address" 
-                  name="address" 
-                  defaultValue={gym.address || ''} 
+                <Input
+                  id="address"
+                  name="address"
+                  value={locationAddress}
+                  onChange={(e) => setLocationAddress(e.target.value)}
                   placeholder="e.g., 123 Soi Bang Tao, Bangtao Beach, Phuket 83110, Thailand"
-                  required 
+                  required
                 />
                 <p className="text-xs text-gray-500">
-                  Include street number, street name, and postcode. You can copy this from Google Maps.
+                  Include street number, street name, and postcode. Use search above to normalize spelling, or paste
+                  from Google Maps.
                 </p>
               </div>
-              
+
               <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <div className="space-y-2">
                   <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                  <Input id="city" name="city" defaultValue={gym.city} required />
+                  <Input
+                    id="city"
+                    name="city"
+                    value={locationCity}
+                    readOnly
+                    required
+                    className="bg-gray-50"
+                    title="Set by choosing an address from map search"
+                  />
+                  <p className="text-xs text-gray-500">Filled from map search so city spelling matches our directory.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
@@ -1090,23 +1161,25 @@ function EditGymForm() {
               <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <div className="space-y-2">
                   <Label htmlFor="latitude">Latitude (optional)</Label>
-                  <Input 
-                    id="latitude" 
-                    name="latitude" 
-                    type="number" 
-                    step="any" 
-                    defaultValue={gym.latitude || ''} 
+                  <Input
+                    id="latitude"
+                    name="latitude"
+                    type="number"
+                    step="any"
+                    value={locationLat}
+                    onChange={(e) => setLocationLat(e.target.value)}
                     placeholder="e.g., 7.8804"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="longitude">Longitude (optional)</Label>
-                  <Input 
-                    id="longitude" 
-                    name="longitude" 
-                    type="number" 
-                    step="any" 
-                    defaultValue={gym.longitude || ''} 
+                  <Input
+                    id="longitude"
+                    name="longitude"
+                    type="number"
+                    step="any"
+                    value={locationLng}
+                    onChange={(e) => setLocationLng(e.target.value)}
                     placeholder="e.g., 98.3923"
                   />
                 </div>

@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select'
 import { OwnerWizardSidebar } from '@/components/manage/owner-wizard-sidebar'
 import { OnboardingPackagesPanel } from '@/components/manage/onboarding-packages-panel'
 import { GymCountryField } from '@/components/manage/gym-country-field'
+import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
 import { MfaTotpInlineSection } from '@/components/manage/mfa-totp-inline-section'
 import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
 import { ArrowRight, CheckCircle2, Info, ShieldCheck } from 'lucide-react'
@@ -112,6 +113,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     address: '',
     city: '',
     country: '',
+    latitude: '',
+    longitude: '',
     disciplines: [] as string[],
     google_maps_link: '',
     instagram_link: '',
@@ -272,6 +275,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         address: '',
         city: '',
         country: '',
+        latitude: '',
+        longitude: '',
         disciplines: [],
         google_maps_link: '',
         instagram_link: '',
@@ -314,7 +319,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           const { data: gym } = await supabase
             .from('gyms')
             .select(
-              'name, description, address, city, country, disciplines, stripe_connect_verified, currency, offers_accommodation, google_maps_link, instagram_link, facebook_link'
+              'name, description, address, city, country, latitude, longitude, disciplines, stripe_connect_verified, currency, offers_accommodation, google_maps_link, instagram_link, facebook_link'
             )
             .eq('id', gymId)
             .maybeSingle()
@@ -328,12 +333,17 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             if (typeof gym.currency === 'string' && gym.currency.trim()) {
               setGymCurrency(gym.currency.trim().toUpperCase())
             }
+            const gGeo = gym as typeof gym & { latitude?: number | null; longitude?: number | null }
             setGymBasics({
               name: rawName === 'Draft Gym' ? '' : rawName,
               description: gym.description || '',
               address: gym.address || '',
               city: gym.city || '',
               country: gym.country || '',
+              latitude:
+                gGeo.latitude != null && !Number.isNaN(Number(gGeo.latitude)) ? String(gGeo.latitude) : '',
+              longitude:
+                gGeo.longitude != null && !Number.isNaN(Number(gGeo.longitude)) ? String(gGeo.longitude) : '',
               disciplines: Array.isArray(gym.disciplines) ? gym.disciplines : [],
               google_maps_link: g.google_maps_link || '',
               instagram_link: g.instagram_link || '',
@@ -739,6 +749,10 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     const countryForInsert = gymBasics.country.trim() || (embedInAdmin ? 'Pending' : '')
     const disciplinesForInsert =
       gymBasics.disciplines.length > 0 ? gymBasics.disciplines : embedInAdmin ? ([] as string[]) : gymBasics.disciplines
+    const latNum = parseFloat(gymBasics.latitude.trim())
+    const lngNum = parseFloat(gymBasics.longitude.trim())
+    const latitudeForInsert = Number.isFinite(latNum) ? latNum : null
+    const longitudeForInsert = Number.isFinite(lngNum) ? lngNum : null
 
     const { data: createdGym, error: createError } = await supabase
       .from('gyms')
@@ -749,6 +763,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         address: gymBasics.address.trim() || null,
         city: cityForInsert,
         country: countryForInsert,
+        latitude: latitudeForInsert,
+        longitude: longitudeForInsert,
         disciplines: disciplinesForInsert,
         offers_accommodation: offersAccommodation,
         google_maps_link: mapsLink,
@@ -808,6 +824,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       const igLink = gymBasics.instagram_link.trim() || null
       const fbLink = gymBasics.facebook_link.trim() || null
 
+      const latA = parseFloat(gymBasics.latitude.trim())
+      const lngA = parseFloat(gymBasics.longitude.trim())
       const { error: updateError } = await supabase
         .from('gyms')
         .update({
@@ -816,6 +834,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           address: gymBasics.address.trim() || null,
           city: gymBasics.city.trim() || 'Pending',
           country: gymBasics.country.trim() || 'Pending',
+          latitude: Number.isFinite(latA) ? latA : null,
+          longitude: Number.isFinite(lngA) ? lngA : null,
           disciplines: gymBasics.disciplines.length > 0 ? gymBasics.disciplines : [],
           offers_accommodation: offersAccommodation,
           google_maps_link: mapsLink,
@@ -950,6 +970,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       const igLink = gymBasics.instagram_link.trim() || null
       const fbLink = gymBasics.facebook_link.trim() || null
 
+      const latU = parseFloat(gymBasics.latitude.trim())
+      const lngU = parseFloat(gymBasics.longitude.trim())
       const { error: updateError } = await supabase
         .from('gyms')
         .update({
@@ -958,6 +980,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           address: gymBasics.address.trim(),
           city: gymBasics.city.trim(),
           country: gymBasics.country.trim(),
+          latitude: Number.isFinite(latU) ? latU : null,
+          longitude: Number.isFinite(lngU) ? lngU : null,
           disciplines: gymBasics.disciplines,
           offers_accommodation: offersAccommodation,
           google_maps_link: mapsLink,
@@ -1431,6 +1455,19 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
                     {basicSubSteps[basicSubStep - 1]?.key === 'location' && (
                       <div className="space-y-5">
+                        <GymLocationAddressSearch
+                          disabled={saving}
+                          onApply={({ address, city, latitude, longitude, country }) => {
+                            setGymBasics((prev) => ({
+                              ...prev,
+                              address,
+                              city,
+                              latitude,
+                              longitude,
+                              country: country || prev.country,
+                            }))
+                          }}
+                        />
                         <div className="space-y-2">
                           <Label className={labelClass} htmlFor="wiz-address">
                             {embedInAdmin ? 'Address (optional)' : 'Address *'}
@@ -1442,6 +1479,9 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                             value={gymBasics.address}
                             onChange={(event) => setGymBasics((prev) => ({ ...prev, address: event.target.value }))}
                           />
+                          <p className={wizHint}>
+                            Use map search above to set a normalized city name, or edit the line after you pick.
+                          </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
@@ -1450,10 +1490,12 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                             </Label>
                             <Input
                               id="wiz-city"
-                              className={fieldClass}
+                              className={`${fieldClass} bg-gray-50`}
                               value={gymBasics.city}
-                              onChange={(event) => setGymBasics((prev) => ({ ...prev, city: event.target.value }))}
+                              readOnly
+                              title="Choose a map search result to set the city"
                             />
+                            <p className={wizHint}>Set from map search for consistent spelling.</p>
                           </div>
                           <GymCountryField
                             id="wiz-gym-country"
@@ -1464,6 +1506,36 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                             inputClassName={fieldClass}
                             labelClassName={labelClass}
                           />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className={labelClass} htmlFor="wiz-latitude">
+                              Latitude (optional)
+                            </Label>
+                            <Input
+                              id="wiz-latitude"
+                              type="number"
+                              step="any"
+                              className={fieldClass}
+                              value={gymBasics.latitude}
+                              onChange={(e) => setGymBasics((prev) => ({ ...prev, latitude: e.target.value }))}
+                              placeholder="From map search"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className={labelClass} htmlFor="wiz-longitude">
+                              Longitude (optional)
+                            </Label>
+                            <Input
+                              id="wiz-longitude"
+                              type="number"
+                              step="any"
+                              className={fieldClass}
+                              value={gymBasics.longitude}
+                              onChange={(e) => setGymBasics((prev) => ({ ...prev, longitude: e.target.value }))}
+                              placeholder="From map search"
+                            />
+                          </div>
                         </div>
                         <div className="space-y-3 pt-2">
                           <div>
