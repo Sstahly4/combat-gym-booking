@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseCityFromNominatimAddress, type NominatimSearchHit } from '@/lib/geo/nominatim-address'
+import {
+  buildNominatimAddressQueries,
+  parseCityFromNominatimAddress,
+  type NominatimSearchHit,
+} from '@/lib/geo/nominatim-address'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,32 +19,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Query too long' }, { status: 400 })
   }
 
-  const params = new URLSearchParams({
-    q,
-    format: 'json',
-    limit: '8',
-    addressdetails: '1',
-    'accept-language': 'en',
-  })
-
   try {
-    const res = await fetch(`${NOMINATIM}?${params.toString()}`, {
-      headers: {
-        'User-Agent': 'CombatStay/1.0 (https://combatstay.com)',
-      },
-      next: { revalidate: 0 },
-    })
+    let raw: NominatimSearchHit[] = []
+    for (const query of buildNominatimAddressQueries(q)) {
+      const params = new URLSearchParams({
+        q: query,
+        format: 'json',
+        limit: '8',
+        addressdetails: '1',
+        'accept-language': 'en',
+      })
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'Address search temporarily unavailable' },
-        { status: res.status >= 500 ? 502 : res.status }
-      )
-    }
+      const res = await fetch(`${NOMINATIM}?${params.toString()}`, {
+        headers: {
+          'User-Agent': 'CombatStay/1.0 (https://combatstay.com)',
+        },
+        next: { revalidate: 0 },
+      })
 
-    const raw = (await res.json()) as NominatimSearchHit[]
-    if (!Array.isArray(raw)) {
-      return NextResponse.json({ results: [] as const })
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: 'Address search temporarily unavailable' },
+          { status: res.status >= 500 ? 502 : res.status }
+        )
+      }
+
+      const nextRaw = (await res.json()) as NominatimSearchHit[]
+      if (!Array.isArray(nextRaw)) {
+        return NextResponse.json({ results: [] as const })
+      }
+      if (nextRaw.length > 0) {
+        raw = nextRaw
+        break
+      }
     }
 
     const results = raw

@@ -36,6 +36,22 @@ export function matchGymCountryName(
   return countries.find((c) => c.toLowerCase() === low) ?? null
 }
 
+export function buildNominatimAddressQueries(query: string): string[] {
+  const q = query.trim().replace(/\s+/g, ' ')
+  const variants = [
+    q,
+    q.replace(/\bM\.?\s*\d+\b/gi, '').replace(/\s+/g, ' '),
+    q.replace(/\bMoo\s*\d+\b/gi, '').replace(/\s+/g, ' '),
+    q
+      .replace(/\bM\.?\s*\d+\b/gi, '')
+      .replace(/\bMoo\s*\d+\b/gi, '')
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/\s+/g, ' '),
+  ]
+
+  return Array.from(new Set(variants.map((item) => item.trim()).filter((item) => item.length >= 3)))
+}
+
 export type NominatimSearchHit = {
   display_name: string
   lat: string
