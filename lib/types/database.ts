@@ -42,6 +42,13 @@ export interface Profile {
   password_meets_current_policy?: boolean
   /** Original synthetic email for the placeholder account (kept for reference). */
   placeholder_email?: string | null
+  /**
+   * After gym claim password flow, show first-run dashboard tour until cleared.
+   * Only set via claim completion — self-serve owners stay false.
+   */
+  claim_dashboard_tour_pending?: boolean | null
+  /** Set when the claim dashboard tour is finished or skipped. */
+  claim_dashboard_tour_completed_at?: string | null
   created_at: string
   updated_at: string
 }

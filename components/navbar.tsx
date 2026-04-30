@@ -122,6 +122,8 @@ export function Navbar() {
   }
 
   const isOwnersPage = pathname === '/owners'
+  const isCreatorsProgramPage =
+    pathname === '/affiliate' || pathname === '/creators'
   /** Owner identity (email-verified partner). True even before onboarding completes. */
   const isOwnerIdentity = Boolean(user && profile?.role === 'owner')
   const ownerOnboarding = useOwnerOnboardingStatus()
@@ -228,9 +230,16 @@ export function Navbar() {
             ) : (
               <Link
                 href="/"
-                className="shrink-0 truncate text-lg font-bold tracking-tight text-white sm:text-xl md:text-2xl"
+                className="flex min-w-0 shrink-0 items-baseline gap-1.5"
               >
-                CombatStay.com
+                <span className="truncate text-lg font-bold tracking-tight text-white sm:text-xl md:text-2xl">
+                  CombatStay.com
+                </span>
+                {isCreatorsProgramPage ? (
+                  <span className="shrink-0 text-[13px] font-normal tracking-tight text-white/55 sm:text-[15px] md:text-base">
+                    creators
+                  </span>
+                ) : null}
               </Link>
             )}
 

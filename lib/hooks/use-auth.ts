@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/lib/types/database'
@@ -108,10 +108,25 @@ export function useAuth() {
     }
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    const supabase = createClient()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const uid = session?.user?.id
+    if (!uid) return
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single()
+    if (error) {
+      console.error('refreshProfile:', error)
+      return
+    }
+    setProfile(data ?? null)
+  }, [])
+
   const signOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
   }
 
-  return { user, profile, loading, signOut }
+  return { user, profile, loading, signOut, refreshProfile }
 }

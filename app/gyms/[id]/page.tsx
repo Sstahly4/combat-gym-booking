@@ -399,13 +399,19 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
       />
       <div className="min-h-screen bg-white pb-12">
-        {/* Draft Mode Notice for Owner */}
+        {/* Preview mode banner for owners viewing draft listing */}
         {isDraft && isOwner && (
-          <div className="bg-yellow-50 border-b border-yellow-200 py-2 md:py-3">
-            <div className="max-w-6xl mx-auto px-4">
-              <p className="text-xs md:text-sm text-yellow-800 font-medium">
-                ⚠️ Preview Mode: Your gym is in draft status and not visible to the public. Complete verification to go live.
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 py-2.5 md:py-3">
+            <div className="max-w-6xl mx-auto px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs md:text-sm font-medium text-slate-700">
+                Preview mode: your gym is still in draft and not visible publicly until verification is complete.
               </p>
+              <a
+                href="/manage"
+                className="inline-flex w-fit items-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Exit preview mode
+              </a>
             </div>
           </div>
         )}
@@ -534,9 +540,11 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                 />
               </div>
 
-              {/* Things to do nearby — pre-populated from OpenStreetMap, zero runtime cost */}
+              {/* Things to do nearby (mobile) — keep above opening hours on small screens */}
               {gym.things_to_do && gym.things_to_do.length >= 2 && (
-                <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
+                <div className="md:hidden">
+                  <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
+                </div>
               )}
 
               {/* Opening Hours - Mobile and Desktop */}
@@ -572,6 +580,13 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
                     )}
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Things to do nearby (desktop) — place below opening hours */}
+              {gym.things_to_do && gym.things_to_do.length >= 2 && (
+                <div className="hidden md:block">
+                  <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
+                </div>
               )}
             </div>
 
@@ -620,9 +635,24 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
               )}
             </div>
             {gym.reviews.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <p className="text-gray-500 font-medium">No reviews yet.</p>
-                <p className="text-sm text-gray-400 mt-1">Be the first to review this gym!</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
+                {isDraft && isOwner ? (
+                  <>
+                    <p className="text-base font-semibold tracking-tight text-slate-800">
+                      You are still in draft mode.
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      Guest reviews will appear here once your listing is verified, live, and bookings are completed.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-base font-semibold tracking-tight text-slate-800">No reviews yet</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      Reviews from verified stays will appear here after guests complete their trips.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <ReviewsCarousel reviews={gym.reviews} />

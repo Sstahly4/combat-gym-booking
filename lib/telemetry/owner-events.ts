@@ -30,6 +30,8 @@ export type OwnerTelemetryEventType =
   | 'gym_claim_link_redeemed'
   | 'gym_claim_password_set'
   | 'gym_claim_email_updated'
+  | 'claim_dashboard_tour_finished'
+  | 'claim_dashboard_tour_skipped'
 
 export interface OwnerTelemetryEvent {
   event_type: OwnerTelemetryEventType

@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { createClient } from '@/lib/supabase/client'
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,7 +38,7 @@ interface ClaimProfile {
 }
 
 export function AccountClaimPrompts() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, refreshProfile } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const justClaimed = searchParams?.get('claimed') === '1'
@@ -51,13 +52,35 @@ export function AccountClaimPrompts() {
   if (loading || !profile) return null
   if (!needsPassword && !needsEmail) return null
 
+  /**
+   * Supabase Admin email changes invalidate the existing session. If we just
+   * `refreshSession()` the user gets signed out and bounced to /auth/signin.
+   * Instead, sign back in with the credentials they just chose so the session
+   * is reissued for the (possibly new) email + new password without a redirect.
+   */
+  async function handleClaimDone(opts: { signInEmail: string; password: string }) {
+    const supabase = createClient()
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: opts.signInEmail,
+      password: opts.password,
+    })
+    if (signInErr) {
+      console.warn('[claim] re-signin after complete-claim:', signInErr.message)
+      // Fallback: try to refresh the existing session in case the admin email
+      // change preserved it for this provider/version.
+      await supabase.auth.refreshSession()
+    }
+    await refreshProfile()
+    router.refresh()
+  }
+
   return (
     <>
       {needsPassword && (
         <HardClaimModal
           currentEmail={user?.email ?? ''}
           showWelcome={justClaimed}
-          onDone={() => router.refresh()}
+          onDone={handleClaimDone}
         />
       )}
       {needsEmail && <SoftEmailBanner currentEmail={user?.email ?? ''} />}
@@ -72,7 +95,7 @@ function HardClaimModal({
 }: {
   currentEmail: string
   showWelcome: boolean
-  onDone: () => void
+  onDone: (opts: { signInEmail: string; password: string }) => void | Promise<void>
 }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -98,6 +121,24 @@ function HardClaimModal({
     [password, confirm],
   )
   const passwordValidation = useMemo(() => validatePasswordRules(password), [password])
+  const trimmedEmail = email.trim()
+  const trimmedName = fullName.trim()
+  const emailLooksValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmedEmail)
+  const nameLooksValid = trimmedName.length >= 2
+
+  // Surface exactly why the submit button is disabled so owners aren't left
+  // staring at a greyed-out button (the password rules are strict — esp. the
+  // "no common fragments" rule which rejects things like "Welcome123!").
+  const blockingReasons = useMemo(() => {
+    const reasons: string[] = []
+    if (!passwordValidation.valid) reasons.push(...passwordValidation.errors)
+    if (password.length > 0 && !passwordsMatch) reasons.push('Passwords do not match')
+    if (!emailLooksValid) reasons.push('Enter a valid email address')
+    if (!nameLooksValid) reasons.push('Enter your name')
+    return reasons
+  }, [passwordValidation, passwordsMatch, password.length, emailLooksValid, nameLooksValid])
+
+  const canSubmit = blockingReasons.length === 0
 
   async function submit() {
     setError(null); setDetails(null)
@@ -109,6 +150,12 @@ function HardClaimModal({
     if (!passwordsMatch) {
       setError('Passwords do not match'); return
     }
+    if (!emailLooksValid) {
+      setError('Please enter a valid email address'); return
+    }
+    if (!nameLooksValid) {
+      setError('Please enter your name'); return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/manage/account/complete-claim', {
@@ -116,17 +163,38 @@ function HardClaimModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           new_password: password,
-          new_email: email.trim() || undefined,
-          full_name: fullName.trim() || undefined,
+          new_email: trimmedEmail,
+          full_name: trimmedName,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data?.error || 'Could not save your password')
+        if (res.status === 401) {
+          setError(
+            'We could not verify your session for a second save. If you already tapped Save once, your password may already be set — refresh this page. Otherwise sign in again from the login page.'
+          )
+        } else if (
+          res.status === 400 &&
+          typeof data?.error === 'string' &&
+          data.error.includes('Claim already complete')
+        ) {
+          setError('Your account is already updated. Refresh the page to continue to the dashboard.')
+        } else {
+          setError(data?.error || 'Could not save your password')
+        }
         if (Array.isArray(data?.details)) setDetails(data.details)
         return
       }
-      onDone()
+      const emailChangedServerSide = data?.claim_complete === true
+      const effectiveEmail = emailChangedServerSide ? trimmedEmail : currentEmail
+      // Password was saved. Email may have failed independently (e.g. disposable
+      // domain rejected) — surface that as a warning but still close the modal.
+      if (typeof data?.email_warning === 'string' && data.email_warning) {
+        setError(`Password saved. ${data.email_warning} You can update your email later from Settings.`)
+        await onDone({ signInEmail: effectiveEmail, password })
+        return
+      }
+      await onDone({ signInEmail: effectiveEmail, password })
     } catch (err: any) {
       setError(err?.message || 'Could not save your password')
     } finally {
@@ -183,7 +251,7 @@ function HardClaimModal({
           </div>
 
           <div className="border-t border-stone-100 pt-4">
-            <Label htmlFor="claim-email">Your email (optional but recommended)</Label>
+            <Label htmlFor="claim-email">Your email</Label>
             <Input
               id="claim-email"
               type="email"
@@ -191,6 +259,8 @@ function HardClaimModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@yourgym.com"
+              required
+              aria-required="true"
             />
             <p className="mt-1 text-xs text-stone-500">
               We use this for booking notifications, payouts, and account
@@ -199,13 +269,15 @@ function HardClaimModal({
           </div>
 
           <div>
-            <Label htmlFor="claim-name">Your name (optional)</Label>
+            <Label htmlFor="claim-name">Your name</Label>
             <Input
               id="claim-name"
               autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Coach name or contact person"
+              required
+              aria-required="true"
             />
           </div>
 
@@ -221,10 +293,19 @@ function HardClaimModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-stone-100 bg-stone-50 px-6 py-4">
+        <div className="flex flex-col gap-2 border-t border-stone-100 bg-stone-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-h-[1.25rem] text-xs text-stone-500 sm:max-w-[60%]">
+            {!canSubmit && blockingReasons.length > 0 && (
+              <span>
+                <span className="font-medium text-stone-700">Before continuing:</span>{' '}
+                {blockingReasons[0]}
+                {blockingReasons.length > 1 ? ` (+${blockingReasons.length - 1} more)` : ''}
+              </span>
+            )}
+          </div>
           <Button
             onClick={submit}
-            disabled={submitting || !passwordsMatch || !passwordValidation.valid}
+            disabled={submitting || !canSubmit}
             className="bg-[#003580] text-white hover:bg-[#002a5c]"
           >
             {submitting ? 'Saving…' : 'Save and continue'}

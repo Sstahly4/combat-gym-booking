@@ -27,6 +27,8 @@ type NavItem = {
   label: string
   icon: LucideIcon
   isActive: (pathname: string) => boolean
+  /** Anchor for claim-link first-run dashboard tour (`data-claim-tour`). */
+  tourAnchor?: string
   /**
    * Optional sub-items rendered as an indented list directly under this item.
    * Sub-items expand only when the parent or one of the children is active,
@@ -36,6 +38,7 @@ type NavItem = {
     href: string
     label: string
     isActive: (pathname: string) => boolean
+    tourAnchor?: string
   }>
 }
 
@@ -92,6 +95,7 @@ function getNavGroups(
         label: 'Balances',
         icon: Wallet,
         isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
+        tourAnchor: 'tour-balances',
         children: [
           {
             href: payoutsHref,
@@ -120,12 +124,14 @@ function getNavGroups(
         icon: Eye,
         isActive: (p) =>
           p === '/manage/gym/preview' || p.startsWith('/manage/gym/preview'),
+        tourAnchor: 'tour-view-listing',
       },
       {
         href: editGymHref,
         label: 'Edit gym',
         icon: Pencil,
         isActive: (p) => p.startsWith('/manage/gym/edit'),
+        tourAnchor: 'tour-edit-gym',
       },
       {
         href: accommodationHref,
@@ -170,7 +176,7 @@ function NavLink({
   item: NavItem
   pathname: string
 }) {
-  const { href, label, icon: Icon, isActive, children } = item
+  const { href, label, icon: Icon, isActive, children, tourAnchor } = item
   const active = isActive(pathname)
   const childActive = (children ?? []).some((c) => c.isActive(pathname))
   const showChildren = Boolean(children?.length) && (active || childActive)
@@ -178,6 +184,7 @@ function NavLink({
     <div>
       <Link
         href={href}
+        data-claim-tour={tourAnchor}
         className={cn(
           'flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] leading-snug transition-colors',
           active && !childActive
@@ -199,6 +206,7 @@ function NavLink({
               <Link
                 key={c.href}
                 href={c.href}
+                data-claim-tour={c.tourAnchor}
                 className={cn(
                   'rounded-md px-2 py-1.5 text-[12.5px] leading-snug transition-colors',
                   cActive

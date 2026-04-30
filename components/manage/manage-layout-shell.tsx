@@ -7,6 +7,7 @@ import { ManageSidebar } from '@/components/manage/manage-sidebar'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
 import { AccountClaimPrompts } from '@/components/manage/account-claim-prompts'
+import { ClaimDashboardTour } from '@/components/manage/claim-dashboard-tour'
 import { formatHubDocumentTitle } from '@/lib/metadata/site-hubs'
 import { managePartnerSectionTitle } from '@/lib/manage/manage-partner-section-title'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
@@ -94,6 +95,7 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">
       <AccountClaimPrompts />
+      <ClaimDashboardTour />
       <ManageNoBookingsToastHost />
       <ManageSidebar
         editGymHref={editGymHref}

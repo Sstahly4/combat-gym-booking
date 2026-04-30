@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { createClient } from '@/lib/supabase/client'
 import { DashboardNoBookingsToast } from '@/components/manage/dashboard-no-bookings-toast'
+import { SESSION_DEFER_NO_BOOKINGS_KEY } from '@/components/manage/claim-dashboard-tour'
 
 /**
  * Routes under "Your gym" in the manage sidebar — no top-right toast here.
@@ -20,11 +21,62 @@ export function shouldHideNoBookingsToast(pathname: string): boolean {
   return false
 }
 
+const NO_BOOKINGS_SCHEDULE_EVENT = 'cs:no-bookings-toast-schedule'
+
+function useNoBookingsToastDefer() {
+  const deferTimerRef = useRef<number | null>(null)
+  /** Same default on server + client to avoid hydration mismatch; sessionStorage read in effect. */
+  const [pastDefer, setPastDefer] = useState(true)
+
+  const applyDeferFromStorage = useCallback(() => {
+    if (deferTimerRef.current != null) {
+      window.clearTimeout(deferTimerRef.current)
+      deferTimerRef.current = null
+    }
+    try {
+      const raw = sessionStorage.getItem(SESSION_DEFER_NO_BOOKINGS_KEY)
+      if (!raw) {
+        setPastDefer(true)
+        return
+      }
+      const until = parseInt(raw, 10)
+      if (Number.isNaN(until) || Date.now() >= until) {
+        sessionStorage.removeItem(SESSION_DEFER_NO_BOOKINGS_KEY)
+        setPastDefer(true)
+        return
+      }
+      setPastDefer(false)
+      const ms = Math.max(0, until - Date.now())
+      deferTimerRef.current = window.setTimeout(() => {
+        deferTimerRef.current = null
+        try {
+          sessionStorage.removeItem(SESSION_DEFER_NO_BOOKINGS_KEY)
+        } catch {
+          /* ignore */
+        }
+        setPastDefer(true)
+      }, ms)
+    } catch {
+      setPastDefer(true)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    applyDeferFromStorage()
+    const onSchedule = () => applyDeferFromStorage()
+    window.addEventListener(NO_BOOKINGS_SCHEDULE_EVENT, onSchedule)
+    return () => window.removeEventListener(NO_BOOKINGS_SCHEDULE_EVENT, onSchedule)
+  }, [applyDeferFromStorage])
+
+  return pastDefer
+}
+
 export function ManageNoBookingsToastHost() {
   const pathname = usePathname() ?? ''
   const { profile } = useAuth()
   const { gyms, activeGymId, loading: gymsLoading } = useActiveGym()
   const [bookingCount, setBookingCount] = useState<number | null>(null)
+  const pastClaimTourDefer = useNoBookingsToastDefer()
 
   const gymIds = useMemo(() => gyms.map((g) => g.id), [gyms])
 
@@ -76,6 +128,7 @@ export function ManageNoBookingsToastHost() {
       : '/manage/gym/preview'
 
   const show =
+    pastClaimTourDefer &&
     !gymsLoading &&
     bookingCount !== null &&
     gymIds.length > 0 &&

@@ -14,7 +14,7 @@ import { OnboardingPackagesPanel } from '@/components/manage/onboarding-packages
 import { GymCountryField } from '@/components/manage/gym-country-field'
 import { MfaTotpInlineSection } from '@/components/manage/mfa-totp-inline-section'
 import { ReAuthDialog } from '@/components/auth/re-auth-dialog'
-import { ArrowRight, CheckCircle2, Info, ShieldCheck, Wallet } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Info, ShieldCheck } from 'lucide-react'
 import {
   buildOnboardingWizardUrl,
   buildWizardStepDeepLink,
@@ -455,6 +455,50 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     embedInAdmin,
   ])
 
+  const finalReadinessItems = useMemo(
+    () => [
+      {
+        key: 'listing',
+        label: 'Listing profile',
+        detail: 'Gym basics, location, disciplines, and account holder details.',
+        ready: basicsMergedComplete,
+      },
+      {
+        key: 'packages',
+        label: 'Packages & pricing',
+        detail: packageCount > 0 ? `${packageCount} package${packageCount === 1 ? '' : 's'} created.` : 'Create at least one bookable package.',
+        ready: packageCount > 0,
+      },
+      {
+        key: 'photos',
+        label: 'Photos',
+        detail: `${photoCount} uploaded · at least 3 recommended before go-live.`,
+        ready: photoCount >= 3,
+      },
+      {
+        key: 'payouts',
+        label: 'Payouts',
+        detail: stripeConnected ? 'Stripe is connected.' : 'Connect Stripe so completed bookings can be paid out.',
+        ready: stripeConnected,
+      },
+      {
+        key: 'security',
+        label: 'Security',
+        detail: verificationSummary.securityOk
+          ? 'Owner account security is complete.'
+          : 'Finish account holder, email verification, and security setup.',
+        ready: verificationSummary.securityOk,
+      },
+    ],
+    [
+      basicsMergedComplete,
+      packageCount,
+      photoCount,
+      stripeConnected,
+      verificationSummary.securityOk,
+    ]
+  )
+
   const goToWizardStep = useCallback(
     (stepNumber: number) => {
       const targetStep = wizardSteps.find((item) => item.index === stepNumber)
@@ -466,6 +510,130 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   )
 
   const isMigratedStep = step.key === 'basics'
+
+  type BasicSubStepDef = { key: string; title: string; subtitle: string }
+  const basicSubSteps = useMemo<BasicSubStepDef[]>(() => {
+    if (embedInAdmin) {
+      return [
+        {
+          key: 'identity',
+          title: 'About this gym',
+          subtitle: 'Just the gym name is required to create a draft. Description is optional.',
+        },
+        {
+          key: 'location',
+          title: 'Location & offering',
+          subtitle: 'Optional for admin drafts — owners can fill these in later from the editor.',
+        },
+      ]
+    }
+    return [
+      {
+        key: 'identity',
+        title: 'About your gym',
+        subtitle: 'How travellers will recognise you in search and on your listing.',
+      },
+      {
+        key: 'location',
+        title: 'Location & what you teach',
+        subtitle: 'Where guests will train, plus the disciplines on offer.',
+      },
+      {
+        key: 'trust',
+        title: 'Help travellers trust your gym',
+        subtitle: 'Add a couple of links so we can verify your gym is real. You can add these later, but trust signals help guests book sooner.',
+      },
+      {
+        key: 'holder',
+        title: "Who's responsible for this listing",
+        subtitle: 'We hold these details on record for compliance and urgent owner contact — separate from your public gym contact.',
+      },
+    ]
+  }, [embedInAdmin])
+  const totalBasicSubSteps = basicSubSteps.length
+  const [basicSubStep, setBasicSubStep] = useState(1)
+  useEffect(() => {
+    if (step.key !== 'basics') setBasicSubStep(1)
+  }, [step.key])
+  useEffect(() => {
+    if (basicSubStep > totalBasicSubSteps) setBasicSubStep(totalBasicSubSteps)
+  }, [basicSubStep, totalBasicSubSteps])
+
+  const validateBasicSubStep = useCallback(
+    (n: number): string | null => {
+      const def = basicSubSteps[n - 1]
+      if (!def) return null
+      if (def.key === 'identity') {
+        if (!gymBasics.name.trim()) return 'Gym name is required'
+        if (!embedInAdmin && !gymBasics.description.trim()) return 'Description is required'
+        return null
+      }
+      if (def.key === 'location') {
+        if (embedInAdmin) return null
+        if (!gymBasics.address.trim() || !gymBasics.city.trim() || !gymBasics.country.trim()) {
+          return 'Address, city, and country are required'
+        }
+        if (gymBasics.disciplines.length === 0) return 'Select at least one discipline'
+        return null
+      }
+      if (def.key === 'trust') {
+        return null
+      }
+      if (def.key === 'holder') {
+        if (!accountHolderComplete || !roleAtProperty) {
+          return 'Complete all account holder fields: legal name, direct phone, role, and country of residence.'
+        }
+        if (!user?.email_confirmed_at) return 'Verify your email from the link we sent you, then continue.'
+        if (selfServeExpired) {
+          return 'Your self-serve verification link has expired (24h). Request a new link from list-your-gym to continue.'
+        }
+        return null
+      }
+      return null
+    },
+    [
+      basicSubSteps,
+      gymBasics.name,
+      gymBasics.description,
+      gymBasics.address,
+      gymBasics.city,
+      gymBasics.country,
+      gymBasics.disciplines,
+      embedInAdmin,
+      accountHolderComplete,
+      roleAtProperty,
+      user?.email_confirmed_at,
+      selfServeExpired,
+    ]
+  )
+
+  const handleBasicContinue = () => {
+    setError(null)
+    setResendMessage(null)
+    const err = validateBasicSubStep(basicSubStep)
+    if (err) {
+      setError(err)
+      return
+    }
+    if (basicSubStep < totalBasicSubSteps) {
+      setBasicSubStep((s) => s + 1)
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      return
+    }
+    startBasicInfoSubmit()
+  }
+
+  const handleBasicBack = () => {
+    setError(null)
+    if (basicSubStep > 1) {
+      setBasicSubStep((s) => s - 1)
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }
+  }
   const hasDedicatedStepContent = [
     'basics',
     'packages',
@@ -1136,20 +1304,59 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     return 'Set in editor'
   }
 
+  const completedStepCount = wizardSteps.filter((s) => completedKeys.includes(s.key)).length
+  const progressPct = Math.round((completedStepCount / wizardSteps.length) * 100)
+  const heroTitle = embedInAdmin ? 'Create a new gym listing' : 'List your gym'
+  const heroSubtitle = embedInAdmin
+    ? 'Create a draft on behalf of an owner. Only the gym name is required to start — anything else can be added now or later in the editor.'
+    : "Tell travellers about your gym so they can find, trust, and book you. Save anytime — we'll keep your draft until you're ready to go live."
+
   return (
     <div
       className={
         embedInAdmin
           ? 'min-h-0 px-2 py-4 sm:px-4 md:py-6'
-          : 'min-h-screen bg-[#f7f8fa] px-4 pt-6 pb-32 sm:pt-10'
+          : 'min-h-screen bg-white pb-32'
       }
     >
       <main
-        className="mx-auto w-full max-w-6xl overflow-visible"
+        className={
+          embedInAdmin
+            ? 'mx-auto w-full max-w-6xl overflow-visible'
+            : 'mx-auto w-full max-w-6xl overflow-visible px-4 pt-10 sm:px-6 sm:pt-14 lg:pt-16'
+        }
         aria-label="Gym listing onboarding"
       >
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-          <aside className="rounded-xl border border-gray-200/80 bg-white p-5 sm:p-6">
+        {!embedInAdmin ? (
+          <header className="mb-10 max-w-3xl sm:mb-12">
+            <h1 className="text-[26px] font-semibold leading-[1.15] tracking-tight text-gray-900 sm:text-[30px]">
+              {heroTitle}
+            </h1>
+            <p className="mt-2.5 text-[14.5px] leading-relaxed text-gray-600">{heroSubtitle}</p>
+
+            <div className="mt-6 flex items-center gap-4">
+              <div
+                className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100"
+                role="progressbar"
+                aria-valuenow={progressPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Onboarding progress"
+              >
+                <div
+                  className="h-full rounded-full bg-[#003580] transition-[width] duration-500 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="shrink-0 text-[12px] font-medium tabular-nums text-gray-500" aria-live="polite">
+                Step {step.index} of {wizardSteps.length} · {progressPct}%
+              </p>
+            </div>
+          </header>
+        ) : null}
+
+        <div className="grid gap-10 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-16 xl:gap-20">
+          <aside className="lg:sticky lg:top-8 lg:self-start">
             <OwnerWizardSidebar
               steps={wizardSteps}
               currentIndex={step.index}
@@ -1158,213 +1365,213 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             />
           </aside>
 
-          <div className="rounded-xl border border-gray-200/80 bg-white px-5 py-6 sm:px-7 sm:py-8">
-            {/* Stepper — Stripe-style */}
-            <div className="mb-6 flex items-center gap-2 text-[12px] font-medium text-gray-500">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#003580] text-[10px] font-bold text-white">
-                {step.index}
-              </span>
-              <span className="text-gray-900">{step.label}</span>
-              <span className="text-gray-300">·</span>
-              <span aria-live="polite">Step {step.index} of {wizardSteps.length}</span>
-            </div>
+          <div className="min-w-0">
+            {step.key !== 'basics' ? (
+              <div className="mb-6">
+                <h2 className="text-[20px] font-semibold tracking-tight text-gray-900 sm:text-[22px]">
+                  {step.label}
+                </h2>
+                <p className="mt-2 text-[14px] leading-relaxed text-gray-600">
+                  {step.description}
+                </p>
+              </div>
+            ) : null}
 
-            <header className="mb-7">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
-                {embedInAdmin ? 'Create a new gym listing' : 'List your gym'}
-              </h1>
-              <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-gray-600">
-                {step.description}
-              </p>
-            </header>
-
-            <div className="space-y-8">
-              {/* Status summary — consistent rules across steps */}
-              {!embedInAdmin ? (
-                <section
-                  aria-label="Listing requirements"
-                  className="rounded-xl border border-gray-200/80 bg-white"
-                >
-                  <ul className="divide-y divide-gray-200/70">
-                    <li className="flex items-center justify-between gap-4 px-5 py-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-medium text-gray-900">Email</p>
-                          <p className="truncate text-[12.5px] text-gray-500">{user?.email ?? '—'}</p>
-                        </div>
-                      </div>
-                      {verificationSummary.emailVerified ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
-                          Verified
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
-                          Verify to continue
-                        </span>
-                      )}
-                    </li>
-
-                    <li className="flex items-center justify-between gap-4 px-5 py-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ShieldCheck className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-medium text-gray-900">Account holder</p>
-                          <p className="text-[12.5px] text-gray-500">
-                            Legal name, direct phone, role, and country of residence.
-                          </p>
-                        </div>
-                      </div>
-                      {accountHolderComplete ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
-                          Ready
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
-                          Required
-                        </span>
-                      )}
-                    </li>
-
-                    <li className="flex items-center justify-between gap-4 px-5 py-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Wallet className="h-5 w-5 shrink-0 text-gray-400" strokeWidth={1.75} />
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-medium text-gray-900">Go‑live readiness</p>
-                          <p className="text-[12.5px] text-gray-500">
-                            Packages, photos, payouts and security: {verificationSummary.coreOkCount}/4 complete.
-                          </p>
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11.5px] font-medium text-gray-600">
-                        Track progress
-                      </span>
-                    </li>
-                  </ul>
-                </section>
-              ) : null}
-
-              <div className="space-y-6 rounded-xl border border-gray-200/70 bg-white p-5 md:space-y-8 md:p-7">
+            <div className="space-y-6">
+              <div className="space-y-7 rounded-2xl border border-gray-200/80 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:space-y-9 md:p-10">
                 {step.key === 'basics' && (
-                  <div className="space-y-10">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className={wizH3}>Your gym</h3>
-                        <p className={`mt-1 ${wizBody}`}>
-                          {embedInAdmin ? (
-                            <>
-                              <span className="font-medium text-gray-900">Gym name is required</span> to create the draft.
-                              Everything else is optional — add it here, in later steps, or in the full editor.
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-medium text-gray-900">Name and story on your public profile.</span>{' '}
-                              This is how travellers find and recognise you in search and on your listing.
-                            </>
-                          )}
+                  <div className="space-y-7">
+                    <div>
+                      {totalBasicSubSteps > 1 ? (
+                        <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#003580]">
+                          {step.label} · Step {basicSubStep} of {totalBasicSubSteps}
                         </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>Gym name *</Label>
-                        <Input
-                          className={fieldClass}
-                          value={gymBasics.name}
-                          onChange={(event) => setGymBasics((prev) => ({ ...prev, name: event.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>{embedInAdmin ? 'Description (optional)' : 'Description *'}</Label>
-                        <Textarea
-                          className={fieldClass}
-                          rows={4}
-                          value={gymBasics.description}
-                          onChange={(event) => setGymBasics((prev) => ({ ...prev, description: event.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>{embedInAdmin ? 'Address (optional)' : 'Address *'}</Label>
-                        <Input
-                          className={fieldClass}
-                          value={gymBasics.address}
-                          onChange={(event) => setGymBasics((prev) => ({ ...prev, address: event.target.value }))}
-                        />
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label className={labelClass}>{embedInAdmin ? 'City (optional)' : 'City *'}</Label>
-                          <Input
-                            className={fieldClass}
-                            value={gymBasics.city}
-                            onChange={(event) => setGymBasics((prev) => ({ ...prev, city: event.target.value }))}
-                          />
-                        </div>
-                        <GymCountryField
-                          id="wiz-gym-country"
-                          label={embedInAdmin ? 'Country (optional)' : 'Country'}
-                          required={!embedInAdmin}
-                          value={gymBasics.country}
-                          onChange={(country) => setGymBasics((prev) => ({ ...prev, country }))}
-                          inputClassName={fieldClass}
-                          labelClassName={labelClass}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>{embedInAdmin ? 'Disciplines (optional)' : 'Disciplines *'}</Label>
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-                          {DISCIPLINES.map((discipline) => (
-                            <label
-                              key={discipline}
-                              className="flex items-center gap-2 text-sm text-gray-800"
-                            >
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-[#003580] focus:ring-[#003580]/30 focus:ring-offset-0"
-                                checked={gymBasics.disciplines.includes(discipline)}
-                                onChange={() =>
-                                  setGymBasics((prev) => ({
-                                    ...prev,
-                                    disciplines: prev.disciplines.includes(discipline)
-                                      ? prev.disciplines.filter((item) => item !== discipline)
-                                      : [...prev.disciplines, discipline],
-                                  }))
-                                }
-                              />
-                              {discipline}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
-                        <label className="flex cursor-pointer items-start gap-3">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[#003580] focus:ring-[#003580]/30 focus:ring-offset-0"
-                            checked={offersAccommodation}
-                            onChange={(e) => setOffersAccommodation(e.target.checked)}
-                          />
-                          <span>
-                            <span className={`block ${wizLead}`}>We offer accommodation</span>
-                            <span className={`mt-0.5 block ${wizMuted}`}>
-                             Tick if guests can book a stay through you (on-site, nearby, or partner housing). Set rooms and rates in Packages & Pricing.
-                            </span>
-                          </span>
-                        </label>
-                      </div>
+                      ) : (
+                        <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#003580]">
+                          {step.label}
+                        </p>
+                      )}
+                      <h3 className="mt-2 text-[22px] font-semibold leading-tight tracking-tight text-gray-900 sm:text-[26px]">
+                        {basicSubSteps[basicSubStep - 1]?.title}
+                      </h3>
+                      <p className="mt-2 text-[14px] leading-relaxed text-gray-600">
+                        {basicSubSteps[basicSubStep - 1]?.subtitle}
+                      </p>
                     </div>
 
-                    {!embedInAdmin ? (
-                      <>
-                    <div className="space-y-4 border-t border-gray-100 pt-8">
-                      <div>
-                        <h3 className={wizH3}>Trust &amp; verification (KYC)</h3>
-                        <p className={`mt-1 ${wizBody}`}>
-                          These help us confirm your gym is real and match your address. You can add them here or later
+                    {basicSubSteps[basicSubStep - 1]?.key === 'identity' && (
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label className={labelClass} htmlFor="wiz-gym-name">Gym name *</Label>
+                          <Input
+                            id="wiz-gym-name"
+                            className={fieldClass}
+                            value={gymBasics.name}
+                            placeholder="e.g. Tiger Muay Thai"
+                            onChange={(event) => setGymBasics((prev) => ({ ...prev, name: event.target.value }))}
+                          />
+                          <p className={wizHint}>Use the name guests will recognise from your signage and socials.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className={labelClass} htmlFor="wiz-gym-desc">
+                            {embedInAdmin ? 'Description (optional)' : 'Description *'}
+                          </Label>
+                          <Textarea
+                            id="wiz-gym-desc"
+                            className={fieldClass}
+                            rows={5}
+                            placeholder="A short paragraph: what makes your gym special, who it suits, what a typical day looks like."
+                            value={gymBasics.description}
+                            onChange={(event) => setGymBasics((prev) => ({ ...prev, description: event.target.value }))}
+                          />
+                          <p className={wizHint}>2–4 sentences works best. You can polish this later.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {basicSubSteps[basicSubStep - 1]?.key === 'location' && (
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label className={labelClass} htmlFor="wiz-address">
+                            {embedInAdmin ? 'Address (optional)' : 'Address *'}
+                          </Label>
+                          <Input
+                            id="wiz-address"
+                            className={fieldClass}
+                            placeholder="Street address"
+                            value={gymBasics.address}
+                            onChange={(event) => setGymBasics((prev) => ({ ...prev, address: event.target.value }))}
+                          />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className={labelClass} htmlFor="wiz-city">
+                              {embedInAdmin ? 'City (optional)' : 'City *'}
+                            </Label>
+                            <Input
+                              id="wiz-city"
+                              className={fieldClass}
+                              value={gymBasics.city}
+                              onChange={(event) => setGymBasics((prev) => ({ ...prev, city: event.target.value }))}
+                            />
+                          </div>
+                          <GymCountryField
+                            id="wiz-gym-country"
+                            label={embedInAdmin ? 'Country (optional)' : 'Country'}
+                            required={!embedInAdmin}
+                            value={gymBasics.country}
+                            onChange={(country) => setGymBasics((prev) => ({ ...prev, country }))}
+                            inputClassName={fieldClass}
+                            labelClassName={labelClass}
+                          />
+                        </div>
+                        <div className="space-y-3 pt-2">
+                          <div>
+                            <Label className={labelClass}>{embedInAdmin ? 'Disciplines (optional)' : 'Disciplines *'}</Label>
+                            <p className={wizHint}>Pick everything you regularly teach.</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                            {DISCIPLINES.map((discipline) => {
+                              const active = gymBasics.disciplines.includes(discipline)
+                              return (
+                                <button
+                                  type="button"
+                                  key={discipline}
+                                  onClick={() =>
+                                    setGymBasics((prev) => ({
+                                      ...prev,
+                                      disciplines: prev.disciplines.includes(discipline)
+                                        ? prev.disciplines.filter((item) => item !== discipline)
+                                        : [...prev.disciplines, discipline],
+                                    }))
+                                  }
+                                  className={
+                                    active
+                                      ? 'flex items-center justify-center gap-2 rounded-xl border-2 border-[#003580] bg-[#003580]/[0.04] px-3 py-2.5 text-sm font-medium text-[#003580] transition-colors'
+                                      : 'flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#003580]/40 hover:text-gray-900'
+                                  }
+                                  aria-pressed={active}
+                                >
+                                  {discipline}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+                          <label className="flex cursor-pointer items-start gap-3">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[#003580] focus:ring-[#003580]/30 focus:ring-offset-0"
+                              checked={offersAccommodation}
+                              onChange={(e) => setOffersAccommodation(e.target.checked)}
+                            />
+                            <span>
+                              <span className={`block ${wizLead}`}>We offer accommodation</span>
+                              <span className={`mt-0.5 block ${wizMuted}`}>
+                                Tick if guests can book a stay through you (on-site, nearby, or partner housing). Set
+                                rooms and rates later in Packages &amp; Pricing.
+                              </span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {basicSubSteps[basicSubStep - 1]?.key === 'trust' && (
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label className={labelClass} htmlFor="wiz-maps">Google Maps listing</Label>
+                          <Input
+                            id="wiz-maps"
+                            className={fieldClass}
+                            type="url"
+                            inputMode="url"
+                            autoComplete="url"
+                            placeholder="https://maps.google.com/..."
+                            value={gymBasics.google_maps_link}
+                            onChange={(e) =>
+                              setGymBasics((prev) => ({ ...prev, google_maps_link: e.target.value }))
+                            }
+                          />
+                          <p className={wizHint}>Should match the address you entered on the previous page.</p>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className={labelClass} htmlFor="wiz-ig">Instagram</Label>
+                            <Input
+                              id="wiz-ig"
+                              className={fieldClass}
+                              type="url"
+                              inputMode="url"
+                              placeholder="https://instagram.com/yourgym"
+                              value={gymBasics.instagram_link}
+                              onChange={(e) =>
+                                setGymBasics((prev) => ({ ...prev, instagram_link: e.target.value }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className={labelClass} htmlFor="wiz-fb">Facebook</Label>
+                            <Input
+                              id="wiz-fb"
+                              className={fieldClass}
+                              type="url"
+                              inputMode="url"
+                              placeholder="https://facebook.com/yourgym"
+                              value={gymBasics.facebook_link}
+                              onChange={(e) =>
+                                setGymBasics((prev) => ({ ...prev, facebook_link: e.target.value }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        <p className={wizMuted}>
+                          Both are optional, but at least one social link helps travellers trust your gym faster. You
+                          can add or update these later
                           {editorGymId ? (
                             <>
-                              {' '}
-                              in{' '}
+                              {' '}in{' '}
                               <Link
                                 href={`/manage/gym/edit?id=${editorGymId}`}
                                 className="font-medium text-[#003580] underline-offset-2 hover:underline"
@@ -1378,182 +1585,125 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                           )}
                         </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>Google Maps listing</Label>
-                        <p className={wizHint}>Add your Google Maps link — it should match your gym address above.</p>
-                        <Input
-                          className={fieldClass}
-                          type="url"
-                          inputMode="url"
-                          autoComplete="url"
-                          placeholder="https://maps.google.com/..."
-                          value={gymBasics.google_maps_link}
-                          onChange={(e) =>
-                            setGymBasics((prev) => ({ ...prev, google_maps_link: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={labelClass}>Instagram or Facebook</Label>
-                        <p className={wizHint}>
-                          Add at least one social profile for your gym (same links as in gym settings).
-                        </p>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-1.5">
-                            <Label className={`${wizCaption} font-normal text-gray-600`}>Instagram</Label>
+                    )}
+
+                    {basicSubSteps[basicSubStep - 1]?.key === 'holder' && (
+                      <div className="space-y-6">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="wiz-legal-first">Legal first name *</Label>
                             <Input
+                              id="wiz-legal-first"
                               className={fieldClass}
-                              type="url"
-                              inputMode="url"
-                              placeholder="https://instagram.com/yourgym"
-                              value={gymBasics.instagram_link}
-                              onChange={(e) =>
-                                setGymBasics((prev) => ({ ...prev, instagram_link: e.target.value }))
-                              }
+                              autoComplete="given-name"
+                              value={legalFirstName}
+                              onChange={(e) => setLegalFirstName(e.target.value)}
+                              placeholder="As on official ID"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className={`${wizCaption} font-normal text-gray-600`}>Facebook</Label>
+                          <div className="space-y-2">
+                            <Label htmlFor="wiz-legal-last">Legal last name *</Label>
                             <Input
+                              id="wiz-legal-last"
                               className={fieldClass}
-                              type="url"
-                              inputMode="url"
-                              placeholder="https://facebook.com/yourgym"
-                              value={gymBasics.facebook_link}
-                              onChange={(e) =>
-                                setGymBasics((prev) => ({ ...prev, facebook_link: e.target.value }))
-                              }
+                              autoComplete="family-name"
+                              value={legalLastName}
+                              onChange={(e) => setLegalLastName(e.target.value)}
+                              placeholder="As on official ID"
                             />
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 border-t border-gray-100 pt-8">
-                      <div>
-                        <h3 className={wizH3}>Account holder details</h3>
-                        <p className={`mt-1 ${wizMuted}`}>
-                          Who we hold on record for this listing (separate from your gym&apos;s public contact).
-                          Required before you can continue.
-                        </p>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="wiz-legal-first">Legal first name *</Label>
+                          <Label htmlFor="wiz-direct-phone">Direct mobile number *</Label>
                           <Input
-                            id="wiz-legal-first"
+                            id="wiz-direct-phone"
                             className={fieldClass}
-                            autoComplete="given-name"
-                            value={legalFirstName}
-                            onChange={(e) => setLegalFirstName(e.target.value)}
-                            placeholder="As on official ID"
+                            type="tel"
+                            autoComplete="tel"
+                            value={accountHolderPhone}
+                            onChange={(e) => setAccountHolderPhone(e.target.value)}
+                            placeholder="Your mobile, not the gym reception"
                           />
+                          <p className={wizHint}>Include country code where possible (e.g. +61 …).</p>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="wiz-legal-last">Legal last name *</Label>
-                          <Input
-                            id="wiz-legal-last"
-                            className={fieldClass}
-                            autoComplete="family-name"
-                            value={legalLastName}
-                            onChange={(e) => setLegalLastName(e.target.value)}
-                            placeholder="As on official ID"
-                          />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="wiz-role">Your role at the property *</Label>
+                            <Select
+                              id="wiz-role"
+                              className={fieldClass}
+                              value={roleAtProperty}
+                              onChange={(e) => setRoleAtProperty(e.target.value as AccountHolderPropertyRole | '')}
+                            >
+                              <option value="">Select one</option>
+                              {ROLE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="wiz-country">Country of residence *</Label>
+                            <Select
+                              id="wiz-country"
+                              className={fieldClass}
+                              value={countryOfResidence}
+                              onChange={(e) => setCountryOfResidence(e.target.value)}
+                            >
+                              <option value="">Select country</option>
+                              {RESIDENCE_COUNTRIES.map((c) => (
+                                <option key={c.code} value={c.name}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="wiz-direct-phone">Direct mobile number *</Label>
-                        <Input
-                          id="wiz-direct-phone"
-                          className={fieldClass}
-                          type="tel"
-                          autoComplete="tel"
-                          value={accountHolderPhone}
-                          onChange={(e) => setAccountHolderPhone(e.target.value)}
-                          placeholder="Your mobile, not the gym reception"
-                        />
-                        <p className={wizHint}>
-                          Include country code where possible (e.g. +61 …).
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="wiz-role">Your role at the property *</Label>
-                        <Select
-                          id="wiz-role"
-                          className={fieldClass}
-                          value={roleAtProperty}
-                          onChange={(e) => setRoleAtProperty(e.target.value as AccountHolderPropertyRole | '')}
-                        >
-                          <option value="">Select one</option>
-                          {ROLE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="wiz-country">Country of residence *</Label>
-                        <Select
-                          id="wiz-country"
-                          className={fieldClass}
-                          value={countryOfResidence}
-                          onChange={(e) => setCountryOfResidence(e.target.value)}
-                        >
-                          <option value="">Select country</option>
-                          {RESIDENCE_COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.name}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </Select>
-                        <p className={wizHint}>
-                          Pre-filled from your connection when available — confirm or change if needed.
-                        </p>
-                      </div>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">{ACCOUNT_HOLDER_FINE_PRINT}</p>
-                    </div>
 
-                    <div className="space-y-3 border-t border-gray-100 pt-8">
-                      <h3 className={wizH3}>Email verification</h3>
-                      <p className={wizMuted}>
-                        Sign-in email:{' '}
-                        <span className="font-medium text-gray-900">{user?.email ?? '—'}</span>
-                      </p>
-                      <p className={wizBody}>
-                        {user?.email_confirmed_at
-                          ? 'Your email is verified. You can continue after confirming your password when you save.'
-                          : 'Open the link in your inbox to verify this address before continuing.'}
-                      </p>
-                      {!user?.email_confirmed_at && user?.email ? (
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className={btnGhost}
-                            disabled={resendLoading}
-                            onClick={() => void handleResendVerificationEmail()}
-                          >
-                            {resendLoading ? 'Sending…' : 'Resend verification email'}
-                          </Button>
-                          {resendMessage ? (
-                            <p className={wizMuted}>{resendMessage}</p>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3.5">
+                          <p className="flex items-center gap-2 text-[13px] font-medium text-gray-900">
+                            <ShieldCheck className="h-4 w-4 text-[#003580]" strokeWidth={2} />
+                            Sign-in email
+                          </p>
+                          <p className={`mt-1.5 ${wizMuted}`}>
+                            <span className="font-medium text-gray-900">{user?.email ?? '—'}</span>
+                            {user?.email_confirmed_at ? (
+                              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                                <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} /> Verified
+                              </span>
+                            ) : (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                                Not verified
+                              </span>
+                            )}
+                          </p>
+                          {!user?.email_confirmed_at && user?.email ? (
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={btnGhost}
+                                disabled={resendLoading}
+                                onClick={() => void handleResendVerificationEmail()}
+                              >
+                                {resendLoading ? 'Sending…' : 'Resend verification email'}
+                              </Button>
+                              {resendMessage ? <p className={wizCaption}>{resendMessage}</p> : null}
+                            </div>
                           ) : null}
                         </div>
-                      ) : null}
-                    </div>
 
-                    <p className={`border-t border-gray-100 pt-8 ${wizMuted}`}>
-                      When you choose <strong className="font-semibold text-gray-900">Save and continue</strong>, you&apos;ll confirm
-                      your password once. We then save your gym (including location and disciplines), record account
-                      holder details, and mark this step and security verification complete.
-                    </p>
-                      </>
-                    ) : (
-                      <p className={`border-t border-gray-100 pt-8 ${wizMuted}`}>
-                        <strong className="font-semibold text-gray-900">Save and continue</strong> creates or updates the draft
-                        under your admin account — no password confirmation, KYC, or account-holder fields required here.
-                      </p>
+                        <p className="text-[11px] leading-relaxed text-muted-foreground">
+                          {ACCOUNT_HOLDER_FINE_PRINT}
+                        </p>
+                        <p className={wizMuted}>
+                          When you choose <strong className="font-semibold text-gray-900">Save and continue</strong>,
+                          you&apos;ll confirm your password once. We then save your gym, record account holder details,
+                          and mark this step complete.
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1903,16 +2053,43 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       </p>
                     </div>
                   ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
+                    <div className="rounded-xl border border-[#003580]/10 bg-[#003580]/[0.03] p-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#003580]">
+                        Go-live review
+                      </p>
+                      <p className={`mt-2 ${wizBody}`}>
+                        This is the final checkpoint before publishing. We keep the detailed readiness review here, so the
+                        earlier steps stay focused on one job at a time.
+                      </p>
+                      <p className="mt-3 text-sm font-semibold text-gray-900">
+                        {coreStepsCompleteCount}/5 core areas ready
+                      </p>
+                    </div>
+
+                    <div className="divide-y divide-gray-100 rounded-xl border border-gray-200/80 bg-white">
+                      {finalReadinessItems.map((item) => (
+                        <div key={item.key} className="flex items-start justify-between gap-4 px-4 py-3.5">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{item.detail}</p>
+                          </div>
+                          <span
+                            className={
+                              item.ready
+                                ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200'
+                                : 'rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200'
+                            }
+                          >
+                            {item.ready ? 'Ready' : 'Needs work'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
                     <p className={wizMuted}>
                       When you&apos;re ready, use <strong className="font-semibold text-gray-900">Finish below</strong>.
-                      We&apos;ll show
-                      your listing readiness score, then you can open your dashboard right away — polish and publish on
-                      your own timeline.
-                    </p>
-                    <p className={wizBody}>
-                      Core areas tracked:{' '}
-                      <span className="font-semibold text-gray-900">{coreStepsCompleteCount}/5</span>
+                      We&apos;ll open the full readiness review, then you can publish or return to your dashboard.
                     </p>
                   </div>
                   )
@@ -1946,12 +2123,33 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       </main>
 
       {/* Sticky footer action bar — consistent with security onboarding */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3.5">
-          <div className="flex items-center gap-2">
-            {previousStep ? (
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {!embedInAdmin ? (
+              <p className="hidden text-[12px] font-medium tabular-nums text-gray-500 sm:block">
+                {isMigratedStep && totalBasicSubSteps > 1 ? (
+                  <>
+                    {step.label} · {basicSubStep}/{totalBasicSubSteps}
+                  </>
+                ) : (
+                  <>
+                    Step {step.index} of {wizardSteps.length} · {progressPct}%
+                  </>
+                )}
+              </p>
+            ) : null}
+            {isMigratedStep && basicSubStep > 1 ? (
+              <Button
+                variant="outline"
+                onClick={handleBasicBack}
+                className="h-10 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              >
+                Back
+              </Button>
+            ) : previousStep ? (
               <Link href={buildWizUrl(previousStep.slug, editorGymId)}>
-                <Button variant="outline" className="h-10 rounded-full border-gray-200 bg-white text-gray-900 hover:bg-gray-50">
+                <Button variant="outline" className="h-10 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                   Back
                 </Button>
               </Link>
@@ -1965,7 +2163,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
               >
                 <Button
                   variant="ghost"
-                  className="h-10 rounded-full text-gray-500 hover:text-[#003580]"
+                  className="h-10 rounded-full text-gray-500 hover:bg-gray-50 hover:text-[#003580]"
                 >
                   Review
                 </Button>
@@ -1988,17 +2186,21 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             {isMigratedStep ? (
               <Button
                 className="h-10 items-center gap-2 rounded-full bg-[#003580] px-5 text-[13.5px] font-medium text-white hover:bg-[#002a66] disabled:opacity-50"
-                onClick={() => {
-                  void startBasicInfoSubmit()
-                }}
+                onClick={() => handleBasicContinue()}
                 disabled={
                   saving ||
                   loading ||
-                  (!embedInAdmin && selfServeExpired) ||
-                  (!embedInAdmin && (!verificationSummary.emailVerified || !accountHolderComplete))
+                  (basicSubStep === totalBasicSubSteps && !embedInAdmin && selfServeExpired) ||
+                  (basicSubStep === totalBasicSubSteps &&
+                    !embedInAdmin &&
+                    (!verificationSummary.emailVerified || !accountHolderComplete))
                 }
               >
-                {saving ? 'Saving…' : 'Save & continue'}
+                {saving
+                  ? 'Saving…'
+                  : basicSubStep < totalBasicSubSteps
+                    ? 'Continue'
+                    : 'Save & continue'}
                 <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
               </Button>
             ) : !(embedInAdmin && step.key === 'finalize') ? (

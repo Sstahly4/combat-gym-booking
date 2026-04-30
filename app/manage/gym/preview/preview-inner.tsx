@@ -100,7 +100,7 @@ export function GymListingPreviewInner() {
             ]}
           />
         </div>
-        <div className="border-b border-gray-200 bg-slate-50">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Listing preview</p>
@@ -110,6 +110,12 @@ export function GymListingPreviewInner() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
+              <Link
+                href="/manage"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Exit preview mode
+              </Link>
               <Link
                 href={`/manage/gym/edit?id=${gym.id}`}
                 className="inline-flex items-center justify-center rounded-lg bg-[#003580] px-3 py-2 text-sm font-medium text-white hover:bg-[#002a66]"
@@ -132,11 +138,17 @@ export function GymListingPreviewInner() {
         </div>
 
         {isDraft ? (
-          <div className="bg-amber-50 border-b border-amber-200 py-2">
-            <div className="max-w-6xl mx-auto px-4">
-              <p className="text-xs md:text-sm text-amber-900 font-medium">
+          <div className="border-b border-sky-200 bg-sky-50/80 py-2.5">
+            <div className="max-w-6xl mx-auto px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs md:text-sm font-medium text-sky-900">
                 Draft listing — not visible to the public until verification and go-live are complete.
               </p>
+              <Link
+                href="/manage"
+                className="inline-flex w-fit items-center rounded-md border border-sky-300 bg-white px-2.5 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100"
+              >
+                Exit preview mode
+              </Link>
             </div>
           </div>
         ) : null}

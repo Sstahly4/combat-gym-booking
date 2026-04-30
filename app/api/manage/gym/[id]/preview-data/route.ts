@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Owner-only gym payload for listing preview (avoids public-page query edge cases).
@@ -41,7 +42,12 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Gym not found' }, { status: 404 })
     }
 
-    const { data: images, error: imgError } = await access.supabase
+    // The owner has been verified against this gym above. Use the service-role
+    // client for preview-only child rows so draft/private listing images are not
+    // hidden by public listing RLS policies.
+    const admin = createAdminClient()
+
+    const { data: images, error: imgError } = await admin
       .from('gym_images')
       .select('*')
       .eq('gym_id', gymId)

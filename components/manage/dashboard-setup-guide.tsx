@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Check, ChevronDown, Maximize2, Minimize2, Target, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -82,6 +82,12 @@ export function DashboardSetupGuide({
   const [minimized, setMinimized] = useState(true)
   const [dismissed, setDismissed] = useState(false)
 
+  useEffect(() => {
+    const onExpand = () => setMinimized(false)
+    window.addEventListener('dashboard-setup-guide:claim-tour-expand', onExpand)
+    return () => window.removeEventListener('dashboard-setup-guide:claim-tour-expand', onExpand)
+  }, [])
+
   const toggleGroup = useCallback((id: string) => {
     setOpenGroupId((prev) => (prev === id ? null : id))
   }, [])
@@ -109,7 +115,10 @@ export function DashboardSetupGuide({
 
   if (dismissed) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
+      <div
+        className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6"
+        data-claim-tour="tour-setup-guide"
+      >
         <Button
           type="button"
           variant="outline"
@@ -128,7 +137,10 @@ export function DashboardSetupGuide({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[min(calc(100vw-1.25rem),19.5rem)] sm:bottom-6 sm:right-6 sm:w-[19.5rem]">
+    <div
+      className="fixed bottom-4 right-4 z-50 w-[min(calc(100vw-1.25rem),19.5rem)] sm:bottom-6 sm:right-6 sm:w-[19.5rem]"
+      data-claim-tour="tour-setup-guide"
+    >
       <div className="overflow-hidden rounded-lg border border-gray-200/90 bg-white shadow-xl shadow-gray-900/12 ring-1 ring-black/[0.03]">
         <div
           className={cn(

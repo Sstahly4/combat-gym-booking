@@ -11,6 +11,10 @@ export interface OwnerWizardSidebarProps {
   onStepClick?: (stepIndex: number) => void
 }
 
+/**
+ * Minimal vertical stepper rail used in the partner onboarding wizard.
+ * Airbnb / Stripe-style: a single thin guide line, small dots, quiet type, no chunky chrome.
+ */
 export function OwnerWizardSidebar({
   steps,
   currentIndex,
@@ -21,61 +25,82 @@ export function OwnerWizardSidebar({
 
   return (
     <nav className="w-full" aria-label="Onboarding progress">
-      <ul className="space-y-0">
+      <p className="mb-4 px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+        Listing setup
+      </p>
+      <ol className="relative">
         {steps.map((step, i) => {
           const complete = completedKeys.includes(step.key)
           const current = step.index === currentIndex
+          const isLast = i === steps.length - 1
 
           return (
-            <li key={step.key}>
-              <div className="flex gap-3 py-1.5">
-                <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    disabled={!canNavigate}
-                    onClick={() => onStepClick?.(step.index)}
+            <li key={step.key} className="relative">
+              {!isLast ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'absolute left-[11px] top-7 h-[calc(100%-12px)] w-px',
+                    complete ? 'bg-[#003580]/60' : 'bg-gray-200'
+                  )}
+                />
+              ) : null}
+
+              <button
+                type="button"
+                disabled={!canNavigate}
+                onClick={() => onStepClick?.(step.index)}
+                aria-current={current ? 'step' : undefined}
+                className={cn(
+                  'group flex w-full items-start gap-3 rounded-md py-2 pl-1 pr-2 text-left transition-colors',
+                  canNavigate && 'hover:bg-gray-50',
+                  !canNavigate && 'cursor-default'
+                )}
+              >
+                <span
+                  className={cn(
+                    'relative z-10 mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors',
+                    complete && 'bg-[#003580] text-white ring-2 ring-white',
+                    !complete && current && 'bg-white text-[#003580] ring-2 ring-[#003580]',
+                    !complete &&
+                      !current &&
+                      'bg-white text-gray-400 ring-2 ring-gray-200 group-hover:ring-[#003580]/30 group-hover:text-gray-600'
+                  )}
+                >
+                  {complete ? (
+                    <Check className="h-3 w-3 stroke-[3]" aria-hidden />
+                  ) : (
+                    step.index
+                  )}
+                </span>
+
+                <span className="min-w-0 flex-1 pt-px">
+                  <span
                     className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-                      complete && 'bg-[#003580] text-white',
-                      !complete &&
-                        current &&
-                        'border-2 border-[#003580] bg-white text-[#003580]',
-                      !complete &&
-                        !current &&
-                        'border-2 border-gray-200 bg-white text-gray-500 hover:border-[#003580]/40 hover:text-[#003580]'
-                    )}
-                    aria-current={current ? 'step' : undefined}
-                  >
-                    {complete ? <Check className="h-4 w-4 stroke-[2.5]" aria-hidden /> : step.index}
-                  </button>
-                  {i < steps.length - 1 ? (
-                    <div className="mt-1 h-7 w-px shrink-0 bg-gray-200" aria-hidden />
-                  ) : null}
-                </div>
-                <div className={cn('min-w-0 flex-1', i < steps.length - 1 && 'pb-1')}>
-                  <button
-                    type="button"
-                    disabled={!canNavigate}
-                    onClick={() => onStepClick?.(step.index)}
-                    className={cn(
-                      'w-full rounded-md text-left text-[13px] leading-normal transition-colors',
+                      'block text-[13.5px] leading-tight transition-colors',
                       current && 'font-semibold text-gray-900',
-                      !current &&
-                        complete &&
-                        'font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900',
-                      !current &&
-                        !complete &&
-                        'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      !current && complete && 'font-medium text-gray-700',
+                      !current && !complete && 'text-gray-500 group-hover:text-gray-700'
                     )}
                   >
                     {step.label}
-                  </button>
-                </div>
-              </div>
+                  </span>
+                  {complete && !current ? (
+                    <span className="mt-0.5 block text-[11.5px] font-medium text-[#003580]">
+                      Completed
+                    </span>
+                  ) : null}
+                  {current ? (
+                    <span className="mt-0.5 block text-[11.5px] font-medium text-gray-500">
+                      In progress
+                    </span>
+                  ) : null}
+                </span>
+              </button>
             </li>
           )
         })}
-      </ul>
+      </ol>
     </nav>
   )
 }

@@ -47,7 +47,7 @@ export function generatePropertyHighlights({
       // Single day — frame as a session, not a "night trip"
       durationHighlight = {
         title: 'Perfect for a single session!',
-        description: 'Drop-in or taster training available'
+        description: 'Single-session or drop-in training available'
       }
     } else if (durationDays >= 2 && durationDays <= 3) {
       durationHighlight = {

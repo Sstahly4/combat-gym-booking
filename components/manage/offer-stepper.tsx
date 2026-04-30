@@ -1057,7 +1057,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                               </div>
                               <p className="text-[11px] text-gray-500">
                                 Weekly and monthly bundles unlock at 7 and 28 nights. Nightly applies for shorter stays
-                                and any extra nights beyond a full week — same pattern as Booking.com / Airbnb.
+                                and any extra nights beyond a full week.
                               </p>
                             </div>
                           ) : null}

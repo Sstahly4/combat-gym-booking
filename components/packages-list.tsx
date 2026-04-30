@@ -466,7 +466,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   {/* Desktop Layout - Unchanged */}
                   <div className="hidden md:flex flex-col lg:flex-row">
                     {/* Image Section - Left Side */}
-                    <div className="w-full lg:w-64 h-48 lg:h-auto flex-shrink-0 bg-gray-100 relative overflow-hidden">
+                    <div className="w-full lg:w-64 h-48 lg:h-48 flex-shrink-0 bg-gray-100 relative overflow-hidden">
                       {packageImage ? (
                         <img 
                           src={packageImage} 
