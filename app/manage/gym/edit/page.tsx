@@ -1059,12 +1059,14 @@ function EditGymForm() {
                     id="city"
                     name="city"
                     value={locationCity}
-                    readOnly
+                    onChange={(e) => setLocationCity(e.target.value)}
                     required
-                    className="bg-gray-50"
-                    title="Set by choosing an address from map search"
+                    title="Prefilled from map search; edit if you prefer a better-known area (e.g. Krabi instead of Ko Lanta)"
                   />
-                  <p className="text-xs text-gray-500">Filled from map search so city spelling matches our directory.</p>
+                  <p className="text-xs text-gray-500">
+                    Prefilled from map search. You can change it if the map label is too local (e.g. use Krabi for
+                    discoverability when the pin is on Ko Lanta).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>

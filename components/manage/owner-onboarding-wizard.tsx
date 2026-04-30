@@ -1490,12 +1490,17 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                             </Label>
                             <Input
                               id="wiz-city"
-                              className={`${fieldClass} bg-gray-50`}
+                              className={fieldClass}
                               value={gymBasics.city}
-                              readOnly
-                              title="Choose a map search result to set the city"
+                              onChange={(event) =>
+                                setGymBasics((prev) => ({ ...prev, city: event.target.value }))
+                              }
+                              title="Prefilled from map search; edit if you prefer a better-known area name"
                             />
-                            <p className={wizHint}>Set from map search for consistent spelling.</p>
+                            <p className={wizHint}>
+                              Prefilled from map search; edit if you want a broader name guests search for (e.g. Krabi
+                              vs Ko Lanta).
+                            </p>
                           </div>
                           <GymCountryField
                             id="wiz-gym-country"

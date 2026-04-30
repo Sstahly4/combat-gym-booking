@@ -130,8 +130,8 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
         )}
       </div>
       <p className="text-xs text-gray-500">
-        Pick a result to fill the full address and city with correct spelling. You can still edit the address text
-        afterwards; use search again if you need to refresh the city.
+        Pick a result to fill the full address and city. You can edit both after: map data may use a local place name
+        (e.g. Ko Lanta) while you may prefer a wider area (e.g. Krabi) for guests and search.
       </p>
       {searchError && <p className="text-xs text-red-600">{searchError}</p>}
       {open && results.length > 0 && (
