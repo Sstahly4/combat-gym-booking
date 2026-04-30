@@ -2,10 +2,8 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BLUR_DATA_URL } from '@/lib/images/blur'
 
 interface Sport {
   name: string
@@ -97,16 +95,12 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
           >
             <div className="cursor-pointer hover:shadow-md transition-shadow">
               <div className="relative w-full aspect-[5/4] rounded-lg overflow-hidden mb-2 bg-gray-100">
-                <Image
+                <img
                   src={sport.image}
                   alt={sport.name}
-                  fill
-                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 288px"
-                  className="object-cover"
-                  placeholder="blur"
-                  blurDataURL={BLUR_DATA_URL}
-                  priority={idx < priorityCount}
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading={idx < priorityCount ? 'eager' : 'lazy'}
+                  decoding="async"
                 />
               </div>
               <h3 className="font-semibold text-xs md:text-sm text-gray-900 mb-0.5">{sport.name}</h3>

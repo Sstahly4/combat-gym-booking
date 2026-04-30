@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import Image from 'next/image'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { GymImage } from '@/lib/types/database'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
+import { gymImageSrc, gymImageSrcSet } from '@/lib/images/gym-image-variants'
 
 interface GymGalleryProps {
   images: GymImage[]
@@ -54,10 +55,9 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
       >
         {/* Hero image */}
         <div className="col-span-1 md:col-span-2 row-span-1 md:row-span-2 relative hover:opacity-95 transition-opacity">
-          <Image
-            src={images[0].url}
+          <ResponsiveGymImage
+            image={images[0]}
             alt={`${gymName} hero`}
-            fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 66vw"
             priority
@@ -67,13 +67,12 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
         {/* Secondary image */}
         {images.length > 1 && (
           <div className="hidden md:block col-span-1 row-span-1 relative hover:opacity-95 transition-opacity">
-              <Image
-                src={images[1].url}
+              <ResponsiveGymImage
+                image={images[1]}
                 alt={`${gymName} 2`}
-                fill
                 className="object-cover"
-              sizes="33vw"
-              priority
+                sizes="33vw"
+                priority
               />
           </div>
         )}
@@ -82,13 +81,12 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
         {images.length > 2 && (
           <div className="hidden md:block col-span-1 row-span-1 relative hover:opacity-95 transition-opacity">
               <div className="relative w-full h-full">
-                <Image
-                  src={images[2].url}
+                <ResponsiveGymImage
+                  image={images[2]}
                   alt={`${gymName} 3`}
-                  fill
                   className="object-cover"
-                sizes="33vw"
-                priority
+                  sizes="33vw"
+                  priority
                 />
                 {images.length > 3 && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-base md:text-lg z-10">
@@ -133,14 +131,14 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
             )}
             
             {/* Current image */}
-            <Image
-              src={images[currentIndex].url}
+            <img
+              src={gymImageSrc(images[currentIndex])}
+              srcSet={gymImageSrcSet(images[currentIndex])}
               alt={`${gymName} ${currentIndex + 1}`}
-              width={1920}
-              height={1080}
               className="max-h-full max-w-full object-contain"
               sizes="90vw"
-              priority
+              loading="eager"
+              decoding="async"
             />
 
             {/* Next */}
@@ -167,15 +165,15 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
               const wrappedDistance = Math.min(distance, images.length - distance)
               if (wrappedDistance === 0 || wrappedDistance > LIGHTBOX_PRELOAD) return null
               return (
-                <Image
+                <img
                   key={img.url}
-                  src={img.url}
+                  src={gymImageSrc(img)}
+                  srcSet={gymImageSrcSet(img)}
                   alt=""
-                  width={1920}
-                  height={1080}
                   className="sr-only absolute"
                   sizes="90vw"
-                  priority
+                  loading="eager"
+                  decoding="async"
                   aria-hidden
                 />
               )

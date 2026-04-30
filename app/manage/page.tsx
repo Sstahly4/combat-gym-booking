@@ -304,7 +304,7 @@ export default function ManagePage() {
         .from('gyms')
         .select(`
           *,
-          images:gym_images(url, order)
+          images:gym_images(url, variants, order)
         `)
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false })

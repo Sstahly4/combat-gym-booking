@@ -28,6 +28,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { clearReadinessSessionCache } from '@/lib/onboarding/readiness-session-cache'
+import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -1114,18 +1115,26 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
     const uploads = await Promise.all(
       photoFiles.map(async (file, index) => {
-        const ext = file.name.split('.').pop() || 'jpg'
-        const fileName = `${gymId}/${Date.now()}-${index}.${ext}`
-        const { error: uploadError } = await supabase.storage
-          .from('gym-images')
-          .upload(fileName, file)
-        if (uploadError) return null
-        const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-        return { gym_id: gymId, url: data.publicUrl, order: photoCount + index }
+        try {
+          const uploaded = await uploadGymImageWithVariants({
+            supabase,
+            gymId,
+            file,
+            stem: `${Date.now()}-${index}`,
+          })
+          return { gym_id: gymId, url: uploaded.url, variants: uploaded.variants, order: photoCount + index }
+        } catch {
+          return null
+        }
       })
     )
 
-    const valid = uploads.filter(Boolean) as Array<{ gym_id: string; url: string; order: number }>
+    const valid = uploads.filter(Boolean) as Array<{
+      gym_id: string
+      url: string
+      variants: Record<string, string>
+      order: number
+    }>
     if (valid.length === 0) {
       setError('Failed to upload photos')
       return

@@ -29,6 +29,7 @@ import {
   manageGymEditHubBreadcrumb,
   resolvePostGymEditReturnPath,
 } from '@/lib/navigation/manage-gym-edit-return'
+import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -470,42 +471,20 @@ function EditGymForm() {
     
     console.log(`Starting upload of ${newImages.length} images for gym ${gymId}`)
     
-    // First, upload all images to storage
     const uploadPromises = newImages.map(async (image, index) => {
       try {
-        const fileExt = image.name.split('.').pop() || 'jpg'
         const timestamp = Date.now()
-        const fileName = `${gymId}/${timestamp}-${index}.${fileExt}`
+        const stem = `${timestamp}-${index}`
         
-        console.log(`Uploading image ${index + 1}/${newImages.length} to storage: ${fileName}`)
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('gym-images')
-          .upload(fileName, image, {
-            cacheControl: '3600',
-            upsert: false
-          })
-
-        if (uploadError) {
-          console.error(`Storage upload error for image ${index}:`, uploadError)
-          throw new Error(`Storage upload failed: ${uploadError.message}`)
-        }
-
-        console.log(`Storage upload successful: ${fileName}`)
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('gym-images')
-          .getPublicUrl(fileName)
-
-        if (!urlData?.publicUrl) {
-          throw new Error('Failed to get public URL for uploaded image')
-        }
+        console.log(`Uploading image ${index + 1}/${newImages.length} to storage: ${stem}`)
+        const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file: image, stem })
 
         return {
           gym_id: gymId,
-          url: urlData.publicUrl,
+          url: uploaded.url,
+          variants: uploaded.variants,
           order: maxOrder + index + 1,
+          storagePaths: uploaded.storagePaths,
         }
       } catch (e: any) {
         console.error(`Failed to upload image ${index}:`, e)
@@ -515,16 +494,15 @@ function EditGymForm() {
     })
 
     const uploadResults = await Promise.allSettled(uploadPromises)
-    const validImageData: Array<{ gym_id: string; url: string; order: number }> = []
+    const validImageData: Array<{ gym_id: string; url: string; variants: Record<string, string>; order: number }> = []
     const errors: string[] = []
     const uploadedFiles: string[] = [] // Track files to clean up on error
     
     uploadResults.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
-        validImageData.push(result.value)
-        // Extract filename from URL for cleanup tracking
-        const urlParts = result.value.url.split('/')
-        uploadedFiles.push(urlParts[urlParts.length - 1])
+        const { storagePaths, ...imageData } = result.value
+        validImageData.push(imageData)
+        uploadedFiles.push(...storagePaths)
       } else {
         const errorMsg = result.status === 'rejected' 
           ? result.reason?.message || result.reason?.toString() || 'Unknown error'
@@ -542,8 +520,7 @@ function EditGymForm() {
     // If some uploads failed, clean up successful ones and throw error
     if (validImageData.length !== newImages.length) {
       // Clean up successfully uploaded files
-      const filePaths = uploadedFiles.map(file => `${gymId}/${file}`)
-      await supabase.storage.from('gym-images').remove(filePaths)
+      await supabase.storage.from('gym-images').remove(uploadedFiles)
       const errorDetails = errors.length > 0 ? ` Errors: ${errors.join('; ')}` : ''
       throw new Error(`Only ${validImageData.length} of ${newImages.length} images were uploaded successfully.${errorDetails}`)
     }
@@ -558,8 +535,7 @@ function EditGymForm() {
     if (insertError) {
       console.error('Database insert error:', insertError)
       // Clean up uploaded files
-      const filePaths = uploadedFiles.map(file => `${gymId}/${file}`)
-      await supabase.storage.from('gym-images').remove(filePaths)
+      await supabase.storage.from('gym-images').remove(uploadedFiles)
       throw new Error(`Failed to save image records: ${insertError.message}`)
     }
 
@@ -1061,11 +1037,11 @@ function EditGymForm() {
                     value={locationCity}
                     onChange={(e) => setLocationCity(e.target.value)}
                     required
-                    title="Prefilled from map search; edit if you prefer a better-known area (e.g. Krabi instead of Ko Lanta)"
+                    title="Prefilled from map search; edit if you prefer a different area name for guests"
                   />
                   <p className="text-xs text-gray-500">
-                    Prefilled from map search. You can change it if the map label is too local (e.g. use Krabi for
-                    discoverability when the pin is on Ko Lanta).
+                    Prefilled from map search. You can change it if the map label is too local for how you list this
+                    gym.
                   </p>
                 </div>
                 <div className="space-y-2">

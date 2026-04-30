@@ -36,7 +36,7 @@ export default function SavedPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('saved_gyms')
-      .select('id, gym_id, created_at, gym:gyms(*, images:gym_images(url, order))')
+      .select('id, gym_id, created_at, gym:gyms(*, images:gym_images(url, variants, order))')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
 
@@ -56,7 +56,7 @@ export default function SavedPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('gyms')
-      .select('*, images:gym_images(url, order)')
+      .select('*, images:gym_images(url, variants, order)')
       .in('id', ids)
 
     if (data) {

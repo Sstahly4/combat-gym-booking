@@ -27,6 +27,17 @@ import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-statu
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
 
+/** Featured “List your gym” / “Finish your listing” row — preload so the PNG does not appear after the menu opens. */
+const LIST_YOUR_GYM_MENU_ICON_SRC = '/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png'
+
+let listYourGymMenuIconPreloadStarted = false
+function preloadListYourGymMenuIcon() {
+  if (listYourGymMenuIconPreloadStarted || typeof window === 'undefined') return
+  listYourGymMenuIconPreloadStarted = true
+  const img = new Image()
+  img.src = LIST_YOUR_GYM_MENU_ICON_SRC
+}
+
 /** Plain sandwich-menu row (matches “Customer service” — text only, one weight). */
 const menuPlainClass =
   'flex items-center px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
@@ -93,6 +104,19 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false)
   const desktopMenuRef = useRef<HTMLDivElement>(null)
+
+  // Warm the list-your-gym menu art after first paint (idle) so desktop + mobile sheets do not flash empty icon.
+  useEffect(() => {
+    const run = () => preloadListYourGymMenuIcon()
+    const handle =
+      typeof window.requestIdleCallback === 'function'
+        ? ({ kind: 'idle' as const, id: window.requestIdleCallback(run, { timeout: 2500 }) })
+        : ({ kind: 'timeout' as const, id: window.setTimeout(run, 0) })
+    return () => {
+      if (handle.kind === 'idle') window.cancelIdleCallback(handle.id)
+      else window.clearTimeout(handle.id)
+    }
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -281,6 +305,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setDesktopMenuOpen((v) => !v)}
+                onPointerEnter={preloadListYourGymMenuIcon}
                 className="flex items-center p-2 rounded-full hover:bg-white/10 transition-colors touch-manipulation"
                 aria-label="Open menu"
               >
@@ -309,10 +334,11 @@ export function Navbar() {
                           </div>
                         </div>
                         <img
-                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          src={LIST_YOUR_GYM_MENU_ICON_SRC}
                           alt=""
                           aria-hidden
                           className="w-10 h-10 object-contain flex-shrink-0"
+                          decoding="async"
                         />
                       </Link>
                       <div className="h-px bg-gray-100 mx-2" />
@@ -449,6 +475,8 @@ export function Navbar() {
               type="button"
               className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors touch-manipulation"
               onClick={() => setMobileMenuOpen((v) => !v)}
+              onPointerEnter={preloadListYourGymMenuIcon}
+              onTouchStart={preloadListYourGymMenuIcon}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -560,10 +588,11 @@ export function Navbar() {
                           </div>
                         </div>
                         <img
-                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          src={LIST_YOUR_GYM_MENU_ICON_SRC}
                           alt=""
                           aria-hidden
                           className="h-14 w-14 flex-shrink-0 object-contain"
+                          decoding="async"
                         />
                       </Link>
                     ) : (
@@ -579,10 +608,11 @@ export function Navbar() {
                           </div>
                         </div>
                         <img
-                          src="/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png"
+                          src={LIST_YOUR_GYM_MENU_ICON_SRC}
                           alt=""
                           aria-hidden
                           className="h-14 w-14 flex-shrink-0 object-contain"
+                          decoding="async"
                         />
                       </Link>
                     )}

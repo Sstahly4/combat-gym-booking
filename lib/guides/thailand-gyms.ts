@@ -64,7 +64,7 @@ export async function getThailandGymsForGuide(filters: ThailandGuideFilters = {}
 
   let query = supabase
     .from('gyms')
-    .select('*, images:gym_images(url, order)')
+    .select('*, images:gym_images(url, variants, order)')
     .in('verification_status', LIVE_STATUSES)
     .ilike('country', '%Thailand%')
 

@@ -154,9 +154,12 @@ export interface GymImage {
   id: string
   gym_id: string
   url: string
+  variants?: GymImageVariants | null
   order: number
   created_at: string
 }
+
+export type GymImageVariants = Partial<Record<'w400' | 'w800' | 'w1200', string>>
 
 // Canonical Offer Types (Standardized Marketplace)
 export type CanonicalOfferType = 

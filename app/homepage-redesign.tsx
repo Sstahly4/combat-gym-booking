@@ -137,7 +137,7 @@ async function getGyms(limit: number = 10) {
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('gyms')
-    .select('*, images:gym_images(url, order)')
+    .select('*, images:gym_images(url, variants, order)')
     .in('verification_status', ['verified', 'trusted'])
     .order('created_at', { ascending: false })
     .limit(limit) 
@@ -159,7 +159,7 @@ async function getGymsWithPackages() {
     .from('gyms')
     .select(`
       *,
-      images:gym_images(url, order),
+      images:gym_images(url, variants, order),
       packages(id, type, includes_accommodation, includes_meals, name, description, offer_type, event_date, event_end_date, max_attendees, price_per_day)
     `)
     .in('verification_status', ['verified', 'trusted'])
@@ -185,7 +185,7 @@ async function getTopRatedGyms(limit: number = 10) {
   
   const { data: allGyms } = await supabase
     .from('gyms')
-    .select('*, images:gym_images(url, order)')
+    .select('*, images:gym_images(url, variants, order)')
     .in('verification_status', ['verified', 'trusted'])
   
   if (!allGyms) return []
@@ -498,6 +498,7 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     placeholder="blur"
                     blurDataURL={BLUR_DATA_URL}
+                    unoptimized
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">
@@ -520,6 +521,7 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     placeholder="blur"
                     blurDataURL={BLUR_DATA_URL}
+                    unoptimized
                   />
                   <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
                     <h3 className="text-2xl font-bold flex items-center gap-2">

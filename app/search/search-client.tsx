@@ -7,13 +7,13 @@ import Link from 'next/link'
 import { calculateEstimatedPrice } from '@/lib/utils'
 import type { Gym, GymImage } from '@/lib/types/database'
 import { Filter, X, Star, Search, ChevronDown, MapPin, Check, ChevronsUpDown, ChevronRight } from 'lucide-react'
-import Image from 'next/image'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { CategoryTabs } from '@/components/category-tabs'
 import { SearchBarRedesign } from '@/components/search-bar-redesign'
 import { SaveButton } from '@/components/save-button'
 import { parseSearchQuery, SEARCH_DISCIPLINES } from '@/lib/search/search-browse-title'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const COUNTRIES = ['Thailand', 'Indonesia', 'Australia', 'Japan', 'USA', 'Brazil', 'Philippines', 'Malaysia']
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -481,10 +481,9 @@ function SearchPageContent() {
               className="relative block w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100"
             >
               {gym.images.length > 0 ? (
-                <Image
-                  src={gym.images[0].url}
+                <ResponsiveGymImage
+                  image={gym.images[0]}
                   alt={gym.name}
-                  fill
                   sizes="(max-width: 640px) 100vw, 320px"
                   className="object-cover"
                 />

@@ -74,6 +74,7 @@ export function OffersSection({ offers }: OffersSectionProps) {
                       blurDataURL={BLUR_DATA_URL}
                       priority={idx < 2}
                       loading={idx < 2 ? 'eager' : 'lazy'}
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />

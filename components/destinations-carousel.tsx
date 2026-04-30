@@ -105,6 +105,7 @@ export function DestinationsCarousel({ destinations, priorityCount = 0 }: Destin
                   blurDataURL={BLUR_DATA_URL}
                   priority={idx < priorityCount}
                   loading={idx < priorityCount ? 'eager' : 'lazy'}
+                  unoptimized
                 />
                 <div className="absolute top-2 left-2 text-white drop-shadow-md">
                   <span className="text-[10px] font-semibold bg-black/30 rounded px-1.5 py-0.5">

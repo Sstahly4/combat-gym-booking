@@ -2,14 +2,13 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-react'
 import { SaveButton } from '@/components/save-button'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { useBooking } from '@/lib/contexts/booking-context'
-import { BLUR_DATA_URL } from '@/lib/images/blur'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 interface FeaturedCarouselProps {
   gyms: any[]
@@ -151,16 +150,12 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
             <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full border border-gray-200 shadow-sm rounded-lg overflow-hidden group/card flex flex-col">
               <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden flex-shrink-0">
                 {gym.images && gym.images.length > 0 ? (
-                  <Image
-                    src={gym.images[0].url}
+                  <ResponsiveGymImage
+                    image={gym.images[0]}
                     alt={gym.name}
-                    fill
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 288px"
-                    placeholder="blur"
-                    blurDataURL={BLUR_DATA_URL}
                     priority={idx < priorityCount}
-                    loading={idx < priorityCount ? 'eager' : 'lazy'}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gray-100 text-sm">

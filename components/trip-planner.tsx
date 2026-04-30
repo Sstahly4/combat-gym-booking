@@ -2,10 +2,10 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBooking } from '@/lib/contexts/booking-context'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 interface TripPlannerProps {
   gyms: any[]
@@ -192,10 +192,9 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
                 <div className="cursor-pointer hover:shadow-md transition-shadow">
                 <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-2">
                   {gym.images && gym.images.length > 0 ? (
-                    <Image
-                      src={gym.images[0].url}
+                    <ResponsiveGymImage
+                      image={gym.images[0]}
                       alt={gym.name}
-                      fill
                       sizes="(max-width: 768px) 50vw, 20vw"
                       className="object-cover"
                     />
