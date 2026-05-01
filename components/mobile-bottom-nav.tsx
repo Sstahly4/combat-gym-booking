@@ -38,10 +38,9 @@ export function MobileBottomNav() {
    * its URL pill the same way it does on Airbnb.
    */
   const [removedFromLayout, setRemovedFromLayout] = useState(false)
-  /** Brief centered cluster on route entry, then widen to full spread (Airbnb-style). */
+  /** Wide by default; brief centered cluster only when opening Saved or auth from elsewhere. */
   const [useWideTabLayout, setUseWideTabLayout] = useState(true)
-  /** Skip centered→wide on first mount; that effect also runs on load and caused a visible glitch. */
-  const hasHandledPathnameChangeRef = useRef(false)
+  const prevPathnameRef = useRef<string | null>(null)
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY
@@ -77,14 +76,22 @@ export function MobileBottomNav() {
     setRemovedFromLayout(false)
     lastScrollYRef.current = window.scrollY
 
-    if (!hasHandledPathnameChangeRef.current) {
-      hasHandledPathnameChangeRef.current = true
-      return
+    const prev = prevPathnameRef.current
+
+    if (prev !== null) {
+      if (pathname === '/') {
+        setUseWideTabLayout(true)
+      } else if (pathname.startsWith('/saved') || pathname.startsWith('/auth')) {
+        setUseWideTabLayout(false)
+        const id = window.setTimeout(() => setUseWideTabLayout(true), 240)
+        prevPathnameRef.current = pathname
+        return () => window.clearTimeout(id)
+      } else {
+        setUseWideTabLayout(true)
+      }
     }
 
-    setUseWideTabLayout(false)
-    const id = window.setTimeout(() => setUseWideTabLayout(true), 240)
-    return () => window.clearTimeout(id)
+    prevPathnameRef.current = pathname
   }, [pathname])
 
   // Whenever the bar becomes visible again, immediately ensure it's in layout.
