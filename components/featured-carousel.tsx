@@ -145,7 +145,7 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
             href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-w-[calc(50%-6px)] snap-start md:min-w-[calc(25%-12px)]"
+            className="min-w-[calc(50%-6px)] snap-start no-underline md:min-w-[calc(25%-12px)]"
           >
             <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full border border-gray-200 shadow-sm rounded-xl md:rounded-lg overflow-hidden group/card flex flex-col">
               <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden flex-shrink-0">
@@ -166,7 +166,9 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
               </div>
               <CardContent className="p-2 md:p-4 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-bold text-[15px] md:text-base text-gray-900 line-clamp-2 md:line-clamp-1 leading-snug group-hover/card:underline">{gym.name}</h3>
+                  <h3 className="font-bold text-[15px] md:text-base text-gray-900 line-clamp-2 md:line-clamp-1 leading-snug no-underline md:group-hover/card:underline">
+                    {gym.name}
+                  </h3>
                 </div>
                 <p className="text-[11px] md:text-sm text-gray-600 mb-2 md:mb-1 line-clamp-1">
                   {gym.city}, {gym.country}
