@@ -34,6 +34,8 @@ export function ChunkedGymGrid({
   priorityFirstN = 2,
   rankEyebrow = 'default',
   localityName,
+  /** When this grid continues a longer list (e.g. ranks 26+ after a “top 25” section), set to the zero-based index of the first gym in `gyms` in the overall ranking. */
+  rankStartOffset = 0,
 }: {
   gyms: GuideGym[]
   chunkSize?: number
@@ -42,13 +44,14 @@ export function ChunkedGymGrid({
   priorityFirstN?: number
   rankEyebrow?: RankEyebrowVariant
   localityName?: string
+  rankStartOffset?: number
 }) {
   const chunks = chunkArray(gyms, chunkSize)
 
   return (
     <div>
       {chunks.map((chunk, chunkIndex) => {
-        const globalStart = chunkIndex * chunkSize
+        const globalStart = rankStartOffset + chunkIndex * chunkSize
         const editorial = editorialBetweenChunks[chunkIndex]
         return (
           <div key={chunkIndex} className="mb-16 last:mb-0">

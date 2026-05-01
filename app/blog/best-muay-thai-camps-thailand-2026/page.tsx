@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'How did you pick the “25 best” Muay Thai camps in Thailand?',
-    a: 'We start from verified and trusted Thailand listings that include Muay Thai on the gym profile, then rank primarily by review score and review volume so community feedback matters. Ties break alphabetically. Rankings refresh as new reviews and listing updates come in.',
+    a: 'We start from verified and trusted Thailand listings that include Muay Thai on the gym profile, then rank primarily by review score and review volume so community feedback matters. Ties break alphabetically. Rankings refresh as new reviews and listing updates come in. The first twenty-five positions get extra editorial context; every other qualifying camp continues on the same page in the same national order so nothing disappears from the guide.',
   },
   {
     q: 'Why might a famous camp be missing from this list?',
@@ -81,7 +81,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How is this different from other “best camps” blogs?',
-    a: 'Many blogs recycle seven hand-picked gyms with static text. This guide ranks up to 25 camps from a live directory, shows real pricing and schedule data when available, and links straight to booking-ready profiles.',
+    a: 'Many blogs recycle seven hand-picked gyms with static text. This guide ranks every qualifying camp from a live directory in one national order, spotlights the top twenty-five with deeper sections, then lists the rest in the same order. Cards show real pricing and schedule data when available, with links straight to booking-ready profiles.',
   },
   {
     q: 'How much does it cost to train Muay Thai in Thailand?',
@@ -183,8 +183,9 @@ export default async function BestMuayThaiCampsThailand2026Page() {
   const allMuayThai = await getThailandGymsForGuide({ discipline: 'Muay Thai' })
   const totalListed = allMuayThai.length
   const top25 = allMuayThai.slice(0, 25)
+  const remainder = allMuayThai.slice(25)
 
-  const itemList = buildGymItemListLd({ name: TITLE, gyms: top25 })
+  const itemList = buildGymItemListLd({ name: TITLE, gyms: allMuayThai })
   const articleLd = buildArticleLd({
     title: TITLE,
     description: DESCRIPTION,
@@ -228,10 +229,17 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           { href: '#methodology', label: 'How we rank' },
           { href: '#budget', label: 'Budget & packing' },
           { href: '#ranked-camps', label: 'Top 25 camps' },
+          ...(remainder.length > 0
+            ? [{ href: '#more-ranked-camps', label: `Ranks 26–${totalListed}` }]
+            : []),
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue={totalListed}
-        statDescription="Verified/trusted Muay Thai camps in Thailand on CombatStay (this article ranks the top 25)."
+        statDescription={
+          remainder.length > 0
+            ? `Verified/trusted Muay Thai camps in Thailand on CombatStay (national rank #1–#${totalListed} on this page).`
+            : 'Verified/trusted Muay Thai camps in Thailand on CombatStay (this article ranks the top 25).'
+        }
         statIcon={<Sparkles className="h-5 w-5" />}
       />
 
@@ -278,8 +286,8 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           <p>
             Unlike generic travel blogs that cherry-pick seven famous names, this guide starts from a{' '}
             <strong>live marketplace</strong>: gyms must be verified or trusted on CombatStay and must list Muay Thai
-            as a discipline. We then rank the top twenty-five using review signals so the list stays accountable as new
-            guests train and leave feedback.
+            as a discipline. We rank every qualifying gym nationally using review signals, then give the top twenty-five
+            extra editorial breaks—everyone else continues in the same order so new listings still surface on this page.
           </p>
           <p>
             Use the ranked cards below as a shortcut, but treat each profile as the source of truth for{' '}
@@ -504,9 +512,12 @@ export default async function BestMuayThaiCampsThailand2026Page() {
       <section id="ranked-camps" className="mb-16 scroll-mt-24">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">The 25 best Muay Thai camps in Thailand (ranked)</h2>
         <p className="mb-8 max-w-3xl text-base text-gray-600">
-          Below is the full national ranking. Structured data on this page uses the same order: position #1 is first, through
-          #{top25.length}. We break the grid into five sections so you get context between batches—not an endless wall of
-          cards.
+          Below is the start of the national ranking. Structured data on this page uses the same order for all{' '}
+          {totalListed} qualifying camps: position #1 is first, through #{totalListed}. The first {top25.length} slots
+          include long-form context between every five cards.
+          {remainder.length > 0
+            ? ` Ranks #${top25.length + 1}–#${totalListed} follow in a second grid with the same ordering rules.`
+            : ' We break the grid into five sections so you get context between batches—not an endless wall of cards.'}
         </p>
 
         <ChunkedGymGrid
@@ -518,6 +529,31 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         />
       </section>
 
+      {remainder.length > 0 ? (
+        <section id="more-ranked-camps" className="mb-16 scroll-mt-24">
+          <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">
+            National ranks #{top25.length + 1}–#{totalListed}: every other verified Muay Thai camp
+          </h2>
+          <p className="mb-8 max-w-3xl text-base text-gray-600">
+            Same ranking rules as the section above—review signals first—so camps outside the “featured 25” still get a
+            crawlable, bookable card on this guide. Prefer a city-only view? Use the regional links in the footer or open{' '}
+            <Link href="/search?country=Thailand&discipline=Muay%20Thai" className="font-medium text-[#003580] underline">
+              Thailand Muay Thai search
+            </Link>
+            .
+          </p>
+          <ChunkedGymGrid
+            gyms={remainder}
+            chunkSize={5}
+            fallbackImageSrc={HERO_IMAGE}
+            editorialBetweenChunks={[]}
+            rankEyebrow="national"
+            rankStartOffset={top25.length}
+            priorityFirstN={0}
+          />
+        </section>
+      ) : null}
+
       <section id="faq" className="mb-14 scroll-mt-24">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">Frequently asked questions</h2>
         <p className="mb-8 max-w-3xl text-gray-600">
@@ -528,7 +564,11 @@ export default async function BestMuayThaiCampsThailand2026Page() {
 
       <GuideCtaStrip
         title="Ready to lock in your Thailand Muay Thai camp?"
-        subtitle="You've seen the top 25 — compare live prices, reviews, and dates, then book in a few clicks."
+        subtitle={
+          remainder.length > 0
+            ? "You've seen the full national ranking on this page — compare live prices, reviews, and dates, then book in a few clicks."
+            : "You've seen the top 25 — compare live prices, reviews, and dates, then book in a few clicks."
+        }
         href="/search?country=Thailand&discipline=Muay%20Thai"
         buttonLabel="Browse all camps & book"
       />
