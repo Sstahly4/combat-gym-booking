@@ -126,22 +126,22 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className={`md:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 px-6 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[padding:max(0px)]:pb-[max(0.75rem,env(safe-area-inset-bottom))] pb-3 transition-transform duration-200 ease-out ${
-        hidden ? 'translate-y-[calc(100%+1rem)]' : 'translate-y-0'
+      className={`md:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-[#ebebeb] bg-white px-6 pt-2 pb-3 supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] transition-[transform,opacity] duration-200 ease-out ${
+        hidden ? 'pointer-events-none translate-y-[125%] opacity-0' : 'translate-y-0 opacity-100'
       }`}
     >
       <div className="mx-auto flex max-w-md items-center justify-around gap-2">
         {items.map((item) => {
           const Icon = item.icon
-          const activeClass = item.active ? 'text-[#003580]' : 'text-gray-500'
+          const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
             >
-              <Icon className="h-6 w-6" strokeWidth={item.active ? 2.2 : 1.9} aria-hidden />
+              <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
               <span>{item.label}</span>
             </Link>
           )
