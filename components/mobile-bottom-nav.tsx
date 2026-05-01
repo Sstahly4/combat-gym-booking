@@ -112,10 +112,6 @@ export function MobileBottomNav() {
 
   if (isHiddenRoute(pathname)) return null
 
-  /** Airbnb-style centered cluster on browse surfaces; full-width tabs on hub-style routes. */
-  const prefersSpreadTabs =
-    pathname.startsWith('/saved') || pathname.startsWith('/auth')
-
   const items: BottomNavItem[] = [
     {
       href: '/',
@@ -150,13 +146,7 @@ export function MobileBottomNav() {
             : 'translate-y-0 border-t border-[#ebebeb]'
         }`}
       >
-        <div
-          className={`mx-auto flex items-center ${
-            prefersSpreadTabs
-              ? 'w-full max-w-none justify-around gap-2'
-              : 'max-w-[22rem] justify-center gap-4'
-          }`}
-        >
+        <div className="mx-auto flex w-full items-center justify-around gap-2">
           {items.map((item) => {
             const Icon = item.icon
             const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
@@ -165,9 +155,7 @@ export function MobileBottomNav() {
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
-                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${
-                  prefersSpreadTabs ? 'flex-1' : 'w-20'
-                } ${activeClass}`}
+                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
               >
                 <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
                 <span>{item.label}</span>

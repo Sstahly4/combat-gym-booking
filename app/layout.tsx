@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/navbar"
@@ -65,6 +65,22 @@ export const metadata: Metadata = {
       "Book Muay Thai, MMA, and combat sports training camps in Thailand and beyond.",
     images: ["/favicon-512x512-rounded.png"],
   },
+}
+
+/**
+ * `viewport-fit=cover` lets the page extend behind iOS Safari's home-indicator
+ * gutter so the bottom tab bar sits flush with the browser chrome.
+ * `themeColor` matches the page background so Safari's URL pill blends with the
+ * page edge instead of painting a separate white strip on scroll.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+  ],
 }
 
 export default function RootLayout({
