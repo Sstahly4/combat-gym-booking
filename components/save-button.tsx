@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -10,6 +10,10 @@ import {
   addGuestSave,
   removeGuestSave,
 } from '@/lib/guest-saves'
+
+/** Squared distance threshold: ignore tap if finger moved farther than this (horizontal scroll, etc.). */
+const MOVE_CANCEL_PX = 12
+const MOVE_CANCEL_SQ = MOVE_CANCEL_PX * MOVE_CANCEL_PX
 
 interface SaveButtonProps {
   gymId: string
@@ -25,6 +29,8 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
   const [checking, setChecking] = useState(true)
   const [toggling, setToggling] = useState(false)
   const [signInModalOpen, setSignInModalOpen] = useState(false)
+  const skipClickAfterPointerRef = useRef(false)
+  const pointerSessionCleanupRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -50,6 +56,14 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
       }
     })()
   }, [user, authLoading, gymId])
+
+  useEffect(
+    () => () => {
+      pointerSessionCleanupRef.current?.()
+      pointerSessionCleanupRef.current = null
+    },
+    [],
+  )
 
   const toggle = () => {
     if (authLoading || checking || toggling) return
@@ -100,30 +114,76 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
     })()
   }
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault()
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    toggle()
+    if (authLoading || checking || toggling) return
+
+    pointerSessionCleanupRef.current?.()
+    pointerSessionCleanupRef.current = null
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const pid = e.pointerId
+    let slopExceeded = false
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (dx * dx + dy * dy > MOVE_CANCEL_SQ) slopExceeded = true
+    }
+
+    const end = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      pointerSessionCleanupRef.current = null
+
+      if (slopExceeded || ev.type === 'pointercancel') return
+
+      skipClickAfterPointerRef.current = true
+      toggle()
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      pointerSessionCleanupRef.current = null
+    }
+    pointerSessionCleanupRef.current = cleanup
+
+    window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
+    if (skipClickAfterPointerRef.current) {
+      skipClickAfterPointerRef.current = false
+      return
+    }
+    toggle()
   }
 
   return (
     <>
       <div
         className={inline ? 'relative z-10' : 'absolute top-3 right-3 z-10'}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation() }}
+        onClick={(ev) => {
+          ev.preventDefault()
+          ev.stopPropagation()
+        }}
       >
         <button
           type="button"
           onPointerDown={handlePointerDown}
           onClick={handleClick}
           aria-label={saved ? 'Unsave gym' : 'Save gym'}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
+          className="flex h-9 w-9 touch-manipulation items-center justify-center rounded-full bg-white shadow-md transition-transform duration-150 ease-out hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
         >
           <Heart
             className={`h-[18px] w-[18px] transition-colors ${
