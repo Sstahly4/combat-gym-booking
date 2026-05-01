@@ -60,6 +60,11 @@ export function MobileBottomNav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    setHidden(false)
+    lastScrollYRef.current = window.scrollY
+  }, [pathname])
+
   const accountItem = useMemo<BottomNavItem>(() => {
     if (loading) {
       return {
@@ -127,10 +132,12 @@ export function MobileBottomNav() {
     <nav
       aria-label="Primary mobile navigation"
       className={`md:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-[#ebebeb] bg-white px-6 pt-2 pb-3 supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] transition-[transform,opacity] duration-200 ease-out ${
-        hidden ? 'pointer-events-none translate-y-[125%] opacity-0' : 'translate-y-0 opacity-100'
+        hidden
+          ? 'pointer-events-none translate-y-[calc(100%+env(safe-area-inset-bottom)+24px)] border-transparent bg-transparent opacity-0'
+          : 'translate-y-0 opacity-100'
       }`}
     >
-      <div className="mx-auto flex max-w-md items-center justify-around gap-2">
+      <div className="mx-auto flex max-w-[22rem] items-center justify-center gap-4">
         {items.map((item) => {
           const Icon = item.icon
           const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
@@ -139,7 +146,7 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
+              className={`flex w-20 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
             >
               <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
               <span>{item.label}</span>
