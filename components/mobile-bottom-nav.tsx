@@ -39,7 +39,9 @@ export function MobileBottomNav() {
    */
   const [removedFromLayout, setRemovedFromLayout] = useState(false)
   /** Brief centered cluster on route entry, then widen to full spread (Airbnb-style). */
-  const [useWideTabLayout, setUseWideTabLayout] = useState(false)
+  const [useWideTabLayout, setUseWideTabLayout] = useState(true)
+  /** Skip centered→wide on first mount; that effect also runs on load and caused a visible glitch. */
+  const hasHandledPathnameChangeRef = useRef(false)
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY
@@ -74,6 +76,12 @@ export function MobileBottomNav() {
     setHidden(false)
     setRemovedFromLayout(false)
     lastScrollYRef.current = window.scrollY
+
+    if (!hasHandledPathnameChangeRef.current) {
+      hasHandledPathnameChangeRef.current = true
+      return
+    }
+
     setUseWideTabLayout(false)
     const id = window.setTimeout(() => setUseWideTabLayout(true), 240)
     return () => window.clearTimeout(id)
