@@ -112,6 +112,10 @@ export function MobileBottomNav() {
 
   if (isHiddenRoute(pathname)) return null
 
+  /** Airbnb-style centered cluster on browse surfaces; full-width tabs on hub-style routes. */
+  const prefersSpreadTabs =
+    pathname.startsWith('/saved') || pathname.startsWith('/auth')
+
   const items: BottomNavItem[] = [
     {
       href: '/',
@@ -131,28 +135,44 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className={`md:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-[#ebebeb] bg-white px-6 pt-2 pb-3 supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] transition-[transform,opacity] duration-200 ease-out ${
-        hidden
-          ? 'pointer-events-none translate-y-[calc(100%+env(safe-area-inset-bottom)+24px)] border-transparent bg-transparent opacity-0'
-          : 'translate-y-0 opacity-100'
-      }`}
+      aria-hidden={hidden}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] md:hidden"
     >
-      <div className="mx-auto flex max-w-[22rem] items-center justify-center gap-4">
-        {items.map((item) => {
-          const Icon = item.icon
-          const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
+      {/*
+        Outer shell stays transparent so iOS Safari does not paint a second white band
+        above the browser chrome when the bar is dismissed. Only the inner panel is white.
+        translate-y-full is relative to this panel’s height (includes safe-area padding).
+      */}
+      <div
+        className={`pointer-events-auto border-t border-[#ebebeb] bg-white px-6 pt-2 transition-transform duration-200 ease-out will-change-transform supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] pb-3 ${
+          hidden ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}
+      >
+        <div
+          className={`mx-auto flex items-center ${
+            prefersSpreadTabs
+              ? 'w-full max-w-none justify-around gap-2'
+              : 'max-w-[22rem] justify-center gap-4'
+          }`}
+        >
+          {items.map((item) => {
+            const Icon = item.icon
+            const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex w-20 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
-            >
-              <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
+            return (
+              <Link
+                key={`${item.href}-${item.label}`}
+                href={item.href}
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${
+                  prefersSpreadTabs ? 'flex-1' : 'w-20'
+                } ${activeClass}`}
+              >
+                <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
       </div>
     </nav>
   )
