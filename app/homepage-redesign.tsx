@@ -104,6 +104,13 @@ function compareByQuality(a: HomepageGym, b: HomepageGym): number {
   return String(a.name ?? '').localeCompare(String(b.name ?? ''))
 }
 
+/** Match `/search?location=` behavior: `city.ilike.%location%` (substring, case-insensitive). */
+function countGymsInDestination(gyms: HomepageGym[], destination: string): number {
+  const needle = normalizeText(destination).trim()
+  if (!needle) return 0
+  return gyms.filter((gym) => normalizeText(gym.city).includes(needle)).length
+}
+
 function buildHomepageRow({
   pool,
   primary,
@@ -359,27 +366,32 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
     {
       name: "Phuket",
       image: "/phuket.jpg",
-      flag: "🇹🇭"
+      flag: "🇹🇭",
+      availableCount: countGymsInDestination(allGymsWithPackages, "Phuket")
     },
     {
       name: "Bangkok",
       image: "/Bangkok-Thailand.jpg",
-      flag: "🇹🇭"
+      flag: "🇹🇭",
+      availableCount: countGymsInDestination(allGymsWithPackages, "Bangkok")
     },
     {
       name: "Krabi",
       image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=800&q=80",
-      flag: "🇹🇭"
+      flag: "🇹🇭",
+      availableCount: countGymsInDestination(allGymsWithPackages, "Krabi")
     },
     {
       name: "Pattaya",
       image: "/pattaya.jpg",
-      flag: "🇹🇭"
+      flag: "🇹🇭",
+      availableCount: countGymsInDestination(allGymsWithPackages, "Pattaya")
     },
     {
       name: "Chiang Mai",
       image: "/chiang-mai-thailand-16by9.webp",
-      flag: "🇹🇭"
+      flag: "🇹🇭",
+      availableCount: countGymsInDestination(allGymsWithPackages, "Chiang Mai")
     }
   ]
 

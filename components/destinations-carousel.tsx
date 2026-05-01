@@ -10,7 +10,8 @@ import { BLUR_DATA_URL } from '@/lib/images/blur'
 interface Destination {
   name: string
   image: string
-  flag: string
+  flag?: string
+  availableCount?: number
 }
 
 interface DestinationsCarouselProps {
@@ -38,25 +39,30 @@ export function DestinationsCarousel({ destinations, priorityCount = 0 }: Destin
     return () => window.removeEventListener('resize', checkScroll)
   }, [])
 
-      const scroll = (direction: 'left' | 'right') => {
-        if (scrollRef.current) {
-          const containerWidth = scrollRef.current.clientWidth
-          const gap = window.innerWidth < 768 ? 12 : 16
-          // On mobile: 3.5 cards per view, on desktop: 3 cards per view
-          const itemWidth = window.innerWidth < 768
-            ? (containerWidth - (2.5 * gap)) / 3.5
-            : (containerWidth - (2 * gap)) / 3
-          const scrollAmount = itemWidth + gap
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const containerWidth = scrollRef.current.clientWidth
+      const gap = window.innerWidth < 768 ? 12 : 16
+      // Mobile mirrors marketplace shelves: about 3 large cards plus a hint of the next item.
+      const itemWidth = window.innerWidth < 768
+        ? (containerWidth - (2.15 * gap)) / 3.15
+        : (containerWidth - (2 * gap)) / 3
+      const scrollAmount = itemWidth + gap
 
-          scrollRef.current.scrollBy({
-            left: direction === 'left' ? -scrollAmount : scrollAmount,
-            behavior: 'smooth',
-          })
-        }
-      }
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'auto',
+      })
+    }
+  }
+
+  const availabilityLabel = (count?: number) => {
+    if (!Number.isFinite(count) || count == null) return null
+    return `${count} ${count === 1 ? 'available' : 'available'}`
+  }
 
   return (
-    <div className="relative group">
+    <div className="relative">
       {/* Left Button - Hidden on mobile */}
       {canScrollLeft && (
         <Button
@@ -85,41 +91,44 @@ export function DestinationsCarousel({ destinations, priorityCount = 0 }: Destin
       <div
         ref={scrollRef}
         onScroll={checkScroll}
-        className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth group"
+        className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar"
       >
-        {destinations.map((city, idx) => (
-          <Link
-            key={city.name}
-            href={`/search?location=${encodeURIComponent(city.name)}`}
-            className="min-w-[calc(28.57%-8.57px)] md:min-w-[calc(33.333%-10.67px)] max-w-[calc(28.57%-8.57px)] md:max-w-[calc(33.333%-10.67px)] snap-start flex-shrink-0"
-          >
-            <div className="cursor-pointer hover:shadow-md transition-shadow">
-              <div className="w-full aspect-square rounded-lg overflow-hidden mb-2 relative bg-gray-200">
-                <Image
-                  src={city.image}
-                  alt={city.name}
-                  fill
-                  sizes="(max-width: 768px) 29vw, (max-width: 1200px) 33vw, 384px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  placeholder="blur"
-                  blurDataURL={BLUR_DATA_URL}
-                  priority={idx < priorityCount}
-                  loading={idx < priorityCount ? 'eager' : 'lazy'}
-                  unoptimized
-                />
-                <div className="absolute top-2 left-2 text-white drop-shadow-md">
-                  <span className="text-[10px] font-semibold bg-black/30 rounded px-1.5 py-0.5">
-                    {city.flag}
-                  </span>
+        {destinations.map((city, idx) => {
+          const availableText = availabilityLabel(city.availableCount)
+
+          return (
+            <Link
+              key={city.name}
+              href={`/search?location=${encodeURIComponent(city.name)}`}
+              className="min-w-[calc((100%_-_25.8px)_/_3.15)] max-w-[calc((100%_-_25.8px)_/_3.15)] md:min-w-[calc((100%_-_32px)_/_3)] md:max-w-[calc((100%_-_32px)_/_3)] snap-start flex-shrink-0"
+            >
+              <div className="cursor-pointer">
+                <div className="w-full aspect-square rounded-xl overflow-hidden mb-2.5 relative bg-gray-200">
+                  <Image
+                    src={city.image}
+                    alt={city.name}
+                    fill
+                    sizes="(max-width: 768px) 32vw, (max-width: 1200px) 33vw, 384px"
+                    className="object-cover"
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
+                    priority={idx < priorityCount}
+                    loading={idx < priorityCount ? 'eager' : 'lazy'}
+                    unoptimized
+                  />
                 </div>
+                <h3 className="font-semibold text-sm md:text-sm text-gray-900 leading-tight mb-1 line-clamp-1">
+                  {city.name}
+                </h3>
+                {availableText && (
+                  <p className="text-xs text-gray-500 leading-tight">
+                    {availableText}
+                  </p>
+                )}
               </div>
-              <h3 className="font-semibold text-xs md:text-sm text-gray-900 mb-0.5 line-clamp-1">
-                {city.name}
-              </h3>
-              <p className="hidden md:block text-[10px] md:text-xs text-gray-600">Thailand</p>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
