@@ -38,9 +38,10 @@ export function MobileBottomNav() {
    * its URL pill the same way it does on Airbnb.
    */
   const [removedFromLayout, setRemovedFromLayout] = useState(false)
-  /** Wide by default; brief centered cluster only when opening Saved or auth from elsewhere. */
-  const [useWideTabLayout, setUseWideTabLayout] = useState(true)
+  /** Airbnb-style: compact cluster on first paint; first in-app navigation widens tabs for good. */
+  const [useWideTabLayout, setUseWideTabLayout] = useState(false)
   const prevPathnameRef = useRef<string | null>(null)
+  const tabsHaveWidenedRef = useRef(false)
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY
@@ -76,19 +77,21 @@ export function MobileBottomNav() {
     setRemovedFromLayout(false)
     lastScrollYRef.current = window.scrollY
 
-    const prev = prevPathnameRef.current
+    if (tabsHaveWidenedRef.current) {
+      setUseWideTabLayout(true)
+      prevPathnameRef.current = pathname
+      return
+    }
 
-    if (prev !== null) {
-      if (pathname === '/') {
-        setUseWideTabLayout(true)
-      } else if (pathname.startsWith('/saved') || pathname.startsWith('/auth')) {
-        setUseWideTabLayout(false)
-        const id = window.setTimeout(() => setUseWideTabLayout(true), 240)
-        prevPathnameRef.current = pathname
-        return () => window.clearTimeout(id)
-      } else {
-        setUseWideTabLayout(true)
-      }
+    const prev = prevPathnameRef.current
+    if (prev === null) {
+      prevPathnameRef.current = pathname
+      return
+    }
+
+    if (pathname !== prev) {
+      tabsHaveWidenedRef.current = true
+      setUseWideTabLayout(true)
     }
 
     prevPathnameRef.current = pathname
