@@ -186,7 +186,7 @@ export function MobileBottomNav() {
           if (e.propertyName !== 'transform') return
           if (hidden) setRemovedFromLayout(true)
         }}
-        className={`pointer-events-auto transform-gpu bg-white px-4 pt-1 transition-transform duration-200 ease-out will-change-transform backface-hidden supports-[padding:max(0px)]:pb-[max(0.5rem,env(safe-area-inset-bottom))] pb-1.5 ${
+        className={`pointer-events-auto transform-gpu bg-white px-5 pt-1.5 transition-transform duration-200 ease-out will-change-transform backface-hidden supports-[padding:max(0px)]:pb-[max(0.6rem,env(safe-area-inset-bottom))] pb-2 ${
           hidden
             ? 'pointer-events-none translate-y-[calc(100%+3px)] border-transparent'
             : 'translate-y-0 border-t border-[#ebebeb]'
@@ -195,8 +195,8 @@ export function MobileBottomNav() {
         <div
           className={`mx-auto flex items-center transition-[max-width,gap] duration-300 ease-out ${
             useWideTabLayout
-              ? 'w-full max-w-none justify-around gap-1'
-              : 'max-w-[22rem] justify-center gap-4'
+              ? 'w-full max-w-none justify-around gap-1.5'
+              : 'max-w-[22rem] justify-center gap-[1.125rem]'
           }`}
         >
           {items.map((item) => {
@@ -211,13 +211,13 @@ export function MobileBottomNav() {
                   iconPopTokenRef.current += 1
                   setIconPop({ href: item.href, token: iconPopTokenRef.current })
                 }}
-                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-1 text-center text-[10px] leading-tight tracking-tight transition-colors active:bg-blue-50 ${
-                  useWideTabLayout ? 'flex-1' : 'w-[4.5rem]'
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-center text-[10.5px] leading-tight tracking-tight transition-colors active:bg-blue-50 ${
+                  useWideTabLayout ? 'flex-1' : 'w-[4.75rem]'
                 } ${activeClass}`}
               >
                 <span
                   key={iconPop?.href === item.href ? String(iconPop.token) : 'idle'}
-                  className={`inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center origin-center will-change-transform ${
+                  className={`inline-flex h-[23px] w-[23px] shrink-0 items-center justify-center origin-center will-change-transform ${
                     iconPop?.href === item.href ? 'animate-bottom-nav-icon-pop' : ''
                   }`}
                   onAnimationEnd={(e) => {
@@ -225,7 +225,7 @@ export function MobileBottomNav() {
                     setIconPop((p) => (p?.href === item.href ? null : p))
                   }}
                 >
-                  <Icon className="h-[22px] w-[22px]" strokeWidth={item.active ? 2 : 1.7} aria-hidden />
+                  <Icon className="h-[23px] w-[23px]" strokeWidth={item.active ? 2.05 : 1.75} aria-hidden />
                 </span>
                 <span>{item.label}</span>
               </Link>
