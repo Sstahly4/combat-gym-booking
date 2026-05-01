@@ -30,6 +30,16 @@ export function MobileBottomNav() {
   const lastScrollYRef = useRef(0)
   const tickingRef = useRef(false)
   const [hidden, setHidden] = useState(false)
+  /**
+   * After the slide-out transition finishes, fully detach the bar from layout.
+   * iOS Safari only collapses its bottom URL toolbar when nothing is `position: fixed`
+   * at the bottom of the page — a translated-but-still-fixed bar keeps Safari's
+   * chrome expanded. Setting `display: none` after the transition lets Safari hide
+   * its URL pill the same way it does on Airbnb.
+   */
+  const [removedFromLayout, setRemovedFromLayout] = useState(false)
+  /** Brief centered cluster on route entry, then widen to full spread (Airbnb-style). */
+  const [useWideTabLayout, setUseWideTabLayout] = useState(false)
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY
@@ -62,8 +72,17 @@ export function MobileBottomNav() {
 
   useEffect(() => {
     setHidden(false)
+    setRemovedFromLayout(false)
     lastScrollYRef.current = window.scrollY
+    setUseWideTabLayout(false)
+    const id = window.setTimeout(() => setUseWideTabLayout(true), 240)
+    return () => window.clearTimeout(id)
   }, [pathname])
+
+  // Whenever the bar becomes visible again, immediately ensure it's in layout.
+  useEffect(() => {
+    if (!hidden) setRemovedFromLayout(false)
+  }, [hidden])
 
   const accountItem = useMemo<BottomNavItem>(() => {
     if (loading) {
@@ -132,21 +151,34 @@ export function MobileBottomNav() {
     <nav
       aria-label="Primary mobile navigation"
       aria-hidden={hidden}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] md:hidden"
+      className={`pointer-events-none fixed inset-x-0 bottom-0 z-[60] md:hidden ${
+        removedFromLayout ? 'invisible' : ''
+      }`}
     >
       {/*
         Outer shell stays transparent so iOS Safari does not paint a second white band
         above the browser chrome when the bar is dismissed. Only the inner panel is white.
-        translate-y-full is relative to this panel’s height (includes safe-area padding).
+        After the slide-out finishes we toggle `removedFromLayout` so Safari can collapse
+        its own bottom URL toolbar (it stays expanded while any fixed bottom element exists).
       */}
       <div
+        onTransitionEnd={(e) => {
+          if (e.propertyName !== 'transform') return
+          if (hidden) setRemovedFromLayout(true)
+        }}
         className={`pointer-events-auto transform-gpu bg-white px-6 pt-2 transition-transform duration-200 ease-out will-change-transform backface-hidden supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] pb-3 ${
           hidden
             ? 'pointer-events-none translate-y-[calc(100%+3px)] border-transparent'
             : 'translate-y-0 border-t border-[#ebebeb]'
         }`}
       >
-        <div className="mx-auto flex w-full items-center justify-around gap-2">
+        <div
+          className={`mx-auto flex items-center transition-[max-width,gap] duration-300 ease-out ${
+            useWideTabLayout
+              ? 'w-full max-w-none justify-around gap-2'
+              : 'max-w-[22rem] justify-center gap-5'
+          }`}
+        >
           {items.map((item) => {
             const Icon = item.icon
             const activeClass = item.active ? 'font-medium text-[#003580]' : 'font-normal text-gray-500'
@@ -155,7 +187,9 @@ export function MobileBottomNav() {
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
-                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${activeClass}`}
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${
+                  useWideTabLayout ? 'flex-1' : 'w-20'
+                } ${activeClass}`}
               >
                 <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
                 <span>{item.label}</span>
