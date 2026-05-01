@@ -145,9 +145,9 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
             href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-w-[calc(50%-12px)] md:min-w-[calc(25%-12px)] snap-start"
+            className="min-w-[calc(50%-6px)] snap-start md:min-w-[calc(25%-12px)]"
           >
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full border border-gray-200 shadow-sm rounded-lg overflow-hidden group/card flex flex-col">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full border border-gray-200 shadow-sm rounded-xl md:rounded-lg overflow-hidden group/card flex flex-col">
               <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden flex-shrink-0">
                 {gym.images && gym.images.length > 0 ? (
                   <ResponsiveGymImage
@@ -164,18 +164,18 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
                 )}
                 <SaveButton gymId={gym.id} />
               </div>
-              <CardContent className="p-3 md:p-4 flex flex-col flex-grow">
+              <CardContent className="p-2 md:p-4 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-bold text-sm md:text-base text-gray-900 line-clamp-1 group-hover/card:underline">{gym.name}</h3>
+                  <h3 className="font-bold text-[15px] md:text-base text-gray-900 line-clamp-2 md:line-clamp-1 leading-snug group-hover/card:underline">{gym.name}</h3>
                 </div>
-                <p className="text-xs md:text-sm text-gray-600 mb-1 line-clamp-1">
+                <p className="text-[11px] md:text-sm text-gray-600 mb-2 md:mb-1 line-clamp-1">
                   {gym.city}, {gym.country}
                 </p>
-                <div className="flex items-center gap-1 mb-2 md:mb-3">
+                <div className="hidden md:flex items-center gap-1 mb-3">
                   <Check className="w-3 h-3 md:w-3.5 md:h-3.5 text-green-600" />
                   <span className="text-[10px] md:text-xs text-gray-600 font-medium">Verified</span>
                 </div>
-                <div className="flex items-center gap-1.5 md:gap-2 mb-4 md:mb-6 flex-wrap">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5 md:mb-6 md:gap-2">
                   {(() => {
                     const countFromField = typeof gym.reviewCount === 'number' ? gym.reviewCount : undefined
                     const avgFromField = typeof gym.averageRating === 'number' ? gym.averageRating : undefined
@@ -197,16 +197,18 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
                         <div className="bg-[#003580] text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[10px] md:text-xs font-bold">
                           {hasReviews ? display.toFixed(1) : display.toFixed(1)}
                         </div>
-                        <span className="text-[10px] md:text-xs text-gray-700">
-                          {hasReviews ? 'Very good' : 'Exceptional'}
-                        </span>
-                        {hasReviews && (
-                          <span className="text-[10px] md:text-xs text-gray-500">
-                            {(hasReviewsFromFields ? countFromField : gym.reviews.length)} verified reviews
+                        <div className="flex min-w-0 flex-col leading-tight md:contents">
+                          <span className="text-[11px] font-medium text-gray-700 md:text-xs md:font-normal">
+                            {hasReviews ? 'Superb' : 'Exceptional'}
                           </span>
-                        )}
-                        <div className="w-full" />
-                        <div className="flex items-center gap-2">
+                          {hasReviews && (
+                            <span className="text-[10px] text-gray-500 md:text-xs">
+                              {(hasReviewsFromFields ? countFromField : gym.reviews.length)} reviews
+                            </span>
+                          )}
+                        </div>
+                        <div className="hidden w-full md:block" />
+                        <div className="hidden items-center gap-2 md:flex">
                           {renderStars(display)}
                           <span className="text-[10px] md:text-xs text-gray-500">{display.toFixed(1)}</span>
                         </div>
@@ -214,7 +216,15 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
                     )
                   })()}
                 </div>
-                <div className="flex justify-end items-end mt-auto pt-2">
+                <div className="mt-auto pt-1 md:hidden">
+                  <p className="text-[11px] leading-tight text-gray-900">
+                    <span className="font-semibold">
+                      {formatPrice(convertPrice(gym.price_per_day, gym.currency))}
+                    </span>
+                    <span className="text-gray-500"> / day</span>
+                  </p>
+                </div>
+                <div className="hidden md:flex justify-end items-end mt-auto pt-2">
                   <div className="text-right">
                     <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Starting from</p>
                     <p className="text-base md:text-lg font-bold text-gray-900 leading-tight">

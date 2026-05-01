@@ -10,6 +10,7 @@ import {
   addGuestSave,
   removeGuestSave,
 } from '@/lib/guest-saves'
+import { cn } from '@/lib/utils'
 
 /** Squared distance threshold: ignore tap if finger moved farther than this (horizontal scroll, etc.). */
 const MOVE_CANCEL_PX = 12
@@ -172,7 +173,7 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
   return (
     <>
       <div
-        className={inline ? 'relative z-10' : 'absolute top-3 right-3 z-10'}
+        className={inline ? 'relative z-10' : 'absolute right-2 top-2 z-10 md:right-3 md:top-3'}
         onClick={(ev) => {
           ev.preventDefault()
           ev.stopPropagation()
@@ -183,12 +184,26 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
           onPointerDown={handlePointerDown}
           onClick={handleClick}
           aria-label={saved ? 'Unsave gym' : 'Save gym'}
-          className="flex h-9 w-9 touch-manipulation items-center justify-center rounded-full bg-white shadow-md transition-transform duration-150 ease-out hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
+          className={cn(
+            'flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full transition-transform duration-150 ease-out hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0',
+            inline
+              ? 'bg-transparent focus-visible:ring-gray-400'
+              : 'bg-transparent focus-visible:ring-white/90',
+          )}
         >
           <Heart
-            className={`h-[18px] w-[18px] transition-colors ${
-              saved ? 'fill-red-500 text-red-500' : 'fill-none text-gray-800 stroke-[2]'
-            }`}
+            className={cn(
+              'transition-colors',
+              inline ? 'h-5 w-5' : 'h-6 w-6',
+              inline
+                ? saved
+                  ? 'fill-red-500 text-red-500 stroke-red-600'
+                  : 'fill-none stroke-[2] stroke-gray-800 text-gray-800'
+                : saved
+                  ? 'fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]'
+                  : 'fill-[rgba(0,0,0,0.54)] stroke-white stroke-[2] drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]',
+            )}
+            strokeWidth={inline ? 2 : saved ? 1.85 : 2}
           />
         </button>
       </div>
