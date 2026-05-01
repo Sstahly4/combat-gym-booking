@@ -201,7 +201,7 @@ export function SaveButton({ gymId, initialSaved = false, onSaveChange, inline =
                   : 'fill-none stroke-[2] stroke-gray-800 text-gray-800'
                 : saved
                   ? 'fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]'
-                  : 'fill-[rgba(0,0,0,0.54)] stroke-white stroke-[2] drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]',
+                  : 'fill-[rgba(0,0,0,0.48)] stroke-white stroke-[2] drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]',
             )}
             strokeWidth={inline ? 2 : saved ? 1.85 : 2}
           />
