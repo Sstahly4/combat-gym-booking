@@ -1,14 +1,21 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createPublicClient } from '@/lib/supabase/public-server'
 import { unstable_cache } from 'next/cache'
 import { attachReviewStatsPublic } from '@/lib/reviews/attach-review-stats-public'
 import { FeaturedCarousel } from '@/components/featured-carousel'
+import { SportTypeCarousel } from '@/components/sport-type-carousel'
+import { TripPlanner } from '@/components/trip-planner'
 import { HomepageHero } from '@/components/homepage-hero'
 import { OffersSection } from '@/components/offers-section'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
+import { BLUR_DATA_URL } from '@/lib/images/blur'
 
-const HOMEPAGE_ROW_SIZE = 8
+/** Desktop homepage rows (original marketplace shelves). */
+const HOMEPAGE_ROW_SIZE_DESKTOP = 10
+/** Mobile-only extra shelves (train/beach + tighter carousels). */
+const HOMEPAGE_ROW_SIZE_MOBILE = 8
 const HOLIDAY_CITIES = [
   'phuket',
   'krabi',
@@ -128,7 +135,7 @@ function buildHomepageRow({
   primary,
   sort = compareByQuality,
   used,
-  limit = HOMEPAGE_ROW_SIZE,
+  limit = HOMEPAGE_ROW_SIZE_DESKTOP,
 }: {
   pool: HomepageGym[]
   primary: (gym: HomepageGym) => boolean
@@ -150,6 +157,33 @@ function buildHomepageRow({
   const row = selected.slice(0, limit)
   row.forEach((gym) => used.add(gym.id))
   return row
+}
+
+/** Match `/search?location=` behavior: `city.ilike.%location%` (substring, case-insensitive). */
+function countGymsInDestination(gyms: HomepageGym[], destination: string): number {
+  const needle = normalizeText(destination).trim()
+  if (!needle) return 0
+  return gyms.filter((gym) => normalizeText(gym.city).includes(needle)).length
+}
+
+async function getGyms(limit: number = 20) {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('gyms')
+    .select('*, images:gym_images(url, variants, order)')
+    .in('verification_status', ['verified', 'trusted'])
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (data) {
+    data.forEach((gym: any) => {
+      if (gym.images && Array.isArray(gym.images)) {
+        gym.images.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+      }
+    })
+  }
+
+  return await attachReviewStatsPublic(data || [])
 }
 
 async function getGymsWithPackages() {
@@ -236,6 +270,36 @@ async function getTopRatedGyms(limit: number = 10) {
   return sorted.slice(0, limit)
 }
 
+async function getGymCountsByDiscipline() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('gyms')
+    .select('disciplines')
+    .eq('verification_status', 'verified')
+    .eq('status', 'approved')
+
+  if (!data) return {}
+
+  const counts: Record<string, number> = {}
+  const allDisciplines = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
+
+  allDisciplines.forEach((discipline) => {
+    counts[discipline] = 0
+  })
+
+  data.forEach((gym) => {
+    if (gym.disciplines && Array.isArray(gym.disciplines)) {
+      gym.disciplines.forEach((d: string) => {
+        if (allDisciplines.includes(d)) {
+          counts[d] = (counts[d] || 0) + 1
+        }
+      })
+    }
+  })
+
+  return counts
+}
+
 async function getOffers() {
   const supabase = createPublicClient()
   const { data } = await supabase
@@ -256,62 +320,168 @@ async function getOffers() {
 
 const getHomepageDataCached = unstable_cache(
   async () => {
-    const [allGymsWithPackages, topRatedGyms, offers] = await Promise.all([
+    const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers] = await Promise.all([
+      getGyms(20),
       getGymsWithPackages(),
-      getTopRatedGyms(HOMEPAGE_ROW_SIZE),
+      getTopRatedGyms(Math.max(HOMEPAGE_ROW_SIZE_DESKTOP, HOMEPAGE_ROW_SIZE_MOBILE)),
+      getGymCountsByDiscipline(),
       getOffers(),
     ])
 
-    return { allGymsWithPackages, topRatedGyms, offers }
+    return { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers }
   },
-  ['homepage-redesign-data-v2'],
+  ['homepage-redesign-data-v3'],
   { revalidate: 300 }
 )
 
 export default async function HomepageRedesign({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
-  void searchParams
-  const { allGymsWithPackages, topRatedGyms, offers } = await getHomepageDataCached()
+  const { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers } = await getHomepageDataCached()
 
-  // Marketplace shelf pattern:
-  // 1. Top rated keeps the strongest quality row.
-  // 2. Lower rows use true candidates first, then backfill from next-best unused gyms.
-  //    This keeps small inventory feeling varied now and naturally improves as more gyms are added.
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return ''
+    const date = new Date(`${dateString}T00:00:00`)
+    const day = date.getDate()
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const month = months[date.getMonth()]
+    return `${day} ${month}`
+  }
+
+  const checkin = searchParams?.checkin || ''
+  const checkout = searchParams?.checkout || ''
+
+  const today = new Date()
+  const nextDay = new Date(today)
+  nextDay.setDate(today.getDate() + 2)
+
+  const finalCheckin = checkin || today.toISOString().split('T')[0]
+  const finalCheckout = checkout || nextDay.toISOString().split('T')[0]
+
+  const dateDisplay = `${formatDateForDisplay(finalCheckin)}-${formatDateForDisplay(finalCheckout)}, 1 adult`
+
+  const countryCounts: Record<string, number> = {}
+  allGyms?.forEach((gym: any) => {
+    if (gym.country) {
+      countryCounts[gym.country] = (countryCounts[gym.country] || 0) + 1
+    }
+  })
+
+  const mostCommonCountry =
+    Object.entries(countryCounts).reduce((a, b) => (countryCounts[a[0]] > countryCounts[b[0]] ? a : b), ['Thailand', 0])[0] ||
+    'Thailand'
+
+  const sportImages: Record<string, string> = {
+    'Muay Thai': '/N-8427.jpeg.avif',
+    Boxing: '/e079bedfbf7e870f827b4fda7ce2132f.avif',
+    MMA: '/1296749132.jpg',
+    BJJ: '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg',
+    Wrestling: '/tjj8r5ovjts8nhqjhkqc.avif',
+    Kickboxing: '/Superbon-Singha-Mawynn-Chingiz-Allazov-ONE-Fight-Night-6-1920X1280-62.jpg',
+  }
+
+  const availableSports = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
+    .filter((sport) => (disciplineCounts[sport] || 0) > 0)
+    .map((sport) => ({
+      name: sport,
+      image: sportImages[sport] || sportImages['Muay Thai'],
+      count: disciplineCounts[sport] || 0,
+    }))
+
+  const destinations = [
+    {
+      name: 'Phuket',
+      image: '/phuket.jpg',
+      flag: '🇹🇭',
+      availableCount: countGymsInDestination(allGymsWithPackages, 'Phuket'),
+    },
+    {
+      name: 'Bangkok',
+      image: '/Bangkok-Thailand.jpg',
+      flag: '🇹🇭',
+      availableCount: countGymsInDestination(allGymsWithPackages, 'Bangkok'),
+    },
+    {
+      name: 'Krabi',
+      image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=800&q=80',
+      flag: '🇹🇭',
+      availableCount: countGymsInDestination(allGymsWithPackages, 'Krabi'),
+    },
+    {
+      name: 'Pattaya',
+      image: '/pattaya.jpg',
+      flag: '🇹🇭',
+      availableCount: countGymsInDestination(allGymsWithPackages, 'Pattaya'),
+    },
+    {
+      name: 'Chiang Mai',
+      image: '/chiang-mai-thailand-16by9.webp',
+      flag: '🇹🇭',
+      availableCount: countGymsInDestination(allGymsWithPackages, 'Chiang Mai'),
+    },
+  ]
+
   const homepagePool = [...allGymsWithPackages].sort(compareByQuality)
-  const usedHomepageGymIds = new Set<string>(topRatedGyms.map((gym: any) => gym.id).filter(Boolean))
-  const popularTrainingGyms = buildHomepageRow({
+  const topRatedIds = new Set<string>(topRatedGyms.map((gym: any) => gym.id).filter(Boolean))
+
+  // Desktop: original shelf order and row sizes (top-rated seeds dedupe set).
+  const usedDesktop = new Set<string>(topRatedIds)
+  const popularTrainingGymsDesktop = buildHomepageRow({
     pool: homepagePool,
     primary: () => true,
     sort: compareByQuality,
-    used: usedHomepageGymIds,
-    limit: HOMEPAGE_ROW_SIZE,
+    used: usedDesktop,
+    limit: HOMEPAGE_ROW_SIZE_DESKTOP,
   })
-  const trainAndStayGyms = buildHomepageRow({
-    pool: homepagePool,
-    primary: hasTrainStayPackageSignal,
-    sort: compareByQuality,
-    used: usedHomepageGymIds,
-    limit: HOMEPAGE_ROW_SIZE,
-  })
-  const beachsideTrainingGyms = buildHomepageRow({
-    pool: homepagePool,
-    primary: hasBeachsideSignal,
-    sort: compareByQuality,
-    used: usedHomepageGymIds,
-    limit: HOMEPAGE_ROW_SIZE,
-  })
-  const trainingHolidayGyms = buildHomepageRow({
+  const trainingHolidayGymsDesktop = buildHomepageRow({
     pool: homepagePool,
     primary: hasHolidaySignal,
     sort: compareByQuality,
-    used: usedHomepageGymIds,
-    limit: HOMEPAGE_ROW_SIZE,
+    used: usedDesktop,
+    limit: HOMEPAGE_ROW_SIZE_DESKTOP,
   })
-  const beginnerFriendlyGyms = buildHomepageRow({
+  const beginnerFriendlyGymsDesktop = buildHomepageRow({
     pool: homepagePool,
     primary: hasBeginnerSignal,
     sort: compareByQuality,
-    used: usedHomepageGymIds,
-    limit: HOMEPAGE_ROW_SIZE,
+    used: usedDesktop,
+    limit: HOMEPAGE_ROW_SIZE_DESKTOP,
+  })
+
+  // Mobile: six 8-gym shelves including train & stay + beachside (separate dedupe so desktop rows stay unchanged).
+  const usedMobile = new Set<string>(topRatedIds)
+  const popularTrainingGymsMobile = buildHomepageRow({
+    pool: homepagePool,
+    primary: () => true,
+    sort: compareByQuality,
+    used: usedMobile,
+    limit: HOMEPAGE_ROW_SIZE_MOBILE,
+  })
+  const trainAndStayGymsMobile = buildHomepageRow({
+    pool: homepagePool,
+    primary: hasTrainStayPackageSignal,
+    sort: compareByQuality,
+    used: usedMobile,
+    limit: HOMEPAGE_ROW_SIZE_MOBILE,
+  })
+  const beachsideTrainingGymsMobile = buildHomepageRow({
+    pool: homepagePool,
+    primary: hasBeachsideSignal,
+    sort: compareByQuality,
+    used: usedMobile,
+    limit: HOMEPAGE_ROW_SIZE_MOBILE,
+  })
+  const trainingHolidayGymsMobile = buildHomepageRow({
+    pool: homepagePool,
+    primary: hasHolidaySignal,
+    sort: compareByQuality,
+    used: usedMobile,
+    limit: HOMEPAGE_ROW_SIZE_MOBILE,
+  })
+  const beginnerFriendlyGymsMobile = buildHomepageRow({
+    pool: homepagePool,
+    primary: hasBeginnerSignal,
+    sort: compareByQuality,
+    used: usedMobile,
+    limit: HOMEPAGE_ROW_SIZE_MOBILE,
   })
 
   return (
@@ -321,54 +491,163 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
 
       <OffersSection offers={offers} />
 
-      {/* Temporary layout: six gym carousels (8 gyms each). Book-with-confidence, browse-by-sport, trending destinations, and TripPlanner UI removed; “Train & stay” + “Beachside” reuse TripPlanner-style filters as shelves. */}
+      {/* Mobile: streamlined shelves. Desktop: original flex order (order-[5]…order-[50]) restores pre-redesign visual sequence. */}
       <div className="relative z-0 flex flex-col">
-        {/* Popular Training Camps */}
-        <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+        {/* Mobile only: Popular first */}
+        <section className="md:hidden pt-4 pb-4 bg-white">
           <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Popular Training Camps</h2>
-            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">From intensive fight camps to holistic training retreats, find your perfect match</p>
-            <FeaturedCarousel gyms={popularTrainingGyms} />
+            <h2 className="text-xl font-bold mb-2 text-gray-900">Popular Training Camps</h2>
+            <p className="text-sm text-gray-700 mb-3">From intensive fight camps to holistic training retreats, find your perfect match</p>
+            <FeaturedCarousel gyms={popularTrainingGymsMobile} />
           </div>
         </section>
 
-        {/* Top Rated Camps */}
-        <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Top Rated Camps</h2>
-            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Highly rated by fighters who've trained there - verified reviews from real bookings</p>
-            <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
-          </div>
-        </section>
+        {/* Desktop only: same six blocks as before, flex `order-*` so Top Rated → Trip → Trending → Trust → Browse → Popular */}
+        <div className="hidden md:flex md:flex-col">
+          <section className="order-[5] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Top Rated Camps</h2>
+              <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Highly rated by fighters who've trained there - verified reviews from real bookings</p>
+              <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
+            </div>
+          </section>
 
-        {/* Train & stay — shelf sourced from TripPlanner-style accommodation package filter */}
-        <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Train &amp; stay</h2>
-            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">
-              Camps with accommodation packages so you can train hard and stay on-site or nearby.
-            </p>
-            <FeaturedCarousel gyms={trainAndStayGyms} />
-          </div>
-        </section>
+          <section className="order-[10] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <TripPlanner gyms={allGymsWithPackages} />
+            </div>
+          </section>
 
-        {/* Beachside training — same coastal city signals as TripPlanner “Beachside training” */}
-        <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Beachside training</h2>
-            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">
-              Thailand islands and coast—train with sand and sea a short ride away.
-            </p>
-            <FeaturedCarousel gyms={beachsideTrainingGyms} />
-          </div>
-        </section>
+          <section className="order-[15] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-gray-900">Trending destinations</h2>
+              <div className="grid grid-cols-6 gap-4">
+                {destinations.slice(0, 2).map((city) => (
+                  <Link
+                    key={city.name}
+                    href={`/search?location=${encodeURIComponent(city.name)}`}
+                    className="col-span-3 relative h-64 group cursor-pointer overflow-hidden rounded-lg shadow-sm"
+                  >
+                    <Image
+                      src={city.image}
+                      alt={city.name}
+                      fill
+                      sizes="(max-width: 768px) 0px, (max-width: 1200px) 50vw, 576px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      placeholder="blur"
+                      blurDataURL={BLUR_DATA_URL}
+                      unoptimized
+                    />
+                    <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
+                      <h3 className="text-2xl font-bold flex items-center gap-2">
+                        {city.name} <span className="text-xl">{city.flag}</span>
+                      </h3>
+                    </div>
+                  </Link>
+                ))}
+                {destinations.slice(2, 5).map((city) => (
+                  <Link
+                    key={city.name}
+                    href={`/search?location=${encodeURIComponent(city.name)}`}
+                    className="col-span-2 relative h-64 group cursor-pointer overflow-hidden rounded-lg shadow-sm"
+                  >
+                    <Image
+                      src={city.image}
+                      alt={city.name}
+                      fill
+                      sizes="(max-width: 768px) 0px, (max-width: 1200px) 33vw, 384px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      placeholder="blur"
+                      blurDataURL={BLUR_DATA_URL}
+                      unoptimized
+                    />
+                    <div className="absolute top-4 left-4 text-white text-shadow-lg drop-shadow-md">
+                      <h3 className="text-2xl font-bold flex items-center gap-2">
+                        {city.name} <span className="text-xl">{city.flag}</span>
+                      </h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="order-[20] pt-3 pb-4 md:pt-4 md:pb-6 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 md:p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+                  <div className="flex-1">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-1 md:mb-2">Book with confidence</h3>
+                    <p className="text-xs md:text-sm text-gray-600">
+                      Secure payments, verified gyms, and instant booking confirmations. Your training journey starts here.
+                    </p>
+                  </div>
+                  <Link href="/search" className="text-xs md:text-sm text-[#003580] font-medium hover:underline whitespace-nowrap md:ml-4">
+                    Start searching →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {availableSports.length > 0 && (
+            <section className="order-[30] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+              <div className="max-w-6xl mx-auto px-4">
+                <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-gray-900">Browse by sport type in {mostCommonCountry}</h2>
+                <SportTypeCarousel sports={availableSports} country={mostCommonCountry} dateDisplay={dateDisplay} />
+              </div>
+            </section>
+          )}
+
+          <section className="order-[50] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Popular Training Camps</h2>
+              <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">From intensive fight camps to holistic training retreats, find your perfect match</p>
+              <FeaturedCarousel gyms={popularTrainingGymsDesktop} />
+            </div>
+          </section>
+        </div>
+
+        {/* Mobile: Top rated + train & stay + beachside */}
+        <div className="md:hidden flex flex-col">
+          <section className="pt-4 pb-4 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Top Rated Camps</h2>
+              <p className="text-sm text-gray-700 mb-3">Highly rated by fighters who've trained there - verified reviews from real bookings</p>
+              <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
+            </div>
+          </section>
+          <section className="pt-4 pb-4 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Train &amp; stay</h2>
+              <p className="text-sm text-gray-700 mb-3">
+                Camps with accommodation packages so you can train hard and stay on-site or nearby.
+              </p>
+              <FeaturedCarousel gyms={trainAndStayGymsMobile} />
+            </div>
+          </section>
+          <section className="pt-4 pb-4 bg-white">
+            <div className="max-w-6xl mx-auto px-4">
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Beachside training</h2>
+              <p className="text-sm text-gray-700 mb-3">
+                Thailand islands and coast—train with sand and sea a short ride away.
+              </p>
+              <FeaturedCarousel gyms={beachsideTrainingGymsMobile} />
+            </div>
+          </section>
+        </div>
 
         {/* Training Holidays */}
         <section className="pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Training Holidays</h2>
             <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Combine training with vacation in stunning locations</p>
-            <FeaturedCarousel gyms={trainingHolidayGyms} />
+            <div className="md:hidden">
+              <FeaturedCarousel gyms={trainingHolidayGymsMobile} />
+            </div>
+            <div className="hidden md:block">
+              <FeaturedCarousel gyms={trainingHolidayGymsDesktop} />
+            </div>
           </div>
         </section>
 
@@ -377,7 +656,12 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Beginner-Friendly Camps</h2>
             <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Perfect for those starting their combat sports journey</p>
-            <FeaturedCarousel gyms={beginnerFriendlyGyms} />
+            <div className="md:hidden">
+              <FeaturedCarousel gyms={beginnerFriendlyGymsMobile} />
+            </div>
+            <div className="hidden md:block">
+              <FeaturedCarousel gyms={beginnerFriendlyGymsDesktop} />
+            </div>
           </div>
         </section>
       </div>
