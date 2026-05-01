@@ -15,9 +15,9 @@ const filterCategories = [
   { id: 'train-stay', label: 'Train & Stay', searchParams: '/search?accommodation=true' },
   { id: 'beachside', label: 'BeachSide Training', searchParams: '/search?location=Phuket' },
   { id: 'authentic', label: 'Authentic Experience', searchParams: '/search?discipline=Muay Thai' },
+  { id: 'pro-fight-prep', label: 'Pro Fight Prep', searchParams: '/search' },
   { id: 'all-inclusive', label: 'All Inclusive', searchParams: '/search' },
   { id: 'beginner', label: 'Beginner Friendly', searchParams: '/search' },
-  { id: 'hardcore', label: 'Hardcore Training', searchParams: '/search' },
 ]
 
 // Beach cities in Thailand
@@ -75,7 +75,7 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
       case 'beginner':
         return gyms
       
-      case 'hardcore':
+      case 'pro-fight-prep':
         return gyms
       
       default:

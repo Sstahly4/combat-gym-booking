@@ -10,9 +10,17 @@ export function ConditionalFooter() {
     pathname === '/manage' ||
     pathname.startsWith('/manage/') ||
     pathname === '/admin' ||
-    pathname.startsWith('/admin/')
+    pathname.startsWith('/admin/') ||
+    pathname.startsWith('/auth')
   ) {
     return null
   }
-  return <Footer />
+
+  const isSavedRoute = pathname === '/saved' || pathname.startsWith('/saved/')
+
+  return (
+    <div className={isSavedRoute ? 'hidden md:block' : undefined}>
+      <Footer />
+    </div>
+  )
 }

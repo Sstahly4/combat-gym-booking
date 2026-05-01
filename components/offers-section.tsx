@@ -46,7 +46,9 @@ export function OffersSection({ offers }: OffersSectionProps) {
             return (
               <article
                 key={offer.id}
-                className="group flex items-stretch justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow"
+                className={`group flex items-stretch justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow ${
+                  idx > 0 ? 'hidden md:flex' : ''
+                }`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-gray-500 mb-1">{offer.label}</div>
@@ -72,8 +74,8 @@ export function OffersSection({ offers }: OffersSectionProps) {
                       className="w-full h-full object-cover"
                       placeholder="blur"
                       blurDataURL={BLUR_DATA_URL}
-                      priority={idx < 2}
-                      loading={idx < 2 ? 'eager' : 'lazy'}
+                      priority={idx === 0}
+                      loading={idx === 0 ? 'eager' : 'lazy'}
                       unoptimized
                     />
                   ) : (

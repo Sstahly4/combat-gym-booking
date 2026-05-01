@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/navbar"
 import { ConditionalFooter } from "@/components/conditional-footer"
+import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { CurrencyProvider } from "@/lib/contexts/currency-context"
 import { BRAND_NAME, canonicalSiteUrl } from "@/lib/brand"
 import { Analytics } from "@vercel/analytics/next"
@@ -86,6 +87,7 @@ export default function RootLayout({
             {children}
           </main>
           <ConditionalFooter />
+          <MobileBottomNav />
         </CurrencyProvider>
         <Analytics />
         <SpeedInsights />
