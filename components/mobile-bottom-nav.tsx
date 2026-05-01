@@ -144,8 +144,10 @@ export function MobileBottomNav() {
         translate-y-full is relative to this panel’s height (includes safe-area padding).
       */}
       <div
-        className={`pointer-events-auto border-t border-[#ebebeb] bg-white px-6 pt-2 transition-transform duration-200 ease-out will-change-transform supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] pb-3 ${
-          hidden ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        className={`pointer-events-auto transform-gpu bg-white px-6 pt-2 transition-transform duration-200 ease-out will-change-transform backface-hidden supports-[padding:max(0px)]:pb-[max(0.7rem,env(safe-area-inset-bottom))] pb-3 ${
+          hidden
+            ? 'pointer-events-none translate-y-[calc(100%+3px)] border-transparent'
+            : 'translate-y-0 border-t border-[#ebebeb]'
         }`}
       >
         <div
