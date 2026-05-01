@@ -42,6 +42,8 @@ export function MobileBottomNav() {
   const [useWideTabLayout, setUseWideTabLayout] = useState(false)
   const prevPathnameRef = useRef<string | null>(null)
   const tabsHaveWidenedRef = useRef(false)
+  const iconPopTokenRef = useRef(0)
+  const [iconPop, setIconPop] = useState<{ href: string; token: number } | null>(null)
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY
@@ -205,11 +207,26 @@ export function MobileBottomNav() {
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
+                onPointerDown={() => {
+                  iconPopTokenRef.current += 1
+                  setIconPop({ href: item.href, token: iconPopTokenRef.current })
+                }}
                 className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight transition-colors active:bg-blue-50 ${
                   useWideTabLayout ? 'flex-1' : 'w-20'
                 } ${activeClass}`}
               >
-                <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
+                <span
+                  key={iconPop?.href === item.href ? String(iconPop.token) : 'idle'}
+                  className={`inline-flex h-6 w-6 shrink-0 items-center justify-center origin-center will-change-transform ${
+                    iconPop?.href === item.href ? 'animate-bottom-nav-icon-pop' : ''
+                  }`}
+                  onAnimationEnd={(e) => {
+                    if (!e.animationName.includes('bottom-nav-icon-pop')) return
+                    setIconPop((p) => (p?.href === item.href ? null : p))
+                  }}
+                >
+                  <Icon className="h-6 w-6" strokeWidth={item.active ? 2.1 : 1.75} aria-hidden />
+                </span>
                 <span>{item.label}</span>
               </Link>
             )

@@ -67,10 +67,18 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        /** Subtle OTA-style tap feedback on mobile bottom nav icons */
+        "bottom-nav-icon-pop": {
+          "0%": { transform: "scale(1)" },
+          "40%": { transform: "scale(1.07)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "bottom-nav-icon-pop":
+          "bottom-nav-icon-pop 0.26s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },
