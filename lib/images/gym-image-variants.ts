@@ -159,3 +159,17 @@ export function gymImageSrcSet(image: Pick<GymImage, 'url' | 'variants'> | null 
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(', ') : undefined
 }
+
+/** Map a stored image URL to gallery metadata (variants) when it matches a gym_images row. */
+export function resolveUrlToGymImage(
+  gym: { images?: GymImage[] | null },
+  url: string | null | undefined
+): Pick<GymImage, 'url' | 'variants'> | null {
+  if (!url) return null
+  for (const img of gym.images ?? []) {
+    if (img.url === url) return img
+    const v = img.variants
+    if (v?.w400 === url || v?.w800 === url || v?.w1200 === url) return img
+  }
+  return { url, variants: null }
+}

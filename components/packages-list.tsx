@@ -36,7 +36,7 @@ import {
   CircleDot,
 } from 'lucide-react'
 import { GYM_AMENITY_ORDER, labelGymAmenity } from '@/lib/constants/gym-amenities'
-import Image from 'next/image'
+import { gymImageSrc, gymImageSrcSet, resolveUrlToGymImage } from '@/lib/images/gym-image-variants'
 
 export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym & { images?: GymImage[] } }) {
   const router = useRouter()
@@ -45,6 +45,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   const { convertPrice, formatPrice } = useCurrency()
   const [variantsModalOpen, setVariantsModalOpen] = useState(false)
   const [activePackage, setActivePackage] = useState<Package | null>(null)
+
+  const activePackageHeroImage = activePackage?.image
+    ? resolveUrlToGymImage(gym, activePackage.image)
+    : null
   const [activeImageIndex, setActiveImageIndex] = useState<Record<string, number>>({})
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({})
 
@@ -298,8 +302,11 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
             const isSelected = selectedPackage?.id === pkg.id && !selectedPackage.name.includes(' - ') // Simple check if base package selected
 
-            // Get package image - use package image if available, otherwise fallback to gym's first image
-            const packageImage = pkg.image || (gym.images && gym.images.length > 0 ? gym.images[0].url : null)
+            // Package hero: package image URL or first gym gallery image (with WebP variants when available)
+            const packageHero =
+              pkg.image != null && pkg.image !== ''
+                ? resolveUrlToGymImage(gym, pkg.image)
+                : gym.images?.[0] ?? null
 
             // Get facility icons for mobile display
             const getFacilityIcon = (key: string) => {
@@ -372,12 +379,14 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       
                       {/* Right: Small Image */}
                       <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
-                        {packageImage ? (
-                          <Image
-                            src={packageImage}
+                        {packageHero ? (
+                          <img
+                            src={gymImageSrc(packageHero)}
+                            srcSet={gymImageSrcSet(packageHero)}
+                            sizes="80px"
                             alt={pkg.name}
-                            width={80}
-                            height={80}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -467,10 +476,14 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   <div className="hidden md:flex flex-col lg:flex-row">
                     {/* Image Section - Left Side */}
                     <div className="w-full lg:w-64 h-48 lg:h-48 flex-shrink-0 bg-gray-100 relative overflow-hidden">
-                      {packageImage ? (
-                        <img 
-                          src={packageImage} 
+                      {packageHero ? (
+                        <img
+                          src={gymImageSrc(packageHero)}
+                          srcSet={gymImageSrcSet(packageHero)}
+                          sizes="(min-width: 1024px) 256px, 100vw"
                           alt={pkg.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -688,10 +701,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   onTouchMove={handleSheetTouchMove}
                   onTouchEnd={handleSheetTouchEnd}
                 >
-                  {activePackage.image ? (
+                  {activePackageHeroImage ? (
                     /* Image edge-to-edge, drag handle + close overlaid */
                     <div className="relative w-full h-48 rounded-t-2xl overflow-hidden">
-                      <img src={activePackage.image} alt={activePackage.name} className="w-full h-full object-cover" />
+                      <img
+                        src={gymImageSrc(activePackageHeroImage)}
+                        srcSet={gymImageSrcSet(activePackageHeroImage)}
+                        sizes="100vw"
+                        alt={activePackage.name}
+                        className="w-full h-full object-cover"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                       {/* Drag handle on top of image */}
                       <div className="absolute top-3 inset-x-0 flex justify-center">
@@ -892,6 +911,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
                     const images = variant.images || []
                     const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
+                    const resolvedVariantSlide = images[currentImageIndex]
+                      ? resolveUrlToGymImage(gym, images[currentImageIndex])
+                      : null
 
                     const mobileAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 4)
                     const amenityIcons: Record<string, JSX.Element> = {
@@ -914,7 +936,13 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       >
                         {images.length > 0 ? (
                           <div className="relative h-44 bg-gray-100">
-                            <img src={images[currentImageIndex]} alt={variant.name} className="w-full h-full object-cover" />
+                            <img
+                              src={gymImageSrc(resolvedVariantSlide)}
+                              srcSet={gymImageSrcSet(resolvedVariantSlide)}
+                              sizes="100vw"
+                              alt={variant.name}
+                              className="w-full h-full object-cover"
+                            />
                             {images.length > 1 && (
                               <>
                                 <button onClick={(e) => prevImage(variant.id, images.length, e)} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md">
@@ -1008,9 +1036,15 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
           <div className="relative z-50 w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col bg-white rounded-2xl shadow-2xl mx-4">
 
             {/* Hero image or amber gradient header */}
-            {activePackage.image ? (
+            {activePackageHeroImage ? (
               <div className="relative w-full h-52 flex-shrink-0 overflow-hidden rounded-t-2xl">
-                <img src={activePackage.image} alt={activePackage.name} className="w-full h-full object-cover" />
+                <img
+                  src={gymImageSrc(activePackageHeroImage)}
+                  srcSet={gymImageSrcSet(activePackageHeroImage)}
+                  sizes="(min-width: 768px) 48rem, 100vw"
+                  alt={activePackage.name}
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                 {/* Close button over image */}
                 <button
@@ -1234,6 +1268,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
                 const images = variant.images || []
                 const currentImageIndex = (activeImageIndex && activeImageIndex[variant.id]) || 0
+                const resolvedDesktopVariantSlide = images[currentImageIndex]
+                  ? resolveUrlToGymImage(gym, images[currentImageIndex])
+                  : null
 
                 const getAmenityIcon = (key: string) => {
                   const iconMap: Record<string, JSX.Element> = {
@@ -1263,7 +1300,13 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       <div className="w-full lg:w-80 h-64 lg:h-auto flex-shrink-0 bg-gray-100 relative group">
                         {images.length > 0 ? (
                           <>
-                            <img src={images[currentImageIndex]} alt={variant.name} className="w-full h-full object-cover" />
+                            <img
+                              src={gymImageSrc(resolvedDesktopVariantSlide)}
+                              srcSet={gymImageSrcSet(resolvedDesktopVariantSlide)}
+                              sizes="(min-width: 1024px) 320px, 100vw"
+                              alt={variant.name}
+                              className="w-full h-full object-cover"
+                            />
                             {images.length > 1 && (
                               <>
                                 <button onClick={(e) => prevImage(variant.id, images.length, e)} className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full shadow-md">
