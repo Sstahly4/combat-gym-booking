@@ -17,6 +17,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
+import {
+  restoreAdminGymsListScrollIfStashed,
+  stashAdminGymsListScrollForReturn,
+} from '@/lib/admin/admin-gyms-scroll-restore'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -68,6 +72,11 @@ export default function AdminGymsPage() {
   }, [])
 
   useEffect(() => { fetchGyms() }, [fetchGyms])
+
+  useEffect(() => {
+    if (loading) return
+    restoreAdminGymsListScrollIfStashed()
+  }, [loading])
 
   const adminOwnedGyms = useMemo(
     () => gyms.filter((g) => adminOwnerIds.has(g.owner_id)),
@@ -236,7 +245,11 @@ export default function AdminGymsPage() {
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2 border-t border-stone-100 bg-stone-50/50 pt-4">
                   <div className="flex w-full gap-2">
-                    <Link href={manageGymEditHref(gym.id, { returnTo: '/admin/gyms' })} className="flex-1">
+                    <Link
+                      href={manageGymEditHref(gym.id, { returnTo: '/admin/gyms' })}
+                      className="flex-1"
+                      onClick={() => stashAdminGymsListScrollForReturn()}
+                    >
                       <Button variant="outline" className="w-full rounded-full">
                         Edit
                       </Button>

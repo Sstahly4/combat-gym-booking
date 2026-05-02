@@ -19,6 +19,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
+import {
+  shouldStashAdminGymsScrollForPath,
+  stashAdminGymsListScrollForReturn,
+} from '@/lib/admin/admin-gyms-scroll-restore'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 
 interface Hit {
@@ -131,7 +135,11 @@ export function AdminHeaderSearch() {
     if (!hit) return
     setOpen(false)
     setQuery('')
-    router.push(resolveHref(hit.href))
+    const href = resolveHref(hit.href)
+    if (shouldStashAdminGymsScrollForPath(pathname) && href.includes('/manage/gym/edit')) {
+      stashAdminGymsListScrollForReturn()
+    }
+    router.push(href)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -207,7 +215,14 @@ export function AdminHeaderSearch() {
                         active ? 'bg-[#003580]/8' : 'hover:bg-gray-50',
                       )}
                       onMouseEnter={() => setHighlight(idx)}
-                      onClick={() => { setOpen(false); setQuery('') }}
+                      onClick={() => {
+                        setOpen(false)
+                        setQuery('')
+                        const h = resolveHref(hit.href)
+                        if (shouldStashAdminGymsScrollForPath(pathname) && h.includes('/manage/gym/edit')) {
+                          stashAdminGymsListScrollForReturn()
+                        }
+                      }}
                     >
                       <p className="text-[13px] font-medium leading-snug text-gray-900">{hit.title}</p>
                       <p className="mt-0.5 text-[11px] font-normal leading-snug text-gray-500">{hit.subtitle}</p>

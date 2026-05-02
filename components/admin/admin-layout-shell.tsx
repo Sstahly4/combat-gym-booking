@@ -132,7 +132,10 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">
       <AdminSidebar counts={counts} />
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden md:ml-56 md:h-[calc(100svh-5rem)] md:max-h-[calc(100svh-5rem)] md:overflow-y-auto">
+      <div
+        data-admin-hub-main-scroll
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden md:ml-56 md:h-[calc(100svh-5rem)] md:max-h-[calc(100svh-5rem)] md:overflow-y-auto"
+      >
         {children}
       </div>
     </div>
