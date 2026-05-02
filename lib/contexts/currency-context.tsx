@@ -57,6 +57,113 @@ const CURRENCIES = [
   { code: 'VND', name: 'Vietnamese Dong' },
 ]
 
+const SUPPORTED_CURRENCY_CODES = new Set(CURRENCIES.map((currency) => currency.code))
+
+const REGION_CURRENCY_MAP: Record<string, string> = {
+  AU: 'AUD',
+  CA: 'CAD',
+  CN: 'CNY',
+  GB: 'GBP',
+  HK: 'HKD',
+  ID: 'IDR',
+  IN: 'INR',
+  JP: 'JPY',
+  KR: 'KRW',
+  MY: 'MYR',
+  NZ: 'NZD',
+  PH: 'PHP',
+  SG: 'SGD',
+  TH: 'THB',
+  US: 'USD',
+  VN: 'VND',
+}
+
+const EURO_REGIONS = new Set([
+  'AT',
+  'BE',
+  'CY',
+  'DE',
+  'EE',
+  'ES',
+  'FI',
+  'FR',
+  'GR',
+  'HR',
+  'IE',
+  'IT',
+  'LT',
+  'LU',
+  'LV',
+  'MT',
+  'NL',
+  'PT',
+  'SI',
+  'SK',
+])
+
+const TIMEZONE_CURRENCY_HINTS: Array<{ pattern: RegExp; currency: string }> = [
+  { pattern: /^Asia\/Bangkok$/, currency: 'THB' },
+  { pattern: /^Asia\/(Jakarta|Makassar|Jayapura|Pontianak)$/, currency: 'IDR' },
+  { pattern: /^Asia\/Singapore$/, currency: 'SGD' },
+  { pattern: /^Asia\/Kuala_Lumpur$/, currency: 'MYR' },
+  { pattern: /^Asia\/Manila$/, currency: 'PHP' },
+  { pattern: /^Asia\/Ho_Chi_Minh$/, currency: 'VND' },
+  { pattern: /^Asia\/(Tokyo|Osaka)$/, currency: 'JPY' },
+  { pattern: /^Asia\/Seoul$/, currency: 'KRW' },
+  { pattern: /^Asia\/(Shanghai|Chongqing|Harbin|Urumqi)$/, currency: 'CNY' },
+  { pattern: /^Asia\/Hong_Kong$/, currency: 'HKD' },
+  { pattern: /^Asia\/(Kolkata|Calcutta)$/, currency: 'INR' },
+  { pattern: /^Australia\//, currency: 'AUD' },
+  { pattern: /^Pacific\/Auckland$/, currency: 'NZD' },
+  { pattern: /^Europe\/(London|Jersey|Guernsey|Isle_of_Man)$/, currency: 'GBP' },
+  { pattern: /^Europe\//, currency: 'EUR' },
+  { pattern: /^America\/(Toronto|Vancouver|Montreal|Winnipeg|Edmonton|Halifax|St_Johns)$/, currency: 'CAD' },
+  { pattern: /^America\//, currency: 'USD' },
+]
+
+function supportedCurrency(code: string | null | undefined): string | null {
+  if (!code) return null
+  const upper = code.toUpperCase()
+  return SUPPORTED_CURRENCY_CODES.has(upper) ? upper : null
+}
+
+function currencyFromLocale(locale: string | null | undefined): string | null {
+  if (!locale) return null
+  let region: string | undefined
+  try {
+    region = new Intl.Locale(locale).region
+  } catch {
+    const match = locale.match(/[-_]([A-Za-z]{2})\b/)
+    region = match?.[1]
+  }
+  if (!region) return null
+  const upper = region.toUpperCase()
+  if (EURO_REGIONS.has(upper)) return 'EUR'
+  return supportedCurrency(REGION_CURRENCY_MAP[upper])
+}
+
+function currencyFromTimezone(timeZone: string | null | undefined): string | null {
+  if (!timeZone) return null
+  const hint = TIMEZONE_CURRENCY_HINTS.find((entry) => entry.pattern.test(timeZone))
+  return supportedCurrency(hint?.currency)
+}
+
+function detectRegionalCurrency(): string | null {
+  if (typeof window === 'undefined') return null
+  const localeCurrency =
+    currencyFromLocale(navigator.language) ||
+    (Array.isArray(navigator.languages)
+      ? navigator.languages.map(currencyFromLocale).find(Boolean) ?? null
+      : null)
+  if (localeCurrency) return localeCurrency
+
+  try {
+    return currencyFromTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  } catch {
+    return null
+  }
+}
+
 const LANGUAGES = [
   // English
   { code: 'en-AU', name: 'English', region: 'Australia' },
@@ -178,10 +285,17 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Load from localStorage
+    // Load from localStorage first; only auto-detect on the visitor's first session.
     const saved = localStorage.getItem('selectedCurrency')?.toUpperCase()
-    if (saved && (exchangeRates[saved] || FALLBACK_RATES[saved])) {
+    if (saved && supportedCurrency(saved) && (exchangeRates[saved] || FALLBACK_RATES[saved])) {
       setSelectedCurrencyState(saved)
+    } else {
+      const regionalCurrency = detectRegionalCurrency()
+      if (regionalCurrency && (exchangeRates[regionalCurrency] || FALLBACK_RATES[regionalCurrency])) {
+        setSelectedCurrencyState(regionalCurrency)
+        localStorage.setItem('selectedCurrency', regionalCurrency)
+        localStorage.setItem('selectedCurrencySource', 'regional')
+      }
     }
     const savedLanguage = localStorage.getItem('selectedLanguage')
     if (savedLanguage && LANGUAGES.some(language => language.code === savedLanguage)) {
@@ -193,6 +307,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     const code = currency.toUpperCase()
     setSelectedCurrencyState(code)
     localStorage.setItem('selectedCurrency', code)
+    localStorage.setItem('selectedCurrencySource', 'manual')
   }
 
   const setSelectedLanguage = (language: string) => {
