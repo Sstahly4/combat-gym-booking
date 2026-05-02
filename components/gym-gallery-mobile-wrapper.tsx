@@ -3,9 +3,9 @@
 import { useState, useCallback } from 'react'
 import { GymGalleryMobile } from './gym-gallery-mobile'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { GymImage } from '@/lib/types/database'
+import { gymImageSrc, gymImageSrcSet } from '@/lib/images/gym-image-variants'
 
 interface GymGalleryMobileWrapperProps {
   images: GymImage[]
@@ -86,14 +86,15 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
             )}
             
             {/* Current image */}
-            <Image
-              src={images[currentIndex].url}
+            <img
+              src={gymImageSrc(images[currentIndex])}
+              srcSet={gymImageSrcSet(images[currentIndex])}
               alt={`${gymName} ${currentIndex + 1}`}
-              width={1920}
-              height={1080}
               className="max-h-full max-w-full object-contain"
               sizes="95vw"
-              priority
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
 
             {/* Counter */}
@@ -110,15 +111,15 @@ export function GymGalleryMobileWrapper({ images, gymName }: GymGalleryMobileWra
               const wrappedDistance = Math.min(distance, images.length - distance)
               if (wrappedDistance === 0 || wrappedDistance > LIGHTBOX_PRELOAD) return null
               return (
-                <Image
+                <img
                   key={img.url}
-                  src={img.url}
+                  src={gymImageSrc(img)}
+                  srcSet={gymImageSrcSet(img)}
                   alt=""
-                  width={1920}
-                  height={1080}
                   className="sr-only absolute"
                   sizes="95vw"
-                  priority
+                  loading="eager"
+                  decoding="async"
                   aria-hidden
                 />
               )

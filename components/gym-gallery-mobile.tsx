@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { GymImage } from '@/lib/types/database'
+import { gymImageSrc, gymImageSrcSet } from '@/lib/images/gym-image-variants'
 
 interface GymGalleryMobileProps {
   images: GymImage[]
@@ -93,16 +93,17 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
               key={image.url}
               className="relative flex-shrink-0 cursor-pointer"
               style={{ width: `${100 / images.length}%` }}
-      >
-        <Image
-                src={image.url}
+            >
+              <img
+                src={gymImageSrc(image)}
+                srcSet={gymImageSrcSet(image)}
                 alt={`${gymName} ${idx + 1}`}
-          fill
-          className="object-cover"
-          sizes="100vw"
-                priority={shouldPrioritize}
                 loading={shouldPrioritize ? 'eager' : 'lazy'}
-        />
+                decoding="async"
+                fetchPriority={shouldPrioritize ? 'high' : 'auto'}
+                sizes="100vw"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
             </div>
           )
         })}
