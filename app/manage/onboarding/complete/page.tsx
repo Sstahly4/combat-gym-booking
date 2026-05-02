@@ -66,14 +66,14 @@ export default function OnboardingCompletePage() {
     }
   }, [readiness])
 
-  /** All required readiness checks passed (same bar as publish / “can go live”). */
-  const isLiveReady = Boolean(readiness?.canGoLive)
+  /** All required readiness checks passed — you may publish, but listing is not live until review + Go live. */
+  const readyToPublish = Boolean(readiness?.canGoLive)
 
   const heroTitle = useMemo(() => {
     if (!gymId || error) return "You're almost live on CombatStay"
     if (loading || !readiness) return "You're almost live on CombatStay"
-    return isLiveReady ? "You're live on CombatStay" : "You're almost live on CombatStay"
-  }, [gymId, error, loading, readiness, isLiveReady])
+    return readyToPublish ? "You're ready to publish" : "You're almost live on CombatStay"
+  }, [gymId, error, loading, readiness, readyToPublish])
 
   const heroSubtitle = useMemo(() => {
     if (error && gymId) {
@@ -85,11 +85,11 @@ export default function OnboardingCompletePage() {
     if (loading || !readiness) {
       return 'Checking your listing readiness…'
     }
-    if (isLiveReady) {
-      return "You're live on CombatStay."
+    if (readyToPublish) {
+      return 'All required checks passed. Open review to confirm and publish — your listing goes live only after you tap Go live there.'
     }
     return "You're almost live — travellers can almost see your gym. Complete the checklist below, then open review when you're ready to publish and take bookings."
-  }, [gymId, error, loading, readiness, isLiveReady])
+  }, [gymId, error, loading, readiness, readyToPublish])
 
   const btnOutline =
     'min-h-9 gap-2 border-gray-200 bg-white px-4 text-sm text-gray-900 shadow-sm hover:bg-gray-50 hover:text-gray-900 sm:min-h-10 sm:px-5'

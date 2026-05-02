@@ -101,6 +101,8 @@ function getNavGroups(
             href: payoutsHref,
             label: 'Payouts',
             isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
+            /** Claim-link dashboard tour highlights Stripe Connect entry point. */
+            tourAnchor: 'tour-payouts',
           },
         ],
       },

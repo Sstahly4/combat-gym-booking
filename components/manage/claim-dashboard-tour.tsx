@@ -45,51 +45,51 @@ const STEPS: TourStep[] = [
     anchor: null,
     title: 'Welcome to your partner dashboard',
     paragraphs: [
-      'We pre-listed your gym so you weren’t starting from a blank page. Here you control what guests see, bookings, and payouts when you are ready.',
-      'You skipped the long onboarding wizard, so this short tour covers the essentials. Exit anytime; your listing stays in draft until you go live.',
+      'Your gym was pre-listed so you are not starting from zero. From here you manage your listing, bookings, and payouts when you are ready.',
+      'This short tour points to the essentials. Skip anytime — your listing stays in draft until you complete the setup guide and go live.',
     ],
   },
   {
     id: 'pricing',
     anchor: null,
-    title: 'Confirm your rates and packages',
+    title: 'Rates and packages',
     paragraphs: [
-      'We added starter rates from your public listing where we could. Guests expect CombatStay to match what you actually offer.',
-      'Review every package and price before you take bookings. Small mismatches cause disputes and bad reviews, so a careful pass now saves pain later.',
+      'Guests expect what they see on CombatStay to match what you offer. Review packages and pricing before you take bookings.',
+      'The setup guide links into the right wizard steps so you can confirm everything in one pass.',
     ],
   },
   {
     id: 'edit-gym',
     anchor: 'tour-edit-gym',
-    title: 'Your listing lives under Edit gym',
+    title: 'Edit gym',
     paragraphs: [
-      'Photos, description, schedule, policies, and bookable packages all live here. Most people fix packages first, then photos and policies.',
+      'Listing details, photos, schedule, and policies are edited here (or via the guided steps in your setup checklist).',
     ],
   },
   {
     id: 'payouts',
-    anchor: 'tour-balances',
-    title: 'Balances and payouts',
+    anchor: 'tour-payouts',
+    title: 'Connect payouts',
     paragraphs: [
-      'When you are ready to get paid for stays, complete Stripe Connect under Balances → Payouts (same idea as other major booking sites).',
-      'Polish your listing first if you like; connect payouts before you accept paid bookings.',
+      'Open Balances, then Payouts, and complete Stripe Connect before you accept paid stays — same pattern as other booking platforms.',
+      'You can polish your listing first; connect payouts before switching the gym live if you plan to charge guests.',
     ],
   },
   {
     id: 'setup-guide',
     anchor: 'tour-setup-guide',
-    title: 'Your setup guide',
+    title: 'Setup guide',
     paragraphs: [
-      'Because you came in via a claim link, use this checklist to go live: security, listing basics, packages, photos, and payouts. Tap any row to jump there.',
-      'When every required item is green, open Review from the bottom of this panel to publish when you are ready.',
+      'The floating checklist tracks required items: listing and account, packages and pricing, photos, and Stripe. Tap a row to jump straight there.',
+      'When every required row is complete, use Open review at the bottom to run the final check and publish.',
     ],
   },
   {
     id: 'wrap-up',
     anchor: 'tour-view-listing',
-    title: 'See what guests see',
+    title: 'Preview as a guest',
     paragraphs: [
-      'Use View listing to preview the guest-facing page. Verification builds trust. Help center is in the sidebar if you get stuck.',
+      'Use View listing to see the public page. Verification builds trust. Help center is in the sidebar if you need it.',
     ],
   },
 ]
@@ -119,6 +119,7 @@ export function ClaimDashboardTour() {
   const [stepIndex, setStepIndex] = useState(0)
   const [cardBox, setCardBox] = useState<{ top: number; left: number; maxWidth: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [dismissError, setDismissError] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const step = STEPS[stepIndex]
   const lastStep = stepIndex === STEPS.length - 1
@@ -180,6 +181,7 @@ export function ClaimDashboardTour() {
       if (dismissingRef.current) return
       dismissingRef.current = true
       setSubmitting(true)
+      setDismissError(null)
       try {
         const res = await fetch('/api/manage/account/claim-dashboard-tour', {
           method: 'POST',
@@ -187,7 +189,17 @@ export function ClaimDashboardTour() {
           body: JSON.stringify({ outcome: outcome === 'skipped' ? 'skipped' : 'finished' }),
         })
         if (!res.ok) {
-          console.warn('[claim-dashboard-tour]', await res.text())
+          let msg = 'Could not save tour progress. Try again in a moment.'
+          try {
+            const raw = await res.text()
+            const parsed = JSON.parse(raw) as { error?: string }
+            if (typeof parsed?.error === 'string' && parsed.error.trim()) msg = parsed.error.trim()
+          } catch {
+            /* use default */
+          }
+          console.warn('[claim-dashboard-tour] dismiss failed', res.status)
+          setDismissError(msg)
+          return
         }
         try {
           if (typeof window !== 'undefined') {
@@ -222,6 +234,10 @@ export function ClaimDashboardTour() {
       anchorEl?.classList.remove(...CLAIM_TOUR_HIGHLIGHT)
     }
   }, [enterAllowed, tourPending, step.anchor, stepIndex])
+
+  useEffect(() => {
+    setDismissError(null)
+  }, [stepIndex])
 
   useEffect(() => {
     if (!enterAllowed || !tourPending) return
@@ -263,7 +279,7 @@ export function ClaimDashboardTour() {
     enterAllowed &&
     !fullScreenManageRoute
 
-  /** Setup guide step: expand the panel and, if needed, land on home so the anchor exists. */
+  /** Setup guide: checklist only on dashboard home — navigate there, expand panel, reposition after layout. */
   useEffect(() => {
     if (!showTour || step.id !== 'setup-guide') return
     const home = pathname === '/manage' || pathname === '/manage/'
@@ -272,7 +288,15 @@ export function ClaimDashboardTour() {
       return
     }
     window.dispatchEvent(new CustomEvent(SETUP_GUIDE_EXPAND_EVENT))
-  }, [showTour, step.id, pathname, router])
+    const id1 = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => recomputeCardPosition())
+    })
+    const timer = window.setTimeout(() => recomputeCardPosition(), 160)
+    return () => {
+      window.cancelAnimationFrame(id1)
+      window.clearTimeout(timer)
+    }
+  }, [showTour, step.id, pathname, router, recomputeCardPosition])
 
   useBodyScrollLock(showTour)
 
@@ -360,6 +384,12 @@ export function ClaimDashboardTour() {
             )}
           </div>
         </div>
+
+        {dismissError ? (
+          <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            {dismissError}
+          </p>
+        ) : null}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button

@@ -113,8 +113,9 @@ export default function OwnerWizardReviewPage() {
             Review &amp; go live
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-gray-600">
-            Final checkpoint for your listing. Finish any required items, then publish when the profile, checkout, and
-            owner account are ready.
+            Go live is controlled by the <span className="font-medium text-gray-800">required readiness</span> list
+            below — it matches what the server checks when you publish. The wizard step bar is a separate progress
+            tracker for navigating the setup screens.
           </p>
 
           <div className="mt-7 flex items-center gap-4">
@@ -124,7 +125,7 @@ export default function OwnerWizardReviewPage() {
               aria-valuenow={progressPct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label="Onboarding progress"
+              aria-label="Wizard steps completed"
             >
               <div
                 className="h-full rounded-full bg-[#003580] transition-[width] duration-500 ease-out"
@@ -132,7 +133,7 @@ export default function OwnerWizardReviewPage() {
               />
             </div>
             <p className="shrink-0 text-[12.5px] font-medium tabular-nums text-gray-600">
-              {completeCount} of {OWNER_WIZARD_STEPS.length} steps · {progressPct}%
+              Wizard: {completeCount}/{OWNER_WIZARD_STEPS.length} · {progressPct}%
             </p>
           </div>
         </header>
@@ -214,6 +215,14 @@ export default function OwnerWizardReviewPage() {
               </p>
             )}
 
+            {readiness?.canGoLive && completeCount < OWNER_WIZARD_STEPS.length ? (
+              <p className="rounded-lg border border-[#003580]/20 bg-[#003580]/[0.04] px-4 py-3 text-xs leading-relaxed text-gray-700">
+                <span className="font-medium text-gray-900">Note:</span> the wizard may still show steps as incomplete
+                even when your listing satisfies every required check. You can publish as soon as the checklist above is
+                green.
+              </p>
+            ) : null}
+
             <div className="flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
               <Link href={buildOnboardingWizardUrl('step-7', gymId)}>
                 <Button variant="outline" className="h-10 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
@@ -223,7 +232,7 @@ export default function OwnerWizardReviewPage() {
               <Button
                 size="lg"
                 className="h-11 rounded-full bg-[#003580] px-7 text-white hover:bg-[#002a66]"
-                disabled={completeCount < OWNER_WIZARD_STEPS.length || !readiness?.canGoLive || goLiveLoading || !gymId}
+                disabled={!readiness?.canGoLive || goLiveLoading || !gymId}
                 onClick={() => void handleGoLive()}
               >
                 {goLiveLoading ? 'Going live...' : 'Go live'}
@@ -265,7 +274,7 @@ export default function OwnerWizardReviewPage() {
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-gray-600">
                   {readiness.canGoLive
-                    ? 'Everything required is ready. You can publish now.'
+                    ? 'Required checks are satisfied. Use Go live to publish your listing.'
                     : 'Fix the required checks on the left before publishing.'}
                 </p>
               </div>

@@ -8,10 +8,10 @@
  * placeholder state". The moment they pick a password we flip
  * claim_password_set = true and the modal goes away.
  *
- * Optionally accepts a real email; if provided, we update the auth email via
- * service role (skipping the verification round-trip — they're already
- * authenticated through the signed claim link), and clear placeholder_account
- * + placeholder_email so soft prompts disappear too.
+ * Requires a real email; we update the auth email via service role (skipping
+ * the verification round-trip — they're already authenticated through the
+ * signed claim link), and clear placeholder_account + placeholder_email so
+ * soft prompts disappear too.
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,9 +21,14 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
+import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 
 function isValidEmail(value: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)
+}
+
+function isPlaceholderEmail(value: string | null | undefined): boolean {
+  return !!value?.toLowerCase().endsWith(`@${PLACEHOLDER_EMAIL_DOMAIN}`)
 }
 
 export async function POST(request: NextRequest) {
@@ -80,6 +85,12 @@ export async function POST(request: NextRequest) {
     if (!isValidEmail(newEmailRaw)) {
       return NextResponse.json({ error: 'Email looks invalid' }, { status: 400 })
     }
+    if (isPlaceholderEmail(newEmailRaw)) {
+      return NextResponse.json(
+        { error: 'Enter your real owner email, not the temporary claim email.' },
+        { status: 400 },
+      )
+    }
     if (!fullName || fullName.length < 2) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
@@ -89,27 +100,11 @@ export async function POST(request: NextRequest) {
     const wantsEmailChange = !!newEmailRaw && newEmailRaw !== user.email?.toLowerCase()
 
     /**
-     * We split password and email updates so a bad email (disposable domain,
-     * already in use, validation reject) does not silently block the password
-     * being saved. Password is the harder gate — set it first, then attempt
-     * the email change if requested.
+     * The claim modal asks for a real email as part of setup, so do not let a
+     * partial password-only save close it. Move the auth account off the
+     * temporary address before saving the new password/profile gate.
      */
-    const { error: pwErr } = await admin.auth.admin.updateUserById(user.id, {
-      password: newPassword,
-    })
-    if (pwErr) {
-      console.warn('[complete-claim] password update failed', {
-        user_id: user.id,
-        message: pwErr.message,
-      })
-      return NextResponse.json(
-        { error: pwErr.message || 'Could not save your new password' },
-        { status: 400 },
-      )
-    }
-
     let emailChanged = false
-    let emailWarning: string | null = null
     if (wantsEmailChange) {
       // Pre-check: does this email already belong to another auth user? Supabase
       // surfaces this as a generic "Error updating user" without a useful code,
@@ -129,12 +124,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (preExistingUserId) {
-        emailWarning =
-          'That email is already linked to another CombatStay account. Sign out and sign in with that account, or use a different inbox here.'
         console.warn('[complete-claim] email already in use', {
           user_id: user.id,
           existing_user_id: preExistingUserId,
         })
+        return NextResponse.json(
+          {
+            error:
+              'That email is already linked to another CombatStay account. Sign out and sign in with that account, or use a different inbox here.',
+          },
+          { status: 400 },
+        )
       } else {
         const { data: emailUpdData, error: emailErr } = await admin.auth.admin.updateUserById(
           user.id,
@@ -172,20 +172,40 @@ export async function POST(request: NextRequest) {
             code: errAny.code,
             name: errAny.name,
           })
-          emailWarning = friendly
+          return NextResponse.json({ error: friendly }, { status: 400 })
         } else if (emailUpdData?.user?.email?.toLowerCase() === newEmailRaw) {
           emailChanged = true
         } else {
-          // No error but Supabase did not actually swap the email (e.g. confirmation
-          // pending). Treat as warning so the soft email banner stays.
+          // No error but Supabase did not actually swap the email (e.g.
+          // confirmation pending). Keep the modal open so the owner does not
+          // land in the dashboard still tied to the temporary claim address.
           console.warn('[complete-claim] email update returned no error but email unchanged', {
             user_id: user.id,
             returned_email: emailUpdData?.user?.email ?? null,
           })
-          emailWarning =
-            'Your new email needs confirmation before it becomes your sign-in address. Check the inbox we sent the verification to.'
+          return NextResponse.json(
+            {
+              error:
+                'Your new email needs confirmation before it becomes your sign-in address. Check the inbox we sent the verification to.',
+            },
+            { status: 400 },
+          )
         }
       }
+    }
+
+    const { error: pwErr } = await admin.auth.admin.updateUserById(user.id, {
+      password: newPassword,
+    })
+    if (pwErr) {
+      console.warn('[complete-claim] password update failed', {
+        user_id: user.id,
+        message: pwErr.message,
+      })
+      return NextResponse.json(
+        { error: pwErr.message || 'Could not save your new password' },
+        { status: 400 },
+      )
     }
 
     const profilePatch: Record<string, unknown> = {
@@ -197,9 +217,7 @@ export async function POST(request: NextRequest) {
       claim_dashboard_tour_pending: true,
       updated_at: new Date().toISOString(),
     }
-    if (emailChanged) {
-      profilePatch.placeholder_email = null
-    }
+    if (emailChanged || !isPlaceholderEmail(user.email)) profilePatch.placeholder_email = null
     if (fullName) {
       profilePatch.full_name = fullName
     }
@@ -209,7 +227,15 @@ export async function POST(request: NextRequest) {
       .update(profilePatch)
       .eq('id', user.id)
     if (profUpdErr) {
-      console.warn('[complete-claim] profile update failed', profUpdErr)
+      console.error('[complete-claim] profile update failed', profUpdErr)
+      return NextResponse.json(
+        {
+          error:
+            'Your password and email may have saved, but we could not finish account setup. Refresh this page and try again, or contact support if it keeps happening.',
+          code: 'PROFILE_SYNC_FAILED',
+        },
+        { status: 500 },
+      )
     }
 
     await admin.from('security_events').insert({
@@ -234,8 +260,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       email: emailChanged ? newEmailRaw : user.email,
-      claim_complete: emailChanged,
-      email_warning: emailWarning,
+      claim_complete: true,
+      email_changed: emailChanged,
     })
   } catch (error: any) {
     return NextResponse.json(

@@ -42,10 +42,12 @@ export function AccountClaimPrompts() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justClaimed = searchParams?.get('claimed') === '1'
+  const [claimSetupComplete, setClaimSetupComplete] = useState(false)
 
   const claim = profile as unknown as ClaimProfile | null
-  const needsPassword = !!claim?.placeholder_account || claim?.claim_password_set === false
+  const needsPassword = !claimSetupComplete && (!!claim?.placeholder_account || claim?.claim_password_set === false)
   const needsEmail =
+    !claimSetupComplete &&
     !needsPassword &&
     (isPlaceholderEmail(user?.email) || !!claim?.placeholder_email)
 
@@ -71,6 +73,7 @@ export function AccountClaimPrompts() {
       await supabase.auth.refreshSession()
     }
     await refreshProfile()
+    setClaimSetupComplete(true)
     router.refresh()
   }
 
@@ -179,22 +182,30 @@ function HardClaimModal({
           data.error.includes('Claim already complete')
         ) {
           setError('Your account is already updated. Refresh the page to continue to the dashboard.')
+        } else if (res.status === 500 && typeof data?.code === 'string' && data.code === 'PROFILE_SYNC_FAILED') {
+          setError(
+            data?.error ||
+              'Account setup did not finish syncing. Refresh the page and try again.',
+          )
         } else {
           setError(data?.error || 'Could not save your password')
         }
         if (Array.isArray(data?.details)) setDetails(data.details)
         return
       }
-      const emailChangedServerSide = data?.claim_complete === true
-      const effectiveEmail = emailChangedServerSide ? trimmedEmail : currentEmail
-      // Password was saved. Email may have failed independently (e.g. disposable
-      // domain rejected) — surface that as a warning but still close the modal.
+      const signInEmail =
+        typeof data?.email === 'string' && data.email.trim()
+          ? data.email.trim()
+          : trimmedEmail
+      // Kept for backwards compatibility with any deployed API response shape;
+      // the current route returns non-OK for email failures so owners can retry
+      // without leaving the claim modal.
       if (typeof data?.email_warning === 'string' && data.email_warning) {
         setError(`Password saved. ${data.email_warning} You can update your email later from Settings.`)
-        await onDone({ signInEmail: effectiveEmail, password })
+        await onDone({ signInEmail, password })
         return
       }
-      await onDone({ signInEmail: effectiveEmail, password })
+      await onDone({ signInEmail, password })
     } catch (err: any) {
       setError(err?.message || 'Could not save your password')
     } finally {
@@ -317,15 +328,15 @@ function HardClaimModal({
 }
 
 function SoftEmailBanner({ currentEmail }: { currentEmail: string }) {
-  const [dismissed, setDismissed] = useState(true)
+  /** null = not hydrated yet — avoids flashing the banner before sessionStorage is read. */
+  const [dismissed, setDismissed] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const v = window.sessionStorage.getItem(SOFT_PROMPT_DISMISS_KEY)
-    setDismissed(v === '1')
+    setDismissed(window.sessionStorage.getItem(SOFT_PROMPT_DISMISS_KEY) === '1')
   }, [])
 
-  if (dismissed) return null
+  if (dismissed === null || dismissed) return null
 
   return (
     <div className="border-b border-[#003580]/15 bg-[#003580]/[0.06] px-4 py-2 text-sm text-[#0a2540]">

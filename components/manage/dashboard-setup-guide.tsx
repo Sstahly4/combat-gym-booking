@@ -312,12 +312,15 @@ export function DashboardSetupGuide({
                 <div className="flex items-start gap-2">
                   <Target className="mt-0.5 h-4 w-4 shrink-0 text-[#003580]" aria-hidden />
                   <div className="min-w-0 leading-snug">
-                    <p className="text-[13px] font-semibold text-[#003580]">You&apos;re ready to go!</p>
+                    <p className="text-[13px] font-semibold text-[#003580]">Ready to publish</p>
+                    <p className="mt-0.5 text-[12px] text-gray-600">
+                      Final step: confirm on the review page and tap Go live.
+                    </p>
                     <Link
                       href={`/manage/onboarding/review?gym_id=${encodeURIComponent(readinessGymId)}`}
-                      className="mt-1 inline-block text-[13px] font-semibold text-[#003580] underline-offset-2 hover:underline"
+                      className="mt-1.5 inline-block text-[13px] font-semibold text-[#003580] underline-offset-2 hover:underline"
                     >
-                      Open review
+                      Review &amp; go live
                     </Link>
                   </div>
                 </div>
@@ -329,13 +332,14 @@ export function DashboardSetupGuide({
                       {passedCount}/{totalRequired} required complete
                     </p>
                     <p className="mt-1 text-[12px] text-gray-600">
+                      Finish the checklist above, then{' '}
                       <Link
                         href={`/manage/onboarding/review?gym_id=${encodeURIComponent(readinessGymId)}`}
                         className="font-semibold text-[#003580] underline-offset-2 hover:underline"
                       >
-                        Open review
-                      </Link>{' '}
-                      when ready.
+                        open review &amp; go live
+                      </Link>
+                      .
                     </p>
                   </div>
                 </div>
