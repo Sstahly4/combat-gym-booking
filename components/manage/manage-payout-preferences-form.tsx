@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Check, CreditCard, Loader2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,8 +10,6 @@ import { Select } from '@/components/ui/select'
 import { GYM_CURRENCY_OPTIONS, normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import type { Gym } from '@/lib/types/database'
-
-const BRAND = '#003580'
 
 const dashCard =
   'rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03]'
@@ -34,6 +32,7 @@ export function ManagePayoutPreferencesForm({
   defaultAccountHolderName,
   onGymRefresh,
 }: Props) {
+  const router = useRouter()
   const [payoutRail, setPayoutRail] = useState<'wise' | 'stripe_connect'>('wise')
   const [currency, setCurrency] = useState('THB')
   const [accountHolderName, setAccountHolderName] = useState('')
@@ -84,6 +83,31 @@ export function ManagePayoutPreferencesForm({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not save payout preferences')
       await onGymRefresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSavingRail(false)
+    }
+  }
+
+  /** Stripe Connect: persist `stripe_connect` then open hosted onboarding (standard one-step CTA). */
+  const openStripeConnectFlow = async () => {
+    if (payoutRail !== 'stripe_connect') return
+    setSavingRail(true)
+    setError(null)
+    try {
+      const serverRail = (gym.payout_rail as 'wise' | 'stripe_connect') || 'wise'
+      if (serverRail !== 'stripe_connect') {
+        const res = await fetch(`/api/gyms/${encodeURIComponent(gymId)}/payout-settings`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payout_rail: 'stripe_connect' }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Could not save payout preferences')
+        await onGymRefresh()
+      }
+      router.push(`/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
@@ -231,42 +255,53 @@ export function ManagePayoutPreferencesForm({
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-gray-500">
-              {payoutRail === 'stripe_connect'
-                ? 'After saving, complete Stripe onboarding to activate payouts and balances.'
-                : 'Save your method, then add recipient details below.'}
-            </p>
-            <Button
-              type="button"
-              onClick={() => void saveRail()}
-              disabled={savingRail}
-              className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
-            >
-              {savingRail ? (
-                <>
-                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                'Save method'
-              )}
-            </Button>
-          </div>
-
-          {payoutRail === 'stripe_connect' ? (
-            <p className="text-sm text-gray-600">
-              Next:{' '}
-              <Link
-                href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`}
-                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
-                style={{ color: BRAND }}
+          {payoutRail === 'wise' ? (
+            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-gray-500">
+                Save your payout method, then add recipient details below.
+              </p>
+              <Button
+                type="button"
+                onClick={() => void saveRail()}
+                disabled={savingRail}
+                className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
               >
-                Open Stripe setup
-              </Link>{' '}
-              to verify identity and bank details.
-            </p>
-          ) : null}
+                {savingRail ? (
+                  <>
+                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                    Saving…
+                  </>
+                ) : (
+                  'Save method'
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-start sm:justify-between">
+              <p className="max-w-xl text-xs leading-relaxed text-gray-500">
+                Identity and bank verification are completed in Stripe&apos;s secure flow. Continuing saves the
+                connected-account payout route for this listing and opens onboarding; balances update when Stripe
+                enables your account.
+              </p>
+              <Button
+                type="button"
+                onClick={() => void openStripeConnectFlow()}
+                disabled={savingRail}
+                className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
+              >
+                {savingRail ? (
+                  <>
+                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                    Opening…
+                  </>
+                ) : gym.stripe_account_id && !gym.stripe_connect_verified ? (
+                  'Continue in Stripe'
+                ) : (
+                  'Open Stripe setup'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
