@@ -149,6 +149,18 @@ export default function PayoutsPage() {
     }
   }, [activeGymId, useConnectedAccount])
 
+  /** Deep link from Balances (statement descriptor banner): #account-management */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash.slice(1) !== 'account-management') return
+    const el = document.getElementById('account-management')
+    if (!el) return
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => window.clearTimeout(t)
+  }, [connectInstance, connectLoading, gymLoading, gym?.id])
+
   const headerCrumbs = useMemo(
     () => (
       <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -238,7 +250,7 @@ export default function PayoutsPage() {
                         </div>
                       </section>
 
-                      <section className={`${dashCard} overflow-hidden`}>
+                      <section id="account-management" className={`${dashCard} overflow-hidden`}>
                         <header className="border-b border-gray-100 px-5 py-4">
                           <h2 className="text-base font-semibold text-gray-900">Account &amp; bank details</h2>
                           <p className="mt-0.5 text-sm text-gray-500">

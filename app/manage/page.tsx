@@ -16,6 +16,8 @@ import {
 import { parseLocalDayKey, toLocalDayKey } from '@/components/manage/comparison-day-calendar-popover'
 import { formatDashboardMoney } from '@/lib/currency/format-dashboard-money'
 import { resolveOwnerCurrency } from '@/lib/currency/resolve-owner-currency'
+import { useCurrency } from '@/lib/contexts/currency-context'
+import type { OverviewCardModel } from '@/lib/manage/overview-period-metrics'
 import { buildOverviewCards } from '@/lib/manage/overview-period-metrics'
 import { DashboardOverviewMetricGrid } from '@/components/manage/dashboard-overview-metric-grid'
 import type { Gym, GymImage } from '@/lib/types/database'
@@ -180,6 +182,7 @@ function defaultComparisonDayKey(): string {
 export default function ManagePage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
+  const { selectedCurrency, convertPrice } = useCurrency()
   const { activeGymId } = useActiveGym()
   const [gyms, setGyms] = useState<GymWithImage[]>([])
 
@@ -459,7 +462,7 @@ export default function ManagePage() {
     return gyms.find((g) => g.id === activeGymId) ?? gyms[0]
   }, [gyms, activeGymId])
 
-  const ownerCurrency = resolveOwnerCurrency(currencyGym, profile)
+  const bookingCurrency = resolveOwnerCurrency(currencyGym, profile)
 
   /** Rebuild overview window labels when the local calendar day changes (not only on refetch). */
   const [overviewDateKey, setOverviewDateKey] = useState(() => toLocalDayKey(new Date()))
@@ -483,8 +486,22 @@ export default function ManagePage() {
     () => buildOverviewCards(dashboardBookings, new Date()),
     [dashboardBookings, overviewDateKey]
   )
+
+  const overviewCardsDisplay = useMemo((): OverviewCardModel[] => {
+    return overviewCards.map((card) => {
+      if (card.valueType !== 'money') return card
+      return {
+        ...card,
+        currentTotal: convertPrice(card.currentTotal, bookingCurrency),
+        previousTotal: convertPrice(card.previousTotal, bookingCurrency),
+        dailyCurrent: card.dailyCurrent.map((v) => convertPrice(v, bookingCurrency)),
+        dailyPrevious: card.dailyPrevious.map((v) => convertPrice(v, bookingCurrency)),
+      }
+    })
+  }, [overviewCards, bookingCurrency, selectedCurrency, convertPrice])
+
   const dashWeekRevenue = (amount: number) =>
-    formatDashboardMoney(amount, ownerCurrency, {
+    formatDashboardMoney(convertPrice(amount, bookingCurrency), selectedCurrency, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
@@ -539,7 +556,7 @@ export default function ManagePage() {
           ) : (
             <div className="space-y-14 sm:space-y-16">
             <DashboardTodaySection
-              currency={ownerCurrency}
+              metricsCurrency={bookingCurrency}
               metrics={stats.todayMetrics}
               comparisonDayKey={comparisonDayKey}
               maxComparisonDayKey={maxComparisonDayKey}
@@ -574,8 +591,8 @@ export default function ManagePage() {
 
               <div className="rounded-md border border-gray-100 bg-gray-50 p-1 sm:p-1.5">
                 <DashboardOverviewMetricGrid
-                  cards={overviewCards}
-                  currency={ownerCurrency}
+                  cards={overviewCardsDisplay}
+                  currency={selectedCurrency}
                   updatedAt={bookingsFetchedAt}
                 />
               </div>

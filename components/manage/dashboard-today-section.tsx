@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, ChevronDown } from 'lucide-react'
 import { ComparisonDayCalendarPanel, parseLocalDayKey } from '@/components/manage/comparison-day-calendar-popover'
 import { formatDashboardMoney } from '@/lib/currency/format-dashboard-money'
+import { useCurrency } from '@/lib/contexts/currency-context'
 
 const BRAND = '#003580'
 
@@ -142,15 +143,41 @@ function pctVsYesterday(todayAtH: number, yestAtH: number): number {
 type SecondaryStat = { label: string; value: string }
 type SecondaryStatLink = SecondaryStat & { href?: string; actionLabel?: string }
 
+function convertTodayMetrics(
+  metrics: TodayMetricsInput,
+  metricsCurrency: string,
+  convertPrice: (amount: number, fromCurrency: string) => number
+): TodayMetricsInput {
+  const convertMoneySlice = (input: TodayMetricInput): TodayMetricInput => ({
+    todayTotal: convertPrice(input.todayTotal, metricsCurrency),
+    yesterdayTotal: convertPrice(input.yesterdayTotal, metricsCurrency),
+    cumulativeByHour: input.cumulativeByHour.map((v) => convertPrice(v, metricsCurrency)),
+    yesterdayCumulativeByHour: input.yesterdayCumulativeByHour.map((v) =>
+      convertPrice(v, metricsCurrency)
+    ),
+  })
+
+  const out = {} as TodayMetricsInput
+  for (const id of METRIC_ORDER) {
+    if (METRIC_VALUE_TYPE[id] === 'money') {
+      out[id] = convertMoneySlice(metrics[id]!)
+    } else {
+      out[id] = metrics[id]!
+    }
+  }
+  return out
+}
+
 export function DashboardTodaySection({
-  currency,
+  metricsCurrency,
   metrics,
   comparisonDayKey,
   maxComparisonDayKey,
   onComparisonDayChange,
   secondaryStats,
 }: {
-  currency: string
+  /** ISO 4217 denomination of `metrics` money fields (usually gym listing currency). */
+  metricsCurrency: string
   metrics: TodayMetricsInput
   /** Local calendar day (yyyy-mm-dd) used for comparison column + gray chart series */
   comparisonDayKey: string
@@ -167,6 +194,14 @@ export function DashboardTodaySection({
   const chartHitRef = useRef<HTMLDivElement>(null)
 
   const [hoverHour, setHoverHour] = useState<number | null>(null)
+
+  const { selectedCurrency, convertPrice } = useCurrency()
+  const displayMetrics = useMemo(() => {
+    if (!metricsCurrency || metricsCurrency.toUpperCase() === selectedCurrency.toUpperCase()) {
+      return metrics
+    }
+    return convertTodayMetrics(metrics, metricsCurrency, convertPrice)
+  }, [metrics, metricsCurrency, selectedCurrency, convertPrice])
 
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -201,10 +236,10 @@ export function DashboardTodaySection({
 
   const liveTime = formatClock24()
   const comparisonDate = useMemo(() => parseLocalDayKey(comparisonDayKey), [comparisonDayKey])
-  const active = metrics[selectedMetric]
+  const active = displayMetrics[selectedMetric]
   const valueType = METRIC_VALUE_TYPE[selectedMetric]
-  const todayDisplay = formatMetricValue(active.todayTotal, valueType, currency)
-  const yesterdayDisplay = formatMetricValue(active.yesterdayTotal, valueType, currency)
+  const todayDisplay = formatMetricValue(active.todayTotal, valueType, selectedCurrency)
+  const yesterdayDisplay = formatMetricValue(active.yesterdayTotal, valueType, selectedCurrency)
 
   const chartGeom = useMemo(() => {
     const cumToday = normalize25(active.cumulativeByHour)
@@ -569,14 +604,14 @@ export function DashboardTodaySection({
                     <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: BRAND }} />
                     <span className="flex-1 text-gray-600">{tooltipMeta.todayLine}</span>
                     <span className="text-[11px] font-light tabular-nums text-gray-700 sm:text-xs">
-                      {formatMetricValue(tooltipMeta.todayAt, valueType, currency)}
+                      {formatMetricValue(tooltipMeta.todayAt, valueType, selectedCurrency)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-gray-300" />
                     <span className="flex-1 text-gray-600">{tooltipMeta.yesterdayLine}</span>
                     <span className="text-[11px] font-light tabular-nums text-gray-600 sm:text-xs">
-                      {formatMetricValue(tooltipMeta.yestAt, valueType, currency)}
+                      {formatMetricValue(tooltipMeta.yestAt, valueType, selectedCurrency)}
                     </span>
                   </div>
                 </div>

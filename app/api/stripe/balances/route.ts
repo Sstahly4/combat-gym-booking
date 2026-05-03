@@ -33,13 +33,60 @@ export async function GET(request: Request) {
     const { data: gym, error } = await supabase
       .from('gyms')
       .select(
-        'id, owner_id, stripe_account_id, stripe_connect_verified, stripe_payouts_enabled, stripe_charges_enabled, payouts_hold_active, payouts_hold_reason, payouts_hold_set_at'
+        `id, owner_id, currency, payout_rail, wise_payout_ready, wise_recipient_id, wise_recipient_currency,
+         stripe_account_id, stripe_connect_verified, stripe_payouts_enabled, stripe_charges_enabled,
+         payouts_hold_active, payouts_hold_reason, payouts_hold_set_at`
       )
       .eq('id', gymId)
       .maybeSingle()
 
     if (error || !gym || gym.owner_id !== access.userId) {
       return jsonError('Gym not found or access denied', 403)
+    }
+
+    const rail =
+      (gym as { payout_rail?: string }).payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
+
+    /** Wise (and default) rail does not use a connected Stripe account for payouts — return a safe empty balance view. */
+    if (rail !== 'stripe_connect') {
+      const g = gym as {
+        id: string
+        wise_payout_ready?: boolean | null
+        wise_recipient_currency?: string | null
+        currency?: string | null
+        payouts_hold_active?: boolean | null
+        payouts_hold_reason?: string | null
+        payouts_hold_set_at?: string | null
+      }
+      const displayCurrency = (
+        g.wise_recipient_currency ||
+        g.currency ||
+        'usd'
+      ).toLowerCase()
+
+      return NextResponse.json({
+        payout_rail: 'wise' as const,
+        gym: {
+          id: g.id,
+          stripe_account_id: null,
+          stripe_connect_verified: Boolean((gym as { stripe_connect_verified?: boolean }).stripe_connect_verified),
+          payout_rail: 'wise' as const,
+          wise_payout_ready: Boolean(g.wise_payout_ready),
+          wise_recipient_currency: g.wise_recipient_currency ?? null,
+          payouts_hold_active: Boolean(g.payouts_hold_active),
+          payouts_hold_reason: g.payouts_hold_reason ?? null,
+          payouts_hold_set_at: g.payouts_hold_set_at ?? null,
+        },
+        stripe: {
+          charges_enabled: false,
+          payouts_enabled: false,
+          details_submitted: false,
+        },
+        currency: displayCurrency,
+        available: { total: 0 },
+        pending: { total: 0 },
+        payouts: [] as unknown[],
+      })
     }
 
     if (!gym.stripe_account_id) {

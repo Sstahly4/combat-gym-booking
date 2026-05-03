@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ArrowLeftRight, BarChart3, ChevronDown, Info, X } from 'lucide-react'
 import { PayoutsHoldBanner } from '@/components/manage/payouts-hold-banner'
+import { useCurrency } from '@/lib/contexts/currency-context'
+import { formatDashboardMoney } from '@/lib/currency/format-dashboard-money'
 
 const BRAND = '#003580'
 
@@ -27,6 +29,7 @@ type StripePayoutRow = {
 }
 
 type BalancesResponse = {
+  payout_rail?: 'wise' | 'stripe_connect'
   currency: string
   available: { total: number }
   pending: { total: number }
@@ -34,25 +37,14 @@ type BalancesResponse = {
   stripe: { charges_enabled: boolean; payouts_enabled: boolean; details_submitted: boolean }
   gym: {
     id: string
-    stripe_account_id: string
+    stripe_account_id: string | null
     stripe_connect_verified: boolean
+    payout_rail?: 'wise' | 'stripe_connect'
+    wise_payout_ready?: boolean
+    wise_recipient_currency?: string | null
     payouts_hold_active?: boolean
     payouts_hold_reason?: string | null
     payouts_hold_set_at?: string | null
-  }
-}
-
-function formatMoneyMinor(minor: number, currency: string) {
-  const value = (Number(minor) || 0) / 100
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value)
-  } catch {
-    return `$${value.toFixed(2)}`
   }
 }
 
@@ -87,6 +79,7 @@ function destinationLabel(p: StripePayoutRow): string {
 export default function BalancesPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
+  const { selectedCurrency, convertPrice } = useCurrency()
   const { activeGymId } = useActiveGym()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<BalancesResponse | null>(null)
@@ -142,6 +135,14 @@ export default function BalancesPage() {
   }, [authLoading, user, profile?.role, activeGymId])
 
   const primaryCurrency = (data?.currency || 'usd').toLowerCase()
+  const formatMinorForViewer = (minor: number, sourceCurrency: string) => {
+    const major = (Number(minor) || 0) / 100
+    const converted = convertPrice(major, sourceCurrency)
+    return formatDashboardMoney(converted, selectedCurrency, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
   const availableMinor = data?.available?.total ?? 0
   const pendingMinor = data?.pending?.total ?? 0
   const totalMinor = availableMinor + pendingMinor
@@ -169,7 +170,7 @@ export default function BalancesPage() {
             <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
               Balances{' '}
               <span className="font-light tabular-nums text-gray-900">
-                {loading ? '—' : formatMoneyMinor(availableMinor, primaryCurrency)}
+                {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
               </span>
             </h1>
             <span
@@ -183,7 +184,9 @@ export default function BalancesPage() {
                 role="tooltip"
                 className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+8px)] z-30 w-[min(18rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[11px] font-normal leading-snug text-gray-700 shadow-md opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
               >
-                Available balance is the amount we can pay out to your bank account. Incoming funds become available after the standard processing window.
+                {data?.payout_rail === 'wise'
+                  ? 'Wise payouts settle outside this balance view. Use Bookings for paid stays; amounts here stay at zero until you use Stripe Connect.'
+                  : 'Available balance is the amount we can pay out to your bank account. Incoming funds become available after the standard processing window.'}
               </span>
             </span>
           </div>
@@ -260,7 +263,39 @@ export default function BalancesPage() {
           />
         ) : null}
 
-        {showDescriptor ? (
+        {data?.payout_rail === 'wise' && !error ? (
+          <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 px-4 py-3 text-sm text-sky-950 shadow-sm shadow-sky-900/5">
+            <p className="font-medium text-sky-950">Wise payouts</p>
+            <p className="mt-1 text-xs leading-relaxed text-sky-900/90">
+              This balance view is for Stripe Connect. You&apos;re on Wise — amounts stay at zero here. Track paid
+              stays under{' '}
+              <Link
+                href={
+                  activeGymId
+                    ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
+                    : '/manage/bookings'
+                }
+                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
+              >
+                Bookings
+              </Link>
+              ; manage recipient details under{' '}
+              <Link
+                href={
+                  activeGymId
+                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
+                    : '/manage/balances/payouts'
+                }
+                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
+              >
+                Payouts
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
+
+        {showDescriptor && data?.payout_rail !== 'wise' ? (
           <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
             <div className="flex items-start gap-2 text-xs text-gray-700">
               <BarChart3 className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
@@ -270,7 +305,11 @@ export default function BalancesPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href={activeGymId ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}` : '/manage/stripe-connect'}
+                href={
+                  activeGymId
+                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}#account-management`
+                    : '/manage/balances/payouts#account-management'
+                }
                 className="text-xs font-medium text-[color:var(--brand,#003580)] hover:underline underline-offset-2"
                 style={{ color: BRAND }}
               >
@@ -337,7 +376,7 @@ export default function BalancesPage() {
                   Incoming
                 </div>
                 <div className="text-right font-light tabular-nums text-gray-900">
-                  {loading ? '—' : formatMoneyMinor(pendingMinor, primaryCurrency)}
+                  {loading ? '—' : formatMinorForViewer(pendingMinor, primaryCurrency)}
                 </div>
 
                 <div className="flex items-center gap-2 text-gray-900">
@@ -345,7 +384,7 @@ export default function BalancesPage() {
                   Available
                 </div>
                 <div className="text-right font-light tabular-nums text-gray-900">
-                  {loading ? '—' : formatMoneyMinor(availableMinor, primaryCurrency)}
+                  {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
                 </div>
               </div>
             </section>
@@ -400,7 +439,7 @@ export default function BalancesPage() {
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-light tabular-nums text-gray-900">
-                              {formatMoneyMinor(p.amount, p.currency)}
+                              {formatMinorForViewer(p.amount, p.currency)}
                             </span>
                             <span
                               className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${badge.cls}`}
@@ -469,20 +508,42 @@ export default function BalancesPage() {
 
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Payout account</p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                  <li>
-                    Accepting payments:{' '}
-                    {data ? (data.stripe.charges_enabled ? 'Yes' : 'No') : '—'}
-                  </li>
-                  <li>
-                    Transfers to bank:{' '}
-                    {data ? (data.stripe.payouts_enabled ? 'Active' : 'Paused') : '—'}
-                  </li>
-                  <li>
-                    Business profile:{' '}
-                    {data ? (data.stripe.details_submitted ? 'Complete' : 'Incomplete') : '—'}
-                  </li>
-                </ul>
+                {data?.payout_rail === 'wise' ? (
+                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                    <li>
+                      Method: <span className="font-medium text-gray-800">Wise</span>
+                    </li>
+                    <li>
+                      Recipient:{' '}
+                      {data.gym.wise_payout_ready ? (
+                        <span className="font-medium text-emerald-800">Ready</span>
+                      ) : (
+                        <span className="font-medium text-amber-800">Incomplete</span>
+                      )}
+                    </li>
+                    {data.gym.wise_recipient_currency ? (
+                      <li>
+                        Payout currency:{' '}
+                        <span className="font-medium text-gray-800">{data.gym.wise_recipient_currency}</span>
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : (
+                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                    <li>
+                      Accepting payments:{' '}
+                      {data ? (data.stripe.charges_enabled ? 'Yes' : 'No') : '—'}
+                    </li>
+                    <li>
+                      Transfers to bank:{' '}
+                      {data ? (data.stripe.payouts_enabled ? 'Active' : 'Paused') : '—'}
+                    </li>
+                    <li>
+                      Business profile:{' '}
+                      {data ? (data.stripe.details_submitted ? 'Complete' : 'Incomplete') : '—'}
+                    </li>
+                  </ul>
+                )}
               </div>
             </section>
           </aside>

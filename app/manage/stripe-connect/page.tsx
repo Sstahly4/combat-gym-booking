@@ -132,7 +132,9 @@ function StripeConnectPageContent() {
     )
   }
 
-  const onboardingPayoutsUrl = buildOnboardingWizardUrl('step-5', gymId)
+  const payoutsHubUrl = gymId
+    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(gymId)}`
+    : '/manage/balances/payouts'
   const onboardingGoLiveUrl = buildOnboardingWizardUrl('step-7', gymId)
 
   /** Until the API responds, `returnStatus` is `idle` then `checking` — treat both as loading when we have a gym. */
@@ -179,7 +181,7 @@ function StripeConnectPageContent() {
                 {connecting ? 'Opening Stripe…' : 'Open Stripe again'}
               </Button>
               <Button asChild variant="outline" className="w-full border-gray-200 bg-white sm:w-auto sm:min-w-[12rem]">
-                <Link href={onboardingPayoutsUrl}>Back to Payouts (onboarding)</Link>
+                <Link href={payoutsHubUrl}>Back to Payouts</Link>
               </Button>
             </div>
           </div>
@@ -206,7 +208,7 @@ function StripeConnectPageContent() {
                 </Button>
               ) : null}
               <Button asChild variant="outline" className="w-full border-gray-200 bg-white sm:w-auto sm:min-w-[12rem]">
-                <Link href={onboardingPayoutsUrl}>Back to Payouts (onboarding)</Link>
+                <Link href={payoutsHubUrl}>Back to Payouts</Link>
               </Button>
             </div>
           </div>
@@ -235,7 +237,7 @@ function StripeConnectPageContent() {
               {connecting ? 'Opening Stripe…' : 'Continue in Stripe'}
             </Button>
             <Button asChild variant="outline" className="w-full border-gray-200 bg-white sm:w-auto sm:min-w-[12rem]">
-              <Link href={onboardingPayoutsUrl}>Back to Payouts (onboarding)</Link>
+              <Link href={payoutsHubUrl}>Back to Payouts</Link>
             </Button>
           </div>
         </div>
@@ -284,14 +286,17 @@ function StripeConnectPageContent() {
         <div className="w-full border-t border-gray-100 pt-6">
           <p className="text-center text-sm text-muted-foreground">
             Not ready?{' '}
-            {gymId ? (
-              <Link href={onboardingPayoutsUrl} className="font-medium text-[#003580] underline-offset-2 hover:underline">
-                Back to Payouts in onboarding
-              </Link>
-            ) : (
-              <Link href="/manage/onboarding" className="font-medium text-[#003580] underline-offset-2 hover:underline">
-                Back to onboarding
-              </Link>
+            <Link href={payoutsHubUrl} className="font-medium text-[#003580] underline-offset-2 hover:underline">
+              Back to Payouts
+            </Link>
+            {gymId ? null : (
+              <>
+                {' '}
+                or{' '}
+                <Link href="/manage/onboarding" className="font-medium text-[#003580] underline-offset-2 hover:underline">
+                  listing setup
+                </Link>
+              </>
             )}
           </p>
         </div>
