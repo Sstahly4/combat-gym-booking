@@ -17,6 +17,7 @@ export function managePartnerSectionTitle(pathname: string): string {
   if (pathname.startsWith('/manage/reviews')) return 'Reviews'
   if (pathname.startsWith('/manage/verification')) return 'Verification'
   if (pathname.startsWith('/manage/balances')) return 'Balances'
+  if (pathname.startsWith('/manage/payouts/setup')) return 'Payout setup'
   if (pathname.startsWith('/manage/stripe-connect')) return 'Stripe Connect'
   if (pathname.startsWith('/manage/settings/security')) return 'Security settings'
   if (pathname.startsWith('/manage/settings/payouts')) return 'Payout settings'

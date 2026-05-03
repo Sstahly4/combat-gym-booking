@@ -52,7 +52,7 @@ const TABS: TabDefinition[] = [
   {
     id: 'payouts',
     label: 'Payouts',
-    description: 'Stripe Connect and transfers.',
+    description: 'Wise or Stripe Connect and transfer status.',
     Icon: Wallet,
   },
 ]

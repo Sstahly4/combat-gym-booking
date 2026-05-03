@@ -26,7 +26,7 @@ const GROUPS: { id: string; title: string; keys: string[] }[] = [
   { id: 'listing', title: 'Listing & account', keys: ['security', 'gym_basics', 'disciplines'] },
   { id: 'packages', title: 'Packages & pricing', keys: ['packages_pricing'] },
   { id: 'photos', title: 'Photos', keys: ['photos'] },
-  { id: 'payouts', title: 'Payouts', keys: ['stripe'] },
+  { id: 'payouts', title: 'Payouts', keys: ['payouts'] },
 ]
 
 function itemByKey(required: ReadinessRequiredItem[], key: string) {

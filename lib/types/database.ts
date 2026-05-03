@@ -86,6 +86,11 @@ export interface Gym {
   meals_price_per_week: number | null
   meals_price_per_month: number | null
   currency: string
+  /** How this gym receives payouts: Wise (platform) vs Stripe Connect. */
+  payout_rail: 'wise' | 'stripe_connect'
+  wise_recipient_id: string | null
+  wise_recipient_currency: string | null
+  wise_payout_ready: boolean
   stripe_account_id: string | null
   /** Tier label for cancellation copy; numeric window is on packages.cancellation_policy_days */
   cancellation_policy_tone?: 'flexible' | 'moderate' | 'strict'

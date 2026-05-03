@@ -12,6 +12,10 @@ import { PayoutsHoldBanner } from '@/components/manage/payouts-hold-banner'
 type GymPayoutSummary = {
   id: string
   name: string
+  payout_rail: 'wise' | 'stripe_connect' | null
+  wise_recipient_id: string | null
+  wise_recipient_currency: string | null
+  wise_payout_ready: boolean | null
   stripe_account_id: string | null
   stripe_connect_verified: boolean
   stripe_charges_enabled: boolean | null
@@ -51,7 +55,8 @@ export function SettingsPayoutsSection() {
       const { data } = await supabase
         .from('gyms')
         .select(
-          `id, name, stripe_account_id, stripe_connect_verified,
+          `id, name, payout_rail, wise_recipient_id, wise_recipient_currency, wise_payout_ready,
+           stripe_account_id, stripe_connect_verified,
            stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted,
            stripe_requirements_currently_due, stripe_requirements_pending_verification,
            stripe_disabled_reason, last_stripe_account_sync_at, payout_disabled_notified_at,
@@ -71,8 +76,8 @@ export function SettingsPayoutsSection() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-gray-900">Payout readiness</CardTitle>
           <CardDescription className="text-sm text-gray-500">
-            Status syncs from Stripe when your connected account changes (
-            <code className="text-xs text-gray-600">account.updated</code>).
+            Wise payout details are stored on your gym. Stripe Connect status syncs from Stripe when your connected
+            account changes (<code className="text-xs text-gray-600">account.updated</code>).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -82,6 +87,50 @@ export function SettingsPayoutsSection() {
             <p className="text-sm text-gray-500">No gyms found.</p>
           ) : (
             gyms.map((gym) => {
+              const rail = (gym.payout_rail as 'wise' | 'stripe_connect' | null) ?? 'wise'
+              if (rail === 'wise') {
+                const ready = Boolean(gym.wise_payout_ready && gym.wise_recipient_id)
+                return (
+                  <div key={gym.id} className="space-y-3 rounded-lg border border-gray-200 bg-slate-50/50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-gray-900">{gym.name}</p>
+                        <p className="text-xs text-gray-500">Payout method: Wise</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Recipient:{' '}
+                          {gym.wise_recipient_id ? (
+                            <span className="font-mono text-gray-700">{gym.wise_recipient_id}</span>
+                          ) : (
+                            'Not set'
+                          )}
+                          {gym.wise_recipient_currency ? ` · ${gym.wise_recipient_currency}` : ''}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                          ready ? 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80' : 'bg-slate-100 text-slate-800 ring-1 ring-slate-200'
+                        }`}
+                      >
+                        {ready ? 'Wise ready' : 'Action required'}
+                      </span>
+                    </div>
+                    {gym.payouts_hold_active ? (
+                      <PayoutsHoldBanner
+                        variant="settings"
+                        active
+                        reason={gym.payouts_hold_reason}
+                        setAt={gym.payouts_hold_set_at}
+                      />
+                    ) : null}
+                    <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>
+                      <Button variant="outline" size="sm" className="border-gray-300">
+                        Open payout setup
+                      </Button>
+                    </Link>
+                  </div>
+                )
+              }
+
               const due = gym.stripe_requirements_currently_due || []
               const pending = gym.stripe_requirements_pending_verification || []
               const payoutsOn = gym.stripe_payouts_enabled === true
@@ -93,6 +142,7 @@ export function SettingsPayoutsSection() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-gray-900">{gym.name}</p>
+                      <p className="text-xs text-gray-500">Payout method: Stripe Connect</p>
                       <p className="text-xs text-gray-500">
                         Stripe account:{' '}
                         {gym.stripe_account_id ? (
@@ -184,11 +234,18 @@ export function SettingsPayoutsSection() {
                     </p>
                   ) : null}
 
-                  <Link href="/manage/stripe-connect">
-                    <Button variant="outline" size="sm" className="border-gray-300">
-                      Open Stripe Connect
-                    </Button>
-                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gym.id)}`}>
+                      <Button variant="outline" size="sm" className="border-gray-300">
+                        Open Stripe Connect
+                      </Button>
+                    </Link>
+                    <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>
+                      <Button variant="ghost" size="sm" className="text-gray-700">
+                        Switch payout method
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               )
             })

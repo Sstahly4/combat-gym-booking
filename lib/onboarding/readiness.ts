@@ -41,7 +41,9 @@ export async function getGymReadiness({
   ] = await Promise.all([
     supabase
       .from('gyms')
-      .select('id, owner_id, name, address, description, disciplines, stripe_connect_verified')
+      .select(
+        'id, owner_id, name, address, description, disciplines, stripe_connect_verified, payout_rail, wise_recipient_id, wise_recipient_currency, wise_payout_ready'
+      )
       .eq('id', gymId)
       .eq('owner_id', ownerId)
       .maybeSingle(),
@@ -83,6 +85,17 @@ export async function getGymReadiness({
   const pricingAckComplete = Boolean(pricingAckResult.data && pricingAckResult.data.length > 0)
   const policyMeta = policyStepResult.data?.[0]?.metadata || {}
   const hasPolicyReview = Boolean(policyStepResult.data?.[0]?.completed_at)
+
+  const rail: 'wise' | 'stripe_connect' =
+    gym?.payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
+  const payoutsPassed =
+    rail === 'stripe_connect'
+      ? Boolean(gym?.stripe_connect_verified)
+      : Boolean(
+          gym?.wise_payout_ready &&
+            gym?.wise_recipient_id &&
+            (gym?.wise_recipient_currency && String(gym.wise_recipient_currency).trim().length > 0)
+        )
 
   const required: ReadinessItem[] = [
     {
@@ -134,11 +147,19 @@ export async function getGymReadiness({
       deepLink: buildOnboardingWizardUrl('step-3', gymId),
     },
     {
-      key: 'stripe',
-      label: 'Stripe payouts connected',
-      passed: Boolean(gym?.stripe_connect_verified),
-      reason: gym?.stripe_connect_verified ? null : 'Connect Stripe payouts.',
-      deepLink: buildOnboardingWizardUrl('step-5', gymId),
+      key: 'payouts',
+      label:
+        rail === 'stripe_connect' ? 'Stripe Connect payouts' : 'Wise payout details',
+      passed: payoutsPassed,
+      reason: payoutsPassed
+        ? null
+        : rail === 'stripe_connect'
+          ? 'Finish Stripe Connect onboarding for payouts.'
+          : 'Add Wise recipient details for payouts.',
+      deepLink:
+        rail === 'stripe_connect'
+          ? `/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`
+          : `/manage/payouts/setup?gym_id=${encodeURIComponent(gymId)}`,
     },
   ]
 

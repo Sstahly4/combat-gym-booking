@@ -69,10 +69,10 @@ const STEPS: TourStep[] = [
   {
     id: 'payouts',
     anchor: 'tour-payouts',
-    title: 'Connect payouts',
+    title: 'Payout setup',
     paragraphs: [
-      'Open Balances, then Payouts, and complete Stripe Connect before you accept paid stays — same pattern as other booking platforms.',
-      'You can polish your listing first; connect payouts before switching the gym live if you plan to charge guests.',
+      'Under Balances, use Payout setup (or Payouts for Stripe activity) to choose Wise or Stripe Connect and finish payout details before you accept paid stays.',
+      'You can polish your listing first; complete payouts before switching the gym live if you plan to charge guests.',
     ],
   },
   {
@@ -80,7 +80,7 @@ const STEPS: TourStep[] = [
     anchor: 'tour-setup-guide',
     title: 'Setup guide',
     paragraphs: [
-      'The floating checklist tracks required items: listing and account, packages and pricing, photos, and Stripe. Tap a row to jump straight there.',
+      'The floating checklist tracks required items: listing and account, packages and pricing, photos, and payouts. Tap a row to jump straight there.',
       'When every required row is complete, use Open review at the bottom to run the final check and publish.',
     ],
   },

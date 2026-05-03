@@ -31,7 +31,14 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
   } | null>(null)
   const [loadingStripe, setLoadingStripe] = useState(true)
 
+  const payoutRail = (gym.payout_rail as 'wise' | 'stripe_connect' | undefined) ?? 'wise'
+
   useEffect(() => {
+    if (payoutRail !== 'stripe_connect') {
+      setStripeStatus(null)
+      setLoadingStripe(false)
+      return
+    }
     const checkStripeStatus = async () => {
       try {
         const response = await fetch(`/api/gyms/${gym.id}/check-stripe-status`)
@@ -44,16 +51,28 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       }
     }
     void checkStripeStatus()
-  }, [gym.id])
+  }, [gym.id, payoutRail])
+
+  const wisePayoutOk = Boolean(gym.wise_payout_ready && gym.wise_recipient_id)
+  const stripePayoutOk = Boolean(stripeStatus?.verified)
 
   const requirements = useMemo(
     () => ({
       googleMaps: !!gym.google_maps_link,
       socialMedia: !!(gym.instagram_link || gym.facebook_link),
-      stripeConnect: stripeStatus?.verified || false,
+      payouts:
+        payoutRail === 'stripe_connect' ? stripePayoutOk : wisePayoutOk,
       adminApproved: gym.admin_approved || false,
     }),
-    [gym.google_maps_link, gym.instagram_link, gym.facebook_link, gym.admin_approved, stripeStatus?.verified]
+    [
+      gym.google_maps_link,
+      gym.instagram_link,
+      gym.facebook_link,
+      gym.admin_approved,
+      payoutRail,
+      stripePayoutOk,
+      wisePayoutOk,
+    ]
   )
 
   const verificationStatus = gym.verification_status
@@ -89,19 +108,34 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
         href: !requirements.socialMedia ? `/manage/gym/edit?id=${gym.id}&section=basic` : undefined,
       },
       {
-        id: 'stripe',
-        title: 'Stripe Connect',
-        description: loadingStripe
-          ? 'Checking Stripe…'
-          : requirements.stripeConnect
-            ? 'Payouts and charges are set up.'
-            : stripeStatus?.has_account
-              ? 'Finish identity and bank details in Stripe.'
-              : 'Connect Stripe to receive payments from bookings.',
-        done: requirements.stripeConnect,
-        loading: loadingStripe,
-        actionLabel: requirements.stripeConnect ? 'Open Stripe setup' : 'Set up Stripe',
-        href: '/manage/stripe-connect',
+        id: 'payouts',
+        title: payoutRail === 'stripe_connect' ? 'Stripe Connect payouts' : 'Wise payouts',
+        description:
+          payoutRail === 'stripe_connect'
+            ? loadingStripe
+              ? 'Checking Stripe…'
+              : requirements.payouts
+                ? 'Stripe Connect is ready for payouts.'
+                : stripeStatus?.has_account
+                  ? 'Finish identity and bank details in Stripe.'
+                  : 'Connect Stripe for payouts from bookings.'
+            : requirements.payouts
+              ? 'Wise recipient is on file for payouts.'
+              : 'Add Wise recipient details (email) in payout setup.',
+        done: requirements.payouts,
+        loading: payoutRail === 'stripe_connect' ? loadingStripe : false,
+        actionLabel:
+          payoutRail === 'stripe_connect'
+            ? requirements.payouts
+              ? 'Open Stripe setup'
+              : 'Set up Stripe'
+            : requirements.payouts
+              ? 'Open payout setup'
+              : 'Set up Wise',
+        href:
+          payoutRail === 'stripe_connect'
+            ? '/manage/stripe-connect'
+            : `/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`,
       },
       {
         id: 'admin',
@@ -114,7 +148,16 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
         href: '/manage/help',
       },
     ],
-    [gym.id, gym.google_maps_link, gym.instagram_link, gym.facebook_link, loadingStripe, requirements, stripeStatus?.has_account]
+    [
+      gym.id,
+      gym.google_maps_link,
+      gym.instagram_link,
+      gym.facebook_link,
+      loadingStripe,
+      requirements,
+      stripeStatus?.has_account,
+      payoutRail,
+    ]
   )
 
   const statusBadge = () => {
@@ -225,15 +268,19 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
           <p className="mt-1 text-gray-600">
             {completedCount === totalSteps
               ? 'All checklist items are done. We’ll review and approve your gym for search when ready.'
-              : 'Finish the numbered steps above. Use Edit gym and Stripe Connect where linked.'}
+              : 'Finish the numbered steps above. Use Edit gym and payout setup where linked.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" className="border-gray-300 bg-white">
               <Link href={`/manage/gym/edit?id=${gym.id}`}>Edit gym profile</Link>
             </Button>
-            {!gym.stripe_account_id ? (
+            {payoutRail === 'stripe_connect' && !gym.stripe_account_id ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
                 <Link href="/manage/stripe-connect">Stripe Connect</Link>
+              </Button>
+            ) : payoutRail === 'wise' && !wisePayoutOk ? (
+              <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
+                <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>Payout setup</Link>
               </Button>
             ) : null}
           </div>
