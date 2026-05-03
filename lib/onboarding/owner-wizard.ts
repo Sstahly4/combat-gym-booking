@@ -46,8 +46,8 @@ export const OWNER_WIZARD_STEPS: OwnerWizardStepDefinition[] = [
     key: 'payouts',
     slug: 'step-5',
     label: 'Payouts',
-    description: 'Choose Wise or Stripe Connect and complete payout details before you go live.',
-    deepLinkPath: '/manage/payouts/setup',
+    description: 'Add how you get paid (bank transfer or connected account) before you go live.',
+    deepLinkPath: '/manage/balances/payouts',
   },
   {
     index: 6,
@@ -176,7 +176,7 @@ export function buildWizardStepDeepLink(
   if (gymId) {
     if (step.deepLinkPath === '/manage/gym/edit') {
       url.searchParams.set('id', gymId)
-    } else if (step.deepLinkPath === '/manage/stripe-connect' || step.deepLinkPath === '/manage/payouts/setup') {
+    } else if (step.deepLinkPath === '/manage/stripe-connect' || step.deepLinkPath === '/manage/balances/payouts') {
       url.searchParams.set('gym_id', gymId)
     } else {
       url.searchParams.set('gym_id', gymId)

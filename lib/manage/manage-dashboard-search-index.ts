@@ -57,12 +57,12 @@ export const MANAGE_DASHBOARD_QUICK_HITS: ManageDashboardSearchHit[] = [
     keywords: ['password', 'mfa', 'totp', 'two factor', 'sessions', 'sign out devices'],
   },
   {
-    id: 'quick-stripe',
-    title: 'Stripe payouts',
-    subtitle: 'Connect & transfers · /manage/stripe-connect',
-    href: '/manage/stripe-connect',
+    id: 'quick-payouts',
+    title: 'Payouts',
+    subtitle: 'Balances · preferences & payout activity',
+    href: '/manage/balances/payouts',
     quick: true,
-    keywords: ['payouts', 'bank', 'kyc', 'stripe connect', 'payments'],
+    keywords: ['payouts', 'bank', 'transfers', 'earnings', 'payments', 'balances'],
   },
 ]
 
@@ -85,9 +85,9 @@ export const MANAGE_DASHBOARD_SEARCH_STATIC: ManageDashboardSearchHit[] = [
   {
     id: 'settings-payouts',
     title: 'Payout settings',
-    subtitle: 'Settings · Stripe status & transfers',
+    subtitle: 'Settings · per-gym payout status',
     href: '/manage/settings?tab=payouts#settings-tab-payouts',
-    keywords: ['stripe', 'payout', 'fees'],
+    keywords: ['payout', 'fees', 'bank', 'wise', 'connected account'],
   },
   {
     id: 'settings-hub',

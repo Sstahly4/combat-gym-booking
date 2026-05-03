@@ -32,7 +32,7 @@ type GymPayoutSummary = {
 }
 
 function formatSyncLabel(iso: string | null): string {
-  if (!iso) return 'Not synced yet — open Stripe Connect or wait for the next account update.'
+  if (!iso) return 'Not synced yet — open your connected account or wait for the next update.'
   try {
     return new Date(iso).toLocaleString()
   } catch {
@@ -76,8 +76,8 @@ export function SettingsPayoutsSection() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-gray-900">Payout readiness</CardTitle>
           <CardDescription className="text-sm text-gray-500">
-            Wise payout details are stored on your gym. Stripe Connect status syncs from Stripe when your connected
-            account changes (<code className="text-xs text-gray-600">account.updated</code>).
+            Bank transfer (Wise) details are stored on your gym. Connected account status updates when your provider
+            syncs.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -122,9 +122,9 @@ export function SettingsPayoutsSection() {
                         setAt={gym.payouts_hold_set_at}
                       />
                     ) : null}
-                    <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>
+                    <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>
                       <Button variant="outline" size="sm" className="border-gray-300">
-                        Open payout setup
+                        Open payouts
                       </Button>
                     </Link>
                   </div>
@@ -142,9 +142,9 @@ export function SettingsPayoutsSection() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-gray-900">{gym.name}</p>
-                      <p className="text-xs text-gray-500">Payout method: Stripe Connect</p>
+                      <p className="text-xs text-gray-500">Payout method: Connected account</p>
                       <p className="text-xs text-gray-500">
-                        Stripe account:{' '}
+                        Account ID:{' '}
                         {gym.stripe_account_id ? (
                           <span className="font-mono text-gray-700">{gym.stripe_account_id}</span>
                         ) : (
@@ -237,10 +237,10 @@ export function SettingsPayoutsSection() {
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gym.id)}`}>
                       <Button variant="outline" size="sm" className="border-gray-300">
-                        Open Stripe Connect
+                        Open connected account
                       </Button>
                     </Link>
-                    <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>
+                    <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>
                       <Button variant="ghost" size="sm" className="text-gray-700">
                         Switch payout method
                       </Button>

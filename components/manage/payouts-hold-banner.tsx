@@ -48,9 +48,9 @@ export function PayoutsHoldBanner({
           <p className="text-xs text-amber-900/90">{detail}</p>
           {when ? <p className="text-[11px] text-amber-800/80">Since {when}</p> : null}
           <p className="text-xs text-amber-900/90">
-            Stripe may pause payouts until your bank details are verified. Check{' '}
-            <Link href="/manage/stripe-connect" className="font-medium underline underline-offset-2" style={{ color: BRAND }}>
-              Stripe Connect
+            Payouts may pause until bank details are verified. Check{' '}
+            <Link href="/manage/balances/payouts" className="font-medium underline underline-offset-2" style={{ color: BRAND }}>
+              Payouts
             </Link>{' '}
             or{' '}
             <Link href="/manage/balances" className="font-medium underline underline-offset-2" style={{ color: BRAND }}>
@@ -82,10 +82,10 @@ export function PayoutsHoldBanner({
       </div>
       <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
         <Link
-          href="/manage/stripe-connect"
+          href="/manage/balances/payouts"
           className="inline-flex h-8 items-center rounded-md border border-amber-300/80 bg-white px-3 text-xs font-medium text-amber-950 shadow-sm hover:bg-amber-50"
         >
-          Review in Stripe
+          Review payouts
         </Link>
         <Link
           href="/manage/settings?tab=payouts"

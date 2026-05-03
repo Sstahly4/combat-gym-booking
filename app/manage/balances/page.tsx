@@ -213,10 +213,24 @@ export default function BalancesPage() {
                   onMouseLeave={() => setPayoutsMenuOpen(false)}
                 >
                   <Link
-                    href="/manage/stripe-connect"
+                    href={
+                      activeGymId
+                        ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
+                        : '/manage/balances/payouts'
+                    }
                     className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
                   >
-                    Open Stripe Connect
+                    Payouts
+                  </Link>
+                  <Link
+                    href={
+                      activeGymId
+                        ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}`
+                        : '/manage/stripe-connect'
+                    }
+                    className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                  >
+                    Connected account
                   </Link>
                   <Link
                     href="/manage/settings?tab=payouts"
@@ -251,7 +265,7 @@ export default function BalancesPage() {
             <div className="flex items-start gap-2 text-xs text-gray-700">
               <BarChart3 className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
               <p>
-                Customize your payout statement descriptor to track and reconcile Stripe payouts with your bank account deposits.
+                Customize your payout statement descriptor to track and reconcile payouts with your bank deposits.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -279,10 +293,14 @@ export default function BalancesPage() {
             <p className="text-sm text-gray-700">{error}</p>
             <div className="mt-4">
               <Link
-                href="/manage/stripe-connect"
+                href={
+                  activeGymId
+                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
+                    : '/manage/balances/payouts'
+                }
                 className="inline-flex h-9 items-center rounded-md bg-[#003580] px-4 text-sm font-medium text-white hover:bg-[#002a66]"
               >
-                Open Stripe Connect
+                Open payouts
               </Link>
             </div>
           </div>

@@ -148,18 +148,17 @@ export async function getGymReadiness({
     },
     {
       key: 'payouts',
-      label:
-        rail === 'stripe_connect' ? 'Stripe Connect payouts' : 'Wise payout details',
+      label: rail === 'stripe_connect' ? 'Connected payout account' : 'Payout details',
       passed: payoutsPassed,
       reason: payoutsPassed
         ? null
         : rail === 'stripe_connect'
-          ? 'Finish Stripe Connect onboarding for payouts.'
-          : 'Add Wise recipient details for payouts.',
+          ? 'Finish payout account setup for your connected account.'
+          : 'Add payout recipient details.',
       deepLink:
         rail === 'stripe_connect'
           ? `/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`
-          : `/manage/payouts/setup?gym_id=${encodeURIComponent(gymId)}`,
+          : `/manage/balances/payouts?gym_id=${encodeURIComponent(gymId)}`,
     },
   ]
 

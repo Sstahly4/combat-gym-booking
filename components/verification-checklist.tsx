@@ -109,33 +109,30 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       },
       {
         id: 'payouts',
-        title: payoutRail === 'stripe_connect' ? 'Stripe Connect payouts' : 'Wise payouts',
+        title: payoutRail === 'stripe_connect' ? 'Payout account' : 'Payout details',
         description:
           payoutRail === 'stripe_connect'
             ? loadingStripe
-              ? 'Checking Stripe…'
+              ? 'Checking payout account…'
               : requirements.payouts
-                ? 'Stripe Connect is ready for payouts.'
+                ? 'Your payout account is ready.'
                 : stripeStatus?.has_account
-                  ? 'Finish identity and bank details in Stripe.'
-                  : 'Connect Stripe for payouts from bookings.'
+                  ? 'Finish identity and bank details for your connected account.'
+                  : 'Connect a payout account to receive earnings from bookings.'
             : requirements.payouts
-              ? 'Wise recipient is on file for payouts.'
-              : 'Add Wise recipient details (email) in payout setup.',
+              ? 'Bank transfer recipient is on file.'
+              : 'Add recipient details under Balances → Payouts.',
         done: requirements.payouts,
         loading: payoutRail === 'stripe_connect' ? loadingStripe : false,
         actionLabel:
           payoutRail === 'stripe_connect'
             ? requirements.payouts
-              ? 'Open Stripe setup'
-              : 'Set up Stripe'
+              ? 'Open payouts'
+              : 'Finish setup'
             : requirements.payouts
-              ? 'Open payout setup'
-              : 'Set up Wise',
-        href:
-          payoutRail === 'stripe_connect'
-            ? '/manage/stripe-connect'
-            : `/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`,
+              ? 'Open payouts'
+              : 'Add payout details',
+        href: `/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`,
       },
       {
         id: 'admin',
@@ -268,7 +265,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
           <p className="mt-1 text-gray-600">
             {completedCount === totalSteps
               ? 'All checklist items are done. We’ll review and approve your gym for search when ready.'
-              : 'Finish the numbered steps above. Use Edit gym and payout setup where linked.'}
+              : 'Finish the numbered steps above. Use Edit gym and Payouts where linked.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" className="border-gray-300 bg-white">
@@ -276,11 +273,11 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
             </Button>
             {payoutRail === 'stripe_connect' && !gym.stripe_account_id ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
-                <Link href="/manage/stripe-connect">Stripe Connect</Link>
+                <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>Payouts</Link>
               </Button>
             ) : payoutRail === 'wise' && !wisePayoutOk ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
-                <Link href={`/manage/payouts/setup?gym_id=${encodeURIComponent(gym.id)}`}>Payout setup</Link>
+                <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>Payouts</Link>
               </Button>
             ) : null}
           </div>

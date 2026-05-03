@@ -63,7 +63,6 @@ function getNavGroups(
   const calendarHref = withGymId('/manage/calendar', firstGymId)
   const balancesHref = withGymId('/manage/balances', firstGymId)
   const payoutsHref = withGymId('/manage/balances/payouts', firstGymId)
-  const payoutSetupHref = withGymId('/manage/payouts/setup', firstGymId)
   const promotionsHref = withGymId('/manage/promotions', firstGymId)
   const reviewsHref = withGymId('/manage/reviews', firstGymId)
   const accommodationHref = withGymId('/manage/accommodation', firstGymId)
@@ -103,11 +102,6 @@ function getNavGroups(
             href: payoutsHref,
             label: 'Payouts',
             isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
-          },
-          {
-            href: payoutSetupHref,
-            label: 'Payout setup',
-            isActive: (p) => p === '/manage/payouts/setup' || p.startsWith('/manage/payouts/setup'),
           },
         ],
       },

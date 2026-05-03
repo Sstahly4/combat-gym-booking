@@ -504,11 +504,11 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         label: 'Payouts',
         detail: payoutStepComplete
           ? payoutRail === 'stripe_connect'
-            ? 'Stripe Connect is ready.'
-            : 'Wise payout details are on file.'
+            ? 'Connected payout account is ready.'
+            : 'Bank transfer payout details are on file.'
           : payoutRail === 'stripe_connect'
-            ? 'Finish Stripe Connect so completed bookings can be paid out.'
-            : 'Add Wise payout details (or switch to Stripe Connect in payout setup).',
+            ? 'Finish connected account setup so completed bookings can be paid out.'
+            : 'Add payout details under Balances → Payouts (or switch method there).',
         ready: payoutStepComplete,
       },
       {
@@ -2014,15 +2014,14 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                     <div className="space-y-1.5">
                       <p className={wizLead}>Payouts before you go live</p>
                       <p className={wizBody}>
-                        Choose <strong className="font-semibold text-gray-900">Wise</strong> (default) or{' '}
-                        <strong className="font-semibold text-gray-900">Stripe Connect</strong>, then complete the
-                        details. Readiness follows the method you select.
+                        Use <strong className="font-semibold text-gray-900">Payouts</strong> under Balances to add bank
+                        transfer details or connect a payout account. Readiness follows the method you select.
                       </p>
                     </div>
                     <p className={wizBody}>
                       Method:{' '}
                       <span className="font-semibold text-gray-900">
-                        {payoutRail === 'stripe_connect' ? 'Stripe Connect' : 'Wise'}
+                        {payoutRail === 'stripe_connect' ? 'Connected account' : 'Bank transfer'}
                       </span>
                       {' · '}
                       <span className="font-semibold text-gray-900">
@@ -2033,12 +2032,12 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       <Link
                         href={
                           editorGymId
-                            ? `/manage/payouts/setup?gym_id=${encodeURIComponent(editorGymId)}`
+                            ? `/manage/balances/payouts?gym_id=${encodeURIComponent(editorGymId)}`
                             : buildWizardStepDeepLink(step, editorGymId, wizardUrlOptions)
                         }
                       >
                         <Button className={btnGhost} variant="outline">
-                          Open payout setup
+                          Open payouts
                         </Button>
                       </Link>
                       <Button className={btnGhost} variant="outline" onClick={() => void refreshPayoutStatus()}>
