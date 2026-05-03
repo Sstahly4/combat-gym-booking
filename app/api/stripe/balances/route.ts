@@ -17,7 +17,7 @@ function pickTotal(items: Array<{ amount: number; currency: string }>, currency:
 export async function GET(request: Request) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
-      return jsonError('Stripe is not configured on the server.', 503, 'stripe_not_configured')
+      return jsonError('Payment processing is not configured on the server.', 503, 'stripe_not_configured')
     }
 
     const access = await getOwnerAccessContext()
@@ -43,7 +43,11 @@ export async function GET(request: Request) {
     }
 
     if (!gym.stripe_account_id) {
-      return jsonError('Stripe account not connected for this gym.', 409, 'stripe_not_connected')
+      return jsonError(
+        'Payouts are not connected for this gym yet. Open Balances → Payouts to finish setup.',
+        409,
+        'stripe_not_connected'
+      )
     }
 
     const accountId = gym.stripe_account_id as string

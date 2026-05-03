@@ -20,6 +20,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ViewerMoneyLine } from '@/components/admin/viewer-money-line'
 import { Button } from '@/components/ui/button'
 import { GymVerificationCard } from '@/components/admin/gym-verification-card'
 import type { Gym } from '@/lib/types/database'
@@ -239,8 +240,8 @@ export default function AdminVerificationPage() {
                 <p className="mt-1 text-sm text-stone-600">
                   {gym.city}, {gym.country} · {gym.disciplines?.join(', ')}
                 </p>
-                <p className="mt-1 text-sm text-stone-600">
-                  {gym.price_per_day} {gym.currency} / day
+                <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-stone-600">
+                  <ViewerMoneyLine amount={gym.price_per_day} storedCurrency={gym.currency} suffix="/ day" align="start" />
                 </p>
                 {gym.description && (
                   <p className="mt-2 text-sm text-stone-500">

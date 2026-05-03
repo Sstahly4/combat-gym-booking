@@ -28,7 +28,12 @@ import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { BookingDetailsModal } from '@/components/admin/booking-details-modal'
+import { ViewerMoneyLine } from '@/components/admin/viewer-money-line'
 import type { Booking, Gym } from '@/lib/types/database'
+
+type BookingListRow = Booking & {
+  gym?: Pick<Gym, 'id' | 'name' | 'currency'> | null
+}
 import {
   canonicalBookingStatusLabel,
   toCanonicalBookingStatus,
@@ -54,7 +59,7 @@ const ZERO: OverviewStats = {
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<OverviewStats>(ZERO)
-  const [recentBookings, setRecentBookings] = useState<Booking[]>([])
+  const [recentBookings, setRecentBookings] = useState<BookingListRow[]>([])
   const [recentGyms, setRecentGyms] = useState<Gym[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -79,7 +84,12 @@ export default function AdminOverviewPage() {
         supabase.from('gyms').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
         supabase
           .from('bookings')
-          .select('*')
+          .select(
+            `
+            *,
+            gym:gyms(id, name, currency)
+          `
+          )
           .order('created_at', { ascending: false })
           .limit(5),
         supabase.from('offers').select('id', { count: 'exact', head: true }),
@@ -94,7 +104,7 @@ export default function AdminOverviewPage() {
           .catch(() => ({ gyms: [] })),
       ])
 
-      const bookings = bookingsRes.status === 'fulfilled' ? bookingsRes.value.data ?? [] : []
+      const bookings = (bookingsRes.status === 'fulfilled' ? bookingsRes.value.data ?? [] : []) as BookingListRow[]
       const gyms = recentGymsRes.status === 'fulfilled' ? recentGymsRes.value.data ?? [] : []
 
       setRecentBookings(bookings)
@@ -266,10 +276,13 @@ export default function AdminOverviewPage() {
       </section>
 
       <section className="mb-10">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">
             Recent bookings
           </h2>
+          <p className="text-[11px] text-stone-500">
+            Amounts use your selected currency (navbar). Change currency there to match your location.
+          </p>
         </div>
         {loading ? (
           <div className="grid gap-2">
@@ -302,10 +315,12 @@ export default function AdminOverviewPage() {
                           {b.booking_reference || `#${b.id.slice(0, 8)}`}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span className="text-sm font-semibold text-stone-900">
-                          {b.total_price?.toFixed(2) || '0.00'}
-                        </span>
+                      <div className="flex shrink-0 items-start gap-3">
+                        <ViewerMoneyLine
+                          amount={b.total_price}
+                          storedCurrency={b.gym?.currency}
+                          align="end"
+                        />
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                             status === 'paid'

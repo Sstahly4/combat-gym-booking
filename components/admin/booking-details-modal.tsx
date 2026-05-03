@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Booking, Gym, Package as PackageType, PackageVariant } from '@/lib/types/database'
 import { toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
+import { useViewerMoneyFormatter } from '@/lib/hooks/use-viewer-money'
 
 interface BookingWithDetails extends Booking {
   gym?: Gym
@@ -23,6 +24,7 @@ interface BookingDetailsModalProps {
 }
 
 export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: BookingDetailsModalProps) {
+  const { formatPrimary, recordedNote } = useViewerMoneyFormatter()
   const [booking, setBooking] = useState<BookingWithDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -472,20 +474,30 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-gray-600">Total Price:</span>
-                    <div className="font-semibold text-lg">
-                      {booking.gym?.currency || 'USD'} {booking.total_price?.toFixed(2) || '0.00'}
-                    </div>
-                  </div>
-                  {booking.platform_fee && (
-                    <div>
-                      <span className="text-gray-600">Platform Fee:</span>
-                      <div className="font-medium">
-                        {booking.gym?.currency || 'USD'} {booking.platform_fee.toFixed(2)}
-                      </div>
-                    </div>
-                  )}
+                  {(() => {
+                    const cur = booking.gym?.currency
+                    const totalNote = recordedNote(booking.total_price, cur)
+                    const feeNote =
+                      booking.platform_fee != null && booking.platform_fee > 0
+                        ? recordedNote(booking.platform_fee, cur)
+                        : null
+                    return (
+                      <>
+                        <div>
+                          <span className="text-gray-600">Total price</span>
+                          <div className="font-semibold text-lg">{formatPrimary(booking.total_price, cur)}</div>
+                          {totalNote ? <p className="mt-0.5 text-xs text-gray-500">{totalNote}</p> : null}
+                        </div>
+                        {booking.platform_fee != null && booking.platform_fee > 0 ? (
+                          <div>
+                            <span className="text-gray-600">Platform fee</span>
+                            <div className="font-medium">{formatPrimary(booking.platform_fee, cur)}</div>
+                            {feeNote ? <p className="mt-0.5 text-xs text-gray-500">{feeNote}</p> : null}
+                          </div>
+                        ) : null}
+                      </>
+                    )
+                  })()}
                 </div>
                 {booking.stripe_payment_intent_id && (
                   <div className="pt-2 border-t">

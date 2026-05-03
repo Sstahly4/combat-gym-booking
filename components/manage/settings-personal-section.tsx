@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
+import { useSettingsNavigation } from '@/components/manage/settings-navigation-context'
 import { useSettingsToast } from '@/components/manage/settings-toast'
 import { settingsCardClass } from '@/components/manage/settings-shared'
+import { useCurrency, CURRENCIES } from '@/lib/contexts/currency-context'
 
 type PersonalProfile = {
   full_name: string
@@ -49,6 +51,8 @@ function equalProfiles(a: PersonalProfile, b: PersonalProfile) {
 
 export function SettingsPersonalSection() {
   const { showToast, setDirty } = useSettingsToast()
+  const settingsNav = useSettingsNavigation()
+  const { selectedCurrency, setSelectedCurrency } = useCurrency()
   const [profile, setProfile] = useState<PersonalProfile>(EMPTY_PROFILE)
   const [initial, setInitial] = useState<PersonalProfile>(EMPTY_PROFILE)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
@@ -178,7 +182,16 @@ export function SettingsPersonalSection() {
                 <Input id="personal-email" value={authEmail ?? ''} disabled className="bg-slate-50" />
                 <p className="text-xs text-gray-500">
                   To change your login email, go to{' '}
-                  <Link href="#settings-tab-security" className="text-[#003580] underline underline-offset-2">
+                  <Link
+                    href="/manage/settings?tab=security"
+                    className="text-[#003580] underline underline-offset-2 hover:text-[#002a5c]"
+                    onClick={(e) => {
+                      if (settingsNav) {
+                        e.preventDefault()
+                        settingsNav.navigateToTab('security')
+                      }
+                    }}
+                  >
                     Security &amp; login
                   </Link>
                   .
@@ -193,8 +206,8 @@ export function SettingsPersonalSection() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold text-gray-900">Language &amp; localization</CardTitle>
           <CardDescription className="text-sm text-gray-500">
-            Choose the language we use for emails, receipts, and the dashboard. Admins logging in from other time zones
-            still see gym schedules in the facility&apos;s local time.
+            Choose the language we use for emails, receipts, and the dashboard, and how prices are shown. Gym schedules
+            still follow each facility&apos;s local time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -211,6 +224,24 @@ export function SettingsPersonalSection() {
                 </option>
               ))}
             </Select>
+          </div>
+          <div className="space-y-2 sm:max-w-sm">
+            <Label htmlFor="personal-currency">Preferred currency</Label>
+            <Select
+              id="personal-currency"
+              value={selectedCurrency}
+              onChange={(event) => setSelectedCurrency(event.target.value)}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-gray-500">
+              Used for prices on the public site and in your dashboard (same as the globe menu in the header). Saved on
+              this device; change anytime.
+            </p>
           </div>
         </CardContent>
       </Card>

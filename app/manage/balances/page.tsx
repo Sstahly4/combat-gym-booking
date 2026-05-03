@@ -270,11 +270,11 @@ export default function BalancesPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href="/manage/stripe-connect"
+                href={activeGymId ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}` : '/manage/stripe-connect'}
                 className="text-xs font-medium text-[color:var(--brand,#003580)] hover:underline underline-offset-2"
                 style={{ color: BRAND }}
               >
-                Add descriptor
+                Statement descriptor
               </Link>
               <button
                 type="button"
@@ -423,10 +423,14 @@ export default function BalancesPage() {
 
                 <div className="py-3">
                   <Link
-                    href="/manage/stripe-connect"
+                    href={
+                      activeGymId
+                        ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
+                        : '/manage/balances/payouts'
+                    }
                     className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
                   >
-                    View more
+                    Full payout activity
                   </Link>
                 </div>
               </div>
@@ -464,11 +468,20 @@ export default function BalancesPage() {
               </ul>
 
               <div className="mt-6 border-t border-gray-100 pt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Status</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Payout account</p>
                 <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                  <li>Charges: {data ? (data.stripe.charges_enabled ? 'enabled' : 'disabled') : '—'}</li>
-                  <li>Payouts: {data ? (data.stripe.payouts_enabled ? 'enabled' : 'paused') : '—'}</li>
-                  <li>Details: {data ? (data.stripe.details_submitted ? 'submitted' : 'incomplete') : '—'}</li>
+                  <li>
+                    Accepting payments:{' '}
+                    {data ? (data.stripe.charges_enabled ? 'Yes' : 'No') : '—'}
+                  </li>
+                  <li>
+                    Transfers to bank:{' '}
+                    {data ? (data.stripe.payouts_enabled ? 'Active' : 'Paused') : '—'}
+                  </li>
+                  <li>
+                    Business profile:{' '}
+                    {data ? (data.stripe.details_submitted ? 'Complete' : 'Incomplete') : '—'}
+                  </li>
                 </ul>
               </div>
             </section>

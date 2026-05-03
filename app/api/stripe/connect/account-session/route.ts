@@ -46,7 +46,11 @@ export async function POST(request: Request) {
       return jsonError('Gym not found or access denied', 403)
     }
     if (!gym.stripe_account_id) {
-      return jsonError('Stripe account not connected for this gym.', 409, 'stripe_not_connected')
+      return jsonError(
+        'Payouts are not connected for this gym yet. Open Balances → Payouts to finish setup.',
+        409,
+        'stripe_not_connected'
+      )
     }
 
     const session = await stripe.accountSessions.create({

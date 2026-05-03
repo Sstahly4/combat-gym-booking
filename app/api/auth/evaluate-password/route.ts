@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
           type: 'password_policy_update',
           title: 'Update your password to our new standard',
           body: 'We recently raised our password requirements. Please update your password to meet the new standard.',
-          link_href: '/manage/settings/security',
+          link_href: '/manage/settings?tab=security',
           metadata: { reason: 'policy_tightened' },
         })
       }

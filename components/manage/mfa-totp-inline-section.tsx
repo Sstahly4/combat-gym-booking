@@ -12,7 +12,7 @@ export interface MfaTotpInlineSectionProps {
   subsectionClassName: string
   mutedClassName: string
   outlineButtonClassName: string
-  /** When false (e.g. on /manage/settings/security), omit the link to this same page. */
+  /** When false (e.g. already on Security settings), omit the link to this same page. */
   showSecuritySettingsLink?: boolean
   /** Inside another card: skip top border/padding. */
   embedded?: boolean
@@ -20,7 +20,7 @@ export interface MfaTotpInlineSectionProps {
 
 /**
  * Optional TOTP enrollment via Supabase Auth MFA (requires MFA enabled in project dashboard).
- * Reused on owner onboarding (Password & security) and /manage/settings/security.
+ * Reused on owner onboarding (Password & security) and partner Settings → Security.
  */
 export function MfaTotpInlineSection({
   subsectionClassName,
@@ -193,7 +193,7 @@ export function MfaTotpInlineSection({
           <>
             Set it up below now, <span className="whitespace-nowrap">or</span> enable TOTP from{' '}
             <Link
-              href="/manage/settings/security"
+              href="/manage/settings?tab=security"
               className="font-medium text-[#003580] underline-offset-2 hover:underline"
             >
               Security settings

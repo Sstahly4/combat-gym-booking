@@ -347,8 +347,8 @@ function SoftEmailBanner({ currentEmail }: { currentEmail: string }) {
           {currentEmail ? <> (<code className="rounded bg-white/60 px-1">{currentEmail}</code>)</> : null}.
           Update it in
           {' '}
-          <a href="/manage/settings?tab=account" className="font-medium text-[#003580] underline underline-offset-2 hover:text-[#002a5c]">
-            Settings → Account
+          <a href="/manage/settings?tab=security" className="font-medium text-[#003580] underline underline-offset-2 hover:text-[#002a5c]">
+            Settings → Security &amp; login
           </a>
           {' '}so we can send booking and payout notifications to the right inbox.
         </p>

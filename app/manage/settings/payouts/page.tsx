@@ -1,5 +1,5 @@
-import { ManageSettingsPage } from '@/components/manage/manage-settings-page'
+import { redirect } from 'next/navigation'
 
-export default function ManagePayoutSettingsPage() {
-  return <ManageSettingsPage focusSection="payouts" />
+export default function ManagePayoutSettingsRedirectPage() {
+  redirect('/manage/settings?tab=payouts')
 }

@@ -1,5 +1,5 @@
-import { ManageSettingsPage } from '@/components/manage/manage-settings-page'
+import { redirect } from 'next/navigation'
 
-export default function ManageCommunicationsSettingsPage() {
-  return <ManageSettingsPage focusSection="communications" />
+export default function ManageNotificationsSettingsRedirectPage() {
+  redirect('/manage/settings?tab=communications')
 }

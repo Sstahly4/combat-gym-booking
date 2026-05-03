@@ -244,7 +244,7 @@ export function NotificationBell() {
 
           <div className="border-t border-stone-100 bg-stone-50/60 px-4 py-2 text-right">
             <Link
-              href="/manage/settings/notifications"
+              href="/manage/settings?tab=communications"
               onClick={() => setOpen(false)}
               className="text-[11px] font-medium text-stone-500 hover:text-stone-700"
             >

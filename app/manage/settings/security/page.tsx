@@ -1,5 +1,6 @@
-import { ManageSettingsPage } from '@/components/manage/manage-settings-page'
+import { redirect } from 'next/navigation'
 
-export default function ManageSecuritySettingsPage() {
-  return <ManageSettingsPage focusSection="security" />
+/** Canonical settings URL uses a single page + `?tab=` for smooth client navigation. */
+export default function ManageSecuritySettingsRedirectPage() {
+  redirect('/manage/settings?tab=security')
 }

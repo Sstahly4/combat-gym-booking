@@ -24,6 +24,7 @@ import {
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { ViewerMoneyLine } from '@/components/admin/viewer-money-line'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import type { Gym, GymImage } from '@/lib/types/database'
@@ -226,8 +227,9 @@ export default function AdminGymsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-2 text-sm text-stone-700">
-                  <p>
-                    <strong>Price:</strong> {gym.price_per_day} {gym.currency} / day
+                  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <strong>Price:</strong>{' '}
+                    <ViewerMoneyLine amount={gym.price_per_day} storedCurrency={gym.currency} suffix="/ day" align="start" />
                   </p>
                   {gym.disciplines?.length ? (
                     <p>

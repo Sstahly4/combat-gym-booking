@@ -213,14 +213,14 @@ export default function PayoutsPage() {
                   <div className={`${dashCard} px-5 py-6`}>
                     <p className="text-sm font-medium text-rose-700">{connectError}</p>
                     <p className="mt-2 text-sm text-gray-600">
-                      Complete your{' '}
+                      Finish{' '}
                       <Link
                         href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gym.id)}`}
-                        className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                        className="font-semibold text-[#003580] underline-offset-2 hover:underline"
                       >
-                        connected account
+                        Stripe setup
                       </Link>{' '}
-                      setup first, then return here for schedules and history.
+                      for this gym, then return here for activity and bank details.
                     </p>
                   </div>
                 ) : connectInstance ? (

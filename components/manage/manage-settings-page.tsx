@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
+import {
+  SettingsNavigationProvider,
+  type SettingsNavTab,
+} from '@/components/manage/settings-navigation-context'
 import { SettingsToastProvider, useSettingsToast } from '@/components/manage/settings-toast'
 import { SettingsPersonalSection } from '@/components/manage/settings-personal-section'
 import { SettingsSecuritySection } from '@/components/manage/settings-security-section'
@@ -12,7 +16,7 @@ import { SettingsPayoutsSection } from '@/components/manage/settings-payouts-sec
 import { Select } from '@/components/ui/select'
 import { User, Shield, Bell, Building2, Wallet } from 'lucide-react'
 
-export type ManageSettingsTab = 'personal' | 'security' | 'communications' | 'facility' | 'payouts'
+export type ManageSettingsTab = SettingsNavTab
 
 /** Back-compat with older routes that still import `ManageSettingsFocus`. */
 export type ManageSettingsFocus = ManageSettingsTab | null
@@ -92,12 +96,11 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
 
   const [activeTab, setActiveTab] = useState<ManageSettingsTab>(initialTab)
 
+  const tabFromUrl = searchParams?.get('tab')
   useEffect(() => {
-    const paramTab = searchParams?.get('tab')
-    if (isTab(paramTab) && paramTab !== activeTab) {
-      setActiveTab(paramTab)
-    }
-  }, [searchParams, activeTab])
+    if (!isTab(tabFromUrl) || tabFromUrl === activeTab) return
+    setActiveTab(tabFromUrl)
+  }, [tabFromUrl, activeTab])
 
   const syncUrl = useCallback(
     (tab: ManageSettingsTab) => {
@@ -115,9 +118,6 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
       if (!confirmDiscardIfDirty(activeTab)) return
       setActiveTab(next)
       syncUrl(next)
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
     },
     [activeTab, confirmDiscardIfDirty, syncUrl]
   )
@@ -125,7 +125,8 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
   const activeDef = useMemo(() => TABS.find((t) => t.id === activeTab) ?? TABS[0], [activeTab])
 
   return (
-    <div className="min-h-screen bg-slate-50/60">
+    <SettingsNavigationProvider navigateToTab={requestTab}>
+      <div className="min-h-screen bg-slate-50/60">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <ManageBreadcrumbs
           items={[
@@ -205,6 +206,7 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
         </div>
       </div>
     </div>
+    </SettingsNavigationProvider>
   )
 }
 

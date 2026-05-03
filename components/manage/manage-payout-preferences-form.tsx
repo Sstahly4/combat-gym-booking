@@ -2,15 +2,22 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Check, CreditCard, Loader2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { GYM_CURRENCY_OPTIONS, normalizeGymCurrency } from '@/lib/constants/gym-currencies'
+import { cn } from '@/lib/utils'
 import type { Gym } from '@/lib/types/database'
+
+const BRAND = '#003580'
 
 const dashCard =
   'rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03]'
+
+const methodCardBase =
+  'relative flex w-full flex-col gap-1 rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/40 focus-visible:ring-offset-2'
 
 type Props = {
   gymId: string
@@ -113,33 +120,108 @@ export function ManagePayoutPreferencesForm({
   return (
     <div className="space-y-6">
       {error ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</div>
+        <div
+          className="rounded-xl border border-rose-200/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-900 shadow-sm shadow-rose-900/5"
+          role="alert"
+        >
+          {error}
+        </div>
       ) : null}
 
-      <section className={dashCard}>
-        <header className="border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-gray-900">How you get paid</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Choose how earnings from completed stays are sent. You can change this later; switching away from bank
-            transfer clears saved recipient details.
+      <section className={cn(dashCard, 'overflow-hidden')}>
+        <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5">
+          <h2 className="text-sm font-semibold text-gray-900">Payout method</h2>
+          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+            Industry-standard rails. You can change later; switching away from Wise clears saved Wise recipient data.
           </p>
-        </header>
-        <div className="space-y-4 px-5 py-5">
-          <div className="space-y-2">
-            <Label htmlFor="payout-rail">Payout method</Label>
-            <Select
-              id="payout-rail"
-              value={payoutRail}
-              onChange={(e) => setPayoutRail(e.target.value as 'wise' | 'stripe_connect')}
+        </div>
+
+        <div className="space-y-5 p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setPayoutRail('wise')}
+              className={cn(
+                methodCardBase,
+                payoutRail === 'wise'
+                  ? 'border-[#003580] bg-[#003580]/[0.07] shadow-sm ring-1 ring-[#003580]/20'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/90'
+              )}
             >
-              <option value="wise">Bank transfer (Wise)</option>
-              <option value="stripe_connect">Connected payout account</option>
-            </Select>
+              <span className="flex items-start justify-between gap-2">
+                <span className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1',
+                      payoutRail === 'wise' ? 'bg-white text-[#003580] ring-[#003580]/25' : 'bg-gray-50 text-gray-600 ring-gray-200/80'
+                    )}
+                  >
+                    <Wallet className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">Wise</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-gray-500">
+                      Payouts through Wise — common for international gyms.
+                    </span>
+                  </span>
+                </span>
+                {payoutRail === 'wise' ? (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003580] text-white" aria-hidden>
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </span>
+                ) : null}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPayoutRail('stripe_connect')}
+              className={cn(
+                methodCardBase,
+                payoutRail === 'stripe_connect'
+                  ? 'border-[#003580] bg-[#003580]/[0.07] shadow-sm ring-1 ring-[#003580]/20'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/90'
+              )}
+            >
+              <span className="flex items-start justify-between gap-2">
+                <span className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1',
+                      payoutRail === 'stripe_connect'
+                        ? 'bg-white text-[#003580] ring-[#003580]/25'
+                        : 'bg-gray-50 text-gray-600 ring-gray-200/80'
+                    )}
+                  >
+                    <CreditCard className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">Stripe</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-gray-500">
+                      Stripe Connect — balances, tax forms, and payout history in one flow.
+                    </span>
+                  </span>
+                </span>
+                {payoutRail === 'stripe_connect' ? (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003580] text-white" aria-hidden>
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </span>
+                ) : null}
+              </span>
+            </button>
           </div>
+
           {payoutRail === 'wise' ? (
-            <div className="space-y-2">
-              <Label htmlFor="payout-ccy">Payout currency</Label>
-              <Select id="payout-ccy" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <div className="rounded-xl border border-gray-200/90 bg-gray-50/50 p-4 sm:p-5">
+              <Label htmlFor="payout-ccy" className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Payout currency
+              </Label>
+              <Select
+                id="payout-ccy"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="mt-2 max-w-md border-gray-200 bg-white"
+              >
                 {GYM_CURRENCY_OPTIONS.map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.label}
@@ -148,71 +230,107 @@ export function ManagePayoutPreferencesForm({
               </Select>
             </div>
           ) : null}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button type="button" onClick={() => void saveRail()} disabled={savingRail} className="bg-[#003580] text-white hover:bg-[#002a5c]">
-              {savingRail ? 'Saving…' : 'Save preferences'}
+
+          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-gray-500">
+              {payoutRail === 'stripe_connect'
+                ? 'After saving, complete Stripe onboarding to activate payouts and balances.'
+                : 'Save your method, then add recipient details below.'}
+            </p>
+            <Button
+              type="button"
+              onClick={() => void saveRail()}
+              disabled={savingRail}
+              className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
+            >
+              {savingRail ? (
+                <>
+                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                'Save method'
+              )}
             </Button>
           </div>
+
           {payoutRail === 'stripe_connect' ? (
             <p className="text-sm text-gray-600">
-              Next, open{' '}
+              Next:{' '}
               <Link
                 href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`}
-                className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
+                style={{ color: BRAND }}
               >
-                Connected account
+                Open Stripe setup
               </Link>{' '}
-              to finish identity and bank details for payouts.
+              to verify identity and bank details.
             </p>
           ) : null}
         </div>
       </section>
 
       {payoutRail === 'wise' ? (
-        <section className={dashCard}>
-          <header className="border-b border-gray-100 px-5 py-4">
-            <h2 className="text-base font-semibold text-gray-900">Recipient details</h2>
-            <p className="mt-0.5 text-sm text-gray-500">
-              Name and email for where we send payouts. The email should match the account that will receive transfers.
+        <section className={cn(dashCard, 'overflow-hidden')}>
+          <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-gray-900">Wise recipient</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+              Legal name and email for payouts. The email should match the Wise account that will receive funds.
             </p>
-          </header>
-          <div className="space-y-4 px-5 py-5">
-            <div className="space-y-2">
-              <Label htmlFor="pay-name">Account holder name</Label>
-              <Input
-                id="pay-name"
-                value={accountHolderName}
-                onChange={(e) => setAccountHolderName(e.target.value)}
-                placeholder="Legal or business name"
-                autoComplete="name"
-              />
+          </div>
+          <div className="space-y-4 p-5 sm:p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="pay-name" className="text-xs font-medium text-gray-700">
+                  Account holder name
+                </Label>
+                <Input
+                  id="pay-name"
+                  value={accountHolderName}
+                  onChange={(e) => setAccountHolderName(e.target.value)}
+                  placeholder="Legal or business name"
+                  autoComplete="name"
+                  className="border-gray-200 bg-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pay-email" className="text-xs font-medium text-gray-700">
+                  Recipient email
+                </Label>
+                <Input
+                  id="pay-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="border-gray-200 bg-white"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="pay-email">Recipient email</Label>
-              <Input
-                id="pay-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
+
+            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-gray-500">
+                {wiseReady
+                  ? 'Recipient is on file. You can update details before your first payout.'
+                  : 'Save recipient to complete this step for go-live readiness.'}
+              </p>
               <Button
                 type="button"
                 onClick={() => void saveRecipient()}
                 disabled={savingRecipient}
-                className="bg-[#003580] text-white hover:bg-[#002a5c]"
+                className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
               >
-                {savingRecipient ? 'Saving…' : 'Save recipient'}
+                {savingRecipient ? (
+                  <>
+                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                    Saving…
+                  </>
+                ) : (
+                  'Save recipient'
+                )}
               </Button>
             </div>
-            <p className="text-xs text-gray-500">
-              {wiseReady
-                ? `Recipient saved. You can update details anytime before your first payout.`
-                : 'Save preferences above, then save recipient details to mark this step complete for go-live.'}
-            </p>
           </div>
         </section>
       ) : null}

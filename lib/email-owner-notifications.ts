@@ -27,7 +27,7 @@ import {
 } from './email-layout'
 
 const notificationsFooter = () =>
-  `You're receiving this because email notifications are enabled for your owner account. <a href="${APP_URL()}/manage/settings/notifications" style="color:${BRAND.linkColor};text-decoration:none;">Manage preferences</a>.`
+  `You're receiving this because email notifications are enabled for your owner account. <a href="${APP_URL()}/manage/settings?tab=communications" style="color:${BRAND.linkColor};text-decoration:none;">Manage preferences</a>.`
 
 // ============================================================================
 // Booking created (new request arrived)
