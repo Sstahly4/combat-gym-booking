@@ -96,14 +96,13 @@ function getNavGroups(
         label: 'Balances',
         icon: Wallet,
         isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
+        /** Claim-link dashboard tour: payment & payouts live under Balances (always visible in sidebar). */
         tourAnchor: 'tour-balances',
         children: [
           {
             href: payoutsHref,
             label: 'Payouts',
             isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
-            /** Claim-link dashboard tour highlights Stripe Connect entry point. */
-            tourAnchor: 'tour-payouts',
           },
           {
             href: payoutSetupHref,

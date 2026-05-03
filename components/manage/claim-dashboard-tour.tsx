@@ -68,11 +68,11 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'payouts',
-    anchor: 'tour-payouts',
-    title: 'Payout setup',
+    anchor: 'tour-balances',
+    title: 'How you get paid',
     paragraphs: [
-      'Under Balances, use Payout setup (or Payouts for Stripe activity) to choose Wise or Stripe Connect and finish payout details before you accept paid stays.',
-      'You can polish your listing first; complete payouts before switching the gym live if you plan to charge guests.',
+      'Open Balances in the sidebar to add where we should send your earnings after guest stays.',
+      'You can polish your listing first; finish payment details before you start accepting paid bookings.',
     ],
   },
   {
@@ -80,8 +80,8 @@ const STEPS: TourStep[] = [
     anchor: 'tour-setup-guide',
     title: 'Setup guide',
     paragraphs: [
-      'The floating checklist tracks required items: listing and account, packages and pricing, photos, and payouts. Tap a row to jump straight there.',
-      'When every required row is complete, use Open review at the bottom to run the final check and publish.',
+      'This checklist walks you through listing, rates, photos, and payment setup. Tap any row to jump straight there.',
+      'When every required item is done, use Review to run the final check and make your listing visible to guests.',
     ],
   },
   {
@@ -141,6 +141,12 @@ export function ClaimDashboardTour() {
 
   const recomputeCardPosition = useCallback(() => {
     const anchorId = step.anchor
+    // Setup guide is a fixed corner panel; anchoring the dialog beside it often pushes it off-screen.
+    // We keep the highlight on the panel but show this step as a centered dialog (same as welcome/pricing).
+    if (step.id === 'setup-guide') {
+      setCardBox(null)
+      return
+    }
     if (!anchorId) {
       setCardBox(null)
       return
@@ -162,7 +168,7 @@ export function ClaimDashboardTour() {
     const left = Math.min(Math.max(margin, ar.left), window.innerWidth - maxW - margin)
 
     setCardBox({ top, left, maxWidth: maxW })
-  }, [step.anchor])
+  }, [step.anchor, step.id])
 
   useLayoutEffect(() => {
     if (!enterAllowed || !tourPending) return
@@ -304,7 +310,7 @@ export function ClaimDashboardTour() {
     return null
   }
 
-  const centered = !step.anchor || !cardBox
+  const centered = !step.anchor || !cardBox || step.id === 'setup-guide'
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[85] motion-safe:transition-opacity motion-reduce:transition-none">
