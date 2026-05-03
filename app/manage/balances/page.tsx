@@ -215,10 +215,10 @@ export default function BalancesPage() {
                 className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+8px)] z-30 w-[min(18rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[11px] font-normal leading-snug text-gray-700 shadow-md opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
               >
                 {!data
-                  ? 'Loading balance information for this gym…'
+                  ? 'Loading balance information for this listing…'
                   : data.payout_rail === 'wise'
-                    ? 'On Wise, settlement happens outside Stripe. This screen shows booking-related totals at zero until you use Stripe Connect; use Bookings for paid stays and Settings → Payouts for bank details.'
-                    : 'Available balance is the amount we can pay out to your bank account. Incoming funds become available after the standard processing window.'}
+                    ? 'For the platform payout route, funds are not settled through a connected Stripe account, so amounts on this page may stay at zero. Review paid stays under Bookings; configure how you receive payouts under Settings → Payouts.'
+                    : 'Shows your connected payout account: available is what can be transferred to your bank; pending is still clearing with your payment provider. Open Settings → Payouts to review payout method and account details.'}
               </span>
             </span>
           </div>
