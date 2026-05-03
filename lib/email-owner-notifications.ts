@@ -235,7 +235,7 @@ export async function sendOwnerPayoutPaidEmail(data: {
   arrivalDate: string
   payoutId: string
 }): Promise<boolean> {
-  const dashboard = `${APP_URL()}/manage/balances/payouts`
+  const dashboard = `${APP_URL().replace(/\/$/, '')}/manage/settings?tab=payouts`
   const formatted = formatMoney(data.amount, data.currency)
 
   const innerHtml = [

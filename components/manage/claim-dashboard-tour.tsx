@@ -71,8 +71,8 @@ const STEPS: TourStep[] = [
     anchor: 'tour-balances',
     title: 'How you get paid',
     paragraphs: [
-      'Open Balances in the sidebar to add where we should send your earnings after guest stays.',
-      'You can polish your listing first; finish payment details before you start accepting paid bookings.',
+      'Use Balances in the sidebar for live totals and payout activity when you use Stripe Connect.',
+      'Set up Wise or Stripe under Settings → Payouts (gear icon at the bottom of the sidebar). You can polish your listing first; finish payment details before you start accepting paid bookings.',
     ],
   },
   {

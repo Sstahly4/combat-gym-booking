@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2, ExternalLink, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { Gym } from '@/lib/types/database'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import { cn } from '@/lib/utils'
 
 interface VerificationChecklistProps {
@@ -121,7 +122,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
                   : 'Connect a payout account to receive earnings from bookings.'
             : requirements.payouts
               ? 'Bank transfer recipient is on file.'
-              : 'Add recipient details under Balances → Payouts.',
+              : 'Add recipient details under Settings → Payouts.',
         done: requirements.payouts,
         loading: payoutRail === 'stripe_connect' ? loadingStripe : false,
         actionLabel:
@@ -132,7 +133,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
             : requirements.payouts
               ? 'Open payouts'
               : 'Add payout details',
-        href: `/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`,
+        href: manageSettingsPayoutsHref(gym.id),
       },
       {
         id: 'admin',
@@ -265,7 +266,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
           <p className="mt-1 text-gray-600">
             {completedCount === totalSteps
               ? 'All checklist items are done. We’ll review and approve your gym for search when ready.'
-              : 'Finish the numbered steps above. Use Edit gym and Payouts where linked.'}
+              : 'Finish the numbered steps above. Use Edit gym and Settings → Payouts where linked.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" className="border-gray-300 bg-white">
@@ -273,11 +274,11 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
             </Button>
             {payoutRail === 'stripe_connect' && !gym.stripe_account_id ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
-                <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>Payouts</Link>
+                <Link href={manageSettingsPayoutsHref(gym.id)}>Payout setup</Link>
               </Button>
             ) : payoutRail === 'wise' && !wisePayoutOk ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
-                <Link href={`/manage/balances/payouts?gym_id=${encodeURIComponent(gym.id)}`}>Payouts</Link>
+                <Link href={manageSettingsPayoutsHref(gym.id)}>Payout setup</Link>
               </Button>
             ) : null}
           </div>

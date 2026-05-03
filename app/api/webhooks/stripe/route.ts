@@ -558,7 +558,7 @@ export async function POST(request: NextRequest) {
             type: 'payout_paid',
             title: `Payout sent — ${currency} ${amount.toFixed(2)}`,
             body: `Expected to arrive in your bank account on ${arrivalIso}.`,
-            link_href: '/manage/balances/payouts',
+            link_href: `/manage/settings?tab=payouts&gym_id=${encodeURIComponent(gym.id)}`,
             metadata: { payout_id: payout.id, amount, currency, arrival_date: arrivalIso },
             email: {
               pref_key: 'email_payouts',

@@ -29,6 +29,7 @@ import type { AccountHolderPropertyRole } from '@/lib/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { clearReadinessSessionCache } from '@/lib/onboarding/readiness-session-cache'
 import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -508,7 +509,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             : 'Bank transfer payout details are on file.'
           : payoutRail === 'stripe_connect'
             ? 'Finish connected account setup so completed bookings can be paid out.'
-            : 'Add payout details under Balances → Payouts (or switch method there).',
+            : 'Add payout details under Settings → Payouts (or switch method there).',
         ready: payoutStepComplete,
       },
       {
@@ -2032,12 +2033,12 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                       <Link
                         href={
                           editorGymId
-                            ? `/manage/balances/payouts?gym_id=${encodeURIComponent(editorGymId)}`
+                            ? manageSettingsPayoutsHref(editorGymId)
                             : buildWizardStepDeepLink(step, editorGymId, wizardUrlOptions)
                         }
                       >
                         <Button className={btnGhost} variant="outline">
-                          Open payouts
+                          Open payout setup
                         </Button>
                       </Link>
                       <Button className={btnGhost} variant="outline" onClick={() => void refreshPayoutStatus()}>

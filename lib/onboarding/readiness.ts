@@ -1,4 +1,5 @@
 import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
 type ReadinessItem = {
   key: string
@@ -158,7 +159,7 @@ export async function getGymReadiness({
       deepLink:
         rail === 'stripe_connect'
           ? `/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`
-          : `/manage/balances/payouts?gym_id=${encodeURIComponent(gymId)}`,
+          : manageSettingsPayoutsHref(gymId),
     },
   ]
 

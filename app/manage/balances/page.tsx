@@ -9,6 +9,7 @@ import { ArrowLeftRight, BarChart3, ChevronDown, Info, X } from 'lucide-react'
 import { PayoutsHoldBanner } from '@/components/manage/payouts-hold-banner'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { formatDashboardMoney } from '@/lib/currency/format-dashboard-money'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
 const BRAND = '#003580'
 
@@ -105,11 +106,17 @@ export default function BalancesPage() {
 
   useEffect(() => {
     if (authLoading || !user || profile?.role !== 'owner') return
-    if (!activeGymId) return
+    if (!activeGymId) {
+      setLoading(false)
+      setData(null)
+      setError(null)
+      return
+    }
 
     let cancelled = false
     setLoading(true)
     setError(null)
+    setData(null)
 
     void fetch(`/api/stripe/balances?gym_id=${encodeURIComponent(activeGymId)}`, { cache: 'no-store' })
       .then(async (res) => {
@@ -180,9 +187,7 @@ export default function BalancesPage() {
     if (wiseReady) return 'wise_ready'
     return 'needs_setup'
   })()
-  const payoutsHref = activeGymId
-    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
-    : '/manage/balances/payouts'
+  const payoutsHref = manageSettingsPayoutsHref(activeGymId)
   const bookingsHref = activeGymId
     ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
     : '/manage/bookings'
@@ -209,9 +214,11 @@ export default function BalancesPage() {
                 role="tooltip"
                 className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+8px)] z-30 w-[min(18rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[11px] font-normal leading-snug text-gray-700 shadow-md opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
               >
-                {data?.payout_rail === 'wise'
-                  ? 'Wise payouts settle outside this balance view. Use Bookings for paid stays; amounts here stay at zero until you use Stripe Connect.'
-                  : 'Available balance is the amount we can pay out to your bank account. Incoming funds become available after the standard processing window.'}
+                {!data
+                  ? 'Loading balance information for this gym…'
+                  : data.payout_rail === 'wise'
+                    ? 'On Wise, settlement happens outside Stripe. This screen shows booking-related totals at zero until you use Stripe Connect; use Bookings for paid stays and Settings → Payouts for bank details.'
+                    : 'Available balance is the amount we can pay out to your bank account. Incoming funds become available after the standard processing window.'}
               </span>
             </span>
           </div>
@@ -240,15 +247,8 @@ export default function BalancesPage() {
                   className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
                   onMouseLeave={() => setPayoutsMenuOpen(false)}
                 >
-                  <Link
-                    href={
-                      activeGymId
-                        ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
-                        : '/manage/balances/payouts'
-                    }
-                    className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                  >
-                    Payouts
+                  <Link href={payoutsHref} className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50">
+                    Payout setup (Settings)
                   </Link>
                   <Link
                     href={
@@ -258,13 +258,7 @@ export default function BalancesPage() {
                     }
                     className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
                   >
-                    Connected account
-                  </Link>
-                  <Link
-                    href="/manage/settings?tab=payouts"
-                    className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                  >
-                    Payout settings
+                    Stripe Connect onboarding
                   </Link>
                 </div>
               ) : null}
@@ -279,12 +273,65 @@ export default function BalancesPage() {
           </div>
         </div>
 
+        {error && activeGymId ? (
+          <div className={`${dashCard} p-6`}>
+            <p className="text-sm text-gray-700">{error}</p>
+            <div className="mt-4">
+              <Link
+                href={payoutsHref}
+                className="inline-flex h-9 items-center rounded-md bg-[#003580] px-4 text-sm font-medium text-white hover:bg-[#002a66]"
+              >
+                Open payout setup
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {!activeGymId ? (
+          <div className={`${dashCard} p-6 text-sm text-gray-700`}>
+            Select a gym to view balances.
+          </div>
+        ) : null}
+
+        {loading && activeGymId && !error ? (
+          <div className="space-y-6" aria-busy="true" aria-label="Loading balances">
+            <div className={`${dashCard} h-20 bg-gradient-to-r from-gray-50 to-gray-100/80`} />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
+              <div className="space-y-6">
+                <div className={`${dashCard} h-52 bg-gray-50/90 p-6`}>
+                  <div className="h-3 w-28 rounded bg-gray-200/90" />
+                  <div className="mt-6 h-2 w-full rounded-full bg-gray-100" />
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    <div className="h-4 w-24 rounded bg-gray-100" />
+                    <div className="ml-auto h-4 w-20 rounded bg-gray-100" />
+                    <div className="h-4 w-32 rounded bg-gray-100" />
+                    <div className="ml-auto h-4 w-24 rounded bg-gray-100" />
+                  </div>
+                </div>
+                <div className={`${dashCard} h-36 bg-gray-50/90 p-6`}>
+                  <div className="h-3 w-36 rounded bg-gray-200/90" />
+                  <div className="mt-4 h-3 w-full rounded bg-gray-100" />
+                  <div className="mt-3 h-3 max-w-md rounded bg-gray-100" style={{ width: '80%' }} />
+                </div>
+              </div>
+              <div className={`${dashCard} h-56 bg-gray-50/90 p-5`}>
+                <div className="h-3 w-24 rounded bg-gray-200/90" />
+                <div className="mt-6 space-y-3">
+                  <div className="h-10 rounded-lg bg-gray-100" />
+                  <div className="h-10 rounded-lg bg-gray-100" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : !error && !loading && activeGymId ? (
+          <>
         {data?.gym?.payouts_hold_active ? (
           <PayoutsHoldBanner
             variant="balances"
             active
             reason={data.gym.payouts_hold_reason ?? null}
             setAt={data.gym.payouts_hold_set_at ?? null}
+            gymId={activeGymId}
           />
         ) : null}
 
@@ -292,13 +339,13 @@ export default function BalancesPage() {
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm shadow-amber-900/5">
             <p className="font-medium text-amber-950">Payment method not set</p>
             <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-              This gym doesn&apos;t have a payout method yet. Balances and payouts stay at zero until you set
-              one up. Choose Wise (recommended) or Stripe under{' '}
+              No payment method is on file for this listing. Balances and payout activity remain at zero until you
+              configure how you receive payouts. To add or update your payout details, open{' '}
               <Link
                 href={payoutsHref}
                 className="font-semibold text-[#003580] underline-offset-2 hover:underline"
               >
-                Payouts
+                Settings → Payouts
               </Link>
               .
             </p>
@@ -315,7 +362,7 @@ export default function BalancesPage() {
               </Link>
               ; update recipient details under{' '}
               <Link href={payoutsHref} className="font-semibold text-[#003580] underline-offset-2 hover:underline">
-                Payouts
+                Settings → Payouts
               </Link>
               .
             </p>
@@ -332,11 +379,7 @@ export default function BalancesPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href={
-                  activeGymId
-                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}#account-management`
-                    : '/manage/balances/payouts#account-management'
-                }
+                href={manageSettingsPayoutsHref(activeGymId, 'account-management')}
                 className="text-xs font-medium text-[color:var(--brand,#003580)] hover:underline underline-offset-2"
                 style={{ color: BRAND }}
               >
@@ -351,30 +394,6 @@ export default function BalancesPage() {
                 <X className="h-3.5 w-3.5" aria-hidden />
               </button>
             </div>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className={`${dashCard} p-6`}>
-            <p className="text-sm text-gray-700">{error}</p>
-            <div className="mt-4">
-              <Link
-                href={
-                  activeGymId
-                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
-                    : '/manage/balances/payouts'
-                }
-                className="inline-flex h-9 items-center rounded-md bg-[#003580] px-4 text-sm font-medium text-white hover:bg-[#002a66]"
-              >
-                Open payouts
-              </Link>
-            </div>
-          </div>
-        ) : null}
-
-        {!activeGymId ? (
-          <div className={`${dashCard} p-6 text-sm text-gray-700`}>
-            Select a gym to view balances.
           </div>
         ) : null}
 
@@ -457,14 +476,14 @@ export default function BalancesPage() {
                   <div className="py-6 text-sm text-gray-500">
                     {payoutState === 'needs_setup' ? (
                       <>
-                        No payouts yet —{' '}
+                        No payout activity yet. Add or review your payment method under{' '}
                         <Link
                           href={payoutsHref}
                           className="font-medium text-[#003580] underline-offset-2 hover:underline"
                         >
-                          set up a payout method
-                        </Link>{' '}
-                        to start receiving payments.
+                          Settings → Payouts
+                        </Link>
+                        .
                       </>
                     ) : (
                       'No payouts yet.'
@@ -504,14 +523,10 @@ export default function BalancesPage() {
 
                 <div className="py-3">
                   <Link
-                    href={
-                      activeGymId
-                        ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
-                        : '/manage/balances/payouts'
-                    }
+                    href={payoutsHref}
                     className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
                   >
-                    Full payout activity
+                    Payout setup &amp; activity
                   </Link>
                 </div>
               </div>
@@ -550,7 +565,9 @@ export default function BalancesPage() {
 
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Payout account</p>
-                {payoutState === 'needs_setup' ? (
+                {payoutState === 'loading' ? (
+                  <p className="mt-2 text-xs text-gray-500">Loading…</p>
+                ) : payoutState === 'needs_setup' ? (
                   <ul className="mt-2 space-y-1 text-xs text-gray-600">
                     <li>
                       Method: <span className="font-medium text-amber-800">Not set</span>
@@ -599,6 +616,8 @@ export default function BalancesPage() {
             </section>
           </aside>
         </div>
+          </>
+        ) : null}
       </div>
     </div>
   )

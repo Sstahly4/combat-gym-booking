@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
 export type PayoutsHoldBannerProps = {
   active: boolean
@@ -8,6 +9,8 @@ export type PayoutsHoldBannerProps = {
   /** Full-width strip on Balances; tighter block inside settings cards */
   variant?: 'balances' | 'settings'
   className?: string
+  /** When set, payout links include `gym_id` for the active facility. */
+  gymId?: string | null
 }
 
 const BRAND = '#003580'
@@ -30,11 +33,13 @@ export function PayoutsHoldBanner({
   setAt,
   variant = 'balances',
   className = '',
+  gymId = null,
 }: PayoutsHoldBannerProps) {
   if (!active) return null
 
   const when = formatWhen(setAt)
   const detail = reason?.trim() || 'Your payout bank details were recently updated.'
+  const payoutsSettingsHref = manageSettingsPayoutsHref(gymId)
 
   if (variant === 'settings') {
     return (
@@ -49,8 +54,12 @@ export function PayoutsHoldBanner({
           {when ? <p className="text-[11px] text-amber-800/80">Since {when}</p> : null}
           <p className="text-xs text-amber-900/90">
             Payouts may pause until bank details are verified. Check{' '}
-            <Link href="/manage/balances/payouts" className="font-medium underline underline-offset-2" style={{ color: BRAND }}>
-              Payouts
+            <Link
+              href={payoutsSettingsHref}
+              className="font-medium underline underline-offset-2"
+              style={{ color: BRAND }}
+            >
+              Settings → Payouts
             </Link>{' '}
             or{' '}
             <Link href="/manage/balances" className="font-medium underline underline-offset-2" style={{ color: BRAND }}>
@@ -68,7 +77,7 @@ export function PayoutsHoldBanner({
       role="status"
       className={`flex flex-col gap-3 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50 to-amber-50/40 px-4 py-3 sm:flex-row sm:items-start sm:justify-between ${className}`}
     >
-      <div className="flex gap-3 min-w-0">
+      <div className="flex min-w-0 gap-3">
         <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100/80 ring-1 ring-amber-200/80">
           <AlertTriangle className="h-4 w-4 text-amber-800" strokeWidth={2} aria-hidden />
         </span>
@@ -82,17 +91,17 @@ export function PayoutsHoldBanner({
       </div>
       <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
         <Link
-          href="/manage/balances/payouts"
+          href={payoutsSettingsHref}
           className="inline-flex h-8 items-center rounded-md border border-amber-300/80 bg-white px-3 text-xs font-medium text-amber-950 shadow-sm hover:bg-amber-50"
         >
-          Review payouts
+          Review payout setup
         </Link>
         <Link
-          href="/manage/settings?tab=payouts"
+          href={gymId ? `/manage/balances?gym_id=${encodeURIComponent(gymId)}` : '/manage/balances'}
           className="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-[#003580] underline-offset-2 hover:underline"
           style={{ color: BRAND }}
         >
-          Payout settings
+          Balances
         </Link>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
 /** Page shell aligned with onboarding packages overlay: soft blur + grey wash. */
 function StripeConnectShell({
@@ -132,9 +133,7 @@ function StripeConnectPageContent() {
     )
   }
 
-  const payoutsHubUrl = gymId
-    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(gymId)}`
-    : '/manage/balances/payouts'
+  const payoutsHubUrl = manageSettingsPayoutsHref(gymId)
   const onboardingGoLiveUrl = buildOnboardingWizardUrl('step-7', gymId)
 
   /** Until the API responds, `returnStatus` is `idle` then `checking` — treat both as loading when we have a gym. */
@@ -164,12 +163,12 @@ function StripeConnectPageContent() {
       return (
         <StripeConnectShell
           title="Couldn’t verify Stripe status"
-          subtitle="You can try again from the Payouts step or reopen Stripe onboarding."
+          subtitle="You can try again from Settings → Payouts or reopen Stripe onboarding."
         >
           <div className="mx-auto flex max-w-md flex-col items-center gap-6">
             <p className="text-left text-sm text-muted-foreground">
               We couldn&apos;t reach Stripe to confirm your account. Check your connection, then use{' '}
-              <strong className="font-semibold text-gray-900">Refresh status</strong> on the Payouts step, or open Stripe
+              <strong className="font-semibold text-gray-900">Refresh status</strong> on Settings → Payouts, or open Stripe
               again below.
             </p>
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
@@ -197,7 +196,7 @@ function StripeConnectPageContent() {
         >
           <div className="mx-auto flex max-w-md flex-col items-center gap-6">
             <p className="text-left text-sm leading-relaxed text-gray-700">
-              On the <strong className="font-semibold text-gray-900">Payouts</strong> step, use{' '}
+              Under <strong className="font-semibold text-gray-900">Settings → Payouts</strong>, use{' '}
               <strong className="font-semibold text-gray-900">Refresh status</strong> if the checklist doesn&apos;t update
               right away. Then complete the remaining steps through <strong className="font-semibold text-gray-900">Go live</strong>.
             </p>
@@ -226,7 +225,7 @@ function StripeConnectPageContent() {
           <p className="text-left text-sm leading-relaxed text-gray-700">
             Complete any remaining items in Stripe (business details, bank account, identity), or open Stripe again. When
             Stripe is satisfied, we&apos;ll mark payouts as connected — use{' '}
-            <strong className="font-semibold text-gray-900">Refresh status</strong> on the Payouts step after you finish.
+            <strong className="font-semibold text-gray-900">Refresh status</strong> on Settings → Payouts after you finish.
           </p>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <Button

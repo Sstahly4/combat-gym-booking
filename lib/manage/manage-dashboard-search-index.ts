@@ -59,10 +59,10 @@ export const MANAGE_DASHBOARD_QUICK_HITS: ManageDashboardSearchHit[] = [
   {
     id: 'quick-payouts',
     title: 'Payouts',
-    subtitle: 'Balances · preferences & payout activity',
-    href: '/manage/balances/payouts',
+    subtitle: 'Settings · Wise or Stripe, bank details, Connect activity',
+    href: '/manage/settings?tab=payouts#settings-tab-payouts',
     quick: true,
-    keywords: ['payouts', 'bank', 'transfers', 'earnings', 'payments', 'balances'],
+    keywords: ['payouts', 'payout settings', 'bank', 'transfers', 'earnings', 'payments', 'balances', 'wise', 'connected account'],
   },
 ]
 
@@ -81,13 +81,6 @@ export const MANAGE_DASHBOARD_SEARCH_STATIC: ManageDashboardSearchHit[] = [
     subtitle: 'Settings · gym display name, timezone, public phone',
     href: '/manage/settings?tab=facility#settings-tab-facility',
     keywords: ['timezone', 'reception', 'contact', 'property', 'camp name'],
-  },
-  {
-    id: 'settings-payouts',
-    title: 'Payout settings',
-    subtitle: 'Settings · per-gym payout status',
-    href: '/manage/settings?tab=payouts#settings-tab-payouts',
-    keywords: ['payout', 'fees', 'bank', 'wise', 'connected account'],
   },
   {
     id: 'settings-hub',

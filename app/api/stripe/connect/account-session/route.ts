@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     }
     if (!gym.stripe_account_id) {
       return jsonError(
-        'Payouts are not connected for this gym yet. Open Balances → Payouts to finish setup.',
+        'Payouts are not connected for this gym yet. Open Settings → Payouts to finish setup.',
         409,
         'stripe_not_connected'
       )

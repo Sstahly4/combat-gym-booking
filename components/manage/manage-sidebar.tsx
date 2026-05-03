@@ -62,7 +62,6 @@ function getNavGroups(
   const bookingsHref = withGymId('/manage/bookings', firstGymId)
   const calendarHref = withGymId('/manage/calendar', firstGymId)
   const balancesHref = withGymId('/manage/balances', firstGymId)
-  const payoutsHref = withGymId('/manage/balances/payouts', firstGymId)
   const promotionsHref = withGymId('/manage/promotions', firstGymId)
   const reviewsHref = withGymId('/manage/reviews', firstGymId)
   const accommodationHref = withGymId('/manage/accommodation', firstGymId)
@@ -94,16 +93,9 @@ function getNavGroups(
         href: balancesHref,
         label: 'Balances',
         icon: Wallet,
-        isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
-        /** Claim-link dashboard tour: payment & payouts live under Balances (always visible in sidebar). */
+        isActive: (p) => p === '/manage/balances',
+        /** Claim-link dashboard tour: Balances for live totals; payout setup is under Settings → Payouts. */
         tourAnchor: 'tour-balances',
-        children: [
-          {
-            href: payoutsHref,
-            label: 'Payouts',
-            isActive: (p) => p === '/manage/balances/payouts' || p.startsWith('/manage/balances/payouts/'),
-          },
-        ],
       },
       {
         href: promotionsHref,
