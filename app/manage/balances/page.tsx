@@ -162,6 +162,31 @@ export default function BalancesPage() {
   const payouts = data?.payouts ?? []
   const visiblePayouts = activityTab === 'payouts' ? payouts : payouts
 
+  /**
+   * Payout-method state for the callout. New gyms default to `payout_rail='wise'` but
+   * haven't configured Wise yet, so treat "wise rail + not ready" as "needs setup"
+   * rather than advertising a Wise balance that will always be zero.
+   */
+  type PayoutState =
+    | 'loading'
+    | 'needs_setup'
+    | 'wise_ready'
+    | 'wise_pending'
+    | 'stripe'
+  const payoutState: PayoutState = (() => {
+    if (loading || !data) return 'loading'
+    if (data.payout_rail === 'stripe_connect') return 'stripe'
+    const wiseReady = Boolean(data.gym?.wise_payout_ready)
+    if (wiseReady) return 'wise_ready'
+    return 'needs_setup'
+  })()
+  const payoutsHref = activeGymId
+    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
+    : '/manage/balances/payouts'
+  const bookingsHref = activeGymId
+    ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
+    : '/manage/bookings'
+
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -263,29 +288,14 @@ export default function BalancesPage() {
           />
         ) : null}
 
-        {data?.payout_rail === 'wise' && !error ? (
-          <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 px-4 py-3 text-sm text-sky-950 shadow-sm shadow-sky-900/5">
-            <p className="font-medium text-sky-950">Wise payouts</p>
-            <p className="mt-1 text-xs leading-relaxed text-sky-900/90">
-              This balance view is for Stripe Connect. You&apos;re on Wise — amounts stay at zero here. Track paid
-              stays under{' '}
+        {!error && payoutState === 'needs_setup' ? (
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm shadow-amber-900/5">
+            <p className="font-medium text-amber-950">Payment method not set</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+              This gym doesn&apos;t have a payout method yet. Balances and payouts stay at zero until you set
+              one up. Choose Wise (recommended) or Stripe under{' '}
               <Link
-                href={
-                  activeGymId
-                    ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
-                    : '/manage/bookings'
-                }
-                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
-              >
-                Bookings
-              </Link>
-              ; manage recipient details under{' '}
-              <Link
-                href={
-                  activeGymId
-                    ? `/manage/balances/payouts?gym_id=${encodeURIComponent(activeGymId)}`
-                    : '/manage/balances/payouts'
-                }
+                href={payoutsHref}
                 className="font-semibold text-[#003580] underline-offset-2 hover:underline"
               >
                 Payouts
@@ -295,7 +305,24 @@ export default function BalancesPage() {
           </div>
         ) : null}
 
-        {showDescriptor && data?.payout_rail !== 'wise' ? (
+        {!error && payoutState === 'wise_ready' ? (
+          <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 px-4 py-3 text-sm text-sky-950 shadow-sm shadow-sky-900/5">
+            <p className="font-medium text-sky-950">Wise payouts active</p>
+            <p className="mt-1 text-xs leading-relaxed text-sky-900/90">
+              Paid stays settle to your bank through Wise. Track income under{' '}
+              <Link href={bookingsHref} className="font-semibold text-[#003580] underline-offset-2 hover:underline">
+                Bookings
+              </Link>
+              ; update recipient details under{' '}
+              <Link href={payoutsHref} className="font-semibold text-[#003580] underline-offset-2 hover:underline">
+                Payouts
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
+
+        {showDescriptor && payoutState === 'stripe' ? (
           <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
             <div className="flex items-start gap-2 text-xs text-gray-700">
               <BarChart3 className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
@@ -427,7 +454,22 @@ export default function BalancesPage() {
                 {loading ? (
                   <div className="py-6 text-sm text-gray-500">Loading activity…</div>
                 ) : visiblePayouts.length === 0 ? (
-                  <div className="py-6 text-sm text-gray-500">No payouts yet.</div>
+                  <div className="py-6 text-sm text-gray-500">
+                    {payoutState === 'needs_setup' ? (
+                      <>
+                        No payouts yet —{' '}
+                        <Link
+                          href={payoutsHref}
+                          className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                        >
+                          set up a payout method
+                        </Link>{' '}
+                        to start receiving payments.
+                      </>
+                    ) : (
+                      'No payouts yet.'
+                    )}
+                  </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {visiblePayouts.slice(0, 8).map((p) => {
@@ -508,20 +550,29 @@ export default function BalancesPage() {
 
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Payout account</p>
-                {data?.payout_rail === 'wise' ? (
+                {payoutState === 'needs_setup' ? (
+                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                    <li>
+                      Method: <span className="font-medium text-amber-800">Not set</span>
+                    </li>
+                    <li>
+                      <Link
+                        href={payoutsHref}
+                        className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                      >
+                        Set up payouts
+                      </Link>
+                    </li>
+                  </ul>
+                ) : payoutState === 'wise_ready' ? (
                   <ul className="mt-2 space-y-1 text-xs text-gray-600">
                     <li>
                       Method: <span className="font-medium text-gray-800">Wise</span>
                     </li>
                     <li>
-                      Recipient:{' '}
-                      {data.gym.wise_payout_ready ? (
-                        <span className="font-medium text-emerald-800">Ready</span>
-                      ) : (
-                        <span className="font-medium text-amber-800">Incomplete</span>
-                      )}
+                      Recipient: <span className="font-medium text-emerald-800">Ready</span>
                     </li>
-                    {data.gym.wise_recipient_currency ? (
+                    {data?.gym?.wise_recipient_currency ? (
                       <li>
                         Payout currency:{' '}
                         <span className="font-medium text-gray-800">{data.gym.wise_recipient_currency}</span>
