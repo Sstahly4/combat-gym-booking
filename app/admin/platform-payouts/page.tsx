@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { Banknote, BookOpen, Check, Copy, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
@@ -20,6 +21,9 @@ import {
   bookingNetShare,
   type PlatformBalanceBooking,
 } from '@/lib/manage/compute-platform-route-balances'
+
+/** Max booking rows loaded per gym for this screen; order newest `end_date` first for ops relevance. */
+const ELIGIBLE_BOOKINGS_QUERY_LIMIT = 3000
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -92,6 +96,9 @@ export default function AdminPlatformPayoutsPage() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [copiedField, setCopiedField] = useState<'email' | 'name' | 'total' | null>(null)
   const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [gymTotalBookingCount, setGymTotalBookingCount] = useState<number | null>(null)
+  const [lastRawFetchRowCount, setLastRawFetchRowCount] = useState(0)
 
   const extraParsedIds = useMemo(() => parseBookingIds(extraBookingIdsRaw), [extraBookingIdsRaw])
 
@@ -160,6 +167,16 @@ export default function AdminPlatformPayoutsPage() {
     [combinedBookingIds, netById]
   )
 
+  /** True when we hit the fetch cap and the gym likely has more rows than we inspected. */
+  const bookingListLikelyTruncated =
+    lastRawFetchRowCount >= ELIGIBLE_BOOKINGS_QUERY_LIMIT &&
+    (gymTotalBookingCount == null || gymTotalBookingCount > lastRawFetchRowCount)
+
+  const scannedAllBookingsForGym =
+    gymTotalBookingCount != null &&
+    lastRawFetchRowCount > 0 &&
+    gymTotalBookingCount === lastRawFetchRowCount
+
   const loadGyms = useCallback(async () => {
     if (!user || profile?.role !== 'admin') return
     setLoadingGyms(true)
@@ -188,23 +205,33 @@ export default function AdminPlatformPayoutsPage() {
     if (rail === 'stripe_connect') {
       setEligibleRows([])
       setEligibleError(null)
+      setGymTotalBookingCount(null)
+      setLastRawFetchRowCount(0)
       return
     }
     setLoadingEligible(true)
     setEligibleError(null)
+    setLastRawFetchRowCount(0)
     try {
       const supabase = createClient()
-      const { data, error: qErr } = await supabase
-        .from('bookings')
-        .select(
-          'id, status, total_price, platform_fee, start_date, end_date, guest_name, discipline, platform_payout_id, platform_paid_out_at',
-        )
-        .eq('gym_id', gymId.trim())
-        .order('end_date', { ascending: true })
-        .limit(800)
-      if (qErr) throw new Error(qErr.message)
+      const selectCols =
+        'id, status, total_price, platform_fee, start_date, end_date, guest_name, discipline, platform_payout_id, platform_paid_out_at'
+      const [rowsRes, countRes] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select(selectCols)
+          .eq('gym_id', gymId.trim())
+          .order('end_date', { ascending: false })
+          .limit(ELIGIBLE_BOOKINGS_QUERY_LIMIT),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('gym_id', gymId.trim()),
+      ])
+      if (rowsRes.error) throw new Error(rowsRes.error.message)
+      setGymTotalBookingCount(
+        typeof countRes.count === 'number' && !countRes.error ? countRes.count : null
+      )
       const now = new Date()
-      const raw = (data || []) as PlatformBalanceBooking[]
+      const raw = (rowsRes.data || []) as PlatformBalanceBooking[]
+      setLastRawFetchRowCount(raw.length)
       const eligible: EligibleBookingRow[] = []
       for (const b of raw) {
         if (!bookingEligibleForPlatformPayout(b, now)) continue
@@ -215,6 +242,8 @@ export default function AdminPlatformPayoutsPage() {
       console.error(e)
       setEligibleError(e instanceof Error ? e.message : 'Failed to load bookings')
       setEligibleRows([])
+      setGymTotalBookingCount(null)
+      setLastRawFetchRowCount(0)
     } finally {
       setLoadingEligible(false)
     }
@@ -234,6 +263,9 @@ export default function AdminPlatformPayoutsPage() {
     setBookingRowFilter('')
     setEligibleRows([])
     setEligibleError(null)
+    setGymTotalBookingCount(null)
+    setLastRawFetchRowCount(0)
+    setConfirmOpen(false)
   }, [gymId, selectedGym?.payout_rail])
 
   useEffect(() => {
@@ -275,23 +307,9 @@ export default function AdminPlatformPayoutsPage() {
     setSelectedBookingIds([])
   }, [])
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const executeSubmit = useCallback(async () => {
     setError(null)
     setResult(null)
-    if (!gymId.trim()) {
-      setError('Select a gym.')
-      return
-    }
-    if (combinedBookingIds.length === 0) {
-      setError('Select at least one eligible booking, or paste valid booking UUIDs.')
-      return
-    }
-    if (mode === 'pending' && !wiseTransferId.trim()) {
-      setError('Pending Wise transfers require the Wise transfer id (from Wise after you submit the transfer).')
-      return
-    }
-
     setSubmitting(true)
     try {
       const body: Record<string, unknown> = {
@@ -315,6 +333,7 @@ export default function AdminPlatformPayoutsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
       setResult(data)
+      setConfirmOpen(false)
       setWiseTransferId('')
       setExtraBookingIdsRaw('')
       setSelectedBookingIds([])
@@ -324,6 +343,36 @@ export default function AdminPlatformPayoutsPage() {
     } finally {
       setSubmitting(false)
     }
+  }, [
+    combinedBookingIds,
+    gymId,
+    mode,
+    notes,
+    wiseTransferId,
+    loadEligibleBookings,
+  ])
+
+  function handleReviewSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setResult(null)
+    if (!gymId.trim()) {
+      setError('Select a gym.')
+      return
+    }
+    if (combinedBookingIds.length === 0) {
+      setError('Select at least one eligible booking, or paste valid booking UUIDs.')
+      return
+    }
+    if (unknownPastedIds.length > 0) {
+      setError('Resolve pasted UUIDs (every id must appear in the eligible table) before submitting.')
+      return
+    }
+    if (mode === 'pending' && !wiseTransferId.trim()) {
+      setError('Pending Wise transfers require the Wise transfer id (from Wise after you submit the transfer).')
+      return
+    }
+    setConfirmOpen(true)
   }
 
   if (authLoading) {
@@ -377,8 +426,8 @@ export default function AdminPlatformPayoutsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={(ev) => void onSubmit(ev)} className="space-y-5">
-            {error ? (
+          <form onSubmit={handleReviewSubmit} className="space-y-5">
+            {error && !confirmOpen ? (
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
                 {error}
               </div>
@@ -563,6 +612,48 @@ export default function AdminPlatformPayoutsPage() {
                   </p>
                 ) : null}
 
+                {!loadingEligible && bookingListLikelyTruncated ? (
+                  <div
+                    className="rounded-md border border-violet-200 bg-violet-50/90 px-3 py-2 text-xs leading-relaxed text-violet-950"
+                    role="status"
+                  >
+                    <p className="font-semibold">Booking list may be incomplete</p>
+                    <p className="mt-1">
+                      Inspected the <strong>{ELIGIBLE_BOOKINGS_QUERY_LIMIT}</strong> bookings with the{' '}
+                      <strong>latest end dates</strong> and found <strong>{eligibleRows.length}</strong> eligible for
+                      payout in that window.
+                      {gymTotalBookingCount != null ? (
+                        <>
+                          {' '}
+                          This gym has <strong>{gymTotalBookingCount}</strong> bookings total — older eligible rows may
+                          sit outside this window. Run another batch after this one, or ask engineering to raise the cap.
+                        </>
+                      ) : (
+                        <>
+                          {' '}
+                          Total booking count could not be loaded — if totals look wrong, confirm in the database or
+                          raise the query limit.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                ) : !loadingEligible && scannedAllBookingsForGym ? (
+                  <p className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600" role="status">
+                    Scanned all <strong>{gymTotalBookingCount}</strong> booking
+                    {gymTotalBookingCount === 1 ? '' : 's'} for this gym (newest end dates first).{' '}
+                    <strong>{eligibleRows.length}</strong> eligible for payout right now.
+                  </p>
+                ) : null}
+
+                {unknownPastedIds.length > 0 ? (
+                  <p className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+                    <strong>Submit disabled:</strong> {unknownPastedIds.length} pasted id(s) are not in the eligible
+                    table (wrong gym, not payable yet, or outside the {ELIGIBLE_BOOKINGS_QUERY_LIMIT}-row window).
+                    Remove or fix them — every batch id must resolve to a row above so the net total matches what you
+                    wire.
+                  </p>
+                ) : null}
+
                 {loadingEligible ? (
                   <p className="flex items-center gap-2 text-sm text-gray-500">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -690,14 +781,6 @@ export default function AdminPlatformPayoutsPage() {
                       </table>
                     </div>
 
-                    {unknownPastedIds.length > 0 ? (
-                      <p className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
-                        {unknownPastedIds.length} pasted id(s) are not in the eligible table above (wrong gym, not
-                        payable yet, or beyond the 800-row load). Net total only includes known rows — confirm amounts
-                        in Wise before sending, or fix the selection.
-                      </p>
-                    ) : null}
-
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#003580]/20 bg-white px-3 py-2.5">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Net to wire (sum)</p>
@@ -816,7 +899,8 @@ export default function AdminPlatformPayoutsPage() {
                   submitting ||
                   selectedGym?.payout_rail === 'stripe_connect' ||
                   !gymId ||
-                  combinedBookingIds.length === 0
+                  combinedBookingIds.length === 0 ||
+                  unknownPastedIds.length > 0
                 }
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
               >
@@ -826,9 +910,9 @@ export default function AdminPlatformPayoutsPage() {
                     Saving…
                   </>
                 ) : mode === 'pending' ? (
-                  'Create pending payout row'
+                  'Review & create pending payout…'
                 ) : (
-                  'Record completed payout'
+                  'Review & record completed payout…'
                 )}
               </Button>
               <Link href="/admin" className="text-sm text-[#003580] underline-offset-2 hover:underline">
@@ -838,6 +922,103 @@ export default function AdminPlatformPayoutsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen} stackClassName="z-[140]">
+        <DialogContent className="max-w-md border border-gray-200 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Confirm platform payout batch</DialogTitle>
+            <DialogDescription>
+              Double-check before this row is written to the database.
+            </DialogDescription>
+          </DialogHeader>
+          {error ? (
+            <div
+              className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900"
+              role="alert"
+            >
+              {error}
+            </div>
+          ) : null}
+          <ul className="mt-3 list-none space-y-2 rounded-md border border-gray-100 bg-gray-50/80 p-3 text-sm text-gray-900">
+            <li>
+              <span className="text-gray-500">Gym</span>
+              <br />
+              <span className="font-medium">{selectedGym?.name ?? '—'}</span>
+            </li>
+            <li>
+              <span className="text-gray-500">Bookings in batch</span>
+              <br />
+              <span className="font-medium tabular-nums">{combinedBookingIds.length}</span>
+            </li>
+            <li>
+              <span className="text-gray-500">Net to wire (host share)</span>
+              <br />
+              <span className="font-semibold tabular-nums text-[#003580]">
+                {formatMoneyMajor(selectedNetTotal, payoutCurrency)}
+              </span>
+            </li>
+            <li>
+              <span className="text-gray-500">Wise recipient email</span>
+              <br />
+              <span className="break-all font-mono text-xs">{selectedGym?.wise_recipient_email?.trim() || '—'}</span>
+            </li>
+            <li>
+              <span className="text-gray-500">Account holder (Wise)</span>
+              <br />
+              <span className="break-words font-mono text-xs">
+                {selectedGym?.wise_recipient_account_holder_name?.trim() || '—'}
+              </span>
+            </li>
+            <li>
+              <span className="text-gray-500">Record as</span>
+              <br />
+              <span className="font-medium">
+                {mode === 'pending' ? 'Pending (webhook completes)' : 'Completed now'}
+              </span>
+            </li>
+            {mode === 'pending' ? (
+              <li>
+                <span className="text-gray-500">Wise transfer id</span>
+                <br />
+                <span className="break-all font-mono text-xs">{wiseTransferId.trim() || '—'}</span>
+              </li>
+            ) : null}
+            {notes.trim() ? (
+              <li>
+                <span className="text-gray-500">Notes</span>
+                <br />
+                <span className="text-xs">{notes.trim()}</span>
+              </li>
+            ) : null}
+          </ul>
+          <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-gray-200"
+              disabled={submitting}
+              onClick={() => setConfirmOpen(false)}
+            >
+              Go back
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#003580] text-white hover:bg-[#002a5c]"
+              disabled={submitting}
+              onClick={() => void executeSubmit()}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                'Confirm and save'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
