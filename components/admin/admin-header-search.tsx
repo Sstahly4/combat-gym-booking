@@ -38,6 +38,8 @@ const STATIC_HITS: Hit[] = [
   { id: 'admin-overview', title: 'Overview', subtitle: 'Admin · home', href: '/admin', keywords: ['home', 'overview', 'dashboard'] },
   { id: 'admin-verification', title: 'Verification queue', subtitle: 'Admin · verify gyms', href: '/admin/verification', keywords: ['verify', 'verification', 'draft', 'queue'] },
   { id: 'admin-gyms', title: 'All gyms', subtitle: 'Admin · browse pre-listed + owner-owned', href: '/admin/gyms', keywords: ['gyms', 'browse', 'pre-listed', 'owner-owned'] },
+  { id: 'admin-bookings', title: 'Bookings', subtitle: 'Admin · recent bookings across gyms', href: '/admin/bookings', keywords: ['bookings', 'reservations', 'orders', 'b2b'] },
+  { id: 'admin-platform-payouts', title: 'Platform payouts', subtitle: 'Admin · Wise batch recording', href: '/admin/platform-payouts', keywords: ['payouts', 'wise', 'platform', 'transfer', 'batch'] },
   { id: 'admin-bulk-import', title: 'Bulk import gyms', subtitle: 'Admin · CSV draft gyms', href: '/admin/gyms/bulk-import', keywords: ['bulk', 'import', 'csv', 'spreadsheet', 'draft'] },
   { id: 'admin-claim', title: 'Claim links', subtitle: 'Admin · owner handoff', href: '/admin/orphan-gyms', keywords: ['claim', 'links', 'orphan', 'handoff', 'placeholder'] },
   { id: 'admin-reviews', title: 'Reviews', subtitle: 'Admin · manual reviews', href: '/admin/reviews', keywords: ['reviews', 'manual', 'backfill'] },

@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Banknote,
   Building2,
+  ClipboardList,
   Home,
   KeyRound,
   PlusCircle,
@@ -88,6 +89,12 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         isActive: (p) =>
           p === '/admin/gyms' ||
           (p.startsWith('/admin/gyms/') && !p.startsWith('/admin/gyms/bulk-import')),
+      },
+      {
+        href: '/admin/bookings',
+        label: 'Bookings',
+        icon: ClipboardList,
+        isActive: (p) => p === '/admin/bookings' || p.startsWith('/admin/bookings/'),
       },
       {
         href: '/admin/gyms/bulk-import',

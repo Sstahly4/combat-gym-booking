@@ -13,8 +13,9 @@
  *   - "Owner-owned" gyms are everything else (real partner accounts plus
  *     placeholder accounts that have been minted but not yet claimed).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import {
@@ -37,6 +38,9 @@ type AdminGymsFilter = 'all' | 'pre_listed' | 'owner_owned'
 
 export default function AdminGymsPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const highlightGymId = searchParams.get('gym_id')?.trim().toLowerCase() || null
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [gyms, setGyms] = useState<GymWithImage[]>([])
   const [loading, setLoading] = useState(true)
   const [adminOwnerIds, setAdminOwnerIds] = useState<Set<string>>(new Set())
@@ -75,6 +79,10 @@ export default function AdminGymsPage() {
   useEffect(() => { fetchGyms() }, [fetchGyms])
 
   useEffect(() => {
+    if (highlightGymId) setFilter('all')
+  }, [highlightGymId])
+
+  useEffect(() => {
     if (loading) return
     restoreAdminGymsListScrollIfStashed()
   }, [loading])
@@ -94,6 +102,14 @@ export default function AdminGymsPage() {
     if (filter === 'owner_owned') return ownerOwnedGyms
     return gyms
   }, [gyms, adminOwnedGyms, ownerOwnedGyms, filter])
+
+  useEffect(() => {
+    if (!highlightGymId || loading) return
+    const el = cardRefs.current[highlightGymId]
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [highlightGymId, loading, visible])
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
@@ -173,8 +189,17 @@ export default function AdminGymsPage() {
           {visible.map((gym) => {
             const isAdminOwned = adminOwnerIds.has(gym.owner_id)
             const isMine = user?.id === gym.owner_id
+            const idLower = gym.id.toLowerCase()
+            const highlighted = highlightGymId === idLower
             return (
-              <Card key={gym.id} className="flex flex-col overflow-hidden border border-stone-200">
+              <div
+                key={gym.id}
+                ref={(el) => {
+                  cardRefs.current[idLower] = el
+                }}
+                className={highlighted ? 'rounded-xl ring-2 ring-amber-400 ring-offset-2 ring-offset-white' : ''}
+              >
+              <Card className="flex h-full flex-col overflow-hidden border border-stone-200">
                 <div className="relative aspect-video bg-stone-100">
                   {gym.images?.length ? (
                     <img
@@ -275,6 +300,7 @@ export default function AdminGymsPage() {
                   )}
                 </CardFooter>
               </Card>
+              </div>
             )
           })}
         </div>

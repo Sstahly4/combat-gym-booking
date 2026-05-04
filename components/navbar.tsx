@@ -10,7 +10,6 @@ import { CurrencyModal } from '@/components/currency-modal'
 import {
   Menu,
   X,
-  Bell,
   Globe,
   Settings,
   FileText,
@@ -21,6 +20,7 @@ import {
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { AdminHeaderSearch } from '@/components/admin/admin-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
+import { AdminNotificationBell } from '@/components/admin/admin-notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
 
@@ -43,56 +43,6 @@ const menuPlainClass =
   'flex items-center px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
 const menuPlainBetweenClass =
   'flex items-center justify-between gap-2 px-4 py-3 text-sm font-normal text-gray-800 hover:bg-gray-50 transition-colors'
-
-function AdminNotificationBell() {
-  const [open, setOpen] = useState(false)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
-
-  return (
-    <div className="relative" ref={wrapperRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        aria-label="Admin notifications"
-      >
-        <Bell className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-[110] mt-2 w-80 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl">
-          <div className="border-b border-stone-100 px-4 py-3">
-            <p className="text-sm font-semibold text-stone-900">Admin notifications</p>
-            <p className="mt-0.5 text-[11px] text-stone-500">Coming soon.</p>
-          </div>
-          <div className="px-4 py-8 text-center text-sm text-stone-500">
-            We’ll add admin alerts here once we decide what to notify staff about.
-          </div>
-          <div className="border-t border-stone-100 bg-stone-50/60 px-4 py-2 text-right">
-            <Link
-              href="/admin"
-              onClick={() => setOpen(false)}
-              className="text-[11px] font-medium text-stone-500 hover:text-stone-700"
-            >
-              Admin Hub
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function Navbar() {
   const { user, profile, signOut } = useAuth()
