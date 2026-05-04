@@ -90,23 +90,6 @@ interface UserConfirmationEmailData {
   magicLink?: string
 }
 
-interface GuestBookingRequestedEmailData {
-  bookingReference: string
-  bookingPin: string
-  guestName: string
-  guestEmail: string
-  gymName: string
-  gymCountry: string
-  startDate: string
-  endDate: string
-  packageName?: string
-  variantName?: string
-  totalPrice: number
-  currency: string
-  paymentLink: string
-  mealPlanDetails?: MealPlanDetails | null
-}
-
 interface BookingConfirmedEmailData {
   bookingReference: string
   bookingPin: string
@@ -301,111 +284,21 @@ Open: ${dashboardUrl}
 }
 
 // ============================================================================
-// 2. Guest — booking request submitted (pre-payment receipt)
-// ============================================================================
-//
-// Fires immediately after a booking row is created, before the guest has
-// completed payment. Always sent — independent of whether the later Stripe
-// authorization succeeds — so the traveler always has a record of their
-// reference + PIN and a link back to complete payment if they bounced.
-
-export async function sendGuestBookingRequestedEmail(
-  data: GuestBookingRequestedEmailData,
-): Promise<boolean> {
-  const firstName = data.guestName.split(' ')[0] || data.guestName
-  const innerHtml = [
-    heading(`Hi ${escape(firstName)} — your booking request is in.`),
-    paragraph(
-      `We've saved your booking request for <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCountry)}. Complete payment below to send the request to the gym — your card is only charged once they confirm availability.`,
-    ),
-    referenceStrip(data.bookingReference, data.bookingPin),
-    primaryButton(data.paymentLink, `Complete payment · ${formatMoney(data.totalPrice, data.currency)}`),
-    linkFallback(data.paymentLink),
-    panel(
-      reservationSummary({
-        gymName: data.gymName,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        packageName: data.packageName,
-        variantName: data.variantName,
-      }),
-    ),
-    panel(
-      uppercaseLabel('Total') +
-        detailRows([
-          { label: 'Price', value: `<strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>` },
-          { label: 'Status', value: `<span style="color:#92400e;font-weight:600;">Awaiting payment</span>` },
-        ]),
-    ),
-    panel(guestPanel({ guestName: data.guestName, mealPlanDetails: data.mealPlanDetails, packageName: data.packageName })),
-    divider(),
-    sectionLabel('What happens next'),
-    numberedList([
-      `Complete payment using the link above to submit your request to ${escape(data.gymName)}.`,
-      `Your card is authorized — not charged — until ${escape(data.gymName)} confirms your dates (usually within 24–48 hours).`,
-      `If they can't accommodate you, the hold is released and you won't be charged.`,
-    ]),
-    callout({
-      tone: 'neutral',
-      title: 'Keep your PIN private',
-      bodyHtml: `Your PIN can be used to modify or cancel this booking. Don't share it by email, chat, or phone — not even with ${BRAND.name} staff.`,
-    }),
-  ].join('')
-
-  const html = renderEmail({
-    eyebrow: 'Booking request',
-    title: `Your ${BRAND.name} booking request · ${data.bookingReference}`,
-    preheader: `Reference saved — complete payment to submit your request to ${data.gymName}.`,
-    innerHtml,
-  })
-
-  const text = `Your booking request for ${data.gymName} is saved.
-
-Reference: ${data.bookingReference}
-PIN: ${data.bookingPin} (keep private)
-
-Complete payment to submit your request:
-${data.paymentLink}
-
-Check-in:  ${formatDate(data.startDate)} (14:00–23:00)
-Check-out: ${formatDate(data.endDate)} (until 10:00)
-Stay:      ${nightsBetween(data.startDate, data.endDate)} ${nightsBetween(data.startDate, data.endDate) === 1 ? 'night' : 'nights'}${data.packageName ? ` · ${data.packageName}` : ''}${data.variantName ? ` — ${data.variantName}` : ''}
-Guest:     ${data.guestName}
-Total:     ${formatMoney(data.totalPrice, data.currency)} (awaiting payment)
-Meal plan: ${formatMealPlan(data.mealPlanDetails)}
-
-What happens next:
- 1. Complete payment at the link above.
- 2. Your card is AUTHORIZED, not charged — until ${data.gymName} confirms (usually 24–48h).
- 3. If they can't accommodate you, the hold is released — no charge.
-
-Keep your PIN private — it can be used to modify or cancel this booking.
-`
-
-  return sendEmail({
-    to: data.guestEmail,
-    subject: `Your ${BRAND.name} request at ${data.gymName} · ${data.bookingReference}`,
-    html,
-    text,
-    tag: 'guest-booking-requested',
-  })
-}
-
-// ============================================================================
-// 3. Guest — booking request received (card authorized, not charged)
+// 2. Guest — reservation details (card authorized; charge after gym confirms)
 // ============================================================================
 
 export async function sendUserConfirmationEmail(data: UserConfirmationEmailData): Promise<boolean> {
+  const firstName = data.guestName.split(' ')[0] || data.guestName
   const innerHtml = [
-    heading(`Thanks, ${data.guestName.split(' ')[0]} — your request is in.`),
+    heading(`Thanks, ${escape(firstName)} — here is your booking confirmation`),
     paragraph(
-      `We've sent your booking request to <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCountry)}. Your card is authorized but <strong>not charged yet</strong> — we only take payment once the gym confirms.`,
+      `Below is everything you need for your stay at <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCountry)}. ${escape(data.gymName)} will confirm your dates shortly — <strong>we only capture payment after they accept your booking.</strong> Until then, a hold may appear on your card for the amount shown.`,
     ),
     referenceStrip(data.bookingReference, data.bookingPin),
     callout({
       tone: 'warning',
-      title: 'Card authorized · not charged',
-      bodyHtml: `We've placed a hold for <strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>. You'll only be charged if ${escape(data.gymName)} confirms availability. If they can't accommodate you, the hold is released within a few business days — no charge.`,
+      title: 'How payment works',
+      bodyHtml: `A hold is in place for <strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>. If ${escape(data.gymName)} confirms, we charge your card and send a final receipt. If they can't accommodate you, the hold is released — no charge.`,
     }),
     ...(data.magicLink
       ? [primaryButton(data.magicLink, 'Manage your booking')]
@@ -422,8 +315,8 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
     panel(
       uppercaseLabel('Payment') +
         detailRows([
-          { label: 'Status', value: `<span style="color:#92400e;font-weight:600;">Authorized · awaiting gym confirmation</span>` },
-          { label: 'Amount on hold', value: escape(formatMoney(data.totalPrice, data.currency)) },
+          { label: 'Status', value: `<span style="color:#92400e;font-weight:600;">Secured · awaiting gym confirmation</span>` },
+          { label: 'Total', value: escape(formatMoney(data.totalPrice, data.currency)) },
           { label: 'Date', value: escape(formatDate(data.paymentDate)) },
           ...(data.cardLast4 ? [{ label: 'Card', value: escape(`${data.cardBrand || 'Card'} •••• ${data.cardLast4}`) }] : []),
         ]),
@@ -432,9 +325,9 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
     divider(),
     sectionLabel('What happens next'),
     numberedList([
-      `${escape(data.gymName)} reviews your request — usually within 24–48 hours.`,
-      `If confirmed, we charge your card and send a final confirmation email.`,
-      `If the gym can't accommodate you, the hold is released and we'll help you find alternatives.`,
+      `${escape(data.gymName)} confirms your dates — usually within 24–48 hours.`,
+      `If they confirm, we capture payment and email you a paid confirmation with arrival details.`,
+      `If they can't accommodate you, the hold is released and we'll help you find alternatives.`,
     ]),
     callout({
       tone: 'neutral',
@@ -444,19 +337,19 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
   ].join('')
 
   const html = renderEmail({
-    eyebrow: 'Booking request',
-    title: `Your ${BRAND.name} booking request · ${data.bookingReference}`,
-    preheader: `Request sent to ${data.gymName}. Your card is authorized, not charged — we'll confirm within 24–48 hours.`,
+    eyebrow: 'Booking confirmation',
+    title: `Your stay at ${data.gymName} · ${data.bookingReference}`,
+    preheader: `Confirmation number ${data.bookingReference}. ${data.gymName} will confirm your dates shortly.`,
     innerHtml,
   })
 
-  const text = `Thanks ${data.guestName} — your booking request at ${data.gymName} is in.
+  const text = `Thanks ${data.guestName} — here is your booking confirmation.
 
 Reference: ${data.bookingReference}
 PIN: ${data.bookingPin} (keep private)
 
-Your card is AUTHORIZED for ${formatMoney(data.totalPrice, data.currency)} but NOT CHARGED YET.
-We'll only charge you once the gym confirms availability.
+${data.gymName} will confirm your dates shortly. We only capture payment after they accept your booking.
+A hold may appear on your card for ${formatMoney(data.totalPrice, data.currency)} until then.
 
 Check-in:  ${formatDate(data.startDate)} (14:00–23:00)
 Check-out: ${formatDate(data.endDate)} (until 10:00)
@@ -465,8 +358,8 @@ Guest:     ${data.guestName}
 Meal plan: ${formatMealPlan(data.mealPlanDetails)}
 ${data.cardLast4 ? `Card:      ${data.cardBrand || 'Card'} •••• ${data.cardLast4}\n` : ''}
 What happens next:
- 1. ${data.gymName} reviews your request (usually within 24–48 hours).
- 2. If confirmed, we charge your card and send a final confirmation.
+ 1. ${data.gymName} confirms your dates (usually within 24–48 hours).
+ 2. If they confirm, we capture payment and send a paid confirmation.
  3. If they can't accommodate you, the hold is released — no charge.
 ${data.magicLink ? `\nManage your booking: ${data.magicLink}\n` : ''}
 Keep your PIN private — it can be used to modify or cancel the booking.
@@ -474,7 +367,7 @@ Keep your PIN private — it can be used to modify or cancel the booking.
 
   return sendEmail({
     to: data.guestEmail,
-    subject: `Your ${BRAND.name} request at ${data.gymName} · ${data.bookingReference}`,
+    subject: `Your stay at ${data.gymName} · ${data.bookingReference}`,
     html,
     text,
     tag: 'guest-request-received',
