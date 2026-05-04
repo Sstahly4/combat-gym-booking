@@ -23,7 +23,7 @@ export const OWNER_HELP_FAQS: OwnerHelpFaq[] = [
     id: 'owner-3',
     question: 'How do payouts work?',
     answer:
-      'Connect Stripe under Payouts in Settings (same page). We sync status from Stripe. You must complete identity and bank details there before you can receive payouts.',
+      'Guests pay through CombatStay; your host share is paid out through the preferred payout method you choose for each listing under Settings → Payouts. Depending on the method, you may complete identity and bank verification in a secure, hosted flow—your Partner Hub shows status and balances once that is done. The platform keeps its service fee; only your net earnings are transferred to you. Available payout methods can evolve over time; your settings page always lists what your listing can use today.',
   },
   {
     id: 'owner-4',
