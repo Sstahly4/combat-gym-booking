@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 import { sendOwnerBookingCreatedEmail } from '@/lib/email-owner-notifications'
+import { sendGuestBookingRequestedEmail } from '@/lib/email'
 
 const PLATFORM_COMMISSION_RATE = parseFloat(
   process.env.PLATFORM_COMMISSION_RATE || '0.15'
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     // Verify gym exists and is verified (not draft)
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
-      .select('id, name, owner_id, verification_status, status')
+      .select('id, name, owner_id, verification_status, status, country, currency')
       .eq('id', gym_id)
       .single()
 
@@ -81,17 +82,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gym is not approved for bookings' }, { status: 400 })
     }
 
-    // Check package booking_mode if package_id is provided
+    // Check package booking_mode if package_id is provided. Also grab the
+    // human-readable package/variant names so the guest confirmation email
+    // can render a proper reservation summary.
     let bookingMode: 'request_to_book' | 'instant' = 'request_to_book' // Default to request-to-book
+    let packageName: string | undefined
+    let mealPlanDetails: unknown = null
     if (package_id) {
       const { data: packageData } = await supabase
         .from('packages')
-        .select('booking_mode')
+        .select('booking_mode, name, meal_plan_details')
         .eq('id', package_id)
         .single()
-      
+
       if (packageData?.booking_mode) {
         bookingMode = packageData.booking_mode as 'request_to_book' | 'instant'
+      }
+      packageName = packageData?.name ?? undefined
+      mealPlanDetails = packageData?.meal_plan_details ?? null
+    }
+
+    let variantName: string | undefined
+    if (package_variant_id) {
+      const { data: variantData } = await supabase
+        .from('package_variants')
+        .select('name')
+        .eq('id', package_variant_id)
+        .single()
+      variantName = variantData?.name ?? undefined
+    }
+
+    // Dedup guard: if the same guest submitted an identical pending booking
+    // in the last 2 minutes (rapid double-click / retry), reuse that booking
+    // instead of creating a new row. Prevents the "gym got 3 New booking
+    // request emails" case where each insert also fires an owner notification.
+    const dedupEmail = (guest_email || '').toString().toLowerCase().trim()
+    if (dedupEmail) {
+      const twoMinutesAgoIso = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      const { data: recent } = await supabase
+        .from('bookings')
+        .select('id, booking_reference, booking_pin, request_submitted_at')
+        .eq('gym_id', gym_id)
+        .eq('guest_email', dedupEmail)
+        .eq('start_date', start_date)
+        .eq('end_date', end_date)
+        .eq('status', 'pending')
+        .gte('request_submitted_at', twoMinutesAgoIso)
+        .order('request_submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (recent?.id) {
+        console.log('[bookings/create] reusing recent pending booking', recent.booking_reference)
+        return NextResponse.json({
+          booking_id: recent.id,
+          booking_reference: recent.booking_reference,
+          booking_pin: recent.booking_pin,
+          deduplicated: true,
+        })
       }
     }
 
@@ -134,7 +182,7 @@ export async function POST(request: NextRequest) {
         platform_fee,
         status: initialStatus,
         request_submitted_at: requestSubmittedAt,
-        guest_email: guest_email || null,
+        guest_email: dedupEmail || null,
         guest_phone: guest_phone || null,
         guest_name: guest_name || null,
         booking_reference: bookingReference,
@@ -189,10 +237,37 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ 
+    // Best-effort: email the traveler a "booking request received" confirmation
+    // immediately, before they move on to the payment step. Guarantees they
+    // always have their reference + PIN on file even if they bail on payment.
+    const travelerEmail = dedupEmail || null
+    if (travelerEmail) {
+      const origin = request.nextUrl.origin || ''
+      const paymentLink = `${origin}/bookings/${booking.id}/payment`
+      void sendGuestBookingRequestedEmail({
+        bookingReference,
+        bookingPin,
+        guestName: guest_name || 'Guest',
+        guestEmail: travelerEmail,
+        gymName: gym.name || 'your gym',
+        gymCountry: gym.country || '',
+        startDate: start_date,
+        endDate: end_date,
+        packageName,
+        variantName,
+        totalPrice: typeof total_price === 'number' ? total_price : Number(total_price) || 0,
+        currency: gym.currency || 'USD',
+        paymentLink,
+        mealPlanDetails: (mealPlanDetails as any) || null,
+      }).catch((err) => {
+        console.warn('[bookings/create] guest email failed', err)
+      })
+    }
+
+    return NextResponse.json({
       booking_id: booking.id,
       booking_reference: bookingReference,
-      booking_pin: bookingPin
+      booking_pin: bookingPin,
     })
   } catch (error: any) {
     console.error('Error creating booking:', error)
