@@ -10,6 +10,13 @@ import { PayoutsHoldBanner } from '@/components/manage/payouts-hold-banner'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { formatDashboardMoney } from '@/lib/currency/format-dashboard-money'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
+import { createClient } from '@/lib/supabase/client'
+import {
+  computePlatformRouteBalances,
+  platformRouteStackPercents,
+  type GymPlatformPayoutRow,
+  type PlatformBalanceBooking,
+} from '@/lib/manage/compute-platform-route-balances'
 
 const BRAND = '#003580'
 
@@ -77,6 +84,44 @@ function destinationLabel(p: StripePayoutRow): string {
   return '—'
 }
 
+function formatRangeLabel(startIso: string, endIso: string): string {
+  try {
+    const start = new Date(startIso)
+    const end = new Date(endIso)
+    const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
+    const opts: Intl.DateTimeFormatOptions = sameMonth
+      ? { day: 'numeric' }
+      : { day: 'numeric', month: 'short' }
+    return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+    })}`
+  } catch {
+    return `${startIso} – ${endIso}`
+  }
+}
+
+function bookingStatusBadge(status: string): { label: string; cls: string } {
+  const s = (status || '').toLowerCase()
+  if (s === 'completed') {
+    return { label: 'Awaiting payout', cls: 'bg-amber-50 text-amber-900 ring-amber-200/70' }
+  }
+  if (s === 'paid') {
+    return { label: 'Upcoming', cls: 'bg-sky-50 text-sky-800 ring-sky-200/70' }
+  }
+  if (s === 'confirmed') {
+    return { label: 'Confirmed', cls: 'bg-sky-50 text-sky-800 ring-sky-200/70' }
+  }
+  return { label: status, cls: 'bg-gray-100 text-gray-700 ring-gray-200/70' }
+}
+
+function platformRailLabel(rail: string): string {
+  const r = (rail || '').toLowerCase()
+  if (r === 'wise') return 'Wise'
+  if (r === 'manual') return 'Manual transfer'
+  return 'Payout'
+}
+
 export default function BalancesPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
@@ -88,6 +133,10 @@ export default function BalancesPage() {
   const [activityTab, setActivityTab] = useState<'payouts' | 'all'>('payouts')
   const [showDescriptor, setShowDescriptor] = useState(true)
   const [payoutsMenuOpen, setPayoutsMenuOpen] = useState(false)
+  const [bookingRows, setBookingRows] = useState<PlatformBalanceBooking[]>([])
+  const [platformPayoutRows, setPlatformPayoutRows] = useState<GymPlatformPayoutRow[]>([])
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [gymCurrency, setGymCurrency] = useState<string>('USD')
 
   useEffect(() => {
     if (authLoading) return
@@ -141,10 +190,61 @@ export default function BalancesPage() {
     }
   }, [authLoading, user, profile?.role, activeGymId])
 
+  /** Derived balances for the platform payout route come from bookings — OTA-standard view. */
+  useEffect(() => {
+    if (authLoading || !user || profile?.role !== 'owner' || !activeGymId) {
+      setBookingRows([])
+      setPlatformPayoutRows([])
+      return
+    }
+    let cancelled = false
+    setBookingLoading(true)
+    const supabase = createClient()
+    ;(async () => {
+      const [bookingsRes, gymRes, payoutsRes] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select(
+            'id, status, total_price, platform_fee, start_date, end_date, guest_name, discipline, platform_payout_id, platform_paid_out_at'
+          )
+          .eq('gym_id', activeGymId),
+        supabase.from('gyms').select('currency').eq('id', activeGymId).maybeSingle(),
+        supabase
+          .from('gym_platform_payouts')
+          .select('id, rail, status, amount, currency, external_reference, completed_at, created_at')
+          .eq('gym_id', activeGymId)
+          .order('created_at', { ascending: false })
+          .limit(40),
+      ])
+      if (cancelled) return
+      setBookingRows((bookingsRes.data || []) as PlatformBalanceBooking[])
+      if (payoutsRes.error) {
+        console.warn('[balances] gym_platform_payouts', payoutsRes.error.message)
+        setPlatformPayoutRows([])
+      } else {
+        setPlatformPayoutRows((payoutsRes.data || []) as GymPlatformPayoutRow[])
+      }
+      setGymCurrency(((gymRes.data as { currency?: string | null } | null)?.currency || 'USD').toUpperCase())
+      setBookingLoading(false)
+    })().catch(() => {
+      if (!cancelled) setBookingLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, user, profile?.role, activeGymId])
+
   const primaryCurrency = (data?.currency || 'usd').toLowerCase()
   const formatMinorForViewer = (minor: number, sourceCurrency: string) => {
     const major = (Number(minor) || 0) / 100
     const converted = convertPrice(major, sourceCurrency)
+    return formatDashboardMoney(converted, selectedCurrency, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+  const formatMajorForViewer = (amount: number, sourceCurrency: string) => {
+    const converted = convertPrice(amount, sourceCurrency)
     return formatDashboardMoney(converted, selectedCurrency, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -161,6 +261,12 @@ export default function BalancesPage() {
       pendingPct: Math.max(0, Math.min(100, (pendingMinor / totalMinor) * 100)),
     }
   }, [availableMinor, pendingMinor, totalMinor])
+
+  const platformSnapshot = useMemo(
+    () => computePlatformRouteBalances(bookingRows, platformPayoutRows),
+    [bookingRows, platformPayoutRows]
+  )
+  const earningsStack = useMemo(() => platformRouteStackPercents(platformSnapshot), [platformSnapshot])
 
   const reportMonth = useMemo(() => {
     return new Date().toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
@@ -192,6 +298,16 @@ export default function BalancesPage() {
     ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
     : '/manage/bookings'
 
+  const usePlatformEarnings = !loading && Boolean(data) && data?.payout_rail !== 'stripe_connect'
+  /** Platform route: unpaid earned (awaiting transfer). Stripe Connect: available balance. */
+  const headlineLabel = usePlatformEarnings ? 'Available to pay out' : 'Available'
+  const headlineValue = (() => {
+    if (loading) return '—'
+    if (usePlatformEarnings)
+      return formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)
+    return formatMinorForViewer(availableMinor, primaryCurrency)
+  })()
+
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -199,8 +315,9 @@ export default function BalancesPage() {
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
               Balances{' '}
-              <span className="font-light tabular-nums text-gray-900">
-                {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
+              <span className="font-light tabular-nums text-gray-900">{headlineValue}</span>
+              <span className="ml-2 align-middle text-xs font-medium uppercase tracking-wide text-gray-400">
+                {headlineLabel}
               </span>
             </h1>
             <span
@@ -216,60 +333,44 @@ export default function BalancesPage() {
               >
                 {!data
                   ? 'Loading balance information for this listing…'
-                  : data.payout_rail === 'wise'
-                    ? 'For the platform payout route, funds are not settled through a connected Stripe account, so amounts on this page may stay at zero. Review paid stays under Bookings; configure how you receive payouts under Settings → Payouts.'
+                  : usePlatformEarnings
+                    ? 'Upcoming is from confirmed stays that have not ended yet. Available to pay out is your host share from ended or completed stays that has not been transferred yet. Paid out sums transfers already sent to your payout method (Wise, manual, or other platform rails). Stripe Connect listings use Stripe balances instead.'
                     : 'Shows your connected payout account: available is what can be transferred to your bank; pending is still clearing with your payment provider. Open Settings → Payouts to review payout method and account details.'}
               </span>
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex flex-wrap items-center gap-2">
             <button
               type="button"
-              disabled
-              className="inline-flex h-8 items-center rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 disabled:opacity-60"
+              onClick={() => setPayoutsMenuOpen((o) => !o)}
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              aria-haspopup="menu"
+              aria-expanded={payoutsMenuOpen}
             >
-              + Add funds
+              Manage payouts
+              <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
             </button>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setPayoutsMenuOpen((o) => !o)}
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                aria-haspopup="menu"
-                aria-expanded={payoutsMenuOpen}
+            {payoutsMenuOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+                onMouseLeave={() => setPayoutsMenuOpen(false)}
               >
-                Manage payouts
-                <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
-              </button>
-              {payoutsMenuOpen ? (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
-                  onMouseLeave={() => setPayoutsMenuOpen(false)}
+                <Link href={payoutsHref} className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50">
+                  Payout setup (Settings)
+                </Link>
+                <Link
+                  href={
+                    activeGymId
+                      ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}`
+                      : '/manage/stripe-connect'
+                  }
+                  className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
                 >
-                  <Link href={payoutsHref} className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50">
-                    Payout setup (Settings)
-                  </Link>
-                  <Link
-                    href={
-                      activeGymId
-                        ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}`
-                        : '/manage/stripe-connect'
-                    }
-                    className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                  >
-                    Stripe Connect onboarding
-                  </Link>
-                </div>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              disabled
-              className="inline-flex h-8 items-center rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 disabled:opacity-60"
-            >
-              + Add settlement currency
-            </button>
+                  Stripe Connect onboarding
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -339,15 +440,15 @@ export default function BalancesPage() {
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm shadow-amber-900/5">
             <p className="font-medium text-amber-950">Payment method not set</p>
             <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-              No payment method is on file for this listing. Balances and payout activity remain at zero until you
-              configure how you receive payouts. To add or update your payout details, open{' '}
+              Earnings below are tracked against your bookings, but no payout method is on file yet. Add or update
+              your payout details under{' '}
               <Link
                 href={payoutsHref}
                 className="font-semibold text-[#003580] underline-offset-2 hover:underline"
               >
                 Settings → Payouts
-              </Link>
-              .
+              </Link>{' '}
+              so these funds can reach your bank.
             </p>
           </div>
         ) : null}
@@ -401,135 +502,306 @@ export default function BalancesPage() {
           <div className="space-y-6">
             <section>
               <h2 className="text-sm font-semibold text-gray-900">Balance summary</h2>
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div className="flex h-full w-full">
-                  <div
-                    className="h-full"
-                    style={{ width: `${stack.pendingPct}%`, backgroundColor: '#d1d5db' }}
-                  />
-                  <div
-                    className="h-full"
-                    style={{ width: `${stack.availablePct}%`, backgroundColor: BRAND }}
-                  />
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
-                <div className="text-gray-500">Payments type</div>
-                <div className="text-right text-gray-500">Amount</div>
+              {usePlatformEarnings ? (
+                <>
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="flex h-full w-full">
+                      <div
+                        className="h-full"
+                        style={{ width: `${earningsStack.upcomingPct}%`, backgroundColor: '#d1d5db' }}
+                      />
+                      <div
+                        className="h-full"
+                        style={{ width: `${earningsStack.unpaidPct}%`, backgroundColor: BRAND }}
+                      />
+                      <div
+                        className="h-full"
+                        style={{ width: `${earningsStack.paidOutPct}%`, backgroundColor: '#059669' }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
+                    <div className="text-gray-500">Source</div>
+                    <div className="text-right text-gray-500">Amount</div>
 
-                <div className="flex items-center gap-2 text-gray-900">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
-                  Incoming
-                </div>
-                <div className="text-right font-light tabular-nums text-gray-900">
-                  {loading ? '—' : formatMinorForViewer(pendingMinor, primaryCurrency)}
-                </div>
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
+                      Upcoming bookings
+                    </div>
+                    <div className="text-right font-light tabular-nums text-gray-900">
+                      {bookingLoading
+                        ? '—'
+                        : formatMajorForViewer(platformSnapshot.upcomingNet, gymCurrency)}
+                    </div>
 
-                <div className="flex items-center gap-2 text-gray-900">
-                  <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
-                  Available
-                </div>
-                <div className="text-right font-light tabular-nums text-gray-900">
-                  {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
-                </div>
-              </div>
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
+                      Available to pay out
+                    </div>
+                    <div className="text-right font-light tabular-nums text-gray-900">
+                      {bookingLoading
+                        ? '—'
+                        : formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" aria-hidden />
+                      Paid out
+                    </div>
+                    <div className="text-right font-light tabular-nums text-gray-900">
+                      {bookingLoading
+                        ? '—'
+                        : formatMajorForViewer(platformSnapshot.paidOutNet, gymCurrency)}
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[11px] text-gray-500">
+                    Amounts are net of the platform fee. Paid out reflects transfers recorded for this listing.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="flex h-full w-full">
+                      <div
+                        className="h-full"
+                        style={{ width: `${stack.pendingPct}%`, backgroundColor: '#d1d5db' }}
+                      />
+                      <div
+                        className="h-full"
+                        style={{ width: `${stack.availablePct}%`, backgroundColor: BRAND }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
+                    <div className="text-gray-500">Payments type</div>
+                    <div className="text-right text-gray-500">Amount</div>
+
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
+                      Incoming
+                    </div>
+                    <div className="text-right font-light tabular-nums text-gray-900">
+                      {loading ? '—' : formatMinorForViewer(pendingMinor, primaryCurrency)}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
+                      Available
+                    </div>
+                    <div className="text-right font-light tabular-nums text-gray-900">
+                      {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
 
             <section>
               <h2 className="text-sm font-semibold text-gray-900">Recent activity</h2>
-              <div className="mt-3 flex items-center gap-6 border-b border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setActivityTab('payouts')}
-                  className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
-                    activityTab === 'payouts'
-                      ? 'border-[#003580] font-medium text-[#003580]'
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Payouts
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActivityTab('all')}
-                  className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
-                    activityTab === 'all'
-                      ? 'border-[#003580] font-medium text-[#003580]'
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  All activity
-                </button>
-              </div>
-
-              <div className="mt-2">
-                <div className="grid grid-cols-[160px_1fr_180px_100px] gap-4 border-b border-gray-100 py-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                  <span>Amount</span>
-                  <span>Destination</span>
-                  <span>Type</span>
-                  <span className="text-right">Arrive by</span>
-                </div>
-
-                {loading ? (
-                  <div className="py-6 text-sm text-gray-500">Loading activity…</div>
-                ) : visiblePayouts.length === 0 ? (
-                  <div className="py-6 text-sm text-gray-500">
-                    {payoutState === 'needs_setup' ? (
-                      <>
-                        No payout activity yet. Add or review your payment method under{' '}
-                        <Link
-                          href={payoutsHref}
-                          className="font-medium text-[#003580] underline-offset-2 hover:underline"
-                        >
-                          Settings → Payouts
-                        </Link>
-                        .
-                      </>
-                    ) : (
-                      'No payouts yet.'
-                    )}
+              {usePlatformEarnings ? (
+                <div className="mt-2">
+                  <div className="grid grid-cols-[160px_1fr_140px_120px] gap-4 border-b border-gray-100 py-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    <span>Amount</span>
+                    <span>Description</span>
+                    <span>Date</span>
+                    <span className="text-right">Status</span>
                   </div>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {visiblePayouts.slice(0, 8).map((p) => {
-                      const badge = payoutStatusBadge(p.status)
-                      return (
-                        <div
-                          key={p.id}
-                          className="grid grid-cols-[160px_1fr_180px_100px] items-center gap-4 py-4 text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-light tabular-nums text-gray-900">
-                              {formatMinorForViewer(p.amount, p.currency)}
-                            </span>
-                            <span
-                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${badge.cls}`}
+
+                  {bookingLoading ? (
+                    <div className="py-6 text-sm text-gray-500">Loading activity…</div>
+                  ) : platformSnapshot.activityItems.length === 0 ? (
+                    <div className="py-6 text-sm text-gray-500">
+                      {payoutState === 'needs_setup' ? (
+                        <>
+                          No bookings or transfers yet. Once guests start booking, earnings will appear here. Configure
+                          your payout method under{' '}
+                          <Link
+                            href={payoutsHref}
+                            className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                          >
+                            Settings → Payouts
+                          </Link>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          No confirmed or completed bookings yet.{' '}
+                          <Link
+                            href={bookingsHref}
+                            className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                          >
+                            Open Bookings
+                          </Link>
+                          .
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {platformSnapshot.activityItems.slice(0, 10).map((row) => {
+                        if (row.kind === 'payout') {
+                          const paidBadge = payoutStatusBadge('paid')
+                          const dateStr = (() => {
+                            try {
+                              return new Date(row.at).toLocaleDateString(undefined, {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            } catch {
+                              return '—'
+                            }
+                          })()
+                          return (
+                            <div
+                              key={`payout-${row.id}`}
+                              className="grid grid-cols-[160px_1fr_140px_120px] items-center gap-4 py-4 text-sm"
                             >
-                              {badge.label}
+                              <span className="font-light tabular-nums text-gray-900">
+                                {formatMajorForViewer(row.amount, row.currency)}
+                              </span>
+                              <div className="min-w-0 text-gray-700">
+                                <span className="font-medium">{platformRailLabel(row.rail)}</span>
+                                {row.external_reference ? (
+                                  <span className="ml-1 truncate text-xs text-gray-500">
+                                    · Ref {row.external_reference}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="text-gray-600">{dateStr}</div>
+                              <div className="text-right">
+                                <span
+                                  className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${paidBadge.cls}`}
+                                >
+                                  Paid out
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        }
+                        const b = row.booking
+                        const badge = bookingStatusBadge(b.status)
+                        return (
+                          <div
+                            key={`b-${b.id}`}
+                            className="grid grid-cols-[160px_1fr_140px_120px] items-center gap-4 py-4 text-sm"
+                          >
+                            <span className="font-light tabular-nums text-gray-900">
+                              {formatMajorForViewer(row.net, gymCurrency)}
                             </span>
+                            <div className="min-w-0 truncate text-gray-700">
+                              {b.guest_name || 'Guest'}
+                              {b.discipline ? (
+                                <span className="ml-1 text-xs text-gray-500">· {b.discipline}</span>
+                              ) : null}
+                            </div>
+                            <div className="text-gray-700">{formatRangeLabel(b.start_date, b.end_date)}</div>
+                            <div className="text-right">
+                              <span
+                                className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${badge.cls}`}
+                              >
+                                {badge.label}
+                              </span>
+                            </div>
                           </div>
-                          <div className="min-w-0 truncate text-gray-700">
-                            {destinationLabel(p)}
-                          </div>
-                          <div className="text-gray-700">{p.type}</div>
-                          <div className="text-right text-gray-700">
-                            {formatShortDate(p.arrival_date)}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        )
+                      })}
+                    </div>
+                  )}
 
-                <div className="py-3">
-                  <Link
-                    href={payoutsHref}
-                    className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
-                  >
-                    Payout setup &amp; activity
-                  </Link>
+                  <div className="py-3 flex items-center gap-4">
+                    <Link
+                      href={bookingsHref}
+                      className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
+                    >
+                      Full booking activity
+                    </Link>
+                    <Link
+                      href={payoutsHref}
+                      className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
+                    >
+                      Payout setup
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-center gap-6 border-b border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setActivityTab('payouts')}
+                      className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
+                        activityTab === 'payouts'
+                          ? 'border-[#003580] font-medium text-[#003580]'
+                          : 'border-transparent text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      Payouts
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivityTab('all')}
+                      className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
+                        activityTab === 'all'
+                          ? 'border-[#003580] font-medium text-[#003580]'
+                          : 'border-transparent text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      All activity
+                    </button>
+                  </div>
+
+                  <div className="mt-2">
+                    <div className="grid grid-cols-[160px_1fr_180px_100px] gap-4 border-b border-gray-100 py-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                      <span>Amount</span>
+                      <span>Destination</span>
+                      <span>Type</span>
+                      <span className="text-right">Arrive by</span>
+                    </div>
+
+                    {loading ? (
+                      <div className="py-6 text-sm text-gray-500">Loading activity…</div>
+                    ) : visiblePayouts.length === 0 ? (
+                      <div className="py-6 text-sm text-gray-500">No payouts yet.</div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {visiblePayouts.slice(0, 8).map((p) => {
+                          const badge = payoutStatusBadge(p.status)
+                          return (
+                            <div
+                              key={p.id}
+                              className="grid grid-cols-[160px_1fr_180px_100px] items-center gap-4 py-4 text-sm"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-light tabular-nums text-gray-900">
+                                  {formatMinorForViewer(p.amount, p.currency)}
+                                </span>
+                                <span
+                                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${badge.cls}`}
+                                >
+                                  {badge.label}
+                                </span>
+                              </div>
+                              <div className="min-w-0 truncate text-gray-700">{destinationLabel(p)}</div>
+                              <div className="text-gray-700">{p.type}</div>
+                              <div className="text-right text-gray-700">{formatShortDate(p.arrival_date)}</div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    <div className="py-3">
+                      <Link
+                        href={payoutsHref}
+                        className="text-sm font-normal text-[#003580] hover:underline underline-offset-2"
+                      >
+                        Payout setup &amp; activity
+                      </Link>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           </div>
 

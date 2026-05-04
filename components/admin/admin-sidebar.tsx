@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import {
+  Banknote,
   Building2,
   Home,
   KeyRound,
@@ -106,6 +107,12 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         icon: Sparkles,
         isActive: (p) => p === '/admin/offers' || p.startsWith('/admin/offers/'),
         badge: counts?.offers ?? null,
+      },
+      {
+        href: '/admin/platform-payouts',
+        label: 'Platform payouts',
+        icon: Banknote,
+        isActive: (p) => p === '/admin/platform-payouts' || p.startsWith('/admin/platform-payouts/'),
       },
     ],
     ops: [

@@ -65,6 +65,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         if (currencyRaw && prev && currencyRaw !== prev) {
           patch.wise_recipient_id = null
           patch.wise_payout_ready = false
+          patch.wise_recipient_email = null
+          patch.wise_recipient_account_holder_name = null
         }
       }
     }
@@ -73,6 +75,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       patch.wise_payout_ready = false
       patch.wise_recipient_id = null
       patch.wise_recipient_currency = null
+      patch.wise_recipient_email = null
+      patch.wise_recipient_account_holder_name = null
     }
 
     const { error: updateError } = await supabase.from('gyms').update(patch).eq('id', gymId).eq('owner_id', userId)

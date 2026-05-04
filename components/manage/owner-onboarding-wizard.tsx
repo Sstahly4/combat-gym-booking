@@ -497,7 +497,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       {
         key: 'photos',
         label: 'Photos',
-        detail: `${photoCount} uploaded · at least 3 recommended before go-live.`,
+        detail: `${photoCount} uploaded · at least 3 required for go-live readiness.`,
         ready: photoCount >= 3,
       },
       {
@@ -1390,15 +1390,15 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     <div
       className={
         embedInAdmin
-          ? 'min-h-0 px-2 py-4 sm:px-4 md:py-6'
-          : 'min-h-screen bg-white pb-32'
+          ? 'min-h-0 px-2 py-4 pb-28 sm:px-4 sm:pb-24 md:py-6'
+          : 'min-h-screen bg-white pb-44 sm:pb-40 md:pb-36 lg:pb-32'
       }
     >
       <main
         className={
           embedInAdmin
             ? 'mx-auto w-full max-w-6xl overflow-visible'
-            : 'mx-auto w-full max-w-6xl overflow-visible px-4 pt-10 sm:px-6 sm:pt-14 lg:pt-16'
+            : 'mx-auto w-full max-w-6xl overflow-visible px-4 pb-8 pt-10 sm:px-6 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16'
         }
         aria-label="Gym listing onboarding"
       >
@@ -1431,7 +1431,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         ) : null}
 
         <div className="grid gap-10 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-16 xl:gap-20">
-          <aside className="lg:sticky lg:top-8 lg:self-start">
+          {/* Listing setup steps: desktop + large tablet only — mobile is one continuous scroll */}
+          <aside className="hidden lg:block lg:sticky lg:top-8 lg:self-start">
             <OwnerWizardSidebar
               steps={wizardSteps}
               currentIndex={step.index}
@@ -2261,11 +2262,11 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       </main>
 
       {/* Sticky footer action bar — consistent with security onboarding */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
-          <div className="flex items-center gap-2 sm:gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/80 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-3.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             {!embedInAdmin ? (
-              <p className="hidden text-[12px] font-medium tabular-nums text-gray-500 sm:block">
+              <p className="min-w-0 truncate text-[11px] font-medium tabular-nums text-gray-500 sm:text-[12px]">
                 {isMigratedStep && totalBasicSubSteps > 1 ? (
                   <>
                     {step.label} · {basicSubStep}/{totalBasicSubSteps}
@@ -2309,7 +2310,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {stepIsComplete && !isMigratedStep && !(embedInAdmin && step.key === 'finalize') ? (
               <Button
                 onClick={() => void saveStepCompletion(false)}

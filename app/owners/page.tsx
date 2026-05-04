@@ -211,7 +211,7 @@ const FAQ = [
   },
   {
     q: 'When will my gym go online?',
-    a: 'As soon as your listing is complete. To publish, you’ll add your location, disciplines offered, at least one package with pricing, and at least one photo. Once those basics are in place, you can go live immediately.',
+    a: 'As soon as your listing is complete. To publish, you’ll add your location, disciplines offered, at least one package with pricing, and at least three listing photos (our go-live readiness bar). Once those basics are in place, you can go live immediately.',
   },
   {
     q: 'Will I need to pay any fees during the sign-up process?',

@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
       .update({
         wise_recipient_id: String(created.id),
         wise_recipient_currency: currency,
+        wise_recipient_email: email.toLowerCase(),
+        wise_recipient_account_holder_name: accountHolderName,
         wise_payout_ready: true,
         updated_at: new Date().toISOString(),
       })

@@ -35,6 +35,8 @@ const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxi
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
+type PendingGymImage = { file: File; previewUrl: string }
+
 interface GymWithImages extends Gym {
   images: GymImage[]
   opening_hours?: any
@@ -65,7 +67,11 @@ function EditGymForm() {
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() => ({
     ...DEFAULT_GYM_AMENITIES,
   }))
-  const [newImages, setNewImages] = useState<File[]>([])
+  const [newImages, setNewImages] = useState<PendingGymImage[]>([])
+  const newImagesRef = useRef<PendingGymImage[]>([])
+  newImagesRef.current = newImages
+  const saveInProgressRef = useRef(false)
+  const [imageDragEnabled, setImageDragEnabled] = useState(false)
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
   const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
@@ -281,6 +287,20 @@ function EditGymForm() {
     return () => window.clearTimeout(t)
   }, [gym, sectionFromUrl])
 
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: fine)')
+    const sync = () => setImageDragEnabled(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      newImagesRef.current.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
+    }
+  }, [])
+
   const fetchGym = async (id: string) => {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -429,20 +449,30 @@ function EditGymForm() {
   ])
 
   const handleNewImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files)
-      const currentCount = (gym?.images?.length || 0) + newImages.length
+    if (!e.target.files?.length) return
+    const files = Array.from(e.target.files)
+    setNewImages((prev) => {
+      const currentCount = (gym?.images?.length || 0) + prev.length
       const remainingSlots = 30 - currentCount
-      if (remainingSlots > 0) {
-        setNewImages(prev => [...prev, ...files.slice(0, remainingSlots)])
-      } else {
+      if (remainingSlots <= 0) {
         alert('Maximum 30 images allowed')
+        return prev
       }
-    }
+      const toAdd = files.slice(0, remainingSlots).map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }))
+      return [...prev, ...toAdd]
+    })
+    e.target.value = ''
   }
 
   const removeNewImage = (index: number) => {
-    setNewImages(prev => prev.filter((_, i) => i !== index))
+    setNewImages((prev) => {
+      const entry = prev[index]
+      if (entry) URL.revokeObjectURL(entry.previewUrl)
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   const deleteExistingImage = async (imageId: string) => {
@@ -461,23 +491,32 @@ function EditGymForm() {
     }
   }
 
-  const uploadNewImages = async (gymId: string) => {
+  const uploadNewImages = async (
+    gymId: string,
+    pending: PendingGymImage[],
+    existingImages: GymImage[],
+  ): Promise<GymImage[]> => {
+    if (pending.length === 0) return []
+
     const supabase = createClient()
-    
-    const existingImages = gym?.images || []
-    const maxOrder = existingImages.length > 0 
-      ? Math.max(...existingImages.map((img: GymImage) => img.order || 0))
-      : -1
-    
-    console.log(`Starting upload of ${newImages.length} images for gym ${gymId}`)
-    
-    const uploadPromises = newImages.map(async (image, index) => {
+    const existingSafe = existingImages || []
+    const maxOrder =
+      existingSafe.length > 0
+        ? Math.max(...existingSafe.map((img: GymImage) => img.order || 0))
+        : -1
+
+    const createMutableCopy = (obj: any): any => {
+      if (typeof structuredClone !== 'undefined') {
+        return structuredClone(obj)
+      }
+      return JSON.parse(JSON.stringify(obj))
+    }
+
+    const uploadPromises = pending.map(async (entry, index) => {
+      const { file } = entry
       try {
-        const timestamp = Date.now()
-        const stem = `${timestamp}-${index}`
-        
-        console.log(`Uploading image ${index + 1}/${newImages.length} to storage: ${stem}`)
-        const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file: image, stem })
+        const stem = `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 10)}`
+        const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file, stem })
 
         return {
           gym_id: gymId,
@@ -489,44 +528,42 @@ function EditGymForm() {
       } catch (e: any) {
         console.error(`Failed to upload image ${index}:`, e)
         const errorMessage = e?.message || e?.toString() || 'Unknown error'
-        throw new Error(`Image ${index + 1} (${image.name}): ${errorMessage}`)
+        throw new Error(`Image ${index + 1} (${file.name}): ${errorMessage}`)
       }
     })
 
     const uploadResults = await Promise.allSettled(uploadPromises)
     const validImageData: Array<{ gym_id: string; url: string; variants: Record<string, string>; order: number }> = []
     const errors: string[] = []
-    const uploadedFiles: string[] = [] // Track files to clean up on error
-    
+    const uploadedFiles: string[] = []
+
     uploadResults.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
         const { storagePaths, ...imageData } = result.value
         validImageData.push(imageData)
         uploadedFiles.push(...storagePaths)
       } else {
-        const errorMsg = result.status === 'rejected' 
-          ? result.reason?.message || result.reason?.toString() || 'Unknown error'
-          : 'Unknown error'
+        const errorMsg =
+          result.status === 'rejected'
+            ? result.reason?.message || result.reason?.toString() || 'Unknown error'
+            : 'Unknown error'
         errors.push(`Image ${index + 1}: ${errorMsg}`)
         console.error(`Failed to upload image ${index}:`, result)
       }
     })
 
-    // If any uploads failed, don't proceed with database insert
     if (validImageData.length === 0) {
       throw new Error(`All image uploads failed. ${errors.join('; ')}`)
     }
 
-    // If some uploads failed, clean up successful ones and throw error
-    if (validImageData.length !== newImages.length) {
-      // Clean up successfully uploaded files
+    if (validImageData.length !== pending.length) {
       await supabase.storage.from('gym-images').remove(uploadedFiles)
       const errorDetails = errors.length > 0 ? ` Errors: ${errors.join('; ')}` : ''
-      throw new Error(`Only ${validImageData.length} of ${newImages.length} images were uploaded successfully.${errorDetails}`)
+      throw new Error(
+        `Only ${validImageData.length} of ${pending.length} images were uploaded successfully.${errorDetails}`,
+      )
     }
 
-    // Insert all images into database at once (like onboarding does)
-    console.log(`Inserting ${validImageData.length} image records into database`)
     const { data: insertedImages, error: insertError } = await supabase
       .from('gym_images')
       .insert(validImageData)
@@ -534,30 +571,24 @@ function EditGymForm() {
 
     if (insertError) {
       console.error('Database insert error:', insertError)
-      // Clean up uploaded files
       await supabase.storage.from('gym-images').remove(uploadedFiles)
       throw new Error(`Failed to save image records: ${insertError.message}`)
     }
 
-    console.log(`Successfully uploaded and saved ${insertedImages?.length || 0} images`)
-
-    // Update gym state with new images
-    if (insertedImages && insertedImages.length > 0 && gym) {
-      const updatedImages = [...(gym.images || []), ...insertedImages].sort((a, b) => (a.order || 0) - (b.order || 0))
-      // Create a new mutable object to avoid readonly property errors
-      const createMutableCopy = (obj: any): any => {
-        if (typeof structuredClone !== 'undefined') {
-          return structuredClone(obj)
+    if (insertedImages && insertedImages.length > 0) {
+      setGym((prev) => {
+        if (!prev || prev.id !== gymId) return prev
+        const updatedImages = [...(prev.images || []), ...insertedImages].sort(
+          (a, b) => (a.order || 0) - (b.order || 0),
+        )
+        return {
+          ...createMutableCopy(prev),
+          images: updatedImages,
         }
-        return JSON.parse(JSON.stringify(obj))
-      }
-      setGym({
-        ...createMutableCopy(gym),
-        images: updatedImages
       })
-      // Clear new images after successful upload
-      setNewImages([])
     }
+
+    pending.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
 
     return insertedImages || []
   }
@@ -672,91 +703,90 @@ function EditGymForm() {
   const handleSave = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault()
     if (!gym) return
+    if (saveInProgressRef.current) return
 
-    setSaving(true)
-    setErrorMsg(null) // Clear any previous errors
-    const supabase = createClient()
-    
-    // Get form element - handle both direct form submission and programmatic submission
-    const formElement = e?.currentTarget || document.getElementById('edit-gym-form') as HTMLFormElement
+    const formElement =
+      e?.currentTarget || (document.getElementById('edit-gym-form') as HTMLFormElement | null)
     if (!formElement) {
       setErrorMsg('Form not found')
-      setSaving(false)
       return
     }
-    
+
+    saveInProgressRef.current = true
+    setSaving(true)
+    setErrorMsg(null)
+    const supabase = createClient()
     const formData = new FormData(formElement)
 
-    // Upload trainer photos (optional) before saving gym JSONB.
-    // Use unique keys and avoid upsert to keep Storage RLS requirements minimal.
-    const trainersWithUploadedPhotos = await (async () => {
-      if (!gym?.id) return [...trainers]
-      const out = [...trainers]
-      for (let i = 0; i < out.length; i++) {
-        const file = trainerPhotoFiles[i]
-        if (!file) continue
-        try {
-          const ext = file.name.split('.').pop() || 'jpg'
-          const safeExt = ext.length <= 10 ? ext : 'jpg'
-          const fileName = `trainers/${gym.id}/${Date.now()}-${i}.${safeExt}`
-          const { error: uploadError } = await supabase.storage
-            .from('gym-images')
-            .upload(fileName, file, { cacheControl: '3600', upsert: false })
-          if (uploadError) throw uploadError
-          const { data: urlData } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-          out[i] = { ...out[i], photo_url: urlData.publicUrl }
-        } catch (err: any) {
-          console.error('Failed to upload trainer photo:', err)
-          throw new Error(`Failed to upload trainer photo (${out[i]?.name || `Trainer ${i + 1}`}): ${err?.message || 'Unknown error'}`)
-        }
-      }
-      return out
-    })()
-
-    const updates = {
-      name: formData.get('name') as string,
-      description: formData.get('description') as string,
-      address: formData.get('address') as string,
-      city: formData.get('city') as string,
-      country: selectedCountry,
-      latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
-      longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
-      price_per_day: parseFloat(formData.get('price_per_day') as string),
-      price_per_week: formData.get('price_per_week') ? parseFloat(formData.get('price_per_week') as string) : null,
-      currency: formData.get('currency') as string,
-      disciplines: [...disciplines], // Create new array to avoid readonly issues
-      amenities: mergeGymAmenitiesFromDb(amenities),
-      google_maps_link: formData.get('google_maps_link') as string || null,
-      instagram_link: formData.get('instagram_link') as string || null,
-      facebook_link: formData.get('facebook_link') as string || null,
-      opening_hours: { ...openingHours }, // Create new object to avoid readonly issues
-      training_schedule: Object.fromEntries(
-        Object.entries(trainingSchedule).map(([day, sessions]) => [
-          day,
-          [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
-        ])
-      ),
-      trainers: [...trainersWithUploadedPhotos]
-        .map((t) => ({
-          name: t.name,
-          discipline: t.discipline,
-          experience: t.experience,
-          photo_url: t.photo_url ?? null,
-          description: (t.description ?? '').trim() || null,
-        }))
-        .filter((t) => t.name && t.discipline),
-      faq: [...faq].filter(f => f.question && f.answer), // Create new array
-    }
+    let pendingImagesSnapshot: PendingGymImage[] = []
 
     try {
-      // Log what we're saving for debugging
-      const selectedAmenitiesCount = Object.values(amenities).filter(v => v === true).length
-      console.log('Saving amenities:', {
-        total: Object.keys(amenities).length,
-        selected: selectedAmenitiesCount,
-        amenities: Object.entries(amenities).filter(([_, v]) => v === true).map(([k]) => k)
-      })
-      
+      // Upload trainer photos (optional) before saving gym JSONB.
+      // Use unique keys and avoid upsert to keep Storage RLS requirements minimal.
+      const trainersWithUploadedPhotos = await (async () => {
+        if (!gym?.id) return [...trainers]
+        const out = [...trainers]
+        for (let i = 0; i < out.length; i++) {
+          const file = trainerPhotoFiles[i]
+          if (!file) continue
+          try {
+            const ext = file.name.split('.').pop() || 'jpg'
+            const safeExt = ext.length <= 10 ? ext : 'jpg'
+            const fileName = `trainers/${gym.id}/${Date.now()}-${i}.${safeExt}`
+            const { error: uploadError } = await supabase.storage
+              .from('gym-images')
+              .upload(fileName, file, { cacheControl: '3600', upsert: false })
+            if (uploadError) throw uploadError
+            const { data: urlData } = supabase.storage.from('gym-images').getPublicUrl(fileName)
+            out[i] = { ...out[i], photo_url: urlData.publicUrl }
+          } catch (err: any) {
+            console.error('Failed to upload trainer photo:', err)
+            throw new Error(`Failed to upload trainer photo (${out[i]?.name || `Trainer ${i + 1}`}): ${err?.message || 'Unknown error'}`)
+          }
+        }
+        return out
+      })()
+
+      const updates = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+        address: formData.get('address') as string,
+        city: formData.get('city') as string,
+        country: selectedCountry,
+        latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
+        longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
+        price_per_day: parseFloat(formData.get('price_per_day') as string),
+        price_per_week: formData.get('price_per_week') ? parseFloat(formData.get('price_per_week') as string) : null,
+        currency: formData.get('currency') as string,
+        disciplines: [...disciplines], // Create new array to avoid readonly issues
+        amenities: mergeGymAmenitiesFromDb(amenities),
+        google_maps_link: formData.get('google_maps_link') as string || null,
+        instagram_link: formData.get('instagram_link') as string || null,
+        facebook_link: formData.get('facebook_link') as string || null,
+        opening_hours: { ...openingHours }, // Create new object to avoid readonly issues
+        training_schedule: Object.fromEntries(
+          Object.entries(trainingSchedule).map(([day, sessions]) => [
+            day,
+            [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
+          ])
+        ),
+        trainers: [...trainersWithUploadedPhotos]
+          .map((t) => ({
+            name: t.name,
+            discipline: t.discipline,
+            experience: t.experience,
+            photo_url: t.photo_url ?? null,
+            description: (t.description ?? '').trim() || null,
+          }))
+          .filter((t) => t.name && t.discipline),
+        faq: [...faq].filter(f => f.question && f.answer), // Create new array
+      }
+
+      pendingImagesSnapshot = [...newImages]
+      if (pendingImagesSnapshot.length > 0) {
+        setNewImages([])
+      }
+
       const { error, data } = await supabase
         .from('gyms')
         .update(updates)
@@ -777,20 +807,18 @@ function EditGymForm() {
         return {}
       })
       
-      console.log('Gym updated successfully. Saved amenities:', data?.[0]?.amenities)
-
       // Upload new images before redirecting
-      if (newImages.length > 0) {
+      if (pendingImagesSnapshot.length > 0) {
         try {
-          await uploadNewImages(gym.id)
+          await uploadNewImages(gym.id, pendingImagesSnapshot, gym.images || [])
         } catch (uploadError: any) {
           console.error('Image upload error:', uploadError)
           throw new Error(`Failed to upload images: ${uploadError.message}`)
         }
       }
 
-      // Save current image order (in case images were reordered)
-      if (gym.images && gym.images.length > 0) {
+      // Persist order for existing rows only (skip right after inserts — avoids stale `gym.images`)
+      if (pendingImagesSnapshot.length === 0 && gym.images && gym.images.length > 0) {
         const supabase = createClient()
         // Create a mutable copy of images array to avoid readonly errors
         const imagesCopy = [...gym.images]
@@ -825,10 +853,15 @@ function EditGymForm() {
 
       router.push(afterEditPath)
     } catch (err: any) {
+      if (pendingImagesSnapshot.length > 0) {
+        setNewImages(pendingImagesSnapshot)
+      }
       console.error('Error updating gym:', err)
       setErrorMsg(`Update failed: ${err.message}`)
+    } finally {
+      saveInProgressRef.current = false
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (authLoading || loading) {
@@ -903,7 +936,7 @@ function EditGymForm() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:py-8 md:pb-10">
         <div className="hidden md:block mb-6">
           <ManageBreadcrumbs
             items={[{ label: hubCrumb.label, href: hubCrumb.href }, { label: 'Edit gym' }]}
@@ -912,15 +945,18 @@ function EditGymForm() {
           <p className="text-gray-600 text-sm mt-1">Update your listing — changes sync to your preview and public page.</p>
         </div>
 
-        <GymEditSectionTabs
-          activeSection={activeSection}
-          onSectionChange={scrollToSection}
-          sections={sectionStatus}
-        />
+        {/* Section chips: tablet+ only — mobile is one scroll; avoids crowding + duplicate "steps" UX */}
+        <div className="hidden md:block">
+          <GymEditSectionTabs
+            activeSection={activeSection}
+            onSectionChange={scrollToSection}
+            sections={sectionStatus}
+          />
+        </div>
 
         <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
           {/* Basic Information */}
-          <Card id="section-basic" className="scroll-mt-6">
+          <Card id="section-basic" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
               <CardDescription>Tell us about your gym</CardDescription>
@@ -995,7 +1031,7 @@ function EditGymForm() {
           </Card>
 
           {/* Location & Verification */}
-          <Card id="section-location" className="scroll-mt-6">
+          <Card id="section-location" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Location & Verification</CardTitle>
               <CardDescription>Help customers find and verify your gym</CardDescription>
@@ -1221,7 +1257,7 @@ function EditGymForm() {
           </Card>
 
           {/* Disciplines & Amenities */}
-          <Card id="section-disciplines" className="scroll-mt-6">
+          <Card id="section-disciplines" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Disciplines & Amenities</CardTitle>
               <CardDescription>What do you offer?</CardDescription>
@@ -1306,10 +1342,15 @@ function EditGymForm() {
           </Card>
 
           {/* Images */}
-          <Card id="section-images" className="scroll-mt-6">
+          <Card id="section-images" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Images</CardTitle>
-              <CardDescription>Upload up to 30 images. Drag to reorder - the first image is your main photo</CardDescription>
+              <CardDescription>
+                Upload up to 30 images. The first image is your main photo.
+                {imageDragEnabled
+                  ? ' Drag photos to reorder.'
+                  : ' On desktop you can drag to reorder; on mobile use the × control to remove a photo.'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
@@ -1335,11 +1376,13 @@ function EditGymForm() {
                     {gym.images && gym.images.map((img, index) => (
                       <div
                         key={img.id}
-                        draggable
-                        onDragStart={() => handleDragStart(index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDrop={(e) => handleDrop(e, index)}
-                        className={`relative aspect-video cursor-move group rounded-lg overflow-hidden border-2 ${
+                        draggable={imageDragEnabled}
+                        onDragStart={imageDragEnabled ? () => handleDragStart(index) : undefined}
+                        onDragOver={imageDragEnabled ? (e) => handleDragOver(e, index) : undefined}
+                        onDrop={imageDragEnabled ? (e) => handleDrop(e, index) : undefined}
+                        className={`relative aspect-video group rounded-lg overflow-hidden border-2 touch-manipulation ${
+                          imageDragEnabled ? 'cursor-move' : 'cursor-default'
+                        } ${
                           draggedImageIndex === index 
                             ? 'opacity-50 border-[#003580]' 
                             : 'border-gray-200 hover:border-[#003580]'
@@ -1348,15 +1391,17 @@ function EditGymForm() {
                         <img 
                           src={img.url} 
                           alt="Gym" 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-cover pointer-events-none" 
                         />
-                        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium">
+                        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
                           #{index + 1}
                         </div>
                         <button
                           type="button"
+                          onPointerDown={(ev) => ev.stopPropagation()}
                           onClick={() => deleteExistingImage(img.id)}
-                          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition-colors shadow-lg"
+                          className="absolute top-1 right-1 z-20 min-h-10 min-w-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full text-lg font-bold transition-colors shadow-lg touch-manipulation"
+                          aria-label="Remove image"
                         >
                           ×
                         </button>
@@ -1369,26 +1414,28 @@ function EditGymForm() {
                     ))}
                     
                     {/* New images (preview before upload) */}
-                    {newImages.map((img, i) => {
+                    {newImages.map((entry, i) => {
                       const displayIndex = (gym.images?.length || 0) + i
                       return (
                         <div
-                          key={`new-${i}`}
+                          key={entry.previewUrl}
                           draggable={false}
-                          className="relative aspect-video rounded-lg overflow-hidden border-2 border-blue-300 border-dashed"
+                          className="relative aspect-video rounded-lg overflow-hidden border-2 border-blue-300 border-dashed touch-manipulation"
                         >
                           <img 
-                            src={URL.createObjectURL(img)} 
+                            src={entry.previewUrl} 
                             alt="Preview" 
-                            className="w-full h-full object-cover" 
+                            className="w-full h-full object-cover pointer-events-none" 
                           />
-                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
+                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
                             #{displayIndex + 1} (New)
                           </div>
                           <button
                             type="button"
+                            onPointerDown={(ev) => ev.stopPropagation()}
                             onClick={() => removeNewImage(i)}
-                            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition-colors shadow-lg"
+                            className="absolute top-1 right-1 z-20 min-h-10 min-w-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full text-lg font-bold transition-colors shadow-lg touch-manipulation"
+                            aria-label="Remove pending image"
                           >
                             ×
                           </button>
@@ -1406,14 +1453,17 @@ function EditGymForm() {
                 )}
                 
                 <p className="text-xs text-gray-500">
-                  Drag existing images to reorder. New images will be added at the end when you save.
+                  {imageDragEnabled
+                    ? 'Drag existing images to reorder. '
+                    : 'Reorder on desktop with drag-and-drop. '}
+                  New images are added at the end when you save.
                 </p>
               </div>
             </CardContent>
           </Card>
 
           {/* Additional Details - Optional but helpful */}
-          <Card id="section-schedule" className="scroll-mt-6">
+          <Card id="section-schedule" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Additional Details (Optional)</CardTitle>
               <CardDescription>More information helps customers make better decisions</CardDescription>
@@ -1581,7 +1631,7 @@ function EditGymForm() {
           </Card>
 
           {/* Trainers */}
-          <Card id="section-trainers" className="scroll-mt-6">
+          <Card id="section-trainers" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Trainers</CardTitle>
               <CardDescription>List your trainers and their expertise (optional)</CardDescription>
@@ -1681,7 +1731,7 @@ function EditGymForm() {
           </Card>
 
           {/* FAQ */}
-          <Card id="section-faq" className="scroll-mt-6">
+          <Card id="section-faq" className="scroll-mt-24 md:scroll-mt-6">
             <CardHeader>
               <CardTitle>Frequently Asked Questions</CardTitle>
               <CardDescription>Add common questions and answers (optional)</CardDescription>
@@ -1726,7 +1776,7 @@ function EditGymForm() {
 
             {/* Packages Section - Uses PackageManager with inline variant management */}
             {gym && gym.id && (
-              <Card id="section-packages" className="scroll-mt-6 mt-6">
+              <Card id="section-packages" className="mt-6 scroll-mt-24 md:scroll-mt-6">
                 <CardHeader>
                   <CardTitle>Packages & Offers</CardTitle>
                   <CardDescription>
@@ -1744,7 +1794,7 @@ function EditGymForm() {
             )}
 
             {/* Action Buttons - Outside form but can trigger form submission */}
-            <div className="flex gap-4 pt-6 border-t mt-6">
+            <div className="mt-6 flex gap-4 border-t pt-6 pb-6 md:pb-0">
               <Button
                 type="button"
                 variant="outline"

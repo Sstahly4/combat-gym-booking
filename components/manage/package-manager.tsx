@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,8 @@ const PACKAGE_TYPES = [
   { value: 'accommodation', label: 'Training + Accommodation' },
   { value: 'all_inclusive', label: 'All Inclusive (Training, Accom, Meals)' },
 ]
+
+type PendingVariantImage = { file: File; previewUrl: string }
 
 export function PackageManager({ gymId, currency }: { gymId: string | undefined, currency: string }) {
   const [packages, setPackages] = useState<Package[]>([])
@@ -58,7 +60,12 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
     },
   })
   const [packageImage, setPackageImage] = useState<File | null>(null)
+  const [packageImagePreviewUrl, setPackageImagePreviewUrl] = useState<string | null>(null)
   const [existingPackageImage, setExistingPackageImage] = useState<string | null>(null)
+  const packageSubmitLockRef = useRef(false)
+  const variantSubmitLockRef = useRef(false)
+  const [packageFormBusy, setPackageFormBusy] = useState(false)
+  const [variantFormBusy, setVariantFormBusy] = useState(false)
 
   // Variants State
   const [variants, setVariants] = useState<PackageVariant[]>([])
@@ -70,7 +77,7 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
     price_per_month: '',
     room_type: '' as 'private' | 'shared' | '',
   })
-  const [variantImages, setVariantImages] = useState<File[]>([])
+  const [variantImages, setVariantImages] = useState<PendingVariantImage[]>([])
   const [existingVariantImages, setExistingVariantImages] = useState<string[]>([])
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null)
   const [showVariantForm, setShowVariantForm] = useState(false)
@@ -78,11 +85,22 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
   const handleVariantImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
     const files = Array.from(e.target.files)
-    setVariantImages(prev => [...prev, ...files].slice(0, 5))
+    setVariantImages((prev) => {
+      const slots = Math.max(0, 5 - existingVariantImages.length - prev.length)
+      const toAdd = files
+        .slice(0, slots)
+        .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+      return [...prev, ...toAdd]
+    })
+    e.target.value = ''
   }
 
   const removeVariantImage = (index: number) => {
-    setVariantImages(prev => prev.filter((_, i) => i !== index))
+    setVariantImages((prev) => {
+      const entry = prev[index]
+      if (entry) URL.revokeObjectURL(entry.previewUrl)
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   const removeExistingVariantImage = (index: number) => {
@@ -99,7 +117,10 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       price_per_month: '',
       room_type: '',
     })
-    setVariantImages([])
+    setVariantImages((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      return []
+    })
     setExistingVariantImages([])
     setShowVariantForm(true)
   }
@@ -115,13 +136,19 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       room_type: variant.room_type || '',
     })
     setExistingVariantImages(variant.images || [])
-    setVariantImages([])
+    setVariantImages((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      return []
+    })
     setShowVariantForm(true)
   }
 
   const cancelVariantEdit = () => {
     setEditingVariantId(null)
-    setVariantImages([])
+    setVariantImages((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      return []
+    })
     setExistingVariantImages([])
     setVariantForm({
       name: '',
@@ -180,11 +207,18 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       },
     })
     setPackageImage(null)
+    setPackageImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
     setExistingPackageImage(null)
     setEditingId(null)
     setVariants([])
     setShowVariantForm(false)
-    setVariantImages([])
+    setVariantImages((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      return []
+    })
     setExistingVariantImages([])
     setEditingVariantId(null)
   }
@@ -220,18 +254,32 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
     })
     setExistingPackageImage(pkg.image || null)
     setPackageImage(null)
+    setPackageImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
     setVariants(pkg.variants || [])
     setEditingId(pkg.id)
   }
 
   const handlePackageImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
-    setPackageImage(e.target.files[0])
-    setExistingPackageImage(null) // Clear existing when new one is selected
+    const file = e.target.files[0]
+    setPackageImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    setPackageImage(file)
+    setExistingPackageImage(null)
+    e.target.value = ''
   }
 
   const removePackageImage = () => {
     setPackageImage(null)
+    setPackageImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
     setExistingPackageImage(null)
   }
 
@@ -250,110 +298,129 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
 
   // Variant Handlers
   const handleVariantSubmit = async () => {
-    if (!editingId) return // Should only add variants to existing packages for now to keep simple
-    
+    if (!editingId) return
+    if (variantSubmitLockRef.current) return
+
+    variantSubmitLockRef.current = true
+    setVariantFormBusy(true)
+
     const supabase = createClient()
+    const snapshot = [...variantImages]
+    if (snapshot.length > 0) {
+      setVariantImages([])
+    }
 
-    // Upload selected images (if any)
-    let uploadedUrls: string[] = []
-    if (variantImages.length > 0) {
-      const uploadPromises = variantImages.map(async (image, index) => {
-        try {
-          const fileExt = image.name.split('.').pop()
-          const fileName = `variants/${editingId}/${Date.now()}-${index}.${fileExt}`
-          const { error: uploadError } = await supabase.storage
-            .from('gym-images')
-            .upload(fileName, image)
+    try {
+      let uploadedUrls: string[] = []
+      if (snapshot.length > 0) {
+        const uploadPromises = snapshot.map(async (entry, index) => {
+          const image = entry.file
+          try {
+            const fileExt = image.name.split('.').pop()
+            const fileName = `variants/${editingId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`
+            const { error: uploadError } = await supabase.storage
+              .from('gym-images')
+              .upload(fileName, image)
 
-          if (uploadError) throw uploadError
+            if (uploadError) throw uploadError
 
-          const { data } = supabase.storage
-            .from('gym-images')
-            .getPublicUrl(fileName)
+            const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
 
-          return data.publicUrl
-        } catch (e) {
-          console.error('Failed to upload variant image:', e)
-          return null
+            return data.publicUrl
+          } catch (e) {
+            console.error('Failed to upload variant image:', e)
+            return null
+          }
+        })
+
+        const results = await Promise.all(uploadPromises)
+        uploadedUrls = results.filter(Boolean) as string[]
+        if (uploadedUrls.length !== snapshot.length) {
+          setVariantImages(snapshot)
+          alert('One or more images failed to upload. Please try again.')
+          return
         }
-      })
-
-      const results = await Promise.all(uploadPromises)
-      uploadedUrls = results.filter(Boolean) as string[]
-    }
-
-    const imagesToSave = [...existingVariantImages, ...uploadedUrls]
-
-    // Parse prices (and optionally derive a daily price from weekly/monthly if not provided).
-    // This prevents overcharging on "month + a few extra days" stays when daily is missing.
-    const parsedWeek = variantForm.price_per_week ? parseFloat(variantForm.price_per_week) : null
-    const parsedMonth = variantForm.price_per_month ? parseFloat(variantForm.price_per_month) : null
-    let parsedDay = variantForm.price_per_day ? parseFloat(variantForm.price_per_day) : null
-
-    // Currency-aware rounding:
-    // - Most currencies: 2 decimals
-    // - 0-decimal currencies (common): round to whole units
-    const priceCurrency = formData.currency || currency || 'USD'
-    const roundPrice = (value: number) => {
-      const zeroDecimal = new Set(['THB', 'JPY', 'VND', 'IDR', 'KRW'])
-      const decimals = zeroDecimal.has(priceCurrency) ? 0 : 2
-      const factor = Math.pow(10, decimals)
-      return Math.round(value * factor) / factor
-    }
-
-    // Auto-derive daily if missing/invalid
-    if (parsedDay === null || !Number.isFinite(parsedDay) || parsedDay <= 0) {
-      if (parsedWeek && Number.isFinite(parsedWeek) && parsedWeek > 0) {
-        parsedDay = roundPrice(parsedWeek / 7)
-      } else if (parsedMonth && Number.isFinite(parsedMonth) && parsedMonth > 0) {
-        parsedDay = roundPrice(parsedMonth / 30)
-      } else {
-        parsedDay = null
       }
-    }
 
-    const payload = {
-      package_id: editingId,
-      name: variantForm.name,
-      description: variantForm.description || null,
-      price_per_day: parsedDay,
-      price_per_week: parsedWeek,
-      price_per_month: parsedMonth,
-      room_type: variantForm.room_type || null,
-      images: imagesToSave,
-    }
+      const imagesToSave = [...existingVariantImages, ...uploadedUrls]
 
-    if (editingVariantId) {
-      const { error } = await supabase
-        .from('package_variants')
-        .update(payload)
-        .eq('id', editingVariantId)
-      
-      if (error) alert('Failed to update variant')
-    } else {
-      const { error } = await supabase
-        .from('package_variants')
-        .insert(payload)
-      
-      if (error) alert('Failed to create variant')
-    }
+      const parsedWeek = variantForm.price_per_week ? parseFloat(variantForm.price_per_week) : null
+      const parsedMonth = variantForm.price_per_month ? parseFloat(variantForm.price_per_month) : null
+      let parsedDay = variantForm.price_per_day ? parseFloat(variantForm.price_per_day) : null
 
-    // Refresh packages to get updated variants
-    fetchPackages()
-    
-    // Reset variant form
-    setVariantForm({
-      name: '',
-      description: '',
-      price_per_day: '',
-      price_per_week: '',
-      price_per_month: '',
-      room_type: '',
-    })
-    setEditingVariantId(null)
-    setShowVariantForm(false)
-    setVariantImages([])
-    setExistingVariantImages([])
+      const priceCurrency = formData.currency || currency || 'USD'
+      const roundPrice = (value: number) => {
+        const zeroDecimal = new Set(['THB', 'JPY', 'VND', 'IDR', 'KRW'])
+        const decimals = zeroDecimal.has(priceCurrency) ? 0 : 2
+        const factor = Math.pow(10, decimals)
+        return Math.round(value * factor) / factor
+      }
+
+      if (parsedDay === null || !Number.isFinite(parsedDay) || parsedDay <= 0) {
+        if (parsedWeek && Number.isFinite(parsedWeek) && parsedWeek > 0) {
+          parsedDay = roundPrice(parsedWeek / 7)
+        } else if (parsedMonth && Number.isFinite(parsedMonth) && parsedMonth > 0) {
+          parsedDay = roundPrice(parsedMonth / 30)
+        } else {
+          parsedDay = null
+        }
+      }
+
+      const payload = {
+        package_id: editingId,
+        name: variantForm.name,
+        description: variantForm.description || null,
+        price_per_day: parsedDay,
+        price_per_week: parsedWeek,
+        price_per_month: parsedMonth,
+        room_type: variantForm.room_type || null,
+        images: imagesToSave,
+      }
+
+      if (editingVariantId) {
+        const { error } = await supabase
+          .from('package_variants')
+          .update(payload)
+          .eq('id', editingVariantId)
+
+        if (error) {
+          setVariantImages(snapshot)
+          alert('Failed to update variant')
+          return
+        }
+      } else {
+        const { error } = await supabase.from('package_variants').insert(payload)
+
+        if (error) {
+          setVariantImages(snapshot)
+          alert('Failed to create variant')
+          return
+        }
+      }
+
+      snapshot.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
+
+      fetchPackages()
+
+      setVariantForm({
+        name: '',
+        description: '',
+        price_per_day: '',
+        price_per_week: '',
+        price_per_month: '',
+        room_type: '',
+      })
+      setEditingVariantId(null)
+      setShowVariantForm(false)
+      setExistingVariantImages([])
+    } catch (err) {
+      console.error('handleVariantSubmit:', err)
+      if (snapshot.length > 0) setVariantImages(snapshot)
+      alert('Something went wrong saving this option. Please try again.')
+    } finally {
+      variantSubmitLockRef.current = false
+      setVariantFormBusy(false)
+    }
   }
 
   const handleDeleteVariant = async (variantId: string) => {
@@ -372,74 +439,59 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
-    console.log('🔵 handleSubmit FUNCTION CALLED')
-    console.log('Event:', e)
-    console.log('gymId prop:', gymId)
-    console.log('gymId type:', typeof gymId)
-    
-    try {
-      // Re-validate gymId at submission time (don't rely on closure)
-      const currentGymId = gymId
-      const isGymIdValid = !!currentGymId && typeof currentGymId === 'string' && currentGymId.trim() !== ''
-      
-      console.log('=== PACKAGE SUBMIT START ===')
-      console.log('handleSubmit called, gymId:', currentGymId, 'type:', typeof currentGymId, 'isGymIdValid:', isGymIdValid)
-      console.log('formData:', formData)
-      console.log('Validation check:', {
-        gymId: currentGymId,
-        isTruthy: !!currentGymId,
-        isString: typeof currentGymId === 'string',
-        notEmpty: typeof currentGymId === 'string' ? currentGymId.trim() !== '' : false,
-        finalValid: isGymIdValid
-      })
-      
-      // More robust check: gymId must be a non-empty string
-      if (!isGymIdValid) {
-        console.error('❌ VALIDATION FAILED: No gymId provided!')
-        console.error('gymId value:', currentGymId, 'type:', typeof currentGymId, 'isGymIdValid:', isGymIdValid)
-        console.error('Component state at time of error:', { gymId: currentGymId, isValidGymId, isGymIdValid })
-        alert(`Error: No gym ID provided. Please refresh the page and try again.\n\nDebug info: gymId = ${currentGymId}, type = ${typeof currentGymId}`)
-        return
-      }
-      
-      console.log('✅ Validation passed, proceeding with package creation...')
-      const supabase = createClient()
 
-      // Upload package image if provided
-      let imageUrl = existingPackageImage
-    if (packageImage) {
-      try {
-        const fileExt = packageImage.name.split('.').pop()
-        const fileName = `packages/${currentGymId}/${Date.now()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('gym-images')
-          .upload(fileName, packageImage)
-
-        if (uploadError) throw uploadError
-
-        const { data } = supabase.storage
-          .from('gym-images')
-          .getPublicUrl(fileName)
-
-        imageUrl = data.publicUrl
-      } catch (e) {
-        console.error('Failed to upload package image:', e)
-        alert('Failed to upload package image. Please try again.')
-        return
-      }
+    const currentGymId = gymId
+    const isGymIdValid = !!currentGymId && typeof currentGymId === 'string' && currentGymId.trim() !== ''
+    if (!isGymIdValid) {
+      alert(
+        'Error: No gym ID provided. Please refresh the page and try again.',
+      )
+      return
     }
 
-      // Build meal plan details object
-      const mealPlanDetails = (formData.includes_meals || formData.type === 'all_inclusive') ? {
-      breakfast: formData.meal_plan_details.breakfast,
-      lunch: formData.meal_plan_details.lunch,
-      dinner: formData.meal_plan_details.dinner,
-      meals_per_day: formData.meal_plan_details.meals_per_day ? parseInt(formData.meal_plan_details.meals_per_day) : undefined,
-      description: formData.meal_plan_details.description || undefined,
-    } : null
+    if (packageSubmitLockRef.current) return
+    packageSubmitLockRef.current = true
+    setPackageFormBusy(true)
 
-      // Map legacy type to canonical offer_type (required by DB constraint)
+    const wasEditingExistingPackage = !!editingId
+
+    try {
+      const supabase = createClient()
+
+      let imageUrl = existingPackageImage
+      if (packageImage) {
+        try {
+          const fileExt = packageImage.name.split('.').pop()
+          const fileName = `packages/${currentGymId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${fileExt}`
+          const { error: uploadError } = await supabase.storage
+            .from('gym-images')
+            .upload(fileName, packageImage)
+
+          if (uploadError) throw uploadError
+
+          const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
+
+          imageUrl = data.publicUrl
+        } catch (err) {
+          console.error('Failed to upload package image:', err)
+          alert('Failed to upload package image. Please try again.')
+          return
+        }
+      }
+
+      const mealPlanDetails =
+        formData.includes_meals || formData.type === 'all_inclusive'
+          ? {
+              breakfast: formData.meal_plan_details.breakfast,
+              lunch: formData.meal_plan_details.lunch,
+              dinner: formData.meal_plan_details.dinner,
+              meals_per_day: formData.meal_plan_details.meals_per_day
+                ? parseInt(formData.meal_plan_details.meals_per_day)
+                : undefined,
+              description: formData.meal_plan_details.description || undefined,
+            }
+          : null
+
       const offerTypeMap: Record<string, string> = {
         training: 'TYPE_TRAINING_ONLY',
         accommodation: 'TYPE_TRAINING_ACCOM',
@@ -448,68 +500,71 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
 
       const payload = {
         gym_id: currentGymId,
-      name: formData.name,
-      description: formData.description || null,
-      sport: formData.sport,
-      type: formData.type,
-      offer_type: offerTypeMap[formData.type] || 'TYPE_TRAINING_ONLY',
-      price_per_day: formData.price_per_day ? parseFloat(formData.price_per_day) : null,
-      price_per_week: formData.price_per_week ? parseFloat(formData.price_per_week) : null,
-      price_per_month: formData.price_per_month ? parseFloat(formData.price_per_month) : null,
-      currency: formData.currency || currency || 'USD',
-      includes_accommodation: formData.type !== 'training', // Auto-set based on type
-      accommodation_name: formData.type !== 'training' ? formData.accommodation_name : null,
-      includes_meals: formData.type === 'all_inclusive' || formData.includes_meals,
-      min_stay_days: formData.min_stay_days ? parseInt(formData.min_stay_days) : (formData.type === 'training' ? 1 : 7),
-      cancellation_policy_days: formData.cancellation_policy_days ? parseInt(formData.cancellation_policy_days) : null,
-      meal_plan_details: mealPlanDetails,
+        name: formData.name,
+        description: formData.description || null,
+        sport: formData.sport,
+        type: formData.type,
+        offer_type: offerTypeMap[formData.type] || 'TYPE_TRAINING_ONLY',
+        price_per_day: formData.price_per_day ? parseFloat(formData.price_per_day) : null,
+        price_per_week: formData.price_per_week ? parseFloat(formData.price_per_week) : null,
+        price_per_month: formData.price_per_month ? parseFloat(formData.price_per_month) : null,
+        currency: formData.currency || currency || 'USD',
+        includes_accommodation: formData.type !== 'training',
+        accommodation_name: formData.type !== 'training' ? formData.accommodation_name : null,
+        includes_meals: formData.type === 'all_inclusive' || formData.includes_meals,
+        min_stay_days: formData.min_stay_days
+          ? parseInt(formData.min_stay_days)
+          : formData.type === 'training'
+            ? 1
+            : 7,
+        cancellation_policy_days: formData.cancellation_policy_days
+          ? parseInt(formData.cancellation_policy_days)
+          : null,
+        meal_plan_details: mealPlanDetails,
         image: imageUrl,
       }
 
-      console.log('Submitting package payload:', payload)
-
-      let currentPackageId = editingId
-
       if (editingId) {
-        const { error } = await supabase
-          .from('packages')
-          .update(payload)
-          .eq('id', editingId)
-        
+        const { error } = await supabase.from('packages').update(payload).eq('id', editingId)
+
         if (error) {
           console.error('Package update error:', error)
           alert(`Failed to update package: ${error.message}`)
           return
         }
       } else {
-        const { error, data } = await supabase
-          .from('packages')
-          .insert(payload)
-          .select()
-          .single()
-        
+        const { error, data } = await supabase.from('packages').insert(payload).select().single()
+
         if (error) {
           console.error('Package create error:', error)
           alert(`Failed to create package: ${error.message}`)
           return
         }
-        console.log('Package created successfully:', data)
-        currentPackageId = data.id
-        setEditingId(data.id) // Switch to edit mode to allow adding variants
+        setEditingId(data.id)
       }
 
       fetchPackages()
-      // Don't reset form if we just created it, so user can add variants
-      if (editingId) {
-         resetForm()
+
+      setPackageImage(null)
+      setPackageImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+      setExistingPackageImage(imageUrl)
+
+      if (wasEditingExistingPackage) {
+        resetForm()
       } else {
-         alert('Package created! You can now add accommodation variants if needed.')
+        alert('Package created! You can now add accommodation variants if needed.')
       }
-      console.log('=== PACKAGE SUBMIT SUCCESS ===')
     } catch (error: any) {
-      console.error('=== PACKAGE SUBMIT ERROR ===')
       console.error('Unexpected error during package submission:', error)
-      alert(`An unexpected error occurred: ${error?.message || 'Unknown error'}. Please check the console for details.`)
+      alert(
+        `An unexpected error occurred: ${error?.message || 'Unknown error'}. Please check the console for details.`,
+      )
+    } finally {
+      packageSubmitLockRef.current = false
+      setPackageFormBusy(false)
     }
   }
 
@@ -731,19 +786,25 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
               {(existingPackageImage || packageImage) && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Current Image</p>
-                  <div className="relative inline-block group">
+                  <div className="relative inline-block group touch-manipulation">
                     <div className="w-48 h-36 bg-gray-100 rounded-lg overflow-hidden">
                       <img 
-                        src={packageImage ? URL.createObjectURL(packageImage) : existingPackageImage || ''} 
+                        src={
+                          packageImage && packageImagePreviewUrl
+                            ? packageImagePreviewUrl
+                            : existingPackageImage || ''
+                        } 
                         alt="Package preview"
-                        className="w-full h-full object-cover" 
+                        className="w-full h-full object-cover pointer-events-none" 
                       />
                     </div>
                     <button
                       type="button"
+                      onPointerDown={(ev) => ev.stopPropagation()}
                       onClick={removePackageImage}
-                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      className="absolute top-0 right-0 z-10 min-h-10 min-w-10 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full text-lg font-medium opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md touch-manipulation"
                       title="Remove image"
+                      aria-label="Remove image"
                     >
                       ×
                     </button>
@@ -1010,29 +1071,33 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                                 </div>
                                 <button
                                   type="button"
+                                  onPointerDown={(ev) => ev.stopPropagation()}
                                   onClick={() => removeExistingVariantImage(index)}
-                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  className="absolute top-0 right-0 z-10 min-h-10 min-w-10 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full text-lg font-medium opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md touch-manipulation"
                                   title="Remove image"
+                                  aria-label="Remove image"
                                 >
                                   ×
                                 </button>
                               </div>
                             ))}
                             {/* New Images */}
-                            {variantImages.map((img, index) => (
-                              <div key={`new-${index}`} className="relative group">
+                            {variantImages.map((entry, index) => (
+                              <div key={entry.previewUrl} className="relative group touch-manipulation">
                                 <div className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
                                   <img 
-                                    src={URL.createObjectURL(img)} 
+                                    src={entry.previewUrl} 
                                     alt={`New ${index + 1}`}
-                                    className="w-full h-full object-cover" 
+                                    className="w-full h-full object-cover pointer-events-none" 
                                   />
                                 </div>
                                 <button
                                   type="button"
+                                  onPointerDown={(ev) => ev.stopPropagation()}
                                   onClick={() => removeVariantImage(index)}
-                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  className="absolute top-0 right-0 z-10 min-h-10 min-w-10 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full text-lg font-medium opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md touch-manipulation"
                                   title="Remove image"
+                                  aria-label="Remove pending image"
                                 >
                                   ×
                                 </button>
@@ -1049,8 +1114,12 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                     </div>
                     
                     <div className="flex justify-end gap-2">
-                      <Button type="button" size="sm" variant="ghost" onClick={cancelVariantEdit}>Cancel</Button>
-                      <Button type="button" size="sm" onClick={handleVariantSubmit}>Save Option</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={cancelVariantEdit} disabled={variantFormBusy}>
+                        Cancel
+                      </Button>
+                      <Button type="button" size="sm" onClick={handleVariantSubmit} disabled={variantFormBusy}>
+                        {variantFormBusy ? 'Saving…' : 'Save Option'}
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -1114,17 +1183,15 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button 
-                type="submit"
-                onClick={(e) => {
-                  console.log('Button clicked! gymId:', gymId, 'type:', typeof gymId)
-                  // Let the form handle submission
-                }}
-              >
-                {editingId ? 'Update Package' : 'Create Package'}
+              <Button type="submit" disabled={packageFormBusy}>
+                {packageFormBusy
+                  ? 'Saving…'
+                  : editingId
+                    ? 'Update Package'
+                    : 'Create Package'}
               </Button>
               {editingId && (
-                <Button type="button" variant="ghost" onClick={resetForm}>
+                <Button type="button" variant="ghost" onClick={resetForm} disabled={packageFormBusy}>
                   Close / Cancel
                 </Button>
               )}

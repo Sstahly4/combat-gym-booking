@@ -90,6 +90,9 @@ export interface Gym {
   payout_rail: 'wise' | 'stripe_connect'
   wise_recipient_id: string | null
   wise_recipient_currency: string | null
+  /** Snapshot of pay-to-email recipient (ops); bank details stay in Wise. */
+  wise_recipient_email: string | null
+  wise_recipient_account_holder_name: string | null
   wise_payout_ready: boolean
   stripe_account_id: string | null
   /** Tier label for cancellation copy; numeric window is on packages.cancellation_policy_days */
@@ -321,8 +324,27 @@ export interface Booking {
   guest_name: string | null
   booking_reference: string | null
   booking_pin: string | null
+  /** Set when this booking's host share was included in a platform payout batch (Wise, manual, etc.). */
+  platform_payout_id?: string | null
+  /** When the host share was marked paid out on the platform payout rail. */
+  platform_paid_out_at?: string | null
   created_at: string
   updated_at: string
+}
+
+/** One outbound transfer batch from the platform to a listing owner (not Stripe Connect). */
+export interface GymPlatformPayout {
+  id: string
+  gym_id: string
+  rail: 'wise' | 'manual' | 'other'
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  amount: number
+  currency: string
+  external_reference: string | null
+  notes: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  completed_at: string | null
 }
 
 export interface Review {
