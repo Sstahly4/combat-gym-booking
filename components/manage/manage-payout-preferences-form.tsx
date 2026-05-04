@@ -37,7 +37,7 @@ export function ManagePayoutPreferencesForm({
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [savingRail, setSavingRail] = useState(false)
-  const [savingRecipient, setSavingRecipient] = useState(false)
+  const [savingWiseDetails, setSavingWiseDetails] = useState(false)
 
   const syncFromGym = useCallback(() => {
     const rail = (gym.payout_rail as 'wise' | 'stripe_connect') || 'wise'
@@ -66,28 +66,6 @@ export function ManagePayoutPreferencesForm({
     }
   }, [accountEmail])
 
-  const saveRail = async () => {
-    setSavingRail(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/gyms/${encodeURIComponent(gymId)}/payout-settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payout_rail: payoutRail,
-          ...(payoutRail === 'wise' ? { wise_recipient_currency: currency } : {}),
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save payout preferences')
-      await onGymRefresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
-    } finally {
-      setSavingRail(false)
-    }
-  }
-
   /** Stripe Connect: persist `stripe_connect` then open hosted onboarding (standard one-step CTA). */
   const openStripeConnectFlow = async () => {
     if (payoutRail !== 'stripe_connect') return
@@ -113,11 +91,24 @@ export function ManagePayoutPreferencesForm({
     }
   }
 
-  const saveRecipient = async () => {
-    setSavingRecipient(true)
+  /** Single action: persist Wise rail + payout currency, then register/update Wise recipient. */
+  const saveWisePayoutDetails = async () => {
+    setSavingWiseDetails(true)
     setError(null)
     try {
-      const res = await fetch('/api/wise/recipient', {
+      const railRes = await fetch(`/api/gyms/${encodeURIComponent(gymId)}/payout-settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payout_rail: 'wise',
+          wise_recipient_currency: currency,
+        }),
+      })
+      const railData = await railRes.json().catch(() => ({}))
+      if (!railRes.ok) throw new Error(railData.error || 'Could not save payout currency')
+      await onGymRefresh()
+
+      const recRes = await fetch('/api/wise/recipient', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,13 +118,13 @@ export function ManagePayoutPreferencesForm({
           email,
         }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save recipient details')
+      const recData = await recRes.json().catch(() => ({}))
+      if (!recRes.ok) throw new Error(recData.error || 'Could not save recipient details')
       await onGymRefresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
-      setSavingRecipient(false)
+      setSavingWiseDetails(false)
     }
   }
 
@@ -182,7 +173,7 @@ export function ManagePayoutPreferencesForm({
                   <span>
                     <span className="block text-sm font-semibold text-gray-900">Bank transfer (Wise)</span>
                     <span className="mt-0.5 block text-xs leading-snug text-gray-500">
-                      International bank payouts — multi-currency friendly, similar to other travel platforms.
+                      International bank payouts via Wise—strong when your bank account is in another currency.
                     </span>
                   </span>
                 </span>
@@ -232,13 +223,6 @@ export function ManagePayoutPreferencesForm({
             </button>
           </div>
 
-          {payoutRail === 'wise' ? (
-            <p className="border-t border-gray-100 pt-4 text-xs leading-relaxed text-gray-600">
-              Complete bank transfer setup in the next section — payout currency, preferences, and Wise recipient
-              verification.
-            </p>
-          ) : null}
-
           {payoutRail === 'stripe_connect' ? (
             <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-start sm:justify-between">
               <p className="max-w-xl text-xs leading-relaxed text-gray-500">
@@ -271,16 +255,15 @@ export function ManagePayoutPreferencesForm({
       {payoutRail === 'wise' ? (
         <WisePayoutSetupPanel
           gym={gym}
+          accountEmail={accountEmail}
           currency={currency}
           onCurrencyChange={setCurrency}
           accountHolderName={accountHolderName}
           onAccountHolderNameChange={setAccountHolderName}
           email={email}
           onEmailChange={setEmail}
-          savingRail={savingRail}
-          savingRecipient={savingRecipient}
-          onSavePayoutPreferences={() => void saveRail()}
-          onSaveRecipient={() => void saveRecipient()}
+          savingDetails={savingWiseDetails}
+          onSaveDetails={() => void saveWisePayoutDetails()}
         />
       ) : null}
     </div>
