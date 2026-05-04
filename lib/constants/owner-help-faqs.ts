@@ -11,13 +11,13 @@ export const OWNER_HELP_FAQS: OwnerHelpFaq[] = [
     id: 'owner-1',
     question: 'How do I get my gym live on CombatStay?',
     answer:
-      'Complete your gym profile (photos, packages, Stripe Connect), then finish verification: Google Maps link, social link, and Stripe payouts. Our team reviews listings before they appear in search.',
+      'Finish your listing profile—photos, packages and pricing, and your preferred payout method under Settings → Payouts—then work through verification (for example location details, social links, and payout readiness). Some listings are reviewed by our team before they appear in search; you will see status in the Partner Hub.',
   },
   {
     id: 'owner-2',
     question: 'Where do I see booking requests?',
     answer:
-      'Open Bookings in the left sidebar. You can accept or decline requests; payment flows depend on your Stripe Connect status.',
+      'Open Bookings in the left sidebar. You can accept or decline inbound requests there. After a guest pays, updates and next steps show on each booking—use the status and any prompts on that row so you know when to prepare for the stay.',
   },
   {
     id: 'owner-3',
