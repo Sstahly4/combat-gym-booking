@@ -15,6 +15,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import {
+  bookingEligibleForPlatformPayout,
+  bookingNetShare,
+  type PlatformBalanceBooking,
+} from '@/lib/manage/compute-platform-route-balances'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -26,6 +31,31 @@ function parseBookingIds(raw: string): string[] {
     if (UUID_RE.test(p)) out.push(p.toLowerCase())
   }
   return [...new Set(out)]
+}
+
+function formatRangeShort(startIso: string, endIso: string): string {
+  try {
+    const s = new Date(startIso)
+    const e = new Date(endIso)
+    const o: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+    return `${s.toLocaleDateString(undefined, o)} – ${e.toLocaleDateString(undefined, o)}`
+  } catch {
+    return `${startIso} → ${endIso}`
+  }
+}
+
+function formatMoneyMajor(amount: number, currencyCode: string): string {
+  const code = (currencyCode || 'USD').toUpperCase()
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${amount.toFixed(2)} ${code}`
+  }
 }
 
 type GymRow = {
@@ -40,6 +70,8 @@ type GymRow = {
   wise_recipient_currency: string | null
 }
 
+type EligibleBookingRow = PlatformBalanceBooking & { net: number }
+
 export default function AdminPlatformPayoutsPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const [gyms, setGyms] = useState<GymRow[]>([])
@@ -47,15 +79,21 @@ export default function AdminPlatformPayoutsPage() {
   const [gymId, setGymId] = useState('')
   const [mode, setMode] = useState<'pending' | 'completed'>('pending')
   const [wiseTransferId, setWiseTransferId] = useState('')
-  const [bookingIdsRaw, setBookingIdsRaw] = useState('')
+  const [extraBookingIdsRaw, setExtraBookingIdsRaw] = useState('')
   const [notes, setNotes] = useState('')
   const [loadingGyms, setLoadingGyms] = useState(true)
+  const [eligibleRows, setEligibleRows] = useState<EligibleBookingRow[]>([])
+  const [loadingEligible, setLoadingEligible] = useState(false)
+  const [eligibleError, setEligibleError] = useState<string | null>(null)
+  const [bookingRowFilter, setBookingRowFilter] = useState('')
+  const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
-  const [copiedField, setCopiedField] = useState<'email' | 'name' | null>(null)
+  const [copiedField, setCopiedField] = useState<'email' | 'name' | 'total' | null>(null)
+  const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null)
 
-  const bookingIds = useMemo(() => parseBookingIds(bookingIdsRaw), [bookingIdsRaw])
+  const extraParsedIds = useMemo(() => parseBookingIds(extraBookingIdsRaw), [extraBookingIdsRaw])
 
   const filteredGyms = useMemo(() => {
     const q = gymFilter.trim().toLowerCase()
@@ -70,6 +108,57 @@ export default function AdminPlatformPayoutsPage() {
   }, [gyms, gymFilter])
 
   const selectedGym = useMemo(() => gyms.find((g) => g.id === gymId) ?? null, [gyms, gymId])
+  const payoutCurrency = (
+    selectedGym?.wise_recipient_currency?.trim() ||
+    selectedGym?.currency?.trim() ||
+    'USD'
+  ).toUpperCase()
+
+  const visibleEligible = useMemo(() => {
+    const q = bookingRowFilter.trim().toLowerCase()
+    if (!q) return eligibleRows
+    return eligibleRows.filter((r) => {
+      const blob = [
+        r.id,
+        r.guest_name || '',
+        r.discipline || '',
+        r.status,
+        r.start_date,
+        r.end_date,
+      ]
+        .join(' ')
+        .toLowerCase()
+      return blob.includes(q)
+    })
+  }, [eligibleRows, bookingRowFilter])
+
+  const selectedSet = useMemo(() => new Set(selectedBookingIds), [selectedBookingIds])
+
+  const combinedBookingIds = useMemo(() => {
+    const fromBoxes = selectedBookingIds
+    const merged = [...new Set([...fromBoxes, ...extraParsedIds])]
+    return merged.sort()
+  }, [selectedBookingIds, extraParsedIds])
+
+  const netById = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of eligibleRows) m.set(r.id, r.net)
+    return m
+  }, [eligibleRows])
+
+  const selectedNetTotal = useMemo(() => {
+    let sum = 0
+    for (const id of combinedBookingIds) {
+      const n = netById.get(id)
+      if (n !== undefined) sum += n
+    }
+    return sum
+  }, [combinedBookingIds, netById])
+
+  const unknownPastedIds = useMemo(
+    () => combinedBookingIds.filter((id) => !netById.has(id)),
+    [combinedBookingIds, netById]
+  )
 
   const loadGyms = useCallback(async () => {
     if (!user || profile?.role !== 'admin') return
@@ -93,6 +182,44 @@ export default function AdminPlatformPayoutsPage() {
     }
   }, [user, profile?.role])
 
+  const loadEligibleBookings = useCallback(async () => {
+    if (!user || profile?.role !== 'admin' || !gymId.trim()) return
+    const rail = gyms.find((g) => g.id === gymId.trim())?.payout_rail
+    if (rail === 'stripe_connect') {
+      setEligibleRows([])
+      setEligibleError(null)
+      return
+    }
+    setLoadingEligible(true)
+    setEligibleError(null)
+    try {
+      const supabase = createClient()
+      const { data, error: qErr } = await supabase
+        .from('bookings')
+        .select(
+          'id, status, total_price, platform_fee, start_date, end_date, guest_name, discipline, platform_payout_id, platform_paid_out_at',
+        )
+        .eq('gym_id', gymId.trim())
+        .order('end_date', { ascending: true })
+        .limit(800)
+      if (qErr) throw new Error(qErr.message)
+      const now = new Date()
+      const raw = (data || []) as PlatformBalanceBooking[]
+      const eligible: EligibleBookingRow[] = []
+      for (const b of raw) {
+        if (!bookingEligibleForPlatformPayout(b, now)) continue
+        eligible.push({ ...b, net: bookingNetShare(b) })
+      }
+      setEligibleRows(eligible)
+    } catch (e) {
+      console.error(e)
+      setEligibleError(e instanceof Error ? e.message : 'Failed to load bookings')
+      setEligibleRows([])
+    } finally {
+      setLoadingEligible(false)
+    }
+  }, [user, profile?.role, gymId, gyms])
+
   useEffect(() => {
     if (authLoading) return
     if (profile?.role !== 'admin') return
@@ -101,9 +228,20 @@ export default function AdminPlatformPayoutsPage() {
 
   useEffect(() => {
     setCopiedField(null)
-  }, [gymId])
+    setCopiedBookingId(null)
+    setSelectedBookingIds([])
+    setExtraBookingIdsRaw('')
+    setBookingRowFilter('')
+    setEligibleRows([])
+    setEligibleError(null)
+  }, [gymId, selectedGym?.payout_rail])
 
-  const copyOpsValue = useCallback(async (field: 'email' | 'name', text: string) => {
+  useEffect(() => {
+    if (!gymId.trim() || selectedGym?.payout_rail === 'stripe_connect') return
+    void loadEligibleBookings()
+  }, [gymId, selectedGym?.payout_rail, loadEligibleBookings])
+
+  const copyOpsValue = useCallback(async (field: 'email' | 'name' | 'total', text: string) => {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedField(field)
@@ -111,6 +249,30 @@ export default function AdminPlatformPayoutsPage() {
     } catch (e) {
       console.error('Clipboard write failed', e)
     }
+  }, [])
+
+  const copyBookingId = useCallback(async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id)
+      setCopiedBookingId(id)
+      window.setTimeout(() => setCopiedBookingId((c) => (c === id ? null : c)), 2000)
+    } catch (e) {
+      console.error('Clipboard write failed', e)
+    }
+  }, [])
+
+  const toggleBooking = useCallback((id: string) => {
+    setSelectedBookingIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }, [])
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedBookingIds((prev) => [...new Set([...prev, ...visibleEligible.map((r) => r.id)])])
+  }, [visibleEligible])
+
+  const clearSelection = useCallback(() => {
+    setSelectedBookingIds([])
   }, [])
 
   async function onSubmit(e: React.FormEvent) {
@@ -121,12 +283,12 @@ export default function AdminPlatformPayoutsPage() {
       setError('Select a gym.')
       return
     }
-    if (bookingIds.length === 0) {
-      setError('Add at least one valid booking UUID.')
+    if (combinedBookingIds.length === 0) {
+      setError('Select at least one eligible booking, or paste valid booking UUIDs.')
       return
     }
     if (mode === 'pending' && !wiseTransferId.trim()) {
-      setError('Pending Wise transfers require the Wise transfer id (external reference).')
+      setError('Pending Wise transfers require the Wise transfer id (from Wise after you submit the transfer).')
       return
     }
 
@@ -134,7 +296,7 @@ export default function AdminPlatformPayoutsPage() {
     try {
       const body: Record<string, unknown> = {
         gym_id: gymId.trim(),
-        booking_ids: bookingIds,
+        booking_ids: combinedBookingIds,
         rail: 'wise',
         notes: notes.trim() || null,
       }
@@ -153,10 +315,10 @@ export default function AdminPlatformPayoutsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
       setResult(data)
-      if (mode === 'pending') {
-        setWiseTransferId('')
-        setBookingIdsRaw('')
-      }
+      setWiseTransferId('')
+      setExtraBookingIdsRaw('')
+      setSelectedBookingIds([])
+      void loadEligibleBookings()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed')
     } finally {
@@ -172,8 +334,11 @@ export default function AdminPlatformPayoutsPage() {
     )
   }
 
+  const showBookingPicker =
+    Boolean(gymId) && selectedGym && selectedGym.payout_rail !== 'stripe_connect'
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
       <div>
         <div className="flex items-center gap-2 text-[#003580]">
           <Banknote className="h-6 w-6" strokeWidth={1.75} aria-hidden />
@@ -181,7 +346,9 @@ export default function AdminPlatformPayoutsPage() {
         </div>
         <p className="mt-2 text-sm leading-relaxed text-gray-600">
           Record host payout batches for listings on the <strong>platform payout rail</strong> (not Stripe Connect).
-          Use <em>pending</em> when a Wise transfer is in flight so the webhook can close the loop automatically.
+          Select bookings owed a transfer; the <strong>net</strong> total (guest payment minus platform fee) is what
+          you send in Wise — the fee never leaves your platform Stripe balance. Use <em>pending</em> after you create
+          the transfer in Wise so the webhook can mark bookings paid out.
         </p>
       </div>
 
@@ -189,14 +356,13 @@ export default function AdminPlatformPayoutsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base text-amber-950">
             <BookOpen className="h-4 w-4 shrink-0" aria-hidden />
-            Internal runbook
+            Wise transfer id (when you need it)
           </CardTitle>
           <CardDescription className="text-amber-950/90">
-            Full checklist: <code className="rounded bg-white/70 px-1.5 py-0.5 text-xs">docs/internal/ops-platform-payouts-runbook.md</code>
-            — Wise subscription URL <code className="rounded bg-white/70 px-1.5 py-0.5 text-xs">/api/webhooks/wise</code>,{' '}
-            <code className="rounded bg-white/70 px-1.5 py-0.5 text-xs">pending</code> +{' '}
-            <code className="rounded bg-white/70 px-1.5 py-0.5 text-xs">external_reference</code> (transfer id), and
-            completed vs webhook flows.
+            You do <strong>not</strong> need a transfer id to add a recipient in Wise or to start composing a
+            transfer. Wise issues the id <strong>after</strong> you create/submit the transfer — copy that number from
+            Wise and paste it here on <em>pending</em> so <code className="rounded bg-white/70 px-1 py-0.5 text-xs">/api/webhooks/wise</code> can match this batch. Full checklist:{' '}
+            <code className="rounded bg-white/70 px-1 py-0.5 text-xs">docs/internal/ops-platform-payouts-runbook.md</code>
           </CardDescription>
         </CardHeader>
       </Card>
@@ -205,8 +371,9 @@ export default function AdminPlatformPayoutsPage() {
         <CardHeader>
           <CardTitle>Record batch</CardTitle>
           <CardDescription>
-            Parsed booking ids: {bookingIds.length > 0 ? bookingIds.length : '—'} (paste UUIDs separated by comma,
-            space, or newline)
+            {combinedBookingIds.length > 0
+              ? `${combinedBookingIds.length} booking(s) in this batch · net to wire ${formatMoneyMajor(selectedNetTotal, payoutCurrency)}`
+              : 'Choose a gym, tick bookings to pay out, then paste the Wise transfer id (pending) or mark completed.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -272,8 +439,8 @@ export default function AdminPlatformPayoutsPage() {
                 <div className="max-w-2xl rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm">
                   <p className="font-medium text-slate-900">Wise recipient (pay-to-email)</p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    Copy into Wise when sending a manual transfer. Snapshot from Manage payout setup — not bank
-                    details.
+                    Create the transfer in Wise for the net amount below using this email and name — not bank fields
+                    stored here.
                   </p>
                   <dl className="mt-3 space-y-3">
                     <div>
@@ -361,6 +528,229 @@ export default function AdminPlatformPayoutsPage() {
               ) : null}
             </div>
 
+            {showBookingPicker ? (
+              <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <Label className="text-gray-900">Bookings available to pay out</Label>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Paid / confirmed / completed, not yet marked paid out; for paid or confirmed, stay end date must
+                      be before today. Net = guest total − platform fee (wire only the net).
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-gray-200 bg-white text-xs"
+                    onClick={() => void loadEligibleBookings()}
+                    disabled={loadingEligible}
+                  >
+                    {loadingEligible ? (
+                      <>
+                        <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" aria-hidden />
+                        Refresh
+                      </>
+                    ) : (
+                      'Refresh list'
+                    )}
+                  </Button>
+                </div>
+
+                {eligibleError ? (
+                  <p className="text-sm text-rose-800" role="alert">
+                    {eligibleError}
+                  </p>
+                ) : null}
+
+                {loadingEligible ? (
+                  <p className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    Loading bookings…
+                  </p>
+                ) : eligibleRows.length === 0 ? (
+                  <p className="text-sm text-gray-600">No eligible unpaid bookings for this gym.</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        value={bookingRowFilter}
+                        onChange={(e) => setBookingRowFilter(e.target.value)}
+                        placeholder="Filter by id, guest, dates, status…"
+                        className="max-w-md text-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-200 bg-white text-xs"
+                        onClick={selectAllVisible}
+                        disabled={visibleEligible.length === 0}
+                      >
+                        Select all {bookingRowFilter.trim() ? 'visible' : ''} ({visibleEligible.length})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-gray-600"
+                        onClick={clearSelection}
+                        disabled={selectedBookingIds.length === 0}
+                      >
+                        Clear selection
+                      </Button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
+                      <table className="w-full min-w-[640px] text-left text-xs">
+                        <thead className="border-b border-gray-200 bg-gray-50/90 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          <tr>
+                            <th className="w-10 px-2 py-2" scope="col">
+                              <span className="sr-only">Select</span>
+                            </th>
+                            <th className="px-2 py-2" scope="col">
+                              Booking
+                            </th>
+                            <th className="px-2 py-2" scope="col">
+                              Stay
+                            </th>
+                            <th className="px-2 py-2" scope="col">
+                              Guest
+                            </th>
+                            <th className="px-2 py-2" scope="col">
+                              Status
+                            </th>
+                            <th className="px-2 py-2 text-right" scope="col">
+                              Gross
+                            </th>
+                            <th className="px-2 py-2 text-right" scope="col">
+                              Fee
+                            </th>
+                            <th className="px-2 py-2 text-right" scope="col">
+                              Net
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {visibleEligible.map((r) => {
+                            const gross = Number(r.total_price) || 0
+                            const fee = Number(r.platform_fee) || 0
+                            const checked = selectedSet.has(r.id)
+                            return (
+                              <tr key={r.id} className={checked ? 'bg-[#003580]/[0.04]' : undefined}>
+                                <td className="px-2 py-2 align-top">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-[#003580] focus:ring-[#003580]/30"
+                                    checked={checked}
+                                    onChange={() => toggleBooking(r.id)}
+                                    aria-label={`Select booking ${r.id}`}
+                                  />
+                                </td>
+                                <td className="px-2 py-2 align-top font-mono text-[11px] text-gray-900">
+                                  <div className="max-w-[11rem] break-all">{r.id}</div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 h-7 px-2 text-[11px] text-[#003580]"
+                                    onClick={() => void copyBookingId(r.id)}
+                                  >
+                                    {copiedBookingId === r.id ? (
+                                      <>
+                                        <Check className="mr-1 inline h-3 w-3 text-emerald-600" aria-hidden />
+                                        Copied
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="mr-1 inline h-3 w-3" aria-hidden />
+                                        Copy id
+                                      </>
+                                    )}
+                                  </Button>
+                                </td>
+                                <td className="px-2 py-2 align-top text-gray-700">
+                                  {formatRangeShort(r.start_date, r.end_date)}
+                                </td>
+                                <td className="px-2 py-2 align-top text-gray-800">{r.guest_name?.trim() || '—'}</td>
+                                <td className="px-2 py-2 align-top capitalize text-gray-700">{r.status}</td>
+                                <td className="px-2 py-2 align-top text-right tabular-nums text-gray-800">
+                                  {formatMoneyMajor(gross, payoutCurrency)}
+                                </td>
+                                <td className="px-2 py-2 align-top text-right tabular-nums text-gray-600">
+                                  {formatMoneyMajor(fee, payoutCurrency)}
+                                </td>
+                                <td className="px-2 py-2 align-top text-right font-medium tabular-nums text-gray-900">
+                                  {formatMoneyMajor(r.net, payoutCurrency)}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {unknownPastedIds.length > 0 ? (
+                      <p className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+                        {unknownPastedIds.length} pasted id(s) are not in the eligible table above (wrong gym, not
+                        payable yet, or beyond the 800-row load). Net total only includes known rows — confirm amounts
+                        in Wise before sending, or fix the selection.
+                      </p>
+                    ) : null}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#003580]/20 bg-white px-3 py-2.5">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Net to wire (sum)</p>
+                        <p className="text-lg font-semibold tabular-nums text-gray-900">
+                          {formatMoneyMajor(selectedNetTotal, payoutCurrency)}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-gray-500">
+                          Matches server validation (sum of host net shares for selected UUIDs).
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-gray-200 bg-white text-xs"
+                        disabled={combinedBookingIds.length === 0 || selectedNetTotal <= 0}
+                        onClick={() =>
+                          void copyOpsValue('total', selectedNetTotal.toFixed(2))
+                        }
+                      >
+                        {copiedField === 'total' ? (
+                          <>
+                            <Check className="mr-1.5 inline h-3.5 w-3.5 text-emerald-600" aria-hidden />
+                            Copied amount
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
+                            Copy net number
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="extra-bids" className="text-xs text-gray-600">
+                    Optional: paste extra booking UUIDs (comma / newline). Merged with checkboxes; must belong to this
+                    gym and be eligible, or save will fail.
+                  </Label>
+                  <textarea
+                    id="extra-bids"
+                    value={extraBookingIdsRaw}
+                    onChange={(e) => setExtraBookingIdsRaw(e.target.value)}
+                    rows={2}
+                    placeholder="Only if a row is missing from the list above…"
+                    className="w-full max-w-2xl rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-[11px] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30"
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium text-gray-900">Record as</legend>
               <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
@@ -395,28 +785,17 @@ export default function AdminPlatformPayoutsPage() {
                 id="wise-tid"
                 value={wiseTransferId}
                 onChange={(e) => setWiseTransferId(e.target.value)}
-                placeholder={mode === 'pending' ? 'e.g. 62410246' : 'Reference or leave blank'}
+                placeholder={mode === 'pending' ? 'Paste from Wise after creating the transfer' : 'Reference or leave blank'}
                 className="max-w-lg font-mono text-sm"
                 required={mode === 'pending'}
               />
               {mode === 'pending' ? (
                 <p className="text-xs text-gray-500">
-                  Must match the transfer id in Wise so <code className="rounded bg-gray-100 px-1">transfers#state-change</code> can match this row.
+                  Create the transfer in Wise first for <strong>{formatMoneyMajor(selectedNetTotal, payoutCurrency)}</strong>
+                  , then paste the transfer id Wise shows so{' '}
+                  <code className="rounded bg-gray-100 px-1">transfers#state-change</code> can match this row.
                 </p>
               ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bids">Booking UUIDs</Label>
-              <textarea
-                id="bids"
-                value={bookingIdsRaw}
-                onChange={(e) => setBookingIdsRaw(e.target.value)}
-                rows={5}
-                placeholder={'8f2c…a1\n9d0e…b2'}
-                className="w-full max-w-2xl rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30"
-                required
-              />
             </div>
 
             <div className="space-y-2">
@@ -433,7 +812,12 @@ export default function AdminPlatformPayoutsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="submit"
-                disabled={submitting || selectedGym?.payout_rail === 'stripe_connect' || !gymId}
+                disabled={
+                  submitting ||
+                  selectedGym?.payout_rail === 'stripe_connect' ||
+                  !gymId ||
+                  combinedBookingIds.length === 0
+                }
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
               >
                 {submitting ? (
