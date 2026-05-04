@@ -295,11 +295,6 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
       `Below is everything you need for your stay at <strong>${escape(data.gymName)}</strong> in ${escape(data.gymCountry)}. ${escape(data.gymName)} will confirm your dates shortly — <strong>we only capture payment after they accept your booking.</strong> Until then, a hold may appear on your card for the amount shown.`,
     ),
     referenceStrip(data.bookingReference, data.bookingPin),
-    callout({
-      tone: 'warning',
-      title: 'How payment works',
-      bodyHtml: `A hold is in place for <strong>${escape(formatMoney(data.totalPrice, data.currency))}</strong>. If ${escape(data.gymName)} confirms, we charge your card and send a final receipt. If they can't accommodate you, the hold is released — no charge.`,
-    }),
     ...(data.magicLink
       ? [primaryButton(data.magicLink, 'Manage your booking')]
       : []),
@@ -348,8 +343,7 @@ export async function sendUserConfirmationEmail(data: UserConfirmationEmailData)
 Reference: ${data.bookingReference}
 PIN: ${data.bookingPin} (keep private)
 
-${data.gymName} will confirm your dates shortly. We only capture payment after they accept your booking.
-A hold may appear on your card for ${formatMoney(data.totalPrice, data.currency)} until then.
+${data.gymName} will confirm your dates shortly. We only capture payment after they accept your booking; a hold may appear on your card for the total below until then.
 
 Check-in:  ${formatDate(data.startDate)} (14:00–23:00)
 Check-out: ${formatDate(data.endDate)} (until 10:00)

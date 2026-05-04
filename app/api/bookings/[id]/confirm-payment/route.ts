@@ -37,21 +37,11 @@ export async function POST(
       return NextResponse.json({ success: true, already_confirmed: true })
     }
 
-    // If booking doesn't have payment_intent_id yet, update it first
-    if (!booking.stripe_payment_intent_id) {
-      console.log('Updating booking with payment intent ID...')
-      const { error: updateIntentError } = await supabase
-        .from('bookings')
-        .update({ stripe_payment_intent_id: payment_intent })
-        .eq('id', bookingId)
-
-      if (updateIntentError) {
-        console.error('Error updating payment intent ID:', updateIntentError)
-        return NextResponse.json({ error: 'Failed to update payment intent' }, { status: 500 })
-      }
+    if (booking.status !== 'pending') {
+      return NextResponse.json({ error: 'Booking is not in a payable state' }, { status: 400 })
     }
 
-    // Verify payment intent matches
+    // Verify payment intent matches before we touch status
     if (booking.stripe_payment_intent_id && booking.stripe_payment_intent_id !== payment_intent) {
       console.error('Payment intent mismatch:', {
         booking: booking.stripe_payment_intent_id,
@@ -60,24 +50,47 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid payment intent' }, { status: 400 })
     }
 
-    // Canonical status: authorized bookings move to `confirmed` before capture.
-    console.log('Updating booking status to confirmed...')
-    const { error: updateError } = await supabase
+    // Atomically transition pending → confirmed so only ONE request wins when
+    // both the payment page and the success page call confirm-payment in parallel
+    // (each would otherwise pass the stale "pending" check above and fire /notify twice).
+    console.log('Updating booking status to confirmed (atomic pending → confirmed)...')
+    const { data: transitioned, error: updateError } = await supabase
       .from('bookings')
-      .update({ 
+      .update({
         status: 'confirmed',
-        stripe_payment_intent_id: payment_intent // Ensure it's set
+        stripe_payment_intent_id: payment_intent,
       })
       .eq('id', bookingId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       console.error('Error updating booking status:', updateError)
       return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
     }
 
+    if (!transitioned) {
+      const { data: fresh } = await supabase
+        .from('bookings')
+        .select('status, stripe_payment_intent_id')
+        .eq('id', bookingId)
+        .maybeSingle()
+
+      const piOk =
+        !fresh?.stripe_payment_intent_id || fresh.stripe_payment_intent_id === payment_intent
+      if ((fresh?.status === 'confirmed' || fresh?.status === 'paid') && piOk) {
+        console.log('Booking already confirmed by concurrent request — skipping notify')
+        return NextResponse.json({ success: true, already_confirmed: true })
+      }
+
+      console.warn('Atomic confirm had no row; unexpected state', fresh)
+      return NextResponse.json({ error: 'Could not confirm booking' }, { status: 409 })
+    }
+
     console.log('✅ Booking status updated to confirmed')
 
-    // Send notifications (admin + gym owner)
+    // Send notifications exactly once per successful transition
     console.log('Sending notifications...')
     try {
       const notifyResponse = await fetch(`${request.nextUrl.origin}/api/bookings/${bookingId}/notify`, {
