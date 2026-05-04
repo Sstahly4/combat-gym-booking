@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { sendAdminBookingEmail, sendUserConfirmationEmail } from '@/lib/email'
@@ -16,11 +16,14 @@ export async function POST(
 ) {
   try {
     console.log('📧 Notification endpoint called for booking:', params.id)
-    const supabase = await createClient()
+    // Use the service-role client here. /notify is invoked server-to-server from
+    // /confirm-payment without forwarding the caller's cookies, so a session-aware
+    // client would hit RLS and return no booking for guest checkouts (user_id null).
+    const adminSb = createAdminClient()
     const bookingId = params.id
 
     // Get booking with full details
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await adminSb
       .from('bookings')
       .select(`
         *,
@@ -82,7 +85,6 @@ export async function POST(
     // Gym owner: same moment as guest — card is authorized, request is real.
     const ownerId = gym.owner_id as string | undefined
     if (ownerId) {
-      const adminSb = createAdminClient()
       void recordOwnerNotification(adminSb, {
         user_id: ownerId,
         gym_id: gym.id,
@@ -154,32 +156,34 @@ export async function POST(
     // Send user confirmation email with magic link
     if (booking.guest_email) {
       console.log('Sending user confirmation email to:', booking.guest_email)
-      
-      // Generate magic link token
+
+      // Generate magic link inline (admin client, bypasses RLS). The previous
+      // /access-token internal fetch could fail silently for guest bookings.
       let magicLink: string | undefined
       try {
-        const tokenResponse = await fetch(
-          `${request.nextUrl.origin}/api/bookings/${bookingId}/access-token`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: booking.guest_email,
-              expiresInDays: 90 
-            }),
-          }
-        )
+        const rawToken = crypto.randomBytes(32).toString('hex')
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 90)
 
-        if (tokenResponse.ok) {
-          const { token } = await tokenResponse.json()
-          magicLink = `${request.nextUrl.origin}/bookings/access/${token}`
+        const { error: tokenError } = await adminSb
+          .from('booking_access_tokens')
+          .insert({
+            booking_id: bookingId,
+            token_hash: tokenHash,
+            email: booking.guest_email.toLowerCase(),
+            expires_at: expiresAt.toISOString(),
+            is_single_use: false,
+          })
+
+        if (!tokenError) {
+          magicLink = `${request.nextUrl.origin}/bookings/access/${rawToken}`
           console.log('✅ Magic link generated for booking access')
         } else {
-          console.warn('⚠️  Failed to generate magic link, continuing without it')
+          console.warn('⚠️  Failed to generate magic link:', tokenError.message)
         }
       } catch (tokenError) {
         console.error('Error generating magic link:', tokenError)
-        // Continue without magic link - not critical
       }
 
       await sendUserConfirmationEmail({
