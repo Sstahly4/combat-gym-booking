@@ -79,6 +79,18 @@ Set at minimum:
 
 Local/dev may omit `CLAIM_TOKEN_PEPPER` (tokens still work; hashes use an empty pepper — fine for local testing only).
 
+## Homepage sport carousel images (generated)
+
+The “Browse by sport” tiles use responsive **WebP** files under `public/homepage-sports/` (400px and 800px widths), committed to the repo so deploys do not need a generation step.
+
+**When you swap a source image** in `public/` (see `scripts/generate-homepage-sport-variants.mjs` → `SOURCES`), run:
+
+```bash
+pnpm run generate:homepage-sports
+```
+
+Then commit both the script changes (if any) and the updated files in `public/homepage-sports/`. Discipline → URL mapping lives in `lib/homepage/homepage-sport-tile-images.ts` and must stay aligned with the script’s slugs.
+
 ## Database Schema
 
 - `profiles`: User profiles with roles (fighter, owner, admin)

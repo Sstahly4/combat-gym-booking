@@ -10,6 +10,7 @@ import { DestinationsCarousel } from '@/components/destinations-carousel'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ArrowRight, CalendarDays, PhoneCall, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { attachReviewStats } from '@/lib/reviews/attach-review-stats'
+import { homepageSportTileVariants } from '@/lib/homepage/homepage-sport-tile-images'
 
 // ─── Homepage Toggle ──────────────────────────────────────────────────────────
 // Set to true to serve the redesign, false to serve the original.
@@ -211,22 +212,11 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
     countryCounts[a[0]] > countryCounts[b[0]] ? a : b, ['Thailand', 0]
   )[0] || 'Thailand'
   
-  // Sport images mapping
-  const sportImages: Record<string, string> = {
-    'Muay Thai': '/N-8427.jpeg.avif',
-    'Boxing': '/e079bedfbf7e870f827b4fda7ce2132f.avif',
-    'MMA': '/1296749132.jpg',
-    'BJJ': '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg',
-    'Wrestling': '/tjj8r5ovjts8nhqjhkqc.avif',
-    'Kickboxing': '/Superbon-Singha-Mawynn-Chingiz-Allazov-ONE-Fight-Night-6-1920X1280-62.jpg',
-  }
-  
-  // Filter disciplines that have at least 1 gym
   const availableSports = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
     .filter(sport => (disciplineCounts[sport] || 0) > 0)
     .map(sport => ({
       name: sport,
-      image: sportImages[sport] || sportImages['Muay Thai'],
+      image: homepageSportTileVariants(sport),
       count: disciplineCounts[sport] || 0
     }))
 
@@ -291,7 +281,7 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Popular Training Camps</h2>
             <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">From intensive fight camps to holistic training retreats, find your perfect match</p>
-            <FeaturedCarousel gyms={allGyms.slice(0, 10)} />
+            <FeaturedCarousel gyms={allGyms.slice(0, 10)} priorityCount={3} />
           </div>
         </section>
 
@@ -319,7 +309,12 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
           <section className="order-[30] md:order-[30] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
             <div className="max-w-6xl mx-auto px-4">
               <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-gray-900">Browse by sport type in {mostCommonCountry}</h2>
-              <SportTypeCarousel sports={availableSports} country={mostCommonCountry} dateDisplay={dateDisplay} />
+              <SportTypeCarousel
+                sports={availableSports}
+                country={mostCommonCountry}
+                dateDisplay={dateDisplay}
+                priorityCount={4}
+              />
             </div>
           </section>
         )}
@@ -329,7 +324,7 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900">Top Rated Camps</h2>
             <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4">Highly rated by fighters who've trained there - verified reviews from real bookings</p>
-            <FeaturedCarousel gyms={topRatedGyms} />
+            <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
           </div>
         </section>
 

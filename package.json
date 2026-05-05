@@ -8,7 +8,8 @@
     "start": "pnpm exec next start",
     "lint": "pnpm exec next lint",
     "test": "pnpm exec vitest run",
-    "test:watch": "pnpm exec vitest"
+    "test:watch": "pnpm exec vitest",
+    "generate:homepage-sports": "node scripts/generate-homepage-sport-variants.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "5.2.5",
@@ -47,6 +48,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.33",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vitest": "^2.1.5"

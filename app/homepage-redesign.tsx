@@ -11,6 +11,7 @@ import { OffersSection } from '@/components/offers-section'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
 import { BLUR_DATA_URL } from '@/lib/images/blur'
+import { homepageSportTileVariants } from '@/lib/homepage/homepage-sport-tile-images'
 
 /** Desktop homepage rows (original marketplace shelves). */
 const HOMEPAGE_ROW_SIZE_DESKTOP = 10
@@ -369,20 +370,11 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
     Object.entries(countryCounts).reduce((a, b) => (countryCounts[a[0]] > countryCounts[b[0]] ? a : b), ['Thailand', 0])[0] ||
     'Thailand'
 
-  const sportImages: Record<string, string> = {
-    'Muay Thai': '/N-8427.jpeg.avif',
-    Boxing: '/e079bedfbf7e870f827b4fda7ce2132f.avif',
-    MMA: '/1296749132.jpg',
-    BJJ: '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg',
-    Wrestling: '/tjj8r5ovjts8nhqjhkqc.avif',
-    Kickboxing: '/Superbon-Singha-Mawynn-Chingiz-Allazov-ONE-Fight-Night-6-1920X1280-62.jpg',
-  }
-
   const availableSports = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
     .filter((sport) => (disciplineCounts[sport] || 0) > 0)
     .map((sport) => ({
       name: sport,
-      image: sportImages[sport] || sportImages['Muay Thai'],
+      image: homepageSportTileVariants(sport),
       count: disciplineCounts[sport] || 0,
     }))
 
@@ -498,7 +490,7 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl font-bold mb-2 text-gray-900">Popular Training Camps</h2>
             <p className="text-sm text-gray-700 mb-3">From intensive fight camps to holistic training retreats, find your perfect match</p>
-            <FeaturedCarousel gyms={popularTrainingGymsMobile} />
+            <FeaturedCarousel gyms={popularTrainingGymsMobile} priorityCount={3} />
           </div>
         </section>
 
@@ -594,7 +586,12 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
             <section className="order-[30] pt-4 pb-4 md:pt-6 md:pb-6 bg-white">
               <div className="max-w-6xl mx-auto px-4">
                 <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-gray-900">Browse by sport type in {mostCommonCountry}</h2>
-                <SportTypeCarousel sports={availableSports} country={mostCommonCountry} dateDisplay={dateDisplay} />
+                <SportTypeCarousel
+                  sports={availableSports}
+                  country={mostCommonCountry}
+                  dateDisplay={dateDisplay}
+                  priorityCount={4}
+                />
               </div>
             </section>
           )}

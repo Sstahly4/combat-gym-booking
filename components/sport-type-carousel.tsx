@@ -4,10 +4,15 @@ import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  HOMEPAGE_SPORT_TILE_IMG_SIZES,
+  homepageSportTileSrcSet,
+  type HomepageSportTileVariants,
+} from '@/lib/homepage/homepage-sport-tile-images'
 
 interface Sport {
   name: string
-  image: string
+  image: HomepageSportTileVariants
   count: number
 }
 
@@ -15,7 +20,7 @@ interface SportTypeCarouselProps {
   sports: Sport[]
   country: string
   dateDisplay: string
-  /** Number of leading images to preload via Next.js `priority`. */
+  /** First N tiles: eager load + high fetch priority (LCP / above-the-fold). */
   priorityCount?: number
 }
 
@@ -96,11 +101,14 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
             <div className="cursor-pointer hover:shadow-md transition-shadow">
               <div className="relative w-full aspect-[5/4] rounded-lg overflow-hidden mb-2 bg-gray-100">
                 <img
-                  src={sport.image}
+                  src={sport.image.w800}
+                  srcSet={homepageSportTileSrcSet(sport.image)}
+                  sizes={HOMEPAGE_SPORT_TILE_IMG_SIZES}
                   alt={sport.name}
                   className="absolute inset-0 h-full w-full object-cover"
                   loading={idx < priorityCount ? 'eager' : 'lazy'}
                   decoding="async"
+                  fetchPriority={idx < priorityCount ? 'high' : 'auto'}
                 />
               </div>
               <h3 className="font-semibold text-xs md:text-sm text-gray-900 mb-0.5">{sport.name}</h3>
