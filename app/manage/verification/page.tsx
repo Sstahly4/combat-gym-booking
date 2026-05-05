@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import { VerificationChecklist } from '@/components/verification-checklist'
 import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
 import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
@@ -12,9 +13,22 @@ import type { Gym } from '@/lib/types/database'
 
 export default function ManageVerificationPage() {
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const [gym, setGym] = useState<Gym | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
 
   useEffect(() => {
     if (authLoading) return
@@ -23,7 +37,6 @@ export default function ManageVerificationPage() {
       return
     }
     if (!profile) {
-      router.replace('/auth/role-selection')
       return
     }
     if (profile.role !== 'owner') {
@@ -51,7 +64,7 @@ export default function ManageVerificationPage() {
     void load()
   }, [user, profile, authLoading, router])
 
-  if (authLoading || loading) {
+  if (authLoading || profileRecoverFailed || (user && !profile) || loading) {
     return (
       <div className="min-h-screen bg-white">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">

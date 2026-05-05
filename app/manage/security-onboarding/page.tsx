@@ -13,6 +13,7 @@ import { PasswordStandardsHint } from '@/components/auth/password-standards-hint
 import { RESIDENCE_COUNTRIES } from '@/lib/constants/residence-countries'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
 import { CheckCircle2, ShieldCheck, ArrowRight, ChevronDown } from 'lucide-react'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 
 const ROLE_OPTIONS: Array<{ value: AccountHolderPropertyRole; label: string }> = [
   { value: 'owner', label: 'Owner' },
@@ -24,7 +25,7 @@ export default function SecurityOnboardingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justVerified = searchParams.get('verified') === '1'
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showReAuth, setShowReAuth] = useState(false)
@@ -44,6 +45,19 @@ export default function SecurityOnboardingPage() {
 
   const [healingRole, setHealingRole] = useState(false)
 
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -51,7 +65,6 @@ export default function SecurityOnboardingPage() {
       return
     }
     if (!profile) {
-      router.replace('/auth/role-selection')
       return
     }
     if (profile.role !== 'owner') {
@@ -226,7 +239,7 @@ export default function SecurityOnboardingPage() {
     }
   }
 
-  if (authLoading) {
+  if (authLoading || profileRecoverFailed || (user && !profile)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />

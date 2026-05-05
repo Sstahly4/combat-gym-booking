@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,21 +13,32 @@ import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/boo
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const [bookings, setBookings] = useState<(Booking & { gym: Gym })[]>([])
   const [loading, setLoading] = useState(true)
 
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
+
   useEffect(() => {
     if (authLoading) return
-    
+
     if (!user) {
       router.replace('/auth/signin')
       return
     }
 
     if (!profile) {
-      // No profile yet, redirect to role selection
-      router.replace('/auth/role-selection')
       return
     }
 
@@ -66,7 +78,7 @@ export default function DashboardPage() {
     return booking.status === 'completed' && new Date(booking.end_date) < new Date()
   }
 
-  if (authLoading || loading) {
+  if (authLoading || profileRecoverFailed || (user && !profile) || loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">

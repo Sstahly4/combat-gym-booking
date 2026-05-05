@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ArrowLeftRight, BarChart3, ChevronDown, Info, X } from 'lucide-react'
 import { PayoutsHoldBanner } from '@/components/manage/payouts-hold-banner'
@@ -124,7 +125,7 @@ function platformRailLabel(rail: string): string {
 
 export default function BalancesPage() {
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { selectedCurrency, convertPrice } = useCurrency()
   const { activeGymId } = useActiveGym()
   const [loading, setLoading] = useState(true)
@@ -138,6 +139,19 @@ export default function BalancesPage() {
   const [bookingLoading, setBookingLoading] = useState(false)
   const [gymCurrency, setGymCurrency] = useState<string>('USD')
 
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -145,7 +159,6 @@ export default function BalancesPage() {
       return
     }
     if (!profile) {
-      router.replace('/auth/role-selection')
       return
     }
     if (profile.role !== 'owner') {
@@ -307,6 +320,14 @@ export default function BalancesPage() {
       return formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)
     return formatMinorForViewer(availableMinor, primaryCurrency)
   })()
+
+  if (authLoading || profileRecoverFailed || (user && !profile)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">

@@ -28,6 +28,7 @@ import {
   writeReadinessSessionCache,
 } from '@/lib/onboarding/readiness-session-cache'
 import { useActiveGym } from '@/components/manage/active-gym-context'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 
 interface GymWithImage extends Gym {
   images: GymImage[]
@@ -181,7 +182,7 @@ function defaultComparisonDayKey(): string {
 
 export default function ManagePage() {
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { selectedCurrency, convertPrice } = useCurrency()
   const { activeGymId } = useActiveGym()
   const [gyms, setGyms] = useState<GymWithImage[]>([])
@@ -203,6 +204,19 @@ export default function ManagePage() {
   const [readinessGymId, setReadinessGymId] = useState<string | null>(null)
   const [canGoLive, setCanGoLive] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
 
   const gymsRef = useRef<GymWithImage[]>([])
   gymsRef.current = gyms
@@ -292,7 +306,6 @@ export default function ManagePage() {
     }
 
     if (!profile) {
-      router.replace('/auth/role-selection')
       return
     }
 
@@ -506,7 +519,7 @@ export default function ManagePage() {
       maximumFractionDigits: 2,
     })
 
-  if (authLoading || loading) {
+  if (authLoading || profileRecoverFailed || (user && !profile) || loading) {
     return (
       <div className="min-h-screen bg-white">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">

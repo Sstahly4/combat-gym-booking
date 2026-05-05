@@ -12,6 +12,7 @@ import { loadConnectAndInitialize } from '@stripe/connect-js'
 import { ConnectComponentsProvider, ConnectAccountManagement, ConnectAccountOnboarding } from '@stripe/react-connect-js'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ManagePayoutPreferencesForm } from '@/components/manage/manage-payout-preferences-form'
 import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement-sign-panel'
@@ -29,7 +30,7 @@ const dashCard =
 export function ManagePayoutsWorkspace() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { activeGymId } = useActiveGym()
   const [gym, setGym] = useState<Gym | null>(null)
   const [gymLoading, setGymLoading] = useState(true)
@@ -41,6 +42,19 @@ export function ManagePayoutsWorkspace() {
   /** Embedded Connect (session fetch) only after owner clicks Start, unless already verified. */
   const [connectUiStarted, setConnectUiStarted] = useState(false)
 
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
+    }
+  }, [profileRecoverFailed, router])
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -48,7 +62,6 @@ export function ManagePayoutsWorkspace() {
       return
     }
     if (!profile) {
-      router.replace('/auth/role-selection')
       return
     }
     if (profile.role !== 'owner') {
@@ -246,6 +259,14 @@ export function ManagePayoutsWorkspace() {
     profile?.partner_agreement_signed_at &&
       profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
   )
+
+  if (authLoading || profileRecoverFailed || (user && !profile)) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-[#003580]" aria-hidden />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

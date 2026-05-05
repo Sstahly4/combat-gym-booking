@@ -1,87 +1,61 @@
 'use client'
 
-import { useState } from 'react'
+/**
+ * Legacy URL: we no longer ask users to pick fighter vs owner on a dedicated screen.
+ * Infer role from signup/OAuth metadata, create a minimal profile if needed, then redirect.
+ */
+
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
+import { resolveOwnerListingHubPath } from '@/lib/manage/resolve-owner-hub-url'
 
-export default function RoleSelectionPage() {
+export default function RoleSelectionRedirectPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
 
-  const handleRoleSelection = async (role: 'fighter' | 'owner') => {
-    setLoading(true)
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
+  const profileRecoverFailed = useBootstrapProfileIfMissing({
+    authLoading,
+    user,
+    profile,
+    refreshProfile,
+  })
+
+  useEffect(() => {
+    if (authLoading || profileRecoverFailed) return
     if (!user) {
-      router.push('/auth/signin')
+      router.replace('/auth/signin')
       return
     }
+    if (!profile) return
 
-    await supabase
-      .from('profiles')
-      .upsert({ 
-        id: user.id,
-        role: role,
-        updated_at: new Date().toISOString()
-      })
-      .select()
+    void (async () => {
+      if (profile.role === 'admin') {
+        router.replace('/admin')
+        return
+      }
+      if (profile.role === 'owner') {
+        const supabase = createClient()
+        const dest = await resolveOwnerListingHubPath(supabase, user.id)
+        router.replace(dest)
+        return
+      }
+      router.replace('/dashboard')
+    })()
+  }, [authLoading, user, profile, router, profileRecoverFailed])
 
-    if (role === 'owner') {
-      router.push('/manage/onboarding?step=step-1')
-    } else {
-      router.push('/dashboard')
+  useEffect(() => {
+    if (profileRecoverFailed) {
+      router.replace('/auth/signin')
     }
-  }
+  }, [profileRecoverFailed, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-3xl font-bold text-center mb-8">Choose Your Role</h1>
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleRoleSelection('fighter')}>
-            <CardHeader>
-              <CardTitle>Fighter / Trainee</CardTitle>
-              <CardDescription>
-                Browse and book training camps at combat sports gyms
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
-                <li>• Browse gyms and training camps</li>
-                <li>• Request bookings</li>
-                <li>• Manage your bookings</li>
-                <li>• Leave reviews</li>
-              </ul>
-              <Button className="w-full" disabled={loading}>
-                Continue as Fighter
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleRoleSelection('owner')}>
-            <CardHeader>
-              <CardTitle>Gym Owner</CardTitle>
-              <CardDescription>
-                List your gym and manage bookings from fighters
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
-                <li>• Create and manage gym profile</li>
-                <li>• Accept or decline bookings</li>
-                <li>• Receive payments</li>
-                <li>• View earnings</li>
-              </ul>
-              <Button className="w-full" disabled={loading}>
-                Continue as Owner
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />
+      <span className="sr-only">Redirecting…</span>
     </div>
   )
 }
