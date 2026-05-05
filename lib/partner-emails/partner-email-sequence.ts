@@ -124,12 +124,6 @@ export async function sendPartnerWelcomeEmail(params: {
       links.payouts,
       'Payouts & agreement',
     ),
-    partnerAccentSectionLabel('Why CombatStay'),
-    partnerStatTilesRow([
-      { figure: '15%', caption: 'Commission only. No monthly fees.' },
-      { figure: '0', caption: 'Upfront costs to get listed.' },
-      { figure: '1', caption: 'Platform built for combat sports.' },
-    ]),
     partnerHelpCallout(
       `<strong style="color:#1e40af;">Questions? We are here.</strong> Reply to this email — a real person will get back to you quickly. We are actively onboarding founding gyms and want Stripe, packages, or listing setup to feel straightforward. You can also use the <a href="${helpHref}" style="color:${BRAND.linkColor};font-weight:600;text-decoration:none;">Partner Help Centre</a>.`,
     ),
@@ -157,8 +151,6 @@ Your go-live checklist:
 2) Upload at least 3 photos — ${links.photos}
 3) Create your first package — ${links.packages}
 4) Connect payouts & sign Partner Agreement — ${links.payouts}
-
-Why CombatStay: 15% commission (no monthly fees), no upfront listing fees, one platform focused on combat sports.
 
 Questions? Reply to this email. Help: ${helpHref}
 
