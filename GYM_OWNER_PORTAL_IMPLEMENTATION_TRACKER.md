@@ -34,7 +34,7 @@ This is the canonical tracker for the owner portal rollout. It reflects current 
 ## Step 0 (prerequisite): Readiness contract
 
 - [~] One-page signed checklist artifact exists (external canonical contract)
-  - Source: `/Users/seth/Documents/Business/Combatbooking.com/Documents/combatbooking_readiness_contract.docx`
+  - Source: external CombatStay commercial / readiness drafts (not versioned in this repo).
   - Note: canonical artifact exists and is final, but is currently external to repo tracking.
 - [x] **Sign-off decision resolved before Milestone 2C:** go-live state model
   - Final decision in readiness contract: **Option B** using `gyms.is_live` as owner go-live state.

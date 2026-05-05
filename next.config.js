@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
-const LEGACY_BRAND_HOSTS = ['combatbooking.com', 'www.combatbooking.com']
+/**
+ * Optional 301 sources for a previous hostname (comma-separated, no scheme).
+ * Configure via `LEGACY_REDIRECT_HOSTS` in the deployment environment if needed;
+ * do not commit previous brand domains in source.
+ */
+const LEGACY_REDIRECT_HOSTS = (process.env.LEGACY_REDIRECT_HOSTS || '')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean)
 
 const nextConfig = {
   images: {
@@ -45,16 +53,17 @@ const nextConfig = {
   // Enable React strict mode for better performance
   reactStrictMode: true,
   /**
-   * 301 every path on legacy domains → canonical app URL (Search Console “Change of address”,
+   * 301 every path on configured legacy hostnames → canonical app URL (Search Console,
    * link equity, bookmarks). Only applies when those hostnames still route to this deployment
-   * (e.g. Vercel domain alias). If the old domain is parked elsewhere, configure redirects there.
+   * (e.g. Vercel domain alias). Set `LEGACY_REDIRECT_HOSTS` if you still serve traffic on a
+   * retired hostname.
    */
   async redirects() {
     const base = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.combatstay.com').replace(
       /\/$/,
       '',
     )
-    return LEGACY_BRAND_HOSTS.map((host) => ({
+    return LEGACY_REDIRECT_HOSTS.map((host) => ({
       source: '/:path*',
       has: [{ type: 'host', value: host }],
       destination: `${base}/:path*`,
