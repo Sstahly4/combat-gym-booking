@@ -27,7 +27,7 @@ export async function GET() {
 
   const sinceIso = since.toISOString()
 
-  const [bookingsRes, gymsRes] = await Promise.all([
+  const [bookingsRes, gymsRes, claimRes] = await Promise.all([
     supabase
       .from('bookings')
       .select('id, created_at, status, total_price, gym_id, guest_name')
@@ -40,6 +40,13 @@ export async function GET() {
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(25),
+    supabase
+      .from('owner_telemetry_events')
+      .select('id, created_at, event_type, user_id, gym_id, metadata')
+      .gte('created_at', sinceIso)
+      .in('event_type', ['gym_claim_password_set'])
+      .order('created_at', { ascending: false })
+      .limit(25),
   ])
 
   if (bookingsRes.error) {
@@ -49,6 +56,16 @@ export async function GET() {
   if (gymsRes.error) {
     console.error('[admin/activity-feed] gyms', gymsRes.error)
     return NextResponse.json({ error: 'Failed to load gyms' }, { status: 500 })
+  }
+  // Telemetry is best-effort; older environments may not have the table.
+  if (claimRes.error) {
+    const e = claimRes.error as unknown as { code?: string; message?: string }
+    const msg = typeof e?.message === 'string' ? e.message : ''
+    const missing =
+      e?.code === 'PGRST205' || (/Could not find the table/i.test(msg) && /owner_telemetry_events/i.test(msg))
+    if (!missing) {
+      console.error('[admin/activity-feed] claim telemetry', claimRes.error)
+    }
   }
 
   const bookingRows = (bookingsRes.data || []) as {
@@ -126,6 +143,58 @@ export async function GET() {
       href: `/admin/gyms?gym_id=${encodeURIComponent(g.id)}`,
       gym_name: g.name,
       status: g.status,
+    })
+  }
+
+  const claimRows = (!claimRes.error ? (claimRes.data || []) : []) as {
+    id: string
+    created_at: string
+    event_type: string
+    user_id: string | null
+    gym_id: string | null
+    metadata: any
+  }[]
+
+  const claimGymIds = [...new Set(claimRows.map((r) => r.gym_id).filter(Boolean))] as string[]
+  const claimUserIds = [...new Set(claimRows.map((r) => r.user_id).filter(Boolean))] as string[]
+
+  const claimGymMeta = new Map<string, { name: string; city: string | null; country: string | null }>()
+  if (claimGymIds.length > 0) {
+    const { data: rows } = await supabase.from('gyms').select('id, name, city, country').in('id', claimGymIds)
+    for (const g of rows || []) {
+      claimGymMeta.set(g.id as string, {
+        name: (g.name as string) || '',
+        city: (g.city as string | null) ?? null,
+        country: (g.country as string | null) ?? null,
+      })
+    }
+  }
+
+  const claimOwnerMeta = new Map<string, { full_name: string | null }>()
+  if (claimUserIds.length > 0) {
+    const { data: rows } = await supabase.from('profiles').select('id, full_name').in('id', claimUserIds)
+    for (const p of rows || []) {
+      claimOwnerMeta.set(p.id as string, { full_name: (p.full_name as string | null) ?? null })
+    }
+  }
+
+  for (const r of claimRows) {
+    const gym = r.gym_id ? claimGymMeta.get(r.gym_id) : null
+    const gymName = gym?.name?.trim() || null
+    const loc =
+      gym?.city && gym?.country ? `${gym.city}, ${gym.country}` : gym?.country || gym?.city || null
+    const ownerName = r.user_id ? claimOwnerMeta.get(r.user_id)?.full_name?.trim() : null
+    const subtitle = [ownerName ? `Owner: ${ownerName}` : null, loc].filter(Boolean).join(' · ') || null
+    const href = r.gym_id ? `/admin/orphan-gyms?gym_id=${encodeURIComponent(r.gym_id)}` : '/admin/orphan-gyms'
+    items.push({
+      kind: 'owner_claimed',
+      id: r.id,
+      created_at: r.created_at,
+      title: 'Claim link completed',
+      subtitle,
+      href,
+      gym_name: gymName,
+      status: null,
     })
   }
 

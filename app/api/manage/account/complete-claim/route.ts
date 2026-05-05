@@ -245,9 +245,27 @@ export async function POST(request: NextRequest) {
       metadata: { via: 'claim_complete', email_changed: emailChanged },
     })
 
+    // Best-effort: attach a gym_id to the claim-complete telemetry so Admin Hub
+    // can show a deep-link in the activity feed. Claim links always transfer
+    // at least one gym to the placeholder owner, but keep this defensive.
+    let claimGymId: string | null = null
+    try {
+      const { data: g } = await admin
+        .from('gyms')
+        .select('id')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      claimGymId = (g as { id?: string } | null)?.id ?? null
+    } catch {
+      claimGymId = null
+    }
+
     await recordOwnerEvent(admin as never, {
       event_type: 'gym_claim_password_set',
       user_id: user.id,
+      gym_id: claimGymId,
       metadata: { email_changed: emailChanged },
     })
     if (emailChanged) {
