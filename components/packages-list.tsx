@@ -451,11 +451,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <div className="text-[10px] text-gray-500 mb-0.5">
-                              {pkg.variants?.length ? 'From' : 'Price for'} {isValidDuration ? `${displayedDays} ${displayedDays === 1 ? 'day' : 'days'}` : (pkg.type === 'training' ? '1 day' : '1 week')}
+                              {pkg.type === 'training' && shouldShowPerSession
+                                ? 'Starting from'
+                                : `${pkg.variants?.length ? 'From' : 'Price for'} ${isValidDuration ? `${displayedDays} ${displayedDays === 1 ? 'day' : 'days'}` : (pkg.type === 'training' ? '1 day' : '1 week')}`}
                             </div>
                             <div className="text-lg font-bold text-[#003580]">
                               {formatPrice(convertPrice(priceInfo.price, gym.currency))}
                             </div>
+                            {pkg.type === 'training' && shouldShowPerSession ? (
+                              <div className="text-[10px] text-gray-600 mt-0.5">per day</div>
+                            ) : null}
                             <div className="text-[10px] text-gray-500 mt-0.5">
                               Includes taxes and charges
                             </div>
