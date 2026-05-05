@@ -35,13 +35,21 @@ export function BookingSection({ gym }: { gym: Gym }) {
   }, [checkin, checkout, router, searchParams])
 
   // Calculate duration
-  const duration = (checkin && checkout) 
+  const duration = (checkin && checkout)
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
-  const isValidDuration = duration > 0
+  const rangeIsNonNegative = duration >= 0
+  const isTraining = selectedPackage?.type === 'training'
+  const isAllInclusive = selectedPackage?.type === 'all_inclusive'
+  const isAccommodation = selectedPackage?.type === 'accommodation'
+
+  // Training-only supports single-day (checkin === checkout) bookings → 1 session/day.
+  // Accommodation/all-inclusive keep hotel semantics (checkout must be after checkin).
+  const isValidDuration = isTraining ? rangeIsNonNegative : duration > 0
+
   const pricingDuration =
-    selectedPackage && isValidDuration && (selectedPackage.type === 'training' || selectedPackage.type === 'all_inclusive')
+    selectedPackage && isValidDuration && (isTraining || isAllInclusive)
       ? duration + 1
       : duration
 
@@ -56,8 +64,9 @@ export function BookingSection({ gym }: { gym: Gym }) {
 
   const totalPrice = priceInfo?.price || 0
   const minStay = selectedPackage?.min_stay_days ?? (selectedPackage?.type === 'training' ? 1 : 7)
-  const showMinStayWarning = selectedPackage && duration < minStay && isValidDuration
-  const meetsMinimumStay = !selectedPackage || duration >= minStay
+  const durationForMinStay = selectedPackage?.type === 'training' ? pricingDuration : duration
+  const showMinStayWarning = selectedPackage && durationForMinStay < minStay && isValidDuration
+  const meetsMinimumStay = !selectedPackage || durationForMinStay >= minStay
 
   return (
     <>

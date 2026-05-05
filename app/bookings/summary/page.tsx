@@ -152,13 +152,17 @@ function BookingSummaryPageContent() {
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
-  const isValidDuration = duration > 0
+  const rangeIsNonNegative = duration >= 0
+  const isTraining = package_?.type === 'training'
+  const isAllInclusive = package_?.type === 'all_inclusive'
+  const isValidDuration = isTraining ? rangeIsNonNegative : duration > 0
   const minStay = package_?.min_stay_days ?? (package_?.type === 'training' ? 1 : 7)
-  const meetsMinimumStay = !package_ || duration >= minStay
   const pricingDuration =
-    package_ && isValidDuration && (package_.type === 'training' || package_.type === 'all_inclusive')
+    package_ && isValidDuration && (isTraining || isAllInclusive)
       ? duration + 1
       : duration
+  const durationForMinStay = package_?.type === 'training' ? pricingDuration : duration
+  const meetsMinimumStay = !package_ || durationForMinStay >= minStay
 
   // Calculate price
   const priceInfo = (package_ && isValidDuration)
@@ -397,7 +401,10 @@ function BookingSummaryPageContent() {
           <div className="pb-4 border-b border-gray-200">
             <div className="text-xs text-gray-500 mb-1">You selected</div>
             <div className="font-semibold text-sm">
-              {duration} {duration === 1 ? 'night' : 'nights'}, {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
+              {isTraining
+                ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                : `${duration} ${duration === 1 ? 'night' : 'nights'}`},{' '}
+              {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
             </div>
             {package_ && (
               <div className="font-semibold text-sm mt-1 space-y-0.5">
@@ -417,7 +424,10 @@ function BookingSummaryPageContent() {
                 <CardContent className="pt-6 space-y-3">
                   <div className="space-y-3 text-sm">
                     <div className="text-xs uppercase tracking-wide text-gray-500">
-                      {variant ? variant.name : package_.name} · {duration} {duration === 1 ? 'night' : 'nights'}
+                      {variant ? variant.name : package_.name} ·{' '}
+                      {isTraining
+                        ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                        : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
                     </div>
                     {priceInfo.lines.map((line, i) => (
                       <div key={i} className="flex justify-between">
@@ -535,7 +545,9 @@ function BookingSummaryPageContent() {
               {package_.type === 'training' && (
                 <div className="flex items-start gap-2">
                   <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">Training sessions for {duration} {duration === 1 ? 'day' : 'days'}</span>
+                  <span className="text-gray-700">
+                    Training sessions for {pricingDuration} {pricingDuration === 1 ? 'day' : 'days'}
+                  </span>
                 </div>
               )}
               {(package_.type === 'accommodation' || package_.type === 'all_inclusive') && (
@@ -994,7 +1006,9 @@ function BookingSummaryPageContent() {
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Total length of stay:</div>
                   <div className="font-semibold">
-                    {duration} {duration === 1 ? 'night' : 'nights'}
+                    {isTraining
+                      ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                      : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
                     {priceInfo && ` (${priceInfo.durationLabel})`}
                   </div>
                 </div>
@@ -1025,7 +1039,10 @@ function BookingSummaryPageContent() {
                   <>
                     <div className="space-y-3 text-sm">
                       <div className="text-xs uppercase tracking-wide text-gray-500">
-                        {variant ? variant.name : package_.name} · {duration} {duration === 1 ? 'night' : 'nights'}
+                        {variant ? variant.name : package_.name} ·{' '}
+                        {isTraining
+                          ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                          : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
                       </div>
                       {priceInfo.lines.map((line, i) => (
                         <div key={i} className="flex justify-between">

@@ -84,7 +84,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   // Check if dates are user-provided (from URL params) or auto-defaulted
   const hasUserSelectedDates = searchParams.get('checkin') && searchParams.get('checkout')
   
-  const duration = (checkin && checkout) 
+  const duration = (checkin && checkout)
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
@@ -104,14 +104,17 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
     }))
   }
 
-  const isValidDuration = duration > 0
+  const rangeIsNonNegative = duration >= 0
+  const isValidDuration = rangeIsNonNegative
   // Pricing vs display duration:
   // - We compute `duration` as nights (checkout - checkin).
   // - For training + all-inclusive we price by "days", which is nights + 1 (camp convention).
   // - Accommodation stays priced/displayed off nights.
   const getPricingDuration = (packageType: Package['type']) => {
     if (!isValidDuration) return duration
-    return (packageType === 'training' || packageType === 'all_inclusive') ? (duration + 1) : duration
+    if (packageType === 'training') return duration + 1
+    if (packageType === 'all_inclusive') return duration > 0 ? duration + 1 : duration
+    return duration
   }
 
   // Extend stay handler — sets checkout to checkin + minStay days
@@ -270,8 +273,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
             // Ghost state: only applies to non-event packages
             const minStay = pkg.min_stay_days ?? (pkg.type === 'training' ? 1 : 7)
-            const meetsMinStay = !isValidDuration || duration >= minStay
-            const nightsToUnlock = isValidDuration ? Math.max(0, minStay - duration) : 0
+            const durationForMinStay = pkg.type === 'training' ? getPricingDuration(pkg.type) : duration
+            const meetsMinStay = !isValidDuration || durationForMinStay >= minStay
+            const nightsToUnlock = isValidDuration ? Math.max(0, minStay - durationForMinStay) : 0
             const isGhosted = !isEvent && isValidDuration && !meetsMinStay
 
             // Compute anchor price for ghost state — try weekly → monthly → daily, never $0
