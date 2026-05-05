@@ -33,6 +33,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const applySessionSnapshot = useCallback(
+    async (opts?: { reason?: string }) => {
+      const supabase = createClient()
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const nextUser = session?.user ?? null
+        setUser(nextUser)
+        if (!nextUser) {
+          setProfile(null)
+          setLoading(false)
+          return
+        }
+        // Profile refresh is best-effort; any failure should still clear loading.
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', nextUser.id).single()
+        if (error) {
+          console.warn('[auth] refresh profile failed', opts?.reason || 'refresh', error)
+          setProfile(null)
+        } else {
+          setProfile((data as Profile) ?? null)
+        }
+      } catch (e) {
+        console.warn('[auth] session refresh threw', opts?.reason || 'refresh', e)
+        // If revalidation fails, keep the last-known state; do not force sign-out.
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
   useEffect(() => {
     const supabase = createClient()
     let mounted = true
@@ -124,6 +156,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // When a tab comes back into focus, revalidate the session so the UI doesn't
+  // show a stale "logged-in" sidebar while the session is actually expired.
+  useEffect(() => {
+    function revalidate() {
+      void applySessionSnapshot({ reason: 'focus' })
+    }
+    function onVis() {
+      if (document.visibilityState === 'visible') {
+        void applySessionSnapshot({ reason: 'visibility' })
+      }
+    }
+    window.addEventListener('focus', revalidate)
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('focus', revalidate)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [applySessionSnapshot])
 
   const refreshProfile = useCallback(async () => {
     const supabase = createClient()

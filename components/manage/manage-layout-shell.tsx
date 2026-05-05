@@ -71,7 +71,8 @@ function ManageNoSidebarHubTitle() {
 
 function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
-  const { profile } = useAuth()
+  const router = useRouter()
+  const { user, profile, loading: authLoading } = useAuth()
   const { gyms, activeGymId, setActiveGymId, loading } = useActiveGym()
 
   const active = gyms.find((g) => g.id === activeGymId) ?? gyms[0] ?? null
@@ -91,6 +92,35 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
       : managePartnerSectionTitle(pathname)
     document.title = formatHubDocumentTitle(section, 'partner')
   }, [gymName, pathname])
+
+  useEffect(() => {
+    if (!pathname.startsWith('/manage')) return
+    if (authLoading) return
+    if (!user) {
+      const redirect = encodeURIComponent(pathname)
+      router.replace(`/auth/signin?intent=owner&redirect=${redirect}`)
+    }
+  }, [authLoading, user, pathname, router])
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
+        Loading…
+      </div>
+    )
+  }
+
+  // While the session is valid but profile is still loading/bootstrapping,
+  // don't render the Partner Hub shell (prevents stale sidebar vs page mismatch).
+  if (user && !profile) {
+    return (
+      <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
+        Loading…
+      </div>
+    )
+  }
+
+  if (!user) return null
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">
@@ -116,8 +146,34 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
 
 export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
+  const router = useRouter()
+  const { user, profile, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (!pathname.startsWith('/manage')) return
+    if (authLoading) return
+    if (!user) {
+      const redirect = encodeURIComponent(pathname)
+      router.replace(`/auth/signin?intent=owner&redirect=${redirect}`)
+    }
+  }, [authLoading, user, pathname, router])
 
   if (shouldHideSidebar(pathname)) {
+    if (authLoading) {
+      return (
+        <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
+          Loading…
+        </div>
+      )
+    }
+    if (user && !profile) {
+      return (
+        <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
+          Loading…
+        </div>
+      )
+    }
+    if (!user) return null
     return (
       <>
         <PendingOwnerGuard />
