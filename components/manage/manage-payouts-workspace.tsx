@@ -278,9 +278,8 @@ export function ManagePayoutsWorkspace() {
                         <header className="border-b border-gray-100 px-5 py-4">
                           <h3 className="text-base font-semibold text-gray-900">Finish payout account setup</h3>
                           <p className="mt-0.5 text-sm text-gray-500">
-                            Most steps stay inline below. Stripe Express can still open a separate secure window for
-                            identity or Link sign-in—that is Stripe&apos;s flow, not our old hosted redirect. When you
-                            finish, we refresh your listing status here.
+                            Complete the steps below. If a secure Stripe window opens, follow the prompts—it closes
+                            when you are done and you return here. We then refresh your listing status.
                           </p>
                         </header>
                         <div className="px-2 py-3 sm:px-4">

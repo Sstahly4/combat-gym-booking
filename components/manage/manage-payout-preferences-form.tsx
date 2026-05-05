@@ -235,12 +235,17 @@ export function ManagePayoutPreferencesForm({
           </div>
 
           {payoutRail === 'stripe_connect' ? (
-            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-start sm:justify-between">
-              <p className="max-w-xl text-xs leading-relaxed text-gray-500">
-                Verification runs inline on this page (no redirect). Use the button to save this payout route, create
-                your connected account if needed, and jump to the setup form below. Balances update when your account is
-                ready.
-              </p>
+            <div className="flex flex-col gap-4 border-t border-gray-100 pt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+              <div className="max-w-xl space-y-2 text-xs leading-relaxed text-gray-600">
+                <p>
+                  Use the button to start payout setup. A secure Stripe window may open for verification—if you do not
+                  have a Stripe account yet, enter an email there to create one. When that window closes, you continue
+                  here automatically.
+                </p>
+                <p className="text-gray-500">
+                  Most steps stay on this page; balances update when your account is ready.
+                </p>
+              </div>
               <Button
                 type="button"
                 onClick={() => void openStripeConnectFlow()}
