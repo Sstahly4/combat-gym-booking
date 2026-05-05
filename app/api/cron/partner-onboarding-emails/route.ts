@@ -5,8 +5,9 @@ import { runPartnerOnboardingEmailCron } from '@/lib/partner-emails/partner-emai
 export const dynamic = 'force-dynamic'
 
 /**
- * Hourly job: partner checklist email (dynamic readiness) and day-3 nudge for
- * owners who are still not live. Secured with CRON_SECRET (Vercel Cron or manual).
+ * Daily job (Vercel Hobby allows at most one cron invocation per day): partner
+ * checklist email (dynamic readiness) and day-3 nudge for owners still not live.
+ * On Pro+, you could move vercel.json to a tighter schedule. Secured with CRON_SECRET.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET

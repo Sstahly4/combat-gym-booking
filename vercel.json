@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/cron/partner-onboarding-emails",
-      "schedule": "20 * * * *"
+      "schedule": "45 4 * * *"
     }
   ]
 }
