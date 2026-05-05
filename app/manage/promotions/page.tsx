@@ -274,7 +274,7 @@ export default function ManagePromotionsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
         <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Promotions' }]} />
 
         <header className="flex flex-wrap items-start justify-between gap-3">

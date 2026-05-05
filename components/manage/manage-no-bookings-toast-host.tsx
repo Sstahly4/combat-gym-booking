@@ -16,6 +16,7 @@ import {
   milestoneToastCopy,
   type VerificationMilestoneDetail,
 } from '@/lib/manage/verification-milestone-toast'
+import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
 import { cn } from '@/lib/utils'
 
 /**
@@ -90,6 +91,7 @@ function useNoBookingsToastDefer() {
 
 export function ManageNoBookingsToastHost() {
   const pathname = usePathname() ?? ''
+  const narrowPartnerHub = useIsNarrowForManageSidebar()
   const { profile } = useAuth()
   const { gyms, activeGymId, loading: gymsLoading } = useActiveGym()
   const [bookingCount, setBookingCount] = useState<number | null>(null)
@@ -157,9 +159,11 @@ export function ManageNoBookingsToastHost() {
     !shouldHideNoBookingsToast(pathname)
 
   const showNbCard = showNbBase && !dismissedNb
+  /** Partner hub mobile: hide top-right chip (cramped vs header + hub bar); milestones use bottom tray */
+  const showNbCardEffective = showNbCard && !narrowPartnerHub
 
-  const showNbRef = useRef(showNbCard)
-  showNbRef.current = showNbCard
+  const showNbRef = useRef(showNbCardEffective)
+  showNbRef.current = showNbCardEffective
 
   const [celebration, setCelebration] = useState<VerificationMilestoneDetail | null>(null)
   const [nbStage, setNbStage] = useState<NbStage>('normal')
@@ -171,13 +175,13 @@ export function ManageNoBookingsToastHost() {
   const [cardPeek, setCardPeek] = useState({ visible: false, entered: false })
 
   useEffect(() => {
-    if (!showNbCard || !idleNormal) {
+    if (!showNbCardEffective || !idleNormal) {
       setCardPeek({ visible: false, entered: false })
       return
     }
     const t = window.setTimeout(() => setCardPeek((p) => ({ ...p, visible: true })), 320)
     return () => window.clearTimeout(t)
-  }, [showNbCard, idleNormal, pathname])
+  }, [showNbCardEffective, idleNormal, pathname])
 
   useEffect(() => {
     if (!cardPeek.visible || !idleNormal) {
@@ -315,9 +319,13 @@ export function ManageNoBookingsToastHost() {
       : '/manage/gym/preview'
 
   const renderNbLayer =
-    showNbCard || seqIncludesNb || nbStage === 'off-right' || nbStage === 'return-prep' || nbStage === 'return-in'
+    showNbCardEffective ||
+    (!narrowPartnerHub && seqIncludesNb) ||
+    (!narrowPartnerHub && (nbStage === 'off-right' || nbStage === 'return-prep' || nbStage === 'return-in'))
 
   const nbMotion = (() => {
+    /** Mobile: NB layer unused */
+    if (narrowPartnerHub) return 'pointer-events-none opacity-0'
     if (!idleNormal) {
       if (nbStage === 'off-right') {
         return 'translate-x-[calc(100%+28px)] opacity-0 transition-[transform,opacity] duration-300 ease-in-out'
@@ -333,7 +341,7 @@ export function ManageNoBookingsToastHost() {
       }
       return 'pointer-events-none opacity-0'
     }
-    if (!showNbCard) return 'pointer-events-none opacity-0'
+    if (!showNbCardEffective) return 'pointer-events-none opacity-0'
     if (!cardPeek.visible) {
       return 'translate-x-2 -translate-y-2 opacity-0 transition-none'
     }
@@ -344,6 +352,14 @@ export function ManageNoBookingsToastHost() {
   })()
 
   const successMotion = (() => {
+    if (narrowPartnerHub) {
+      if (successStage === 'off') return 'translate-y-2 opacity-0 transition-none'
+      if (successStage === 'on')
+        return 'translate-y-0 opacity-100 transition-[transform,opacity] duration-300 ease-out'
+      if (successStage === 'exit')
+        return 'translate-y-3 opacity-0 transition-[transform,opacity] duration-300 ease-in-out'
+      return 'opacity-0'
+    }
     if (successStage === 'off') {
       return 'translate-x-[calc(100%+28px)] opacity-100 transition-none'
     }
@@ -369,12 +385,18 @@ export function ManageNoBookingsToastHost() {
   return (
     <div
       className={cn(
-        'fixed right-4 top-32 z-50 w-[min(100vw-2rem,24rem)] max-w-sm md:right-8 md:top-20',
+        'fixed z-[70]',
+        /** Desktop / tablet partner hub */
+        !narrowPartnerHub &&
+          'right-4 top-32 w-[min(100vw-2rem,24rem)] max-w-sm md:right-8 md:top-20',
+        /** Narrow partner hub — bottom snack tray (milestones); no bookings chip */
+        narrowPartnerHub &&
+          'inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] top-auto flex w-auto max-w-none justify-center px-0',
         idleNormal ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       aria-live="polite"
     >
-      <div className="relative w-full min-h-[4.5rem]">
+      <div className="relative w-full max-w-lg min-h-0 md:min-h-[4.5rem]">
         {renderNbLayer ? (
           <div className={cn('w-full', nbMotion)}>
             <NoBookingsToastCard

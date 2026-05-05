@@ -54,7 +54,7 @@ export default function ManageVerificationPage() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
           <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />
           <div className="mt-6 h-64 animate-pulse rounded-xl bg-gray-100" />
         </div>
@@ -65,7 +65,7 @@ export default function ManageVerificationPage() {
   if (!gym) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
           <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Verification' }]} />
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Verification</h1>
           <p className="mt-1 text-sm text-gray-500">Create a gym profile to see verification requirements.</p>
@@ -82,7 +82,7 @@ export default function ManageVerificationPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
         <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Verification' }]} />
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Verification</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">

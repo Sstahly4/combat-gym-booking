@@ -456,7 +456,7 @@ export default function BookingsPage() {
   if (authLoading || (loading && bookings.length === 0)) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
           <div className="space-y-2">
             <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />
             <div className="h-4 w-full max-w-md animate-pulse rounded bg-gray-100/80" />
@@ -532,7 +532,7 @@ export default function BookingsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">

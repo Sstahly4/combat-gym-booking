@@ -58,7 +58,7 @@ export default function ManageAccommodationPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
         <ManageBreadcrumbs items={crumbs} />
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>

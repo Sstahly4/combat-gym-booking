@@ -310,7 +310,7 @@ export default function BalancesPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
