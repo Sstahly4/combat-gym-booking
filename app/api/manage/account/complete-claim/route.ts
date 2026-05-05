@@ -22,6 +22,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
+import { trySendPartnerWelcomeSequenceStart } from '@/lib/partner-emails/partner-email-sequence'
 
 function isValidEmail(value: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)
@@ -255,6 +256,12 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         metadata: {},
       })
+    }
+
+    try {
+      await trySendPartnerWelcomeSequenceStart(admin, user.id)
+    } catch (partnerEmailErr) {
+      console.warn('[complete-claim] partner welcome sequence', partnerEmailErr)
     }
 
     return NextResponse.json({

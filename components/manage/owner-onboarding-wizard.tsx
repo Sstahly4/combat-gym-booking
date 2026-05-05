@@ -28,6 +28,11 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import type { AccountHolderPropertyRole } from '@/lib/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { clearReadinessSessionCache } from '@/lib/onboarding/readiness-session-cache'
+import {
+  CURRENT_PARTNER_AGREEMENT_VERSION,
+  PARTNER_AGREEMENT_EFFECTIVE_LABEL,
+  PARTNER_AGREEMENT_SECTIONS,
+} from '@/lib/legal/partner-agreement-document'
 import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 
@@ -90,7 +95,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     [stepSlugParam, wizardSteps]
   )
 
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
 
   const wizardUrlOptions = useMemo<OnboardingWizardUrlOptions | undefined>(() => {
     if (!embedInAdmin) return undefined
@@ -126,6 +131,10 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [policyPreference, setPolicyPreference] = useState('flexible')
   const [policyNote, setPolicyNote] = useState('')
+  const [agreementLegalName, setAgreementLegalName] = useState('')
+  const [agreementAccept, setAgreementAccept] = useState(false)
+  const [agreementSubmitting, setAgreementSubmitting] = useState(false)
+  const [agreementSuccess, setAgreementSuccess] = useState<string | null>(null)
   const [packageCount, setPackageCount] = useState<number>(0)
   const [gymCurrency, setGymCurrency] = useState('USD')
   const [packagesPanelOpen, setPackagesPanelOpen] = useState(false)
@@ -409,6 +418,12 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     void refreshPackagesFromServer()
   }, [step.key, editorGymId, refreshPackagesFromServer])
 
+  useEffect(() => {
+    const n = profile?.full_name?.trim()
+    if (!n) return
+    setAgreementLegalName((prev) => (prev.trim() ? prev : n))
+  }, [profile?.full_name])
+
   const gymListingLocationComplete = useMemo(
     () =>
       Boolean(
@@ -438,8 +453,19 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     if (embedInAdmin && step.key === 'security') {
       return completedKeys.includes('security')
     }
+    if (step.key === 'policy') {
+      if (embedInAdmin) return true
+      const agreementOk =
+        profile?.placeholder_account === true ||
+        profile?.role === 'admin' ||
+        Boolean(
+          profile?.partner_agreement_signed_at &&
+            profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
+        )
+      return agreementOk && completedKeys.includes('policy')
+    }
     return completedKeys.includes(step.key)
-  }, [step.key, embedInAdmin, basicsMergedComplete, completedKeys])
+  }, [step.key, embedInAdmin, basicsMergedComplete, completedKeys, profile])
 
   const coreStepsCompleteCount = useMemo(() => {
     let n = basicsMergedComplete ? 1 : 0
@@ -448,6 +474,15 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
     return n
   }, [basicsMergedComplete, completedKeys])
+
+  const partnerAgreementSigned = useMemo(
+    () =>
+      Boolean(
+        profile?.partner_agreement_signed_at &&
+          profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
+      ),
+    [profile?.partner_agreement_signed_at, profile?.partner_agreement_version],
+  )
 
   const verificationSummary = useMemo(() => {
     const emailVerified = Boolean(user?.email_confirmed_at)
@@ -520,6 +555,17 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           : 'Finish account holder, email verification, and security setup.',
         ready: verificationSummary.securityOk,
       },
+      {
+        key: 'partner_agreement',
+        label: 'Partner Agreement',
+        detail: partnerAgreementSigned
+          ? 'Signed — PDF emailed to your inbox.'
+          : 'Sign in Step 4 (Policies) before you can go live.',
+        ready:
+          partnerAgreementSigned ||
+          profile?.placeholder_account === true ||
+          profile?.role === 'admin',
+      },
     ],
     [
       basicsMergedComplete,
@@ -528,6 +574,9 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       payoutStepComplete,
       payoutRail,
       verificationSummary.securityOk,
+      partnerAgreementSigned,
+      profile?.placeholder_account,
+      profile?.role,
     ]
   )
 
@@ -1197,6 +1246,67 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       )
   }
 
+  const submitPartnerAgreement = async () => {
+    setError(null)
+    setAgreementSuccess(null)
+    if (embedInAdmin) return
+    if (profile?.placeholder_account) {
+      setError('Finish claiming your account first, then sign the partner agreement.')
+      return
+    }
+    const trimmed = agreementLegalName.trim()
+    if (trimmed.length < 2) {
+      setError('Enter your full legal name exactly as it appears in Basic Info.')
+      return
+    }
+    if (!agreementAccept) {
+      setError('Check the box to confirm you accept the Partner Agreement.')
+      return
+    }
+    const gid = editorGymId ?? activeGymId
+    if (!gid) {
+      setError('Save Basic Info first so your listing exists, then sign the agreement.')
+      return
+    }
+    setAgreementSubmitting(true)
+    try {
+      const res = await fetch('/api/manage/partner-agreement/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          legal_name: trimmed,
+          i_agree: true,
+          gym_id: gid,
+        }),
+      })
+      const data = (await res.json()) as {
+        error?: string
+        success?: boolean
+        already_signed?: boolean
+        email_sent?: boolean
+      }
+      if (!res.ok) {
+        setError(data.error || 'Could not save your acceptance')
+        return
+      }
+      clearReadinessSessionCache()
+      await refreshProfile()
+      if (data.already_signed) {
+        setAgreementSuccess('Partner agreement is already on file for your account.')
+      } else if (data.email_sent === false) {
+        setAgreementSuccess(
+          'Your acceptance is saved. We could not email the PDF just now — contact support and we will resend it.',
+        )
+      } else {
+        setAgreementSuccess('You are all set — we emailed a PDF copy to your inbox.')
+      }
+    } catch {
+      setError('Something went wrong. Try again in a moment.')
+    } finally {
+      setAgreementSubmitting(false)
+    }
+  }
+
   const refreshPayoutStatus = async () => {
     const gymId = await ensureActiveGym()
     const supabase = createClient()
@@ -1296,7 +1406,34 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     }
 
     if (step.key === 'policy') {
-      return true
+      if (embedInAdmin) return true
+      const { data: userData } = await supabase.auth.getUser()
+      const u = userData.user
+      if (!u) return false
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select(
+          'partner_agreement_signed_at, partner_agreement_version, placeholder_account, role',
+        )
+        .eq('id', u.id)
+        .maybeSingle()
+      const agreementOk =
+        prof?.placeholder_account === true ||
+        prof?.role === 'admin' ||
+        Boolean(
+          prof?.partner_agreement_signed_at &&
+            prof?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
+        )
+      if (!agreementOk) return false
+      if (!sessionId) return false
+      const { data: pol } = await supabase
+        .from('owner_onboarding_steps')
+        .select('completed_at, owner_onboarding_sessions!inner(owner_id)')
+        .eq('owner_onboarding_sessions.owner_id', u.id)
+        .eq('step_key', 'policy')
+        .not('completed_at', 'is', null)
+        .limit(1)
+      return Boolean(pol && pol.length > 0)
     }
 
     if (step.key === 'finalize') {
@@ -1953,61 +2090,202 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                 )}
 
                 {step.key === 'policy' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <p className={wizLead}>Set the tone for cancellations</p>
-                      <p className={wizBody}>
-                        This preference signals how you usually handle changes. Package-level rules still apply where
-                        you&apos;ve set them — it defaults to flexible until you change it.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1">
-                        <Label className={`${labelClass} mb-0`} htmlFor="wiz-policy-preference">
-                          Policy preference
-                        </Label>
-                        <div className="group relative inline-flex shrink-0">
-                          <button
-                            type="button"
-                            className="inline-flex rounded-full p-0.5 text-muted-foreground transition-colors hover:text-[#003580] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30 focus-visible:ring-offset-1"
-                            aria-label="Policy preference help"
-                            aria-describedby="wiz-policy-tooltip"
-                          >
-                            <Info className="h-3 w-3" aria-hidden />
-                          </button>
-                          <div
-                            id="wiz-policy-tooltip"
-                            role="tooltip"
-                            className="pointer-events-none absolute bottom-full left-1/2 z-[200] mb-2 w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-xs leading-relaxed text-gray-700 shadow-lg opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
-                          >
-                            {POLICY_PREFERENCE_TOOLTIPS[policyPreference] ?? POLICY_PREFERENCE_TOOLTIPS.flexible}
+                  <div className="space-y-10">
+                    {embedInAdmin ? (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50/90 px-5 py-4 text-[14px] leading-relaxed text-gray-700">
+                        <p className="font-semibold text-gray-900">Policies &amp; agreement</p>
+                        <p className="mt-2">
+                          After handoff, the owner accepts the CombatStay partner agreement and sets cancellation
+                          preferences here in Partner Hub. Nothing to sign while you are creating this draft as staff.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-6">
+                          <div className="space-y-1">
+                            <p className={wizLead}>Partner Agreement</p>
+                            <p className={wizBody}>
+                              One quick step — same idea as other marketplaces: read the terms, type your legal name,
+                              and confirm. We will email you a PDF for your records.
+                            </p>
+                          </div>
+
+                          {profile?.placeholder_account ? (
+                            <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-4 py-3 text-[13px] leading-relaxed text-amber-950">
+                              Finish setting your password and email from the claim prompt first. After that, you can
+                              sign the partner agreement here.
+                            </div>
+                          ) : partnerAgreementSigned ? (
+                            <div className="flex gap-3 rounded-xl border border-emerald-200/90 bg-emerald-50/80 px-4 py-4 sm:items-start">
+                              <CheckCircle2
+                                className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700"
+                                strokeWidth={2.25}
+                                aria-hidden
+                              />
+                              <div className="min-w-0 space-y-1">
+                                <p className="text-[14px] font-semibold text-emerald-950">Partner agreement on file</p>
+                                <p className="text-[13px] leading-relaxed text-emerald-900/90">
+                                  Version {CURRENT_PARTNER_AGREEMENT_VERSION} · effective{' '}
+                                  {PARTNER_AGREEMENT_EFFECTIVE_LABEL}. Full terms also live on{' '}
+                                  <Link
+                                    href="/terms"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-[#003580] underline underline-offset-2"
+                                  >
+                                    combatstay.com/terms
+                                  </Link>
+                                  .
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-5 rounded-2xl border border-gray-200/90 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+                              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#003580]">
+                                  Please review
+                                </p>
+                                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
+                                  {CURRENT_PARTNER_AGREEMENT_VERSION}
+                                </span>
+                              </div>
+                              <div
+                                className="max-h-[min(380px,52vh)] overflow-y-auto rounded-xl border border-gray-100 bg-[#fafbfc] px-5 py-5 text-[13px] leading-[1.65] text-gray-700 scroll-smooth"
+                                tabIndex={0}
+                                role="region"
+                                aria-label="Partner agreement text"
+                              >
+                                <p className="text-[12px] font-medium text-gray-500">
+                                  Effective {PARTNER_AGREEMENT_EFFECTIVE_LABEL}
+                                </p>
+                                <div className="mt-5 space-y-6">
+                                  {PARTNER_AGREEMENT_SECTIONS.map((section) => (
+                                    <div key={section.title} className="space-y-2">
+                                      <p className="text-[13px] font-semibold text-gray-900">{section.title}</p>
+                                      {section.paragraphs.map((para, i) => (
+                                        <p key={i} className="text-[13px] leading-relaxed text-gray-700">
+                                          {para}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className={labelClass} htmlFor="wiz-partner-legal-name">
+                                  Legal name
+                                </Label>
+                                <Input
+                                  id="wiz-partner-legal-name"
+                                  className={fieldClass}
+                                  autoComplete="name"
+                                  value={agreementLegalName}
+                                  onChange={(e) => {
+                                    setAgreementLegalName(e.target.value)
+                                    setAgreementSuccess(null)
+                                  }}
+                                  placeholder={profile?.full_name?.trim() || 'As shown in Basic Info'}
+                                />
+                                <p className={wizCaption}>
+                                  Must match the account holder name you saved in Basic Info (we compare automatically).
+                                </p>
+                              </div>
+
+                              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-3 sm:px-4">
+                                <input
+                                  type="checkbox"
+                                  className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-[#003580] focus:ring-[#003580]"
+                                  checked={agreementAccept}
+                                  onChange={(e) => {
+                                    setAgreementAccept(e.target.checked)
+                                    setAgreementSuccess(null)
+                                  }}
+                                />
+                                <span className="text-[13px] leading-relaxed text-gray-800">
+                                  I have read and agree to the CombatStay Partner Agreement and the platform Terms of
+                                  Service. I confirm I am authorised to bind this business.
+                                </span>
+                              </label>
+
+                              {agreementSuccess ? (
+                                <p className="text-[13px] font-medium text-emerald-800">{agreementSuccess}</p>
+                              ) : null}
+
+                              <Button
+                                className={`${btnPrimary} w-full sm:w-auto`}
+                                disabled={
+                                  agreementSubmitting || !agreementAccept || agreementLegalName.trim().length < 2
+                                }
+                                onClick={() => void submitPartnerAgreement()}
+                              >
+                                {agreementSubmitting ? 'Saving…' : 'Confirm and sign'}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-t border-gray-100 pt-10">
+                          <div className="space-y-4">
+                            <div className="space-y-1.5">
+                              <p className={wizLead}>Cancellation tone</p>
+                              <p className={wizBody}>
+                                This preference signals how you usually handle changes. Package-level rules still apply
+                                where you&apos;ve set them — it defaults to flexible until you change it.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1">
+                                <Label className={`${labelClass} mb-0`} htmlFor="wiz-policy-preference">
+                                  Policy preference
+                                </Label>
+                                <div className="group relative inline-flex shrink-0">
+                                  <button
+                                    type="button"
+                                    className="inline-flex rounded-full p-0.5 text-muted-foreground transition-colors hover:text-[#003580] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30 focus-visible:ring-offset-1"
+                                    aria-label="Policy preference help"
+                                    aria-describedby="wiz-policy-tooltip"
+                                  >
+                                    <Info className="h-3 w-3" aria-hidden />
+                                  </button>
+                                  <div
+                                    id="wiz-policy-tooltip"
+                                    role="tooltip"
+                                    className="pointer-events-none absolute bottom-full left-1/2 z-[200] mb-2 w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-xs leading-relaxed text-gray-700 shadow-lg opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+                                  >
+                                    {POLICY_PREFERENCE_TOOLTIPS[policyPreference] ??
+                                      POLICY_PREFERENCE_TOOLTIPS.flexible}
+                                  </div>
+                                </div>
+                              </div>
+                              <Select
+                                id="wiz-policy-preference"
+                                className={fieldClass}
+                                value={policyPreference}
+                                onChange={(event) => setPolicyPreference(event.target.value)}
+                                aria-describedby="wiz-policy-tooltip"
+                              >
+                                <option value="flexible">Flexible</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="strict">Strict</option>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className={labelClass}>Optional note</Label>
+                              <Textarea
+                                className={fieldClass}
+                                rows={3}
+                                value={policyNote}
+                                onChange={(event) => setPolicyNote(event.target.value)}
+                              />
+                            </div>
+                            <Button className={btnPrimary} onClick={() => void savePolicyPreference()}>
+                              Save cancellation preferences
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                      <Select
-                        id="wiz-policy-preference"
-                        className={fieldClass}
-                        value={policyPreference}
-                        onChange={(event) => setPolicyPreference(event.target.value)}
-                        aria-describedby="wiz-policy-tooltip"
-                      >
-                        <option value="flexible">Flexible</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="strict">Strict</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className={labelClass}>Optional note</Label>
-                      <Textarea
-                        className={fieldClass}
-                        rows={3}
-                        value={policyNote}
-                        onChange={(event) => setPolicyNote(event.target.value)}
-                      />
-                    </div>
-                    <Button className={btnPrimary} onClick={() => void savePolicyPreference()}>
-                      Save policy
-                    </Button>
+                      </>
+                    )}
                   </div>
                 )}
 

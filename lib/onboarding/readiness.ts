@@ -1,5 +1,6 @@
 import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
+import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 
 type ReadinessItem = {
   key: string
@@ -39,6 +40,7 @@ export async function getGymReadiness({
     securityStepResult,
     pricingAckResult,
     policyStepResult,
+    ownerProfileResult,
   ] = await Promise.all([
     supabase
       .from('gyms')
@@ -77,6 +79,13 @@ export async function getGymReadiness({
       .eq('step_key', 'policy')
       .order('updated_at', { ascending: false })
       .limit(1),
+    supabase
+      .from('profiles')
+      .select(
+        'partner_agreement_signed_at, partner_agreement_version, placeholder_account, role',
+      )
+      .eq('id', ownerId)
+      .maybeSingle(),
   ])
 
   const gym = gymResult.data
@@ -86,6 +95,14 @@ export async function getGymReadiness({
   const pricingAckComplete = Boolean(pricingAckResult.data && pricingAckResult.data.length > 0)
   const policyMeta = policyStepResult.data?.[0]?.metadata || {}
   const hasPolicyReview = Boolean(policyStepResult.data?.[0]?.completed_at)
+
+  const ownerProfile = ownerProfileResult.data
+  const hasSignedCurrentPartnerAgreement = Boolean(
+    ownerProfile?.partner_agreement_signed_at &&
+      ownerProfile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
+  )
+  const partnerAgreementWaived =
+    ownerProfile?.placeholder_account === true || ownerProfile?.role === 'admin'
 
   const rail: 'wise' | 'stripe_connect' =
     gym?.payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
@@ -160,6 +177,16 @@ export async function getGymReadiness({
         rail === 'stripe_connect'
           ? manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
           : manageSettingsPayoutsHref(gymId),
+    },
+    {
+      key: 'partner_agreement',
+      label: 'Partner Agreement signed',
+      passed: hasSignedCurrentPartnerAgreement || partnerAgreementWaived,
+      reason:
+        hasSignedCurrentPartnerAgreement || partnerAgreementWaived
+          ? null
+          : 'Review and accept the Partner Agreement in Policies (Step 4).',
+      deepLink: buildOnboardingWizardUrl('step-4', gymId),
     },
   ]
 

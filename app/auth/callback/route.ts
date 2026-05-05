@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { trySendPartnerWelcomeSequenceStart } from '@/lib/partner-emails/partner-email-sequence'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -62,6 +64,13 @@ export async function GET(request: Request) {
           event_type: 'oauth_sign_in',
           metadata: { source: 'auth_callback' },
         })
+
+        try {
+          const admin = createAdminClient()
+          await trySendPartnerWelcomeSequenceStart(admin, user.id)
+        } catch (partnerEmailErr) {
+          console.warn('[auth/callback] partner welcome sequence', partnerEmailErr)
+        }
 
         // Industry standard for partner platforms (Booking.com, Airbnb for Hosts):
         // clicking the verification email logs the partner in and lands them directly

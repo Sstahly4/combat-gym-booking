@@ -49,6 +49,15 @@ export interface Profile {
   claim_dashboard_tour_pending?: boolean | null
   /** Set when the claim dashboard tour is finished or skipped. */
   claim_dashboard_tour_completed_at?: string | null
+  /** Partner lifecycle emails (welcome → checklist → nudge); see lib/partner-emails. */
+  partner_welcome_email_sent_at?: string | null
+  partner_checklist_email_sent_at?: string | null
+  partner_nudge_email_sent_at?: string | null
+  partner_email_sequence_anchor_at?: string | null
+  partner_agreement_signed_at?: string | null
+  partner_agreement_ip?: string | null
+  partner_agreement_version?: string | null
+  partner_agreement_signatory_name?: string | null
   created_at: string
   updated_at: string
 }
