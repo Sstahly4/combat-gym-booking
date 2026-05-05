@@ -74,6 +74,8 @@ export interface Gym {
   status: GymStatus
   verification_status: VerificationStatus
   is_live: boolean
+  /** SEO-friendly slug for canonical /gyms/:slug URLs. */
+  slug?: string | null
   name: string
   /** Optional strings matched by gym_suggest (abbreviations, former names, etc.). */
   search_aliases?: string[]

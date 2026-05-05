@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
@@ -93,6 +93,10 @@ const GYM_LISTING_SELECT = `
 // (dynamicParams = true) and get cached on the edge after first hit.
 export const revalidate = 3600
 export const dynamicParams = true
+
+function looksLikeUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
 
 /**
  * Pre-render the top 100 most-reviewed verified gyms at build time so popular
@@ -221,6 +225,31 @@ const getPublicGym = unstable_cache(
   { revalidate: 3600, tags: ['gyms'] },
 )
 
+const getPublicGymBySlug = unstable_cache(
+  async (slug: string): Promise<GymWithDetails | null> => {
+    try {
+      const supabase = createPublicClient()
+      const { data: gymData, error } = await supabase
+        .from('gyms')
+        .select(GYM_LISTING_SELECT)
+        .eq('slug', slug)
+        .in('verification_status', ['verified', 'trusted'])
+        .maybeSingle()
+      if (error) {
+        console.error('Error fetching public gym by slug:', error)
+        return null
+      }
+      if (!gymData?.id) return null
+      return await assembleGym(supabase as any, gymData, gymData.id)
+    } catch (err) {
+      console.error('Error in getPublicGymBySlug:', err)
+      return null
+    }
+  },
+  ['gym-detail-by-slug'],
+  { revalidate: 3600, tags: ['gyms'] },
+)
+
 /**
  * Cookie-scoped fallback used only when the public fetch returns nothing —
  * typically a draft gym the current user owns. This path reads auth and is
@@ -257,12 +286,12 @@ async function getOwnerDraftGym(id: string): Promise<GymWithDetails | null> {
 // with 'gyms' means metadata invalidates alongside the main page whenever
 // revalidateGymCache() runs.
 const getGymMetadata = unstable_cache(
-  async (id: string) => {
+  async (idOrSlug: string) => {
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('gyms')
-      .select('name, description, verification_status')
-      .eq('id', id)
+      .select('id, slug, name, description, verification_status')
+      .or(looksLikeUuid(idOrSlug) ? `id.eq.${idOrSlug}` : `slug.eq.${idOrSlug}`)
       .maybeSingle()
     return data
   },
@@ -288,36 +317,48 @@ export async function generateMetadata({
   const description =
     data.description?.trim() ||
     `Train at ${name}. Book your next combat sports camp on CombatStay.`
+  const canonicalSlug = (data as any)?.slug || params.id
 
   return {
     title: `${name} — Book Training Camps | CombatStay`,
     description,
     alternates: {
-      canonical: `/gyms/${params.id}`,
+      canonical: `/gyms/${canonicalSlug}`,
     },
     openGraph: {
       title: `${name} — Book Training Camps | CombatStay`,
       description,
-      url: `/gyms/${params.id}`,
+      url: `/gyms/${canonicalSlug}`,
       type: 'website',
     },
   }
 }
 
 export default async function GymDetailsPage({ params, searchParams }: { params: { id: string }, searchParams: { checkin?: string, checkout?: string } }) {
+  const idOrSlug = params.id
   // Fast path: cookie-free, cached fetch — renders statically for verified/trusted gyms.
-  let gym = await getPublicGym(params.id)
+  let gym = looksLikeUuid(idOrSlug) ? await getPublicGym(idOrSlug) : await getPublicGymBySlug(idOrSlug)
   // Only fall back to the cookie-based owner path (which opts this request into
   // dynamic rendering) when the public fetch returned nothing. That keeps the
   // top 100 pre-rendered at build and the long tail edge-cached after one hit.
   let isOwner = false
   if (!gym) {
-    gym = await getOwnerDraftGym(params.id)
+    // Draft gym fallback is UUID-only.
+    gym = looksLikeUuid(idOrSlug) ? await getOwnerDraftGym(idOrSlug) : null
     isOwner = !!gym
   }
 
   if (!gym) {
     notFound()
+  }
+
+  // If the user hit the UUID URL, 301-ish redirect to slug canonical.
+  if (looksLikeUuid(idOrSlug) && gym.slug) {
+    const qp = new URLSearchParams()
+    if (searchParams?.checkin) qp.set('checkin', searchParams.checkin)
+    if (searchParams?.checkout) qp.set('checkout', searchParams.checkout)
+    const qs = qp.toString()
+    redirect(`/gyms/${gym.slug}${qs ? `?${qs}` : ''}`)
   }
 
   const isVerified = gym.verification_status === 'verified'
