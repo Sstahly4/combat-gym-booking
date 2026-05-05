@@ -58,6 +58,12 @@ export interface Profile {
   partner_agreement_ip?: string | null
   partner_agreement_version?: string | null
   partner_agreement_signatory_name?: string | null
+  /** Combat profile (for personalization / retargeting; no UI yet). */
+  combat_primary_discipline?: string | null
+  combat_disciplines?: string[] | null
+  combat_skill_level?: ExperienceLevel | null
+  home_country?: string | null
+  home_location?: string | null
   created_at: string
   updated_at: string
 }

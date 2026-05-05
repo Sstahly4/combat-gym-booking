@@ -142,9 +142,38 @@ function SearchPageContent() {
   const parsedQuery = parseSearchQuery(queryParam)
   const initialLocation = searchParams.get('location') || parsedQuery.location
   const initialDiscipline = searchParams.get('discipline') || parsedQuery.discipline
-  const initialCheckin = searchParams.get('checkin') || ''
-  const initialCheckout = searchParams.get('checkout') || ''
+  const urlCheckin = searchParams.get('checkin') || ''
+  const urlCheckout = searchParams.get('checkout') || ''
   const guestsParam = searchParams.get('guests') || ''
+
+  const defaultDatesForCategory = (c: typeof category) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (c === 'train-stay') {
+      // Next Monday (or today if already Monday), then +7 days.
+      const day = today.getDay() // 0=Sun ... 6=Sat
+      const daysUntilMonday = (8 - day) % 7
+      const nextMonday = new Date(today)
+      nextMonday.setDate(today.getDate() + daysUntilMonday)
+      const end = new Date(nextMonday)
+      end.setDate(nextMonday.getDate() + 7)
+      return {
+        checkin: nextMonday.toISOString().slice(0, 10),
+        checkout: end.toISOString().slice(0, 10),
+      }
+    }
+
+    // Gyms + Seminars default to a single day (same-day).
+    const iso = today.toISOString().slice(0, 10)
+    return { checkin: iso, checkout: iso }
+  }
+
+  const initialDates = useMemo(() => {
+    if (urlCheckin || urlCheckout) return { checkin: urlCheckin, checkout: urlCheckout }
+    return defaultDatesForCategory(category)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlCheckin, urlCheckout, category])
 
   const [filters, setFilters] = useState({
     location: initialLocation,
@@ -154,14 +183,29 @@ function SearchPageContent() {
     maxPrice: searchParams.get('maxPrice') || '',
     experienceLevel: searchParams.get('experienceLevel') || '',
     accommodation: searchParams.get('accommodation') === 'true',
-    checkin: initialCheckin,
-    checkout: initialCheckout,
+    checkin: initialDates.checkin,
+    checkout: initialDates.checkout,
     disciplines: [] as string[],
     countries: [] as string[],
     levels: [] as string[],
     minRating: '',
     popularFilters: [] as string[],
   })
+
+  // When switching tabs, treat the active tab as a "mode" signal that controls
+  // date defaults and key filter constraints. Do not override explicit URL dates.
+  useEffect(() => {
+    const urlHasDates = Boolean(searchParams.get('checkin') || searchParams.get('checkout'))
+    if (urlHasDates) return
+
+    const next = defaultDatesForCategory(category)
+    setFilters(prev => ({
+      ...prev,
+      checkin: next.checkin,
+      checkout: next.checkout,
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category])
 
   useEffect(() => {
     const qp = searchParams.get('query') || ''
@@ -445,11 +489,18 @@ function SearchPageContent() {
     const rawRating = hasReviews ? (gym.average_rating as number) : getFallbackRating(gym.id)
     const displayRating = Math.round(rawRating * 2) / 2
     const displayCount = hasReviews ? (gym.review_count as number) : 0
-    const duration = (filters.checkin && filters.checkout)
+    const rawDuration = (filters.checkin && filters.checkout)
       ? Math.floor((new Date(filters.checkout).getTime() - new Date(filters.checkin).getTime()) / (1000 * 60 * 60 * 24))
       : 0
-    const estimatedPrice = duration > 0
-      ? calculateEstimatedPrice(duration, { daily: gym.price_per_day, weekly: gym.price_per_week, monthly: gym.price_per_month })
+
+    const isSingleDayMode = category === 'gyms' || category === 'seminars'
+    const displayDuration = isSingleDayMode ? Math.max(1, rawDuration + 1) : rawDuration
+
+    const estimatedPrice = (isSingleDayMode ? displayDuration >= 1 : rawDuration > 0)
+      ? calculateEstimatedPrice(
+        isSingleDayMode ? displayDuration : rawDuration,
+        { daily: gym.price_per_day, weekly: gym.price_per_week, monthly: gym.price_per_month },
+      )
       : null
 
     const href = `/gyms/${gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`
@@ -457,7 +508,11 @@ function SearchPageContent() {
       estimatedPrice != null && estimatedPrice > 0 ? estimatedPrice : gym.price_per_day || 0
     const priceDisplay = formatPrice(convertPrice(rawPrice, gym.currency || 'USD'))
     const priceLabelTop = estimatedPrice ? 'Estimated total' : 'Starting from'
-    const priceLabelBottom = estimatedPrice ? `for ${duration} nights` : 'per session'
+    const priceLabelBottom = estimatedPrice
+      ? isSingleDayMode
+        ? `for ${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
+        : `for ${rawDuration} ${rawDuration === 1 ? 'night' : 'nights'}`
+      : 'per session'
     const guestsCount = (() => {
       const n = parseInt(guestsParam || '', 10)
       if (!Number.isFinite(n) || n <= 0) return null
@@ -569,9 +624,13 @@ function SearchPageContent() {
                   <span className="leading-snug">Multiple disciplines available</span>
                 </div>
               )}
-              {filters.checkin && filters.checkout && duration > 0 && (
+              {filters.checkin && filters.checkout && (isSingleDayMode ? displayDuration >= 1 : rawDuration > 0) && (
                 <div className="flex items-start gap-2 text-[12px] text-green-700">
-                  <span className="leading-snug">Dates selected • {duration} nights</span>
+                  <span className="leading-snug">
+                    Dates selected • {isSingleDayMode
+                      ? `${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
+                      : `${rawDuration} ${rawDuration === 1 ? 'night' : 'nights'}`}
+                  </span>
                 </div>
               )}
             </div>
@@ -638,7 +697,7 @@ function SearchPageContent() {
   }
 
   return (
-    <BookingProvider initialCheckin={initialCheckin} initialCheckout={initialCheckout}>
+    <BookingProvider key={category} initialCheckin={initialDates.checkin} initialCheckout={initialDates.checkout}>
       <div className="min-h-screen bg-white">
 
         {/* ── Blue search strip — z-index so the translated search bar + dropdowns stack above the body (map iframes, listing images) ── */}

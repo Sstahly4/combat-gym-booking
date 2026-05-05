@@ -175,6 +175,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
     }
 
+    // Combat profile capture (authenticated users only; no UI yet).
+    // - Store stable attributes on profiles for later segmentation.
+    // - Maintain a normalized rollup table for "gyms visited / booked".
+    if (user?.id) {
+      try {
+        const disciplineNorm = (discipline || '').toString().trim()
+        const levelNorm = (experience_level || '').toString().trim().toLowerCase()
+
+        // Update profile fields opportunistically (best-effort; never block booking creation).
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('combat_primary_discipline, combat_disciplines')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        const existingDisciplines = Array.isArray(existingProfile?.combat_disciplines)
+          ? existingProfile?.combat_disciplines
+          : []
+
+        const mergedDisciplines = disciplineNorm
+          ? Array.from(new Set([...existingDisciplines, disciplineNorm]))
+          : existingDisciplines
+
+        await supabase
+          .from('profiles')
+          .update({
+            combat_primary_discipline: disciplineNorm || null,
+            combat_disciplines: mergedDisciplines.length > 0 ? mergedDisciplines : null,
+            combat_skill_level: (levelNorm === 'beginner' || levelNorm === 'intermediate' || levelNorm === 'advanced')
+              ? levelNorm
+              : null,
+          })
+          .eq('id', user.id)
+
+        // Upsert engagement row: increment counts and spend.
+        const { data: engagement } = await supabase
+          .from('user_gym_engagement')
+          .select('booking_count, total_spend')
+          .eq('user_id', user.id)
+          .eq('gym_id', gym_id)
+          .maybeSingle()
+
+        const prevCount = typeof engagement?.booking_count === 'number' ? engagement.booking_count : 0
+        const prevSpend = typeof engagement?.total_spend === 'number' ? engagement.total_spend : 0
+
+        await supabase
+          .from('user_gym_engagement')
+          .upsert({
+            user_id: user.id,
+            gym_id,
+            booking_count: prevCount + 1,
+            total_spend: Number((prevSpend + Number(total_price || 0)).toFixed(2)),
+            currency: null,
+            last_booked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,gym_id' })
+      } catch (e) {
+        console.warn('[bookings/create] combat profile capture failed (non-fatal)', e)
+      }
+    }
+
     // Owner bell + email and traveler confirmation are sent from
     // /api/bookings/[id]/notify after the guest completes card authorization
     // (see confirm-payment). Nothing here — avoids notifying anyone before
