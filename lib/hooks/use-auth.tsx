@@ -1,12 +1,34 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/lib/types/database'
 import { getGuestSaves, clearGuestSaves } from '@/lib/guest-saves'
 
-export function useAuth() {
+export type AuthContextValue = {
+  user: User | null
+  profile: Profile | null
+  loading: boolean
+  signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+/**
+ * Single source of truth for session + profile so `refreshProfile()` updates
+ * every consumer (e.g. verification checklist after signing on Payouts).
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -15,7 +37,6 @@ export function useAuth() {
     const supabase = createClient()
     let mounted = true
 
-    // Safety timeout - ensure loading state is cleared after 10 seconds
     const timeoutId = setTimeout(() => {
       if (mounted) {
         console.warn('Auth loading timeout - forcing loading to false')
@@ -23,35 +44,35 @@ export function useAuth() {
       }
     }, 10000)
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        clearTimeout(timeoutId)
-        setLoading(false)
-      }
-    }).catch((err) => {
-      console.error('Error getting session:', err)
-      if (mounted) {
-        clearTimeout(timeoutId)
-        setLoading(false)
-      }
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          void fetchProfile(session.user.id)
+        } else {
+          clearTimeout(timeoutId)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        console.error('Error getting session:', err)
+        if (mounted) {
+          clearTimeout(timeoutId)
+          setLoading(false)
+        }
+      })
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
-        // On sign-in, sync any locally saved gyms to the DB
+        void fetchProfile(session.user.id)
         if (event === 'SIGNED_IN') {
-          syncGuestSaves(session.user.id)
+          void syncGuestSaves(session.user.id)
         }
       } else {
         setProfile(null)
@@ -68,7 +89,7 @@ export function useAuth() {
           .from('saved_gyms')
           .upsert(
             guestSaves.map((gymId) => ({ user_id: userId, gym_id: gymId })),
-            { onConflict: 'user_id,gym_id', ignoreDuplicates: true }
+            { onConflict: 'user_id,gym_id', ignoreDuplicates: true },
           )
         clearGuestSaves()
       } catch {
@@ -78,18 +99,14 @@ export function useAuth() {
 
     async function fetchProfile(userId: string) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
 
         if (!mounted) return
 
         if (error) {
           console.error('Error fetching profile:', error)
         }
-        
+
         setProfile(data || null)
       } catch (err) {
         console.error('Error in fetchProfile:', err)
@@ -123,10 +140,23 @@ export function useAuth() {
     setProfile(data ?? null)
   }, [])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-  }
+  }, [])
 
-  return { user, profile, loading, signOut, refreshProfile }
+  const value = useMemo(
+    () => ({ user, profile, loading, signOut, refreshProfile }),
+    [user, profile, loading, signOut, refreshProfile],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return ctx
 }

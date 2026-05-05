@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ManagePayoutPreferencesForm } from '@/components/manage/manage-payout-preferences-form'
 import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement-sign-panel'
+import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import type { Gym } from '@/lib/types/database'
 
@@ -227,6 +228,11 @@ export function ManagePayoutsWorkspace() {
   const accountEmail = user?.email ?? null
   const defaultHolder = profile?.full_name?.trim() || ''
 
+  const partnerAgreementComplete = Boolean(
+    profile?.partner_agreement_signed_at &&
+      profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
+  )
+
   return (
     <div className="space-y-6">
       {headerCrumbs}
@@ -254,7 +260,7 @@ export function ManagePayoutsWorkspace() {
         <div className={`${dashCard} px-5 py-6 text-sm text-rose-700`}>{gymError || 'Gym not found.'}</div>
       ) : (
         <div className="space-y-8">
-          <PartnerAgreementSignPanel gymId={gym.id} />
+          {!partnerAgreementComplete ? <PartnerAgreementSignPanel gymId={gym.id} /> : null}
           <ManagePayoutPreferencesForm
             gymId={gym.id}
             gym={gym}

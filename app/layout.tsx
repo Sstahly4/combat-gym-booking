@@ -4,7 +4,7 @@ import "./globals.css"
 import { Navbar } from "@/components/navbar"
 import { ConditionalFooter } from "@/components/conditional-footer"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
-import { CurrencyProvider } from "@/lib/contexts/currency-context"
+import { AppRootProviders } from "@/components/app-root-providers"
 import { BRAND_NAME, canonicalSiteUrl } from "@/lib/brand"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -97,14 +97,14 @@ export default function RootLayout({
             __html: JSON.stringify(organizationJsonLd),
           }}
         />
-        <CurrencyProvider>
+        <AppRootProviders>
           <Navbar />
           <main className="flex min-h-0 flex-1 flex-col">
             {children}
           </main>
           <ConditionalFooter />
           <MobileBottomNav />
-        </CurrencyProvider>
+        </AppRootProviders>
         <Analytics />
         <SpeedInsights />
       </body>
