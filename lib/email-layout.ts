@@ -16,6 +16,9 @@
  * in a sender — the goal is one place to edit when the brand evolves.
  */
 
+/** Personal sign-off appended to partner lifecycle & agreement emails. */
+export const PARTNER_LIFECYCLE_SIGNOFF_LINE = '— Seth & the CombatStay team'
+
 export const BRAND = {
   name: 'CombatStay',
   domain: 'combatstay.com',
@@ -97,6 +100,61 @@ export function divider(): string {
 /** Section subheading (used above a details block or next-steps list). */
 export function sectionLabel(text: string): string {
   return `<p style="margin:0 0 12px 0;color:${BRAND.headingText};font-size:14px;font-weight:600;">${escape(text)}</p>`
+}
+
+/** Partner lifecycle: small uppercase accent (go-live checklist, value prop). */
+export function partnerAccentSectionLabel(text: string): string {
+  return `<p style="margin:0 0 14px 0;color:${BRAND.linkColor};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escape(text)}</p>`
+}
+
+/** Partner lifecycle: three-up stat tiles (commission, fees, positioning). */
+export function partnerStatTilesRow(tiles: Array<{ figure: string; caption: string }>): string {
+  const cells = tiles.map(
+    (t) => `<td valign="top" width="33.33%" style="padding:6px;">
+      <div style="background:${BRAND.subtleBg};border:1px solid ${BRAND.subtleBorder};border-radius:10px;padding:16px 10px;text-align:center;">
+        <p style="margin:0 0 8px 0;color:${BRAND.color};font-size:22px;font-weight:700;line-height:1.1;letter-spacing:-0.5px;">${escape(t.figure)}</p>
+        <p style="margin:0;color:${BRAND.bodyText};font-size:12px;line-height:1.45;">${t.caption}</p>
+      </div>
+    </td>`,
+  )
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px 0;"><tr>${cells.join('')}</tr></table>`
+}
+
+/**
+ * Partner go-live step card (numbered circle + title + body + deep link).
+ * `body` is plain text (escaped). `ctaHref` must be a trusted URL.
+ */
+export function partnerNumberedStepCard(
+  index: number,
+  title: string,
+  body: string,
+  ctaHref: string,
+  ctaLabel: string,
+): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px 0;border:1px solid ${BRAND.subtleBorder};border-radius:10px;background:${BRAND.cardBg};">
+  <tr>
+    <td width="48" valign="top" style="padding:16px 0 16px 14px;">
+      <div style="width:34px;height:34px;border-radius:9999px;background:${BRAND.color};color:${BRAND.colorOnBrand};font-size:15px;font-weight:700;line-height:34px;text-align:center;">${index}</div>
+    </td>
+    <td valign="top" style="padding:16px 16px 16px 4px;">
+      <p style="margin:0 0 6px 0;color:${BRAND.headingText};font-size:15px;font-weight:700;line-height:1.3;">${escape(title)}</p>
+      <p style="margin:0 0 10px 0;color:${BRAND.bodyText};font-size:14px;line-height:1.55;">${escape(body)}</p>
+      <p style="margin:0;"><a href="${escape(ctaHref)}" style="color:${BRAND.linkColor};font-size:13px;font-weight:600;text-decoration:none;">${escape(ctaLabel)} →</a></p>
+    </td>
+  </tr>
+</table>`
+}
+
+/** Partner help panel — left brand bar, light tint (founding gyms, Stripe questions). */
+export function partnerHelpCallout(bodyHtml: string): string {
+  return `<div style="margin:22px 0 20px 0;border-left:4px solid ${BRAND.color};background:#eff6ff;border-radius:0 10px 10px 0;padding:16px 18px 16px 18px;">
+    <p style="margin:0;color:#1e3a8a;font-size:14px;line-height:1.65;">${bodyHtml}</p>
+  </div>`
+}
+
+/** Centered founder-style sign-off for partner lifecycle emails. */
+export function partnerFounderSignoff(line: string): string {
+  return `<p style="margin:16px 0 0 0;text-align:center;color:${BRAND.bodyText};font-size:15px;line-height:1.6;">${escape(line)}</p>`
 }
 
 /** Small uppercase label (used inside detail cards). */

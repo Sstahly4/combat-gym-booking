@@ -1,6 +1,18 @@
 import { Resend } from 'resend'
 
-import { BRAND, escape, heading, paragraph, renderEmail } from '@/lib/email-layout'
+import {
+  APP_URL,
+  BRAND,
+  escape,
+  heading,
+  paragraph,
+  PARTNER_LIFECYCLE_SIGNOFF_LINE,
+  partnerAccentSectionLabel,
+  partnerFounderSignoff,
+  partnerHelpCallout,
+  partnerStatTilesRow,
+  renderEmail,
+} from '@/lib/email-layout'
 
 function opsInbox(): string | null {
   const direct = process.env.OPS_PARTNER_AGREEMENT_EMAIL?.trim()
@@ -10,19 +22,34 @@ function opsInbox(): string | null {
   return null
 }
 
-function partnerEmailInnerHtml(params: {
-  signatoryName: string
-  gymName: string
-}): string {
+function manageOrigin(): string {
+  return `${APP_URL().replace(/\/$/, '')}/manage`
+}
+
+function partnerEmailInnerHtml(params: { signatoryName: string; gymName: string }): string {
+  const first = escape(params.signatoryName.split(/\s+/)[0] || 'there')
+  const hub = manageOrigin()
   return [
-    heading('Your signed partner agreement'),
+    heading('Your signed Partner Agreement'),
     paragraph(
-      `Hi ${escape(params.signatoryName.split(/\s+/)[0] || 'there')}, attached is the executed copy of your CombatStay Partner Agreement for <strong>${escape(params.gymName)}</strong>. Keep this for your records.`,
+      `Hi ${first}, attached is the <strong>executed PDF</strong> of your CombatStay Partner Agreement for <strong>${escape(params.gymName)}</strong>. It matches the terms you scrolled through in Partner Hub, with your legal name, acceptance time (UTC), and IP address recorded so both sides have a clear audit trail.`,
     ),
     paragraph(
-      'You can always return to Partner Hub to manage your listing, payouts, and policies.',
-      { muted: true },
+      'Save the attachment with your other business records. If you replace devices or need another copy later, reply to this email and we will re-send it.',
     ),
+    partnerAccentSectionLabel('While you have the PDF open'),
+    partnerStatTilesRow([
+      { figure: '15%', caption: 'Commission only. No monthly fees.' },
+      { figure: '0', caption: 'Upfront costs to get listed.' },
+      { figure: '1', caption: 'Platform built for combat sports.' },
+    ]),
+    partnerHelpCallout(
+      `<strong style="color:#1e40af;">Questions about clauses or payouts?</strong> Reply to this email — we help founding partners interpret Stripe setup, settlement timing, and anything in the agreement that feels unclear. You can also browse the <a href="${manageOrigin()}/help" style="color:${BRAND.linkColor};font-weight:600;text-decoration:none;">Partner Help Centre</a>.`,
+    ),
+    paragraph(
+      `When you are ready, jump back into <a href="${hub}" style="color:${BRAND.linkColor};font-weight:600;text-decoration:none;">Partner Hub</a> to manage your listing, packages, and payout settings.`,
+    ),
+    partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 }
 
@@ -35,7 +62,11 @@ function opsEmailInnerHtml(params: {
   return [
     heading('Partner agreement executed'),
     paragraph(
-      `<strong>${escape(params.signatoryName)}</strong> (${escape(params.signatoryEmail)}) accepted version ${escape(params.version)} for listing <strong>${escape(params.gymName)}</strong>. See attached PDF.`,
+      `<strong>${escape(params.signatoryName)}</strong> (${escape(params.signatoryEmail)}) accepted version <strong>${escape(params.version)}</strong> for listing <strong>${escape(params.gymName)}</strong>. The executed PDF is attached for your records.`,
+    ),
+    paragraph(
+      'If anything looks off (wrong gym, wrong signatory), investigate in Partner Hub before the partner goes live.',
+      { muted: true },
     ),
   ].join('')
 }
@@ -71,17 +102,22 @@ export async function sendExecutedPartnerAgreementEmails(params: {
 
   const partnerHtml = renderEmail({
     eyebrow: 'Partner Hub',
-    title: 'Your signed partner agreement',
-    preheader: `Executed copy for ${params.gymName}.`,
+    title: 'Your signed Partner Agreement',
+    preheader: `Executed PDF for ${params.gymName} — keep this for your records.`,
     innerHtml: partnerEmailInnerHtml({
       signatoryName: params.signatoryName,
       gymName: params.gymName,
     }),
   })
 
-  const partnerText = `Your signed CombatStay Partner Agreement (executed copy) is attached for ${params.gymName}.
+  const partnerText = `Hi ${params.signatoryName.split(/\s+/)[0] || 'there'},
 
-— ${BRAND.name}`
+Your executed CombatStay Partner Agreement for ${params.gymName} is attached (PDF). It records your legal name, acceptance time (UTC), and IP.
+
+Save it with your business records. Questions? Reply to this email.
+${PARTNER_LIFECYCLE_SIGNOFF_LINE}
+
+Partner Hub: ${manageOrigin()}`
 
   const partnerResult = await resend.emails.send({
     from: fromEmail,

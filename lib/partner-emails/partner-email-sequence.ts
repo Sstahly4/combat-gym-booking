@@ -5,6 +5,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { getGymReadiness, type GymReadinessResult } from '@/lib/onboarding/readiness'
+import { buildOnboardingWizardUrl } from '@/lib/onboarding/owner-wizard'
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import {
   APP_URL,
   BRAND,
@@ -13,9 +15,14 @@ import {
   heading,
   linkFallback,
   paragraph,
+  partnerAccentSectionLabel,
+  PARTNER_LIFECYCLE_SIGNOFF_LINE,
+  partnerFounderSignoff,
+  partnerHelpCallout,
+  partnerNumberedStepCard,
+  partnerStatTilesRow,
   primaryButton,
   renderEmail,
-  sectionLabel,
   sendEmail,
 } from '@/lib/email-layout'
 
@@ -49,8 +56,9 @@ function readinessChecklistHtml(readiness: GymReadinessResult, gymName: string):
       : `${mark} <strong>${escape(r.label)}</strong> — <a href="${absUrl(r.deepLink)}" style="color:${BRAND.linkColor};font-weight:600;">Continue</a>`
     return `<tr><td style="padding:0 0 12px 0;color:${BRAND.bodyText};font-size:14px;line-height:1.55;">${line}</td></tr>`
   })
-  return `${paragraph(
-    `<strong>${escape(gymName)}</strong> — ${passed} of ${total} required checks are done before you can go live.`,
+  return `${partnerAccentSectionLabel('Your checklist — live status')}
+  ${paragraph(
+    `<strong>${escape(gymName)}</strong> — ${passed} of ${total} required checks are complete. This list mirrors what Partner Hub uses for go-live, so you can trust every line.`,
   )}
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.join('')}</table>`
 }
@@ -61,38 +69,104 @@ function firstIncompleteCta(readiness: GymReadinessResult): { href: string; labe
   return { href: absUrl('/manage'), label: 'Open Partner Hub' }
 }
 
+function welcomeStepLinks(gymId: string | null) {
+  const g = gymId
+  return {
+    profile: absUrl(buildOnboardingWizardUrl('step-1', g)),
+    photos: absUrl(buildOnboardingWizardUrl('step-3', g)),
+    packages: absUrl(buildOnboardingWizardUrl('step-2', g)),
+    payouts: absUrl(manageSettingsPayoutsHref(g, 'partner-agreement')),
+  }
+}
+
 export async function sendPartnerWelcomeEmail(params: {
   to: string
   fullName: string | null
+  /** When a draft gym already exists, deep links go straight into the right wizard step. */
+  gymId: string | null
 }): Promise<boolean> {
   const name = firstName(params.fullName, 'there')
   const hub = absUrl('/manage')
+  const links = welcomeStepLinks(params.gymId)
+  const helpHref = absUrl('/manage/help')
+
   const inner = [
-    heading(`Welcome, ${escape(name)}`),
+    heading(`Welcome, ${escape(name)}. Let's get your gym in front of fighters.`),
     paragraph(
-      `Your CombatStay partner account is ready. Use Partner Hub to finish your listing, connect payouts, and go live when you are ready.`,
+      `You are now part of the first platform built specifically for combat sports training — connecting fighters, grapplers, and coaches with serious gyms worldwide. Your <strong>Partner Hub</strong> is ready: finish the steps below and you will be set up to receive real bookings, not just another generic listing form.`,
+    ),
+    partnerAccentSectionLabel('Your go-live checklist'),
+    partnerNumberedStepCard(
+      1,
+      'Complete your gym profile',
+      'Add your listing name, address, disciplines, and a description fighters actually read before they book. This is the first impression they see — make it sharp.',
+      links.profile,
+      'Open Basic Info',
+    ),
+    partnerNumberedStepCard(
+      2,
+      'Upload at least 3 photos',
+      'Show your mats, equipment, coaches, and the energy of your gym. Strong photos are one of the highest‑leverage things you can do for conversion.',
+      links.photos,
+      'Open Photos step',
+    ),
+    partnerNumberedStepCard(
+      3,
+      'Create your first package',
+      'Set up a training camp or package with clear pricing. You can add more any time — one solid offer is enough to go live.',
+      links.packages,
+      'Packages & pricing',
+    ),
+    partnerNumberedStepCard(
+      4,
+      'Connect payouts & sign your Partner Agreement',
+      'Connect Stripe (or complete Wise details) so we can pay you, then review and sign your Partner Agreement under Settings → Payouts. Both are required before go‑live.',
+      links.payouts,
+      'Payouts & agreement',
+    ),
+    partnerAccentSectionLabel('Why CombatStay'),
+    partnerStatTilesRow([
+      { figure: '15%', caption: 'Commission only. No monthly fees.' },
+      { figure: '0', caption: 'Upfront costs to get listed.' },
+      { figure: '1', caption: 'Platform built for combat sports.' },
+    ]),
+    partnerHelpCallout(
+      `<strong style="color:#1e40af;">Questions? We are here.</strong> Reply to this email — a real person will get back to you quickly. We are actively onboarding founding gyms and want Stripe, packages, or listing setup to feel straightforward. You can also use the <a href="${helpHref}" style="color:${BRAND.linkColor};font-weight:600;text-decoration:none;">Partner Help Centre</a>.`,
     ),
     primaryButton(hub, 'Open Partner Hub'),
     linkFallback(hub),
+    partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 
   const html = renderEmail({
     eyebrow: 'Partner Hub',
     title: 'Welcome to CombatStay',
-    preheader: `You are in — open Partner Hub to finish your listing.`,
+    preheader: `${name}, your Partner Hub is ready — here is your go-live checklist.`,
     innerHtml: inner,
   })
 
   const text = `Welcome, ${name}
 
-Your CombatStay partner account is ready. Open Partner Hub to finish your listing and go live:
+Let's get your gym in front of fighters.
+
+CombatStay is built specifically for combat sports — your Partner Hub is ready at:
 ${hub}
 
-— CombatStay`
+Your go-live checklist:
+1) Complete gym profile — ${links.profile}
+2) Upload at least 3 photos — ${links.photos}
+3) Create your first package — ${links.packages}
+4) Connect payouts & sign Partner Agreement — ${links.payouts}
+
+Why CombatStay: 15% commission (no monthly fees), no upfront listing fees, one platform focused on combat sports.
+
+Questions? Reply to this email. Help: ${helpHref}
+
+${PARTNER_LIFECYCLE_SIGNOFF_LINE}`
 
   return sendEmail({
     to: params.to,
-    subject: 'Welcome to CombatStay — your Partner Hub is ready',
+    subject: "Welcome to CombatStay — let's get your gym in front of fighters",
     html,
     text,
     tag: TAG_WELCOME,
@@ -108,25 +182,36 @@ export async function sendPartnerChecklistEmail(params: {
   const name = firstName(params.fullName, 'there')
   const cta = firstIncompleteCta(params.readiness)
   const inner = [
-    heading(`Finish going live, ${escape(name)}`),
+    heading(`Your personalised checklist, ${escape(name)}`),
     paragraph(
-      `Here is what is left for <strong>${escape(params.gymName)}</strong> based on your account right now. Tap any open item to jump straight in.`,
+      `You have already taken the first step by joining CombatStay. Below is exactly what Partner Hub still needs for <strong>${escape(params.gymName)}</strong> before you can flip the switch to live — same checks our go‑live engine uses, in plain language.`,
     ),
-    sectionLabel('Your checklist'),
+    paragraph(
+      `Open any item that is not done yet; each link drops you on the right screen so you are not hunting through menus.`,
+    ),
     readinessChecklistHtml(params.readiness, params.gymName),
     divider(),
     paragraph(
-      `Sign your <strong>Partner Agreement</strong> under <strong>Settings → Payouts</strong> (required before you can go live). You can also complete it from onboarding Step 4 (Policies).`,
+      `The <strong>Partner Agreement</strong> lives under <strong>Settings → Payouts</strong> (and in onboarding Step 4). It is required before go‑live so both sides have a clear record.`,
       { muted: true },
+    ),
+    partnerStatTilesRow([
+      { figure: '15%', caption: 'Commission only. No monthly fees.' },
+      { figure: '0', caption: 'Upfront costs to get listed.' },
+      { figure: '1', caption: 'Platform built for combat sports.' },
+    ]),
+    partnerHelpCallout(
+      `<strong style="color:#1e40af;">Stuck on Stripe or Wise?</strong> Reply to this email and tell us what screen you are on — we help founding partners with payouts and verification every week. For self‑serve answers, visit the <a href="${absUrl('/manage/help')}" style="color:${BRAND.linkColor};font-weight:600;text-decoration:none;">Partner Help Centre</a>.`,
     ),
     primaryButton(cta.href, cta.label),
     linkFallback(cta.href),
+    partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 
   const html = renderEmail({
     eyebrow: 'Partner Hub',
-    title: 'Next steps for your listing',
-    preheader: `Your personalised go-live checklist for ${params.gymName}.`,
+    title: `Next steps for ${params.gymName}`,
+    preheader: `Personalised go-live checklist for ${params.gymName} — tap any open item.`,
     innerHtml: inner,
   })
 
@@ -136,7 +221,7 @@ export async function sendPartnerChecklistEmail(params: {
 
   const text = `Hi ${name},
 
-Here is your current go-live checklist for ${params.gymName}:
+Here is your current go-live checklist for ${params.gymName} (same items Partner Hub uses):
 
 ${lines}
 
@@ -145,11 +230,12 @@ Open Partner Hub: ${absUrl('/manage')}
 Primary next step: ${cta.label}
 ${cta.href}
 
-— CombatStay`
+15% commission, no monthly fees. Questions? Reply to this email.
+${PARTNER_LIFECYCLE_SIGNOFF_LINE}`
 
   return sendEmail({
     to: params.to,
-    subject: `Your CombatStay checklist — ${params.gymName}`,
+    subject: `Your go-live checklist — ${params.gymName}`,
     html,
     text,
     tag: TAG_CHECKLIST,
@@ -167,51 +253,56 @@ export async function sendPartnerNudgeEmail(params: {
   const cta = firstIncompleteCta(params.readiness)
 
   const inner = [
-    heading(`Still finishing ${escape(params.gymName)}?`),
+    heading(`We would love to see ${escape(params.gymName)} live`),
     paragraph(
       open.length > 0
-        ? `Hi ${escape(name)} — you are almost there. Here is what is still open on your account today:`
-        : `Hi ${escape(name)} — your checklist looks complete. Head to Partner Hub to submit for review and go live when you are ready.`,
+        ? `Hi ${escape(name)} — you are closer than you think. Most gyms finish the remaining steps in one focused session. Here is what is still open today:`
+        : `Hi ${escape(name)} — your core checklist looks complete from here. Head into Partner Hub to confirm everything looks right, submit for review if needed, and flip your listing live when you are ready.`,
     ),
     open.length > 0
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${open
+      ? `${partnerAccentSectionLabel('Still to complete')}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${open
           .map(
             (r) =>
-              `<tr><td style="padding:0 0 10px 0;color:${BRAND.bodyText};font-size:14px;line-height:1.55;">⬜ <strong>${escape(r.label)}</strong> — <a href="${absUrl(r.deepLink)}" style="color:${BRAND.linkColor};font-weight:600;">Open</a></td></tr>`,
+              `<tr><td style="padding:0 0 12px 0;color:${BRAND.bodyText};font-size:14px;line-height:1.55;">⬜ <strong>${escape(r.label)}</strong> — <a href="${absUrl(r.deepLink)}" style="color:${BRAND.linkColor};font-weight:600;">Open in Partner Hub</a></td></tr>`,
           )
           .join('')}</table>`
       : paragraph(`Everything in your core checklist is ticked off.`, { muted: true }),
+    partnerStatTilesRow([
+      { figure: '15%', caption: 'Commission only. No monthly fees.' },
+      { figure: '0', caption: 'Upfront costs to get listed.' },
+      { figure: '1', caption: 'Platform built for combat sports.' },
+    ]),
     primaryButton(cta.href, open.length ? `Finish: ${open[0].label}` : 'Open Partner Hub'),
     linkFallback(cta.href),
     divider(),
-    paragraph(
-      `Questions? Reply to this email and we will help you get unstuck.`,
-      { muted: true },
+    partnerHelpCallout(
+      `<strong style="color:#1e40af;">Need a hand?</strong> Reply to this email with a screenshot or a one‑liner on what feels blocked — we answer founding partners personally. Stripe, Wise, packages, or copy: we have seen it all.`,
     ),
+    partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 
   const html = renderEmail({
     eyebrow: 'Partner Hub',
-    title: 'Need a hand finishing your listing?',
-    preheader: `Quick nudge — ${params.gymName} is not live yet.`,
+    title: `${params.gymName} is almost there`,
+    preheader: `Friendly nudge from CombatStay — finish the last steps when you have a moment.`,
     innerHtml: inner,
   })
 
   const text = `Hi ${name},
 
-${params.gymName} is not live on CombatStay yet.
+We would love to see ${params.gymName} live on CombatStay.
 
 ${open.length ? `Still open:\n${open.map((r) => `- ${r.label}: ${absUrl(r.deepLink)}`).join('\n')}` : 'Your checklist looks complete — open Partner Hub to go live.'}
 
 ${cta.href}
 
-Reply to this email if you need help.
+15% commission, no monthly fees. Reply to this email if you want a second pair of eyes on Stripe, Wise, or your listing.
 
-— CombatStay`
+${PARTNER_LIFECYCLE_SIGNOFF_LINE}`
 
   return sendEmail({
     to: params.to,
-    subject: `Still finishing ${params.gymName}?`,
+    subject: `Let's get ${params.gymName} live on CombatStay`,
     html,
     text,
     tag: TAG_NUDGE,
@@ -275,9 +366,12 @@ export async function trySendPartnerWelcomeSequenceStart(admin: SupabaseClient, 
   const email = authUser.user.email
   if (!authEmailIsConfirmed(authUser.user)) return
 
+  const gymId = await pickPrimaryGymId(admin, userId)
+
   const ok = await sendPartnerWelcomeEmail({
     to: email,
     fullName: profile.full_name,
+    gymId,
   })
   if (!ok) {
     console.warn('[partner-email] welcome send failed', { userId })
