@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Full payout setup: Wise vs Stripe preference form plus Stripe Connect embedded
- * tools when the gym is on the Connect rail. Used from Settings → Payouts.
+ * Stripe Connect payout setup for Settings → Payouts. Embedded tools load only
+ * after the owner starts setup (or when the account is already verified).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -39,6 +39,8 @@ export function ManagePayoutsWorkspace() {
   const [connectInstance, setConnectInstance] = useState<ReturnType<typeof loadConnectAndInitialize> | null>(null)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
+  /** Embedded Connect (session fetch) only after owner clicks Start, unless already verified. */
+  const [connectUiStarted, setConnectUiStarted] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
@@ -90,8 +92,18 @@ export function ManagePayoutsWorkspace() {
   const stripeAccountId = gym?.stripe_account_id ?? null
 
   useEffect(() => {
+    setConnectUiStarted(false)
+  }, [gym?.id])
+
+  useEffect(() => {
+    if (gym?.stripe_connect_verified) {
+      setConnectUiStarted(true)
+    }
+  }, [gym?.stripe_connect_verified])
+
+  useEffect(() => {
     let cancelled = false
-    if (!activeGymId || !useConnectedAccount || !stripeAccountId) {
+    if (!activeGymId || !useConnectedAccount || !stripeAccountId || !connectUiStarted) {
       setConnectInstance(null)
       setConnectError(null)
       setConnectLoading(false)
@@ -153,7 +165,7 @@ export function ManagePayoutsWorkspace() {
     return () => {
       cancelled = true
     }
-  }, [activeGymId, useConnectedAccount, stripeAccountId])
+  }, [activeGymId, useConnectedAccount, stripeAccountId, connectUiStarted])
 
   /** Hosted Account Link return URL lands here with `from_stripe=1` — sync verification then drop the flag. */
   const fromStripe = searchParams.get('from_stripe') === '1' || searchParams.get('success') === 'true'
@@ -223,7 +235,7 @@ export function ManagePayoutsWorkspace() {
     <div className="space-y-6">
       {headerCrumbs}
       <p className="max-w-2xl text-sm text-gray-600">
-        Choose how you get paid and keep bank details up to date. Live Stripe balances and payout history stay on{' '}
+        Payouts run through Stripe. After setup, balances and transfer history for this listing are on{' '}
         <Link
           href={activeGymId ? `/manage/balances?gym_id=${encodeURIComponent(activeGymId)}` : '/manage/balances'}
           className="font-medium text-[#003580] underline-offset-2 hover:underline"
@@ -252,9 +264,10 @@ export function ManagePayoutsWorkspace() {
             accountEmail={accountEmail}
             defaultAccountHolderName={defaultHolder}
             onGymRefresh={loadGym}
+            onStripeSetupStarted={() => setConnectUiStarted(true)}
           />
 
-          {useConnectedAccount ? (
+          {useConnectedAccount && connectUiStarted ? (
             <>
               {connectLoading ? (
                 <div className={`${dashCard} flex items-center justify-center px-5 py-12 text-gray-400`}>
@@ -265,9 +278,8 @@ export function ManagePayoutsWorkspace() {
                 <div className={`${dashCard} px-5 py-6`}>
                   <p className="text-sm font-medium text-rose-700">{connectError}</p>
                   <p className="mt-2 text-sm text-gray-600">
-                    Choose <strong className="font-semibold text-gray-900">Stripe Connect</strong> above, then{' '}
-                    <strong className="font-semibold text-gray-900">Connect payouts</strong> so we can create your
-                    connected account. Embedded payout tools load here automatically afterward.
+                    Use <strong className="font-semibold text-gray-900">Start payout setup</strong> above so we can
+                    create your connected account, then embedded tools load here.
                   </p>
                 </div>
               ) : connectInstance ? (
