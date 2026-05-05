@@ -157,18 +157,19 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
     if (pkg.type === 'training') {
       const today = new Date()
-      const tomorrow = new Date(today)
-      tomorrow.setDate(today.getDate() + 1)
+      const todayIso = today.toISOString().split('T')[0]
 
       if (!checkin || !checkout) {
-        finalCheckin = today.toISOString().split('T')[0]
-        finalCheckout = tomorrow.toISOString().split('T')[0]
+        // Single-session training defaults to same-day check-in/out.
+        finalCheckin = todayIso
+        finalCheckout = todayIso
         setCheckin(finalCheckin)
         setCheckout(finalCheckout)
       } else {
         const currentDuration = Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
         if (currentDuration === 7) {
-          finalCheckout = new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          // If the user arrived with a default "week" window, collapse to a single training day.
+          finalCheckout = checkin
           setCheckout(finalCheckout)
         }
       }
