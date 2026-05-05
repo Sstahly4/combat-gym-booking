@@ -86,10 +86,12 @@ export function ManagePayoutsWorkspace() {
 
   const rail = (gym?.payout_rail as 'wise' | 'stripe_connect') || 'wise'
   const useConnectedAccount = rail === 'stripe_connect'
+  /** Account session requires `acct_…`; wait until create-account (embedded_only) has run after switching rail. */
+  const stripeAccountId = gym?.stripe_account_id ?? null
 
   useEffect(() => {
     let cancelled = false
-    if (!activeGymId || !useConnectedAccount) {
+    if (!activeGymId || !useConnectedAccount || !stripeAccountId) {
       setConnectInstance(null)
       setConnectError(null)
       setConnectLoading(false)
@@ -150,7 +152,7 @@ export function ManagePayoutsWorkspace() {
     return () => {
       cancelled = true
     }
-  }, [activeGymId, useConnectedAccount])
+  }, [activeGymId, useConnectedAccount, stripeAccountId])
 
   /** Hosted Account Link return URL lands here with `from_stripe=1` — sync verification then drop the flag. */
   const fromStripe = searchParams.get('from_stripe') === '1' || searchParams.get('success') === 'true'
