@@ -40,7 +40,7 @@ export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: Gui
   const blurb = gym.description ? truncate(gym.description, 140) : null
 
   return (
-    <Link href={`/gyms/${gym.id}`} className="block h-full">
+    <Link href={`/gyms/${(gym as any).slug || gym.id}`} className="block h-full">
       <Card className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full overflow-hidden">
         <div className="relative w-full aspect-[16/9] bg-gray-100">
           <Image

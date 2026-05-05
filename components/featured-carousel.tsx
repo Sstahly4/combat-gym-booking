@@ -142,7 +142,7 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
         {gyms.map((gym: any, idx: number) => (
           <Link 
             key={gym.id} 
-            href={`/gyms/${gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
+            href={`/gyms/${gym.slug || gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className="min-w-[calc(50%-6px)] snap-start no-underline md:min-w-[calc(25%-12px)]"

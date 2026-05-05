@@ -503,7 +503,7 @@ function SearchPageContent() {
       )
       : null
 
-    const href = `/gyms/${gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`
+    const href = `/gyms/${gym.slug || gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`
     const rawPrice =
       estimatedPrice != null && estimatedPrice > 0 ? estimatedPrice : gym.price_per_day || 0
     const priceDisplay = formatPrice(convertPrice(rawPrice, gym.currency || 'USD'))
