@@ -1,3 +1,5 @@
+import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
+
 export interface OwnerWizardStepDefinition {
   index: number
   key: string
@@ -172,6 +174,9 @@ export function buildWizardStepDeepLink(
   if (step.deepLinkPath.startsWith('/manage/onboarding/step-')) {
     return buildOnboardingWizardUrl(step.slug, gymId, options)
   }
+  if (step.deepLinkPath === '/manage/stripe-connect') {
+    return manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
+  }
   const url = new URL(step.deepLinkPath, 'http://localhost')
   if (step.deepLinkPath === '/manage/settings') {
     url.searchParams.set('tab', 'payouts')
@@ -179,8 +184,6 @@ export function buildWizardStepDeepLink(
   } else if (gymId) {
     if (step.deepLinkPath === '/manage/gym/edit') {
       url.searchParams.set('id', gymId)
-    } else if (step.deepLinkPath === '/manage/stripe-connect') {
-      url.searchParams.set('gym_id', gymId)
     } else {
       url.searchParams.set('gym_id', gymId)
     }

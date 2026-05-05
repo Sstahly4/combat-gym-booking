@@ -6,13 +6,14 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { loadConnectAndInitialize } from '@stripe/connect-js'
 import {
   ConnectComponentsProvider,
   ConnectPayouts,
   ConnectAccountManagement,
+  ConnectAccountOnboarding,
 } from '@stripe/react-connect-js'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -28,6 +29,7 @@ const dashCard =
 
 export function ManagePayoutsWorkspace() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, profile, loading: authLoading } = useAuth()
   const { activeGymId } = useActiveGym()
   const [gym, setGym] = useState<Gym | null>(null)
@@ -150,17 +152,45 @@ export function ManagePayoutsWorkspace() {
     }
   }, [activeGymId, useConnectedAccount])
 
-  /** Deep link from Balances (statement descriptor): #account-management */
+  /** Hosted Account Link return URL lands here with `from_stripe=1` — sync verification then drop the flag. */
+  const fromStripe = searchParams.get('from_stripe') === '1' || searchParams.get('success') === 'true'
+  const urlGymId = searchParams.get('gym_id')
+  useEffect(() => {
+    if (!fromStripe || !activeGymId) return
+    if (urlGymId && urlGymId !== activeGymId) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        await fetch(`/api/gyms/${encodeURIComponent(activeGymId)}/update-stripe-status`, { method: 'POST' })
+        if (!cancelled) await loadGym()
+        if (!cancelled) {
+          router.replace(manageSettingsPayoutsHref(activeGymId), { scroll: false })
+        }
+      } catch {
+        if (!cancelled) {
+          router.replace(manageSettingsPayoutsHref(activeGymId), { scroll: false })
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fromStripe, urlGymId, activeGymId, loadGym, router])
+
+  /** Deep link: #account-management or #stripe-onboarding */
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.location.hash.slice(1) !== 'account-management') return
-    const el = document.getElementById('account-management')
+    const h = window.location.hash.slice(1)
+    if (h !== 'account-management' && h !== 'stripe-onboarding') return
+    const el = document.getElementById(h)
     if (!el) return
     const t = window.setTimeout(() => {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 100)
     return () => window.clearTimeout(t)
-  }, [connectInstance, connectLoading, gymLoading, gym?.id])
+  }, [connectInstance, connectLoading, gymLoading, gym?.id, gym?.stripe_connect_verified])
 
   const headerCrumbs = useMemo(
     () => (
@@ -232,19 +262,42 @@ export function ManagePayoutsWorkspace() {
                 <div className={`${dashCard} px-5 py-6`}>
                   <p className="text-sm font-medium text-rose-700">{connectError}</p>
                   <p className="mt-2 text-sm text-gray-600">
-                    Finish{' '}
-                    <Link
-                      href={`/manage/stripe-connect?gym_id=${encodeURIComponent(gym.id)}`}
-                      className="font-semibold text-[#003580] underline-offset-2 hover:underline"
-                    >
-                      Stripe setup
-                    </Link>{' '}
-                    for this gym, then return here for activity and bank details.
+                    Choose <strong className="font-semibold text-gray-900">Stripe Connect</strong> above, then{' '}
+                    <strong className="font-semibold text-gray-900">Connect payouts</strong> so we can create your
+                    connected account. Embedded payout tools load here automatically afterward.
                   </p>
                 </div>
               ) : connectInstance ? (
                 <ConnectComponentsProvider connectInstance={connectInstance as never}>
                   <div className="space-y-6">
+                    {!gym.stripe_connect_verified ? (
+                      <section id="stripe-onboarding" className={`${dashCard} overflow-hidden`}>
+                        <header className="border-b border-gray-100 px-5 py-4">
+                          <h3 className="text-base font-semibold text-gray-900">Finish payout account setup</h3>
+                          <p className="mt-0.5 text-sm text-gray-500">
+                            Identity and bank details stay in this page. When you are done, we refresh your listing
+                            status automatically.
+                          </p>
+                        </header>
+                        <div className="px-2 py-3 sm:px-4">
+                          <ConnectAccountOnboarding
+                            onExit={() => {
+                              void (async () => {
+                                try {
+                                  await fetch(`/api/gyms/${encodeURIComponent(gym.id)}/update-stripe-status`, {
+                                    method: 'POST',
+                                  })
+                                } catch {
+                                  /* best-effort sync */
+                                }
+                                await loadGym()
+                              })()
+                            }}
+                          />
+                        </div>
+                      </section>
+                    ) : null}
+
                     <section className={`${dashCard} overflow-hidden`}>
                       <header className="border-b border-gray-100 px-5 py-4">
                         <h3 className="text-base font-semibold text-gray-900">Payout activity</h3>

@@ -360,11 +360,7 @@ export default function BalancesPage() {
                   Payout setup (Settings)
                 </Link>
                 <Link
-                  href={
-                    activeGymId
-                      ? `/manage/stripe-connect?gym_id=${encodeURIComponent(activeGymId)}`
-                      : '/manage/stripe-connect'
-                  }
+                  href={manageSettingsPayoutsHref(activeGymId, 'stripe-onboarding')}
                   className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
                 >
                   Stripe Connect onboarding

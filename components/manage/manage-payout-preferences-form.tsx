@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Check, CreditCard, Loader2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { WisePayoutSetupPanel } from '@/components/manage/wise-payout-setup-panel'
@@ -30,7 +29,6 @@ export function ManagePayoutPreferencesForm({
   defaultAccountHolderName,
   onGymRefresh,
 }: Props) {
-  const router = useRouter()
   const [payoutRail, setPayoutRail] = useState<'wise' | 'stripe_connect'>('wise')
   const [currency, setCurrency] = useState('THB')
   const [accountHolderName, setAccountHolderName] = useState('')
@@ -66,7 +64,7 @@ export function ManagePayoutPreferencesForm({
     }
   }, [accountEmail])
 
-  /** Stripe Connect: persist `stripe_connect` then open hosted onboarding (standard one-step CTA). */
+  /** Stripe Connect: persist `stripe_connect`, ensure `acct_…` exists without hosted redirect, then scroll to embedded onboarding. */
   const openStripeConnectFlow = async () => {
     if (payoutRail !== 'stripe_connect') return
     setSavingRail(true)
@@ -83,7 +81,20 @@ export function ManagePayoutPreferencesForm({
         if (!res.ok) throw new Error(data.error || 'Could not save payout preferences')
         await onGymRefresh()
       }
-      router.push(`/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`)
+      const caRes = await fetch('/api/stripe/create-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gym_id: gymId, embedded_only: true }),
+      })
+      const caData = await caRes.json().catch(() => ({}))
+      if (!caRes.ok) throw new Error(caData.error || 'Could not prepare your payout account')
+      await onGymRefresh()
+      if (typeof window !== 'undefined') {
+        window.location.hash = 'stripe-onboarding'
+        window.requestAnimationFrame(() => {
+          document.getElementById('stripe-onboarding')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
@@ -143,48 +154,13 @@ export function ManagePayoutPreferencesForm({
         <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5">
           <h2 className="text-sm font-semibold text-gray-900">How you receive payouts</h2>
           <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
-            Choose one primary method per listing. You can change it later; switching away from bank transfer (Wise)
-            clears the saved Wise recipient on this listing.
+            Choose one primary method per listing. You can change it later; switching away from Stripe Connect or bank
+            transfer (Wise) clears the other route&apos;s saved details on this listing.
           </p>
         </div>
 
         <div className="space-y-5 p-5 sm:p-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setPayoutRail('wise')}
-              className={cn(
-                methodCardBase,
-                payoutRail === 'wise'
-                  ? 'border-[#003580] bg-[#003580]/[0.07] shadow-sm ring-1 ring-[#003580]/20'
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/90'
-              )}
-            >
-              <span className="flex items-start justify-between gap-2">
-                <span className="flex items-center gap-2.5">
-                  <span
-                    className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1',
-                      payoutRail === 'wise' ? 'bg-white text-[#003580] ring-[#003580]/25' : 'bg-gray-50 text-gray-600 ring-gray-200/80'
-                    )}
-                  >
-                    <Wallet className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-gray-900">Bank transfer (Wise)</span>
-                    <span className="mt-0.5 block text-xs leading-snug text-gray-500">
-                      International bank payouts via Wise—strong when your bank account is in another currency.
-                    </span>
-                  </span>
-                </span>
-                {payoutRail === 'wise' ? (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003580] text-white" aria-hidden>
-                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                  </span>
-                ) : null}
-              </span>
-            </button>
-
             <button
               type="button"
               onClick={() => setPayoutRail('stripe_connect')}
@@ -221,14 +197,49 @@ export function ManagePayoutPreferencesForm({
                 ) : null}
               </span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setPayoutRail('wise')}
+              className={cn(
+                methodCardBase,
+                payoutRail === 'wise'
+                  ? 'border-[#003580] bg-[#003580]/[0.07] shadow-sm ring-1 ring-[#003580]/20'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/90'
+              )}
+            >
+              <span className="flex items-start justify-between gap-2">
+                <span className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1',
+                      payoutRail === 'wise' ? 'bg-white text-[#003580] ring-[#003580]/25' : 'bg-gray-50 text-gray-600 ring-gray-200/80'
+                    )}
+                  >
+                    <Wallet className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">Bank transfer (Wise)</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-gray-500">
+                      International bank payouts via Wise—strong when your bank account is in another currency.
+                    </span>
+                  </span>
+                </span>
+                {payoutRail === 'wise' ? (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003580] text-white" aria-hidden>
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </span>
+                ) : null}
+              </span>
+            </button>
           </div>
 
           {payoutRail === 'stripe_connect' ? (
             <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-start sm:justify-between">
               <p className="max-w-xl text-xs leading-relaxed text-gray-500">
-                Identity and bank verification are completed in Stripe&apos;s secure flow. Continuing saves the
-                connected-account payout route for this listing and opens onboarding; balances update when Stripe
-                enables your account.
+                Verification runs inline on this page (no redirect). Use the button to save this payout route, create
+                your connected account if needed, and jump to the setup form below. Balances update when your account is
+                ready.
               </p>
               <Button
                 type="button"
@@ -239,12 +250,12 @@ export function ManagePayoutPreferencesForm({
                 {savingRail ? (
                   <>
                     <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
-                    Opening…
+                    Preparing…
                   </>
                 ) : gym.stripe_account_id && !gym.stripe_connect_verified ? (
-                  'Continue in Stripe'
+                  'Continue payout setup'
                 ) : (
-                  'Open Stripe setup'
+                  'Connect payouts'
                 )}
               </Button>
             </div>

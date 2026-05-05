@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     const session = await stripe.accountSessions.create({
       account: gym.stripe_account_id as string,
       components: {
+        account_onboarding: { enabled: true },
         payouts: { enabled: true },
         account_management: { enabled: true },
       },

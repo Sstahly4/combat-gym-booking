@@ -62,11 +62,13 @@ export async function POST(request: NextRequest) {
     const { supabase, user } = access
 
     let requestedGymId: string | null = null
+    let embeddedOnly = false
     try {
-      const body = (await request.json()) as { gym_id?: unknown }
+      const body = (await request.json()) as { gym_id?: unknown; embedded_only?: unknown }
       if (typeof body?.gym_id === 'string' && body.gym_id.trim()) {
         requestedGymId = body.gym_id.trim()
       }
+      embeddedOnly = body?.embedded_only === true
     } catch {
       // no JSON body — fall back to default gym resolution
     }
@@ -117,7 +119,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg, code: 'stripe_redirect_https_required' }, { status: 400 })
     }
 
-    const gymParam = `&gym_id=${encodeURIComponent(gym.id)}`
+    const gymQs = `tab=payouts&gym_id=${encodeURIComponent(gym.id)}`
+    const payoutsSettingsPath = `/manage/settings?${gymQs}`
 
     const createExpressAccount = async (): Promise<string> => {
       const account = await stripe.accounts.create({
@@ -144,8 +147,8 @@ export async function POST(request: NextRequest) {
     const createAccountLink = (accountId: string) =>
       stripe.accountLinks.create({
         account: accountId,
-        refresh_url: `${baseUrl}/manage/stripe-connect?refresh=true${gymParam}`,
-        return_url: `${baseUrl}/manage/stripe-connect?from_stripe=1${gymParam}`,
+        refresh_url: `${baseUrl}${payoutsSettingsPath}&stripe_refresh=1`,
+        return_url: `${baseUrl}${payoutsSettingsPath}&from_stripe=1`,
         type: 'account_onboarding',
       })
 
@@ -153,6 +156,10 @@ export async function POST(request: NextRequest) {
 
     if (!accountId) {
       accountId = await createExpressAccount()
+    }
+
+    if (embeddedOnly) {
+      return NextResponse.json({ ok: true as const, account_id: accountId })
     }
 
     try {

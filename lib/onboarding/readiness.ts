@@ -158,7 +158,7 @@ export async function getGymReadiness({
           : 'Add payout recipient details.',
       deepLink:
         rail === 'stripe_connect'
-          ? `/manage/stripe-connect?gym_id=${encodeURIComponent(gymId)}`
+          ? manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
           : manageSettingsPayoutsHref(gymId),
     },
   ]

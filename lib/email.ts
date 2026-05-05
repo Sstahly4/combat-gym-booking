@@ -593,7 +593,7 @@ export async function sendOwnerPayoutDisabledEmail(data: {
   disabledReason?: string | null
   requirementsDue?: string[]
 }): Promise<boolean> {
-  const dashboardUrl = `${APP_URL()}/manage/stripe-connect`
+  const dashboardUrl = `${APP_URL()}/manage/settings?tab=payouts`
   const reason = data.disabledReason?.trim() || 'Not specified by Stripe'
   const due =
     data.requirementsDue && data.requirementsDue.length > 0
