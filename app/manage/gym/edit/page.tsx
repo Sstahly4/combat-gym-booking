@@ -30,6 +30,7 @@ import {
   resolvePostGymEditReturnPath,
 } from '@/lib/navigation/manage-gym-edit-return'
 import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
+import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -850,6 +851,24 @@ function EditGymForm() {
       // immediately instead of within the 1h revalidate window. Fire-and-forget:
       // a failure here shouldn't block the save flow.
       fetch(`/api/gyms/${gym.id}/revalidate`, { method: 'POST' }).catch(() => {})
+
+      const nextRow = (Array.isArray(data) ? data[0] : data) as Gym | undefined
+      if (nextRow) {
+        const mapsDone = (r: { google_maps_link?: string | null }) => Boolean((r.google_maps_link ?? '').trim())
+        const socialDone = (r: {
+          instagram_link?: string | null
+          facebook_link?: string | null
+        }) => Boolean((r.instagram_link ?? '').trim() || (r.facebook_link ?? '').trim())
+        if (!mapsDone(gym) && mapsDone(nextRow)) {
+          dispatchVerificationMilestone({ kind: 'maps' })
+        }
+        if (!socialDone(gym) && socialDone(nextRow)) {
+          dispatchVerificationMilestone({ kind: 'social' })
+        }
+        if (!gym.admin_approved && nextRow.admin_approved) {
+          dispatchVerificationMilestone({ kind: 'admin' })
+        }
+      }
 
       router.push(afterEditPath)
     } catch (err: any) {

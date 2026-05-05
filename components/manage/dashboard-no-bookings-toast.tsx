@@ -3,8 +3,71 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const STORAGE_KEY = 'manage_dismiss_no_bookings_hint'
+export const NO_BOOKINGS_DISMISS_STORAGE_KEY = 'manage_dismiss_no_bookings_hint'
+
+/** Shared shell: white “no bookings” card (used by toast host + animations). */
+export function NoBookingsToastCard({
+  previewHref,
+  onDismiss,
+  className,
+}: {
+  previewHref: string
+  onDismiss: () => void
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-lg border border-gray-200 bg-white py-3 pl-4 pr-2 shadow-lg ring-1 ring-black/5',
+        className,
+      )}
+    >
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-sm font-medium text-gray-900">No bookings yet</p>
+        <p className="mt-1 text-xs leading-relaxed text-gray-500">
+          Finish your listing and go live to receive requests.{' '}
+          <Link href={previewHref} className="font-medium text-[#003580] underline underline-offset-2">
+            Preview listing
+          </Link>
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+        aria-label="Dismiss"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
+/** Corporate green success card (verification milestones). */
+export function VerificationMilestoneToastCard({
+  title,
+  body,
+  className,
+}: {
+  title: string
+  body: string
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-emerald-100/90 py-3 pl-4 pr-4 shadow-lg ring-1 ring-emerald-900/10',
+        className,
+      )}
+      role="status"
+    >
+      <p className="text-sm font-semibold text-emerald-950">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-emerald-900/90">{body}</p>
+    </div>
+  )
+}
 
 export function DashboardNoBookingsToast({
   show,
@@ -23,14 +86,13 @@ export function DashboardNoBookingsToast({
       return
     }
     try {
-      if (sessionStorage.getItem(STORAGE_KEY) === '1') {
+      if (sessionStorage.getItem(NO_BOOKINGS_DISMISS_STORAGE_KEY) === '1') {
         setVisible(false)
         return
       }
     } catch {
       /* ignore */
     }
-    // Stagger after mount so the slide-in is noticeable on every navigation (host uses key=pathname).
     const t = window.setTimeout(() => setVisible(true), 320)
     return () => window.clearTimeout(t)
   }, [show])
@@ -40,7 +102,6 @@ export function DashboardNoBookingsToast({
       setEntered(false)
       return
     }
-    // Reset off-screen, then animate in (pairs with transition on the wrapper).
     setEntered(false)
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setEntered(true))
@@ -52,7 +113,7 @@ export function DashboardNoBookingsToast({
     setVisible(false)
     setEntered(false)
     try {
-      sessionStorage.setItem(STORAGE_KEY, '1')
+      sessionStorage.setItem(NO_BOOKINGS_DISMISS_STORAGE_KEY, '1')
     } catch {
       /* ignore */
     }
@@ -67,25 +128,7 @@ export function DashboardNoBookingsToast({
         entered ? 'translate-x-0 translate-y-0 opacity-100' : 'translate-x-2 -translate-y-2 opacity-0'
       }`}
     >
-      <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white py-3 pl-4 pr-2 shadow-lg ring-1 ring-black/5">
-        <div className="min-w-0 flex-1 pt-0.5">
-          <p className="text-sm font-medium text-gray-900">No bookings yet</p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-500">
-            Finish your listing and go live to receive requests.{' '}
-            <Link href={previewHref} className="font-medium text-[#003580] underline underline-offset-2">
-              Preview listing
-            </Link>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-          aria-label="Dismiss"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+      <NoBookingsToastCard previewHref={previewHref} onDismiss={dismiss} />
     </div>
   )
 }

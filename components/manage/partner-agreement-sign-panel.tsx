@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
 import { clearReadinessSessionCache } from '@/lib/onboarding/readiness-session-cache'
 import type { AgreementBlock } from '@/lib/legal/partner-agreement-document'
 import {
@@ -84,7 +85,7 @@ export function PartnerAgreementSignPanel({
   gymId: string | null | undefined
   embedInAdmin?: boolean
 }) {
-  const { profile, refreshProfile } = useAuth()
+  const { profile, refreshProfile, user } = useAuth()
   const [legalName, setLegalName] = useState('')
   const [accept, setAccept] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -151,6 +152,12 @@ export function PartnerAgreementSignPanel({
       }
       clearReadinessSessionCache()
       await refreshProfile()
+      if (!data.already_signed) {
+        dispatchVerificationMilestone({
+          kind: 'partner_agreement',
+          inboxEmail: user?.email ?? null,
+        })
+      }
       if (data.already_signed) {
         setSuccess('Partner agreement is already on file for your account.')
       } else if (data.email_sent === false) {

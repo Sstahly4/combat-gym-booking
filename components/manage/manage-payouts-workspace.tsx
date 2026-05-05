@@ -4,7 +4,7 @@
  * Stripe Connect payout setup for Settings → Payouts. Embedded tools load only
  * after the owner starts setup (or when the account is already verified).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -18,6 +18,8 @@ import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement
 import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import type { Gym } from '@/lib/types/database'
+import { isGymPayoutComplete } from '@/lib/manage/gym-payout-complete'
+import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
 
 const BRAND = '#003580'
 
@@ -97,6 +99,18 @@ export function ManagePayoutsWorkspace() {
       setConnectUiStarted(true)
     }
   }, [gym?.stripe_connect_verified])
+
+  const payoutCompleteRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!gym) return
+    const ok = isGymPayoutComplete(gym)
+    const prev = payoutCompleteRef.current
+    payoutCompleteRef.current = ok
+    if (prev === null) return
+    if (!prev && ok) {
+      dispatchVerificationMilestone({ kind: 'payouts' })
+    }
+  }, [gym])
 
   useEffect(() => {
     let cancelled = false

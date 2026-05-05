@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, Loader2, ExternalLink, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
+import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
 
 interface VerificationChecklistProps {
   gym: Gym
@@ -87,6 +88,17 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       partnerAgreementOk,
     ]
   )
+
+  const prevAdminApprovedRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    const cur = requirements.adminApproved
+    const prev = prevAdminApprovedRef.current
+    prevAdminApprovedRef.current = cur
+    if (prev === null) return
+    if (!prev && cur) {
+      dispatchVerificationMilestone({ kind: 'admin' })
+    }
+  }, [requirements.adminApproved])
 
   const verificationStatus = gym.verification_status
   const completedCount = Object.values(requirements).filter(Boolean).length
