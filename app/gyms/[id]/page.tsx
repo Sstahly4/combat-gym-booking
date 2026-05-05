@@ -26,6 +26,7 @@ import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
 import { ThingsToDoCard } from '@/components/things-to-do-card'
+import { ScrollToTopOnMount } from '@/components/scroll-to-top-on-mount'
 
 // Helper function to format review date as "time ago"
 function formatReviewDate(createdAt: string): string {
@@ -435,6 +436,7 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
 
   return (
     <BookingProvider initialCheckin={searchParams.checkin} initialCheckout={searchParams.checkout}>
+      <ScrollToTopOnMount />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
