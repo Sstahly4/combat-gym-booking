@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
+import { resolveOwnerListingHubPath } from '@/lib/manage/resolve-owner-hub-url'
 
 function SignInPageContent() {
   const router = useRouter()
@@ -73,13 +74,19 @@ function SignInPageContent() {
       .single()
 
     if (isPartnerIntent) {
-      router.replace('/owners')
+      // Owners who already have a listing draft belong in Partner Hub, not marketing `/owners`.
+      const dest =
+        profile?.role === 'owner'
+          ? await resolveOwnerListingHubPath(supabase, userId)
+          : '/owners'
+      router.replace(dest)
       return
     }
 
     if (profile?.role === 'owner') {
-      // Use /owners as the stable owner hub when no explicit redirect is provided.
-      router.replace(redirectUrl || '/owners')
+      const dest =
+        redirectUrl ?? (await resolveOwnerListingHubPath(supabase, userId))
+      router.replace(dest)
     } else if (profile?.role === 'admin') {
       router.replace('/admin')
     } else {

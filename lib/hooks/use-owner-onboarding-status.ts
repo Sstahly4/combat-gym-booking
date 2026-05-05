@@ -18,6 +18,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { ownerHasListingDraft } from '@/lib/manage/resolve-owner-hub-url'
 
 export type OwnerOnboardingStage = 'guest' | 'pending' | 'active'
 
@@ -49,12 +50,9 @@ export function useOwnerOnboardingStatus(): OwnerOnboardingStatus {
     ;(async () => {
       try {
         const supabase = createClient()
-        const { count, error } = await supabase
-          .from('gyms')
-          .select('id', { count: 'exact', head: true })
-          .eq('owner_id', user.id)
+        const has = await ownerHasListingDraft(supabase, user.id)
         if (cancelled) return
-        setHasGym(error ? false : (count ?? 0) > 0)
+        setHasGym(has)
       } finally {
         if (!cancelled) setChecking(false)
       }

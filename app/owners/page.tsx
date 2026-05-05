@@ -350,7 +350,15 @@ export default function OwnersLandingPage() {
     }
 
     if (profile?.role === 'owner') {
-      const ownerHref = ownerResolvedHref ?? buildOnboardingWizardUrl('step-1', null)
+      // While resolving gym + readiness, never imply “continue onboarding” — that was a false
+      // default when `ownerResolvedHref` was null (same UX after sign-out / sign-in).
+      if (ownerResolvedHref === null) {
+        return {
+          label: 'Open partner hub',
+          href: '/manage',
+        }
+      }
+      const ownerHref = ownerResolvedHref
       const onboardingPath = ownerHref.startsWith('/manage/onboarding')
       return {
         label: onboardingPath ? 'Continue onboarding' : 'Owner dashboard',
