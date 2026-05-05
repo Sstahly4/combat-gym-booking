@@ -275,6 +275,8 @@ export default function BookingsListClient() {
               const duration = Math.floor(
                 (new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24)
               )
+              const isTraining = booking.package?.type === 'training'
+              const displayDuration = isTraining ? Math.max(1, duration + 1) : duration
               
               return (
                 <Card key={booking.id} className="border border-gray-300">
@@ -299,7 +301,9 @@ export default function BookingsListClient() {
                         <span className="text-gray-700">
                           {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
                         </span>
-                        <span className="text-gray-500">({duration} {duration === 1 ? 'night' : 'nights'})</span>
+                        <span className="text-gray-500">
+                          ({displayDuration} {isTraining ? (displayDuration === 1 ? 'day' : 'days') : (duration === 1 ? 'night' : 'nights')})
+                        </span>
                       </div>
 
                       {booking.package && (

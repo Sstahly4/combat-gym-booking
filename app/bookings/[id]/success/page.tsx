@@ -202,6 +202,8 @@ export default function PaymentSuccessPage() {
   const duration = Math.floor(
     (new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24)
   )
+  const isTraining = booking.package?.type === 'training'
+  const displayDuration = isTraining ? Math.max(1, duration + 1) : duration
   const mainImage = booking.gym.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
   const confirmationNumber = booking.booking_reference || booking.id
   const pin = booking.booking_pin || 'N/A'
@@ -322,7 +324,9 @@ export default function PaymentSuccessPage() {
         <div className="px-4 pb-4 border-b border-gray-200">
           <div className="text-xs text-gray-500 mb-1">You selected</div>
           <div className="font-semibold text-sm">
-            {duration} {duration === 1 ? 'night' : 'nights'}
+            {isTraining
+              ? `${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
+              : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
           </div>
           {booking.package && (
             <div className="font-semibold text-sm mt-1">

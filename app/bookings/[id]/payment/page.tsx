@@ -243,6 +243,8 @@ export default function PaymentPage() {
   const duration = booking
     ? Math.floor((new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24))
     : 0
+  const isTraining = booking?.package?.type === 'training'
+  const displayDuration = isTraining ? Math.max(1, duration + 1) : duration
 
   const copyAddress = async () => {
     if (!booking?.gym?.address) return
@@ -453,7 +455,9 @@ export default function PaymentPage() {
         <div className="px-4 pb-4 border-b border-gray-200">
           <div className="text-xs text-gray-500 mb-1">You selected</div>
           <div className="font-semibold text-sm">
-            {duration} {duration === 1 ? 'night' : 'nights'}
+            {isTraining
+              ? `${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
+              : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
           </div>
           {booking.package && (
             <div className="font-semibold text-sm mt-1">
@@ -477,7 +481,7 @@ export default function PaymentPage() {
                 {booking.package?.type === 'training' && (
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                      Training package ({displayDuration} {displayDuration === 1 ? 'day' : 'days'})
                     </span>
                     <span className="font-medium text-gray-900">
                       {formatPrice(convertPrice(totalPrice, booking.gym.currency))}
@@ -488,7 +492,7 @@ export default function PaymentPage() {
                   <>
                     <div className="flex justify-between">
                       <span className="text-gray-700">
-                        Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                        Training package ({duration + 1} {duration + 1 === 1 ? 'day' : 'days'})
                       </span>
                       <span className="font-medium text-gray-900">
                         {formatPrice(convertPrice(Math.round(totalPrice * 0.6), booking.gym.currency))}
@@ -701,7 +705,9 @@ export default function PaymentPage() {
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Total length of stay:</div>
                   <div className="font-semibold">
-                    {duration} {duration === 1 ? 'night' : 'nights'}
+                    {isTraining
+                      ? `${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
+                      : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
                   </div>
                 </div>
                 
@@ -733,7 +739,7 @@ export default function PaymentPage() {
                   {booking.package?.type === 'training' && (
                   <div className="flex justify-between">
                       <span className="text-gray-700">
-                        Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                        Training package ({displayDuration} {displayDuration === 1 ? 'day' : 'days'})
                     </span>
                       <span className="font-medium text-gray-900">
                       {formatPrice(convertPrice(totalPrice, booking.gym.currency))}
@@ -746,7 +752,7 @@ export default function PaymentPage() {
                     <>
                       <div className="flex justify-between">
                         <span className="text-gray-700">
-                          Training package ({duration} {duration === 1 ? 'day' : 'days'})
+                          Training package ({duration + 1} {duration + 1 === 1 ? 'day' : 'days'})
                         </span>
                         <span className="font-medium text-gray-900">
                           {formatPrice(convertPrice(Math.round(totalPrice * 0.6), booking.gym.currency))}
