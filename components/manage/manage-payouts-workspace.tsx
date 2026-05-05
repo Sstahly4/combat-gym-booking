@@ -308,24 +308,6 @@ export function ManagePayoutsWorkspace() {
                       </section>
                     ) : null}
 
-                    <section className={`${dashCard} overflow-hidden`}>
-                      <header className="border-b border-gray-100 px-5 py-4">
-                        <h3 className="text-base font-semibold text-gray-900">Payout activity &amp; exports</h3>
-                        <p className="mt-0.5 text-sm text-gray-500">
-                          Dates, transfer status, and downloadable detail for this listing live on your Balances
-                          dashboard—same place you track earnings day to day.
-                        </p>
-                      </header>
-                      <div className="px-5 py-5 sm:px-6">
-                        <Link
-                          href={`/manage/balances?gym_id=${encodeURIComponent(gym.id)}`}
-                          className="inline-flex h-9 items-center rounded-md bg-[#003580] px-4 text-sm font-medium text-white hover:bg-[#002a5c]"
-                        >
-                          Open Balances
-                        </Link>
-                      </div>
-                    </section>
-
                     <section id="account-management" className={`${dashCard} overflow-hidden`}>
                       <header className="border-b border-gray-100 px-5 py-4">
                         <h3 className="text-base font-semibold text-gray-900">Account &amp; bank details</h3>

@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
-import { gymCountryToStripeIso2 } from '@/lib/stripe/gym-country'
 import { cn } from '@/lib/utils'
 import type { Gym } from '@/lib/types/database'
 
 const dashCard =
   'rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03]'
+
+const statTile =
+  'rounded-xl border border-gray-200/80 bg-gray-50/40 px-4 py-3.5 sm:min-h-[5.5rem]'
 
 type Props = {
   gymId: string
@@ -18,46 +20,48 @@ type Props = {
   accountEmail: string | null
   defaultAccountHolderName: string
   onGymRefresh: () => void
-  /** Fires on first user intent to run Stripe setup so the parent can load embedded tools. */
   onStripeSetupStarted?: () => void
 }
 
-function payoutCurrencyLabel(gym: Gym): string {
+function payoutCurrencyCode(gym: Gym): string {
   return normalizeGymCurrency((gym.currency || 'THB') as string, 'THB')
 }
 
-function StripePayoutExplainer({ gym }: { gym: Gym }) {
-  const ccy = payoutCurrencyLabel(gym)
-  const iso2 = gymCountryToStripeIso2(gym.country)
-  const thailand = iso2 === 'TH'
+function currencyTitle(code: string): string {
+  try {
+    const name = new Intl.DisplayNames(['en'], { type: 'currency', style: 'long' }).of(code)
+    if (name) return `${name} (${code})`
+  } catch {
+    /* ignore */
+  }
+  return code
+}
+
+function PayoutStatCards({ gym }: { gym: Gym }) {
+  const code = payoutCurrencyCode(gym)
+  const title = currencyTitle(code)
 
   return (
-    <div className="space-y-3 text-sm leading-relaxed text-gray-700">
-      <p>
-        Guest payments are settled through <strong className="font-semibold text-gray-900">Stripe</strong>. Stripe
-        sends payouts in <strong className="font-semibold text-gray-900">{ccy}</strong> to the local bank account you
-        add during setup—same currency as your listing, so what you see is what lands in your bank for payouts.
-      </p>
-      {thailand ? (
-        <p>
-          For Thailand, that typically means <strong className="font-semibold text-gray-900">THB</strong> deposited to
-          a domestic account (for example Kasikorn, Bangkok Bank, SCB, or Krungthai), once Stripe has verified your
-          details.
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={statTile}>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Payout currency</p>
+        <p className="mt-1.5 text-sm font-semibold text-gray-900">{title}</p>
+        <p className="mt-1 text-xs leading-snug text-gray-600">Matched to your listing</p>
+      </div>
+      <div className={statTile}>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Schedule</p>
+        <p className="mt-1.5 text-sm font-semibold text-gray-900">Stripe automatic</p>
+        <p className="mt-1 text-xs leading-snug text-gray-600">
+          Bank payouts after cleared balance—arrival dates show in Balances.
         </p>
-      ) : (
-        <p>
-          Use a bank account in the country and currency Stripe expects for your listing; domestic transfers usually
-          arrive on Stripe&apos;s standard schedule.
+      </div>
+      <div className={statTile}>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Fees</p>
+        <p className="mt-1.5 text-sm font-semibold text-gray-900">CombatStay platform fee</p>
+        <p className="mt-1 text-xs leading-snug text-gray-600">
+          From each booking total (no guest price markup). Card processing is billed by Stripe.
         </p>
-      )}
-      <p className="text-xs leading-relaxed text-gray-600">
-        Standard payout timing is usually free or low-cost on Stripe&apos;s default schedule. If a currency conversion
-        applies, Stripe uses its published rates—any charges are shown before you confirm in their flow.
-      </p>
-      <p className="border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
-        We route every partner through the same payout checks with Stripe—identity and bank details verified the same
-        way—so earnings stay fair, traceable, and secure for everyone on the platform.
-      </p>
+      </div>
     </div>
   )
 }
@@ -77,6 +81,17 @@ export function ManagePayoutPreferencesForm({
 
   const payoutComplete = Boolean(gym.stripe_connect_verified)
   const hasStripeAccount = Boolean(gym.stripe_account_id)
+
+  const primaryCtaLabel = hasStripeAccount ? 'Continue payout setup' : 'Start payout setup'
+
+  const instructionNote = useMemo(() => {
+    return (
+      <>
+        Click <strong className="font-semibold text-gray-900">{primaryCtaLabel}</strong> below. A secure verification
+        window may open—if you&apos;re new, enter any email to continue. It closes automatically and returns you here.
+      </>
+    )
+  }, [primaryCtaLabel])
 
   const openStripeConnectFlow = async () => {
     onStripeSetupStarted?.()
@@ -127,55 +142,48 @@ export function ManagePayoutPreferencesForm({
       ) : null}
 
       <section className={cn(dashCard, 'overflow-hidden')}>
-        <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-gray-900">Payouts</h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
-            One short setup links your bank so earnings from bookings can be paid out automatically.
-          </p>
-        </div>
-
         <div className="space-y-5 p-5 sm:p-6">
-          <StripePayoutExplainer gym={gym} />
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-gray-900">Payouts</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-700">
+              Earnings from bookings are paid directly to your bank account in your local currency—no international wire
+              fees.
+            </p>
+          </div>
+
+          <PayoutStatCards gym={gym} />
 
           {!payoutComplete ? (
-            <div className="flex flex-col gap-4 border-t border-gray-100 pt-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-              <div className="max-w-xl space-y-2 text-xs leading-relaxed text-gray-600">
-                <p>
-                  Use the button to start. A secure Stripe window may open for verification—if you are new to Stripe,
-                  enter an email there to continue. When that window closes, you pick up here automatically.
-                </p>
-                <p className="text-gray-500">
-                  Remaining steps run below on this page; Balances shows activity when your account is ready.
-                </p>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-sm leading-relaxed text-gray-700">
+                {instructionNote}
               </div>
               <Button
                 type="button"
                 onClick={() => void openStripeConnectFlow()}
                 disabled={savingRail}
-                className="h-9 shrink-0 bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto"
+                className="h-10 w-full bg-[#003580] px-5 text-sm font-medium text-white hover:bg-[#002a5c] sm:w-auto sm:min-w-[12rem]"
               >
                 {savingRail ? (
                   <>
                     <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden />
                     Preparing…
                   </>
-                ) : hasStripeAccount ? (
-                  'Continue payout setup'
                 ) : (
-                  'Start payout setup'
+                  primaryCtaLabel
                 )}
               </Button>
             </div>
           ) : (
-            <p className="border-t border-gray-100 pt-5 text-sm text-gray-600">
-              Your payout account is connected. Payout dates, transfers, and exports for this listing are on{' '}
+            <p className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-4 py-3 text-sm leading-relaxed text-emerald-950">
+              You&apos;re set up for payouts. Activity and exports for this listing are on{' '}
               <Link
                 href={`/manage/balances?gym_id=${encodeURIComponent(gymId)}`}
-                className="font-medium text-[#003580] underline-offset-2 hover:underline"
+                className="font-semibold text-[#003580] underline-offset-2 hover:underline"
               >
                 Balances
               </Link>
-              . Update bank details or verification in the section below if Stripe requests them.
+              . Bank details below if Stripe needs an update.
             </p>
           )}
         </div>
