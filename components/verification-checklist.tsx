@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import type { Gym } from '@/lib/types/database'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 
 interface VerificationChecklistProps {
   gym: Gym
@@ -25,6 +27,7 @@ type Step = {
 }
 
 export function VerificationChecklist({ gym }: VerificationChecklistProps) {
+  const { profile } = useAuth()
   const [stripeStatus, setStripeStatus] = useState<{
     verified: boolean
     has_account: boolean
@@ -57,10 +60,18 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
   const wisePayoutOk = Boolean(gym.wise_payout_ready && gym.wise_recipient_id)
   const stripePayoutOk = Boolean(stripeStatus?.verified)
 
+  const partnerAgreementOk = Boolean(
+    profile?.placeholder_account === true ||
+      profile?.role === 'admin' ||
+      (profile?.partner_agreement_signed_at &&
+        profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION),
+  )
+
   const requirements = useMemo(
     () => ({
       googleMaps: !!gym.google_maps_link,
       socialMedia: !!(gym.instagram_link || gym.facebook_link),
+      partnerAgreement: partnerAgreementOk,
       payouts:
         payoutRail === 'stripe_connect' ? stripePayoutOk : wisePayoutOk,
       adminApproved: gym.admin_approved || false,
@@ -73,12 +84,13 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       payoutRail,
       stripePayoutOk,
       wisePayoutOk,
+      partnerAgreementOk,
     ]
   )
 
   const verificationStatus = gym.verification_status
   const completedCount = Object.values(requirements).filter(Boolean).length
-  const totalSteps = 4
+  const totalSteps = 5
   const progressPct = Math.round((completedCount / totalSteps) * 100)
 
   const steps: Step[] = useMemo(
@@ -107,6 +119,18 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
             ? gym.instagram_link || gym.facebook_link || undefined
             : undefined,
         href: !requirements.socialMedia ? `/manage/gym/edit?id=${gym.id}&section=basic` : undefined,
+      },
+      {
+        id: 'partner_agreement',
+        title: 'Partner Agreement',
+        description: requirements.partnerAgreement
+          ? 'Platform terms are accepted and on file.'
+          : profile?.placeholder_account
+            ? 'Finish claiming your account from the dashboard prompt, then sign here.'
+            : 'Sign the CombatStay Partner Agreement under Settings → Payouts (required before go-live).',
+        done: requirements.partnerAgreement,
+        actionLabel: requirements.partnerAgreement ? 'View payouts' : 'Sign agreement',
+        href: manageSettingsPayoutsHref(gym.id, 'partner-agreement'),
       },
       {
         id: 'payouts',
@@ -155,6 +179,10 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       requirements,
       stripeStatus?.has_account,
       payoutRail,
+      profile?.placeholder_account,
+      profile?.partner_agreement_signed_at,
+      profile?.partner_agreement_version,
+      profile?.role,
     ]
   )
 

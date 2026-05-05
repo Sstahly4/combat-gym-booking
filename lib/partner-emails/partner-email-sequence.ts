@@ -116,7 +116,7 @@ export async function sendPartnerChecklistEmail(params: {
     readinessChecklistHtml(params.readiness, params.gymName),
     divider(),
     paragraph(
-      `Step 4 (Policies) includes signing your <strong>Partner Agreement</strong> — required before you can go live. Cancellation preferences are in the same step.`,
+      `Sign your <strong>Partner Agreement</strong> under <strong>Settings → Payouts</strong> (required before you can go live). You can also complete it from onboarding Step 4 (Policies).`,
       { muted: true },
     ),
     primaryButton(cta.href, cta.label),

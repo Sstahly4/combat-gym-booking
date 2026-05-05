@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ManagePayoutPreferencesForm } from '@/components/manage/manage-payout-preferences-form'
+import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement-sign-panel'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
 import type { Gym } from '@/lib/types/database'
 
@@ -193,7 +194,7 @@ export function ManagePayoutsWorkspace() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const h = window.location.hash.slice(1)
-    if (h !== 'account-management' && h !== 'stripe-onboarding') return
+    if (h !== 'account-management' && h !== 'stripe-onboarding' && h !== 'partner-agreement') return
     const el = document.getElementById(h)
     if (!el) return
     const t = window.setTimeout(() => {
@@ -253,6 +254,7 @@ export function ManagePayoutsWorkspace() {
         <div className={`${dashCard} px-5 py-6 text-sm text-rose-700`}>{gymError || 'Gym not found.'}</div>
       ) : (
         <div className="space-y-8">
+          <PartnerAgreementSignPanel gymId={gym.id} />
           <ManagePayoutPreferencesForm
             gymId={gym.id}
             gym={gym}

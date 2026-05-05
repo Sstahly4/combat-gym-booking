@@ -86,7 +86,10 @@ export default function ManageVerificationPage() {
         <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Verification' }]} />
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Verification</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">
-          Complete each step so your gym can go live. Progress saves as you edit your profile and set up payouts.
+          Complete each step so your gym can go live — including the{' '}
+          <strong className="font-medium text-gray-700">Partner Agreement</strong> under{' '}
+          <strong className="font-medium text-gray-700">Settings → Payouts</strong>. Progress saves as you edit your
+          profile and set up payouts.
         </p>
         <div className="mt-6 sm:mt-8">
           <VerificationChecklist gym={gym} />

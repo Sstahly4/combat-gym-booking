@@ -185,8 +185,8 @@ export async function getGymReadiness({
       reason:
         hasSignedCurrentPartnerAgreement || partnerAgreementWaived
           ? null
-          : 'Review and accept the Partner Agreement in Policies (Step 4).',
-      deepLink: buildOnboardingWizardUrl('step-4', gymId),
+          : 'Review and accept the Partner Agreement under Settings → Payouts.',
+      deepLink: manageSettingsPayoutsHref(gymId, 'partner-agreement'),
     },
   ]
 

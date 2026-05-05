@@ -40,7 +40,8 @@ export const OWNER_WIZARD_STEPS: OwnerWizardStepDefinition[] = [
     key: 'policy',
     slug: 'step-4',
     label: 'Policies',
-    description: 'Cancellation rules default to flexible until you set a preference.',
+    description:
+      'Partner Agreement (same signing flow as Settings → Payouts) plus cancellation preferences — flexible by default until you change them.',
     deepLinkPath: '/manage/gym/edit',
   },
   {
