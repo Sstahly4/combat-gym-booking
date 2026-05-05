@@ -369,7 +369,7 @@ export function ManageNoBookingsToastHost() {
   return (
     <div
       className={cn(
-        'fixed right-4 top-20 z-50 w-[min(100vw-2rem,24rem)] max-w-sm md:right-8',
+        'fixed right-4 top-32 z-50 w-[min(100vw-2rem,24rem)] max-w-sm md:right-8 md:top-20',
         idleNormal ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       aria-live="polite"

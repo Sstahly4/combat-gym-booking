@@ -52,8 +52,10 @@ export function OwnerWizardSidebar({
                 onClick={() => onStepClick?.(step.index)}
                 aria-current={current ? 'step' : undefined}
                 className={cn(
-                  'group flex w-full items-start gap-3 rounded-md py-2 pl-1 pr-2 text-left transition-colors',
-                  canNavigate && 'hover:bg-gray-50',
+                  'group flex w-full items-start gap-3 rounded-md pl-1 pr-2 text-left transition-colors',
+                  /** Comfortable taps on phones; lg+ sidebar keeps tighter vertical rhythm */
+                  'min-h-11 py-3 lg:min-h-0 lg:py-2',
+                  canNavigate && 'hover:bg-gray-50 active:bg-gray-50/80 lg:active:bg-transparent',
                   !canNavigate && 'cursor-default'
                 )}
               >

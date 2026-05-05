@@ -124,7 +124,7 @@ export function DashboardNoBookingsToast({
   return (
     <div
       role="status"
-      className={`pointer-events-auto fixed right-4 top-20 z-50 max-w-sm transition-all duration-300 ease-out md:right-8 ${
+      className={`pointer-events-auto fixed right-4 top-32 z-50 max-w-sm transition-all duration-300 ease-out md:right-8 md:top-20 ${
         entered ? 'translate-x-0 translate-y-0 opacity-100' : 'translate-x-2 -translate-y-2 opacity-0'
       }`}
     >

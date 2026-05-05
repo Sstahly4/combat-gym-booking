@@ -1493,6 +1493,28 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           </header>
         ) : null}
 
+        {!embedInAdmin ? (
+          <details className="group mb-8 rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:hidden [&_summary::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[14px] font-medium text-gray-900">
+              <span>All listing steps ({wizardSteps.length})</span>
+              <span className="shrink-0 text-xs font-normal text-gray-500 group-open:hidden">
+                Show
+              </span>
+              <span className="hidden shrink-0 text-xs font-normal text-gray-500 group-open:inline">
+                Hide
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-2 pb-4 pt-2">
+              <OwnerWizardSidebar
+                steps={wizardSteps}
+                currentIndex={step.index}
+                completedKeys={completedKeys}
+                onStepClick={goToWizardStep}
+              />
+            </div>
+          </details>
+        ) : null}
+
         <div className="grid gap-10 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-16 xl:gap-20">
           {/* Listing setup steps: desktop + large tablet only — mobile is one continuous scroll */}
           <aside className="hidden lg:block lg:sticky lg:top-8 lg:self-start">
@@ -1517,7 +1539,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             ) : null}
 
             <div className="space-y-6">
-              <div className="space-y-7 rounded-2xl border border-gray-200/80 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:space-y-9 md:p-10">
+              <div className="space-y-6 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:space-y-7 sm:p-7 md:space-y-9 md:p-10">
                 {step.key === 'basics' && (
                   <div className="space-y-7">
                     <div>
@@ -2335,8 +2357,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
       {/* Sticky footer action bar — consistent with security onboarding */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/80 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-3.5">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-3.5">
+          <div className="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-between sm:gap-3">
             {!embedInAdmin ? (
               <p className="min-w-0 truncate text-[11px] font-medium tabular-nums text-gray-500 sm:text-[12px]">
                 {isMigratedStep && totalBasicSubSteps > 1 ? (
@@ -2382,7 +2404,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&_a]:w-full [&_button]:w-full sm:[&_a]:w-auto sm:[&_button]:w-auto">
             {stepIsComplete && !isMigratedStep && !(embedInAdmin && step.key === 'finalize') ? (
               <Button
                 onClick={() => void saveStepCompletion(false)}

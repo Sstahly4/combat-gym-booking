@@ -601,12 +601,14 @@ export default function ManagePage() {
           )}
         </div>
 
-        <DashboardSetupGuide
-          requiredReadiness={requiredReadiness}
-          optionalReadiness={optionalReadiness}
-          readinessGymId={readinessGymId}
-          canGoLive={canGoLive}
-        />
+        <div className="hidden md:block">
+          <DashboardSetupGuide
+            requiredReadiness={requiredReadiness}
+            optionalReadiness={optionalReadiness}
+            readinessGymId={readinessGymId}
+            canGoLive={canGoLive}
+          />
+        </div>
     </div>
   )
 }

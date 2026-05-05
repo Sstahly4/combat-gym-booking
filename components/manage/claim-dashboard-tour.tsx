@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +95,63 @@ const STEPS: TourStep[] = [
   },
 ]
 
+/** Narrow screens: no sidebar anchors (nav is in a menu drawer). All steps stay centered. */
+const STEPS_MOBILE: TourStep[] = [
+  {
+    id: 'welcome',
+    anchor: null,
+    title: 'Welcome to your partner dashboard',
+    paragraphs: [
+      'Your gym was pre-listed so you are not starting from zero. From here you manage your listing, bookings, and payouts when you are ready.',
+      'Tap the menu (☰) at the top to open Balances, Edit gym, Settings, and more.',
+      'This short tour covers the essentials. Skip anytime.',
+    ],
+  },
+  {
+    id: 'pricing',
+    anchor: null,
+    title: 'Rates and packages',
+    paragraphs: [
+      'Guests expect what they see on CombatStay to match what you offer. Review packages and pricing before you take bookings.',
+      'Open Edit gym from the menu when you want to adjust what guests see.',
+    ],
+  },
+  {
+    id: 'edit-gym',
+    anchor: null,
+    title: 'Edit gym',
+    paragraphs: [
+      'Listing details, photos, schedule, and policies are edited from Edit gym in the menu (☰).',
+    ],
+  },
+  {
+    id: 'payouts',
+    anchor: null,
+    title: 'How you get paid',
+    paragraphs: [
+      'Open Balances from the menu for live totals and payout activity when you use Stripe Connect.',
+      'Set up Wise or Stripe under Settings → Payouts (gear icon). You can finish payment details before you accept paid bookings.',
+    ],
+  },
+  {
+    id: 'setup-checklist-mobile',
+    anchor: null,
+    title: 'Complete setup before going live',
+    paragraphs: [
+      'The checklist is easiest on a larger screen. On your phone, use List your gym or Help from the menu to finish listing, rates, photos, and payments.',
+      'When every required step is done, run the final review so your listing can go visible to guests.',
+    ],
+  },
+  {
+    id: 'wrap-up',
+    anchor: null,
+    title: 'Preview as a guest',
+    paragraphs: [
+      'Use View listing in the menu to see the public page. Verification builds trust; Help center is there if you need it.',
+    ],
+  },
+]
+
 function profileNeedsClaimPassword(profile: unknown): boolean {
   const p = profile as { placeholder_account?: boolean | null; claim_password_set?: boolean | null } | null
   if (!p) return true
@@ -115,14 +173,16 @@ export function ClaimDashboardTour() {
   const { profile, loading, refreshProfile } = useAuth()
   const router = useRouter()
   const pathname = usePathname() ?? ''
+  const narrow = useIsNarrowForManageSidebar()
+  const steps = narrow ? STEPS_MOBILE : STEPS
   const [enterAllowed, setEnterAllowed] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const [cardBox, setCardBox] = useState<{ top: number; left: number; maxWidth: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [dismissError, setDismissError] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  const step = STEPS[stepIndex]
-  const lastStep = stepIndex === STEPS.length - 1
+  const step = steps[stepIndex]
+  const lastStep = stepIndex === steps.length - 1
   const dismissingRef = useRef(false)
 
   const needsPassword = useMemo(() => profileNeedsClaimPassword(profile), [profile])
@@ -140,6 +200,10 @@ export function ClaimDashboardTour() {
   }, [loading, tourPending, isOwner, needsPassword])
 
   const recomputeCardPosition = useCallback(() => {
+    if (narrow) {
+      setCardBox(null)
+      return
+    }
     const anchorId = step.anchor
     // Setup guide is a fixed corner panel; anchoring the dialog beside it often pushes it off-screen.
     // We keep the highlight on the panel but show this step as a centered dialog (same as welcome/pricing).
@@ -168,7 +232,7 @@ export function ClaimDashboardTour() {
     const left = Math.min(Math.max(margin, ar.left), window.innerWidth - maxW - margin)
 
     setCardBox({ top, left, maxWidth: maxW })
-  }, [step.anchor, step.id])
+  }, [narrow, step.anchor, step.id])
 
   useLayoutEffect(() => {
     if (!enterAllowed || !tourPending) return
@@ -229,6 +293,7 @@ export function ClaimDashboardTour() {
 
   useEffect(() => {
     if (!enterAllowed || !tourPending) return
+    if (narrow) return
     let anchorEl: HTMLElement | null = null
     const anchorId = step.anchor
     if (anchorId) {
@@ -239,7 +304,7 @@ export function ClaimDashboardTour() {
     return () => {
       anchorEl?.classList.remove(...CLAIM_TOUR_HIGHLIGHT)
     }
-  }, [enterAllowed, tourPending, step.anchor, stepIndex])
+  }, [enterAllowed, tourPending, narrow, step.anchor, stepIndex])
 
   useEffect(() => {
     setDismissError(null)
@@ -287,7 +352,7 @@ export function ClaimDashboardTour() {
 
   /** Setup guide: checklist only on dashboard home — navigate there, expand panel, reposition after layout. */
   useEffect(() => {
-    if (!showTour || step.id !== 'setup-guide') return
+    if (!showTour || step.id !== 'setup-guide' || narrow) return
     const home = pathname === '/manage' || pathname === '/manage/'
     if (!home) {
       router.replace('/manage')
@@ -302,7 +367,7 @@ export function ClaimDashboardTour() {
       window.cancelAnimationFrame(id1)
       window.clearTimeout(timer)
     }
-  }, [showTour, step.id, pathname, router, recomputeCardPosition])
+  }, [showTour, step.id, narrow, pathname, router, recomputeCardPosition])
 
   useBodyScrollLock(showTour)
 
@@ -310,7 +375,7 @@ export function ClaimDashboardTour() {
     return null
   }
 
-  const centered = !step.anchor || !cardBox || step.id === 'setup-guide'
+  const centered = narrow || !step.anchor || !cardBox || step.id === 'setup-guide'
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[85] motion-safe:transition-opacity motion-reduce:transition-none">
@@ -326,7 +391,7 @@ export function ClaimDashboardTour() {
         className={cn(
           'pointer-events-auto fixed max-h-[min(78vh,32rem)] overflow-y-auto rounded-2xl border border-stone-200/90 bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.25)] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-200 motion-reduce:animate-none',
           centered
-            ? 'left-1/2 top-1/2 w-[min(100vw-1.5rem,26rem)] -translate-x-1/2 -translate-y-1/2 p-6 sm:p-7'
+            ? 'left-1/2 w-[min(100vw-1.5rem,26rem)] -translate-x-1/2 p-6 sm:p-7 max-md:bottom-[max(1rem,env(safe-area-inset-bottom))] max-md:top-auto max-md:max-h-[min(85vh,34rem)] max-md:-translate-y-0 md:top-1/2 md:-translate-y-1/2'
             : 'p-6 sm:p-7'
         )}
         style={
@@ -363,7 +428,7 @@ export function ClaimDashboardTour() {
               </Button>
             ) : null}
             <span className="text-xs text-stone-400">
-              Step {stepIndex + 1} of {STEPS.length}
+              Step {stepIndex + 1} of {steps.length}
             </span>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -373,7 +438,7 @@ export function ClaimDashboardTour() {
                 data-tour-primary="1"
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
                 disabled={submitting}
-                onClick={() => setStepIndex((i) => Math.min(STEPS.length - 1, i + 1))}
+                onClick={() => setStepIndex((i) => Math.min(steps.length - 1, i + 1))}
               >
                 Next
               </Button>

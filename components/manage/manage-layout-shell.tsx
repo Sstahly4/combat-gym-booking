@@ -107,7 +107,7 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
         onSelectGym={profile?.role === 'owner' ? setActiveGymId : undefined}
         gymContextLoading={profile?.role === 'owner' || profile?.role === 'admin' ? loading : false}
       />
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden md:ml-56 md:h-[calc(100svh-5rem)] md:max-h-[calc(100svh-5rem)] md:overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-32 md:ml-56 md:pt-0 md:h-[calc(100svh-5rem)] md:max-h-[calc(100svh-5rem)] md:overflow-y-auto">
         {children}
       </div>
     </div>
