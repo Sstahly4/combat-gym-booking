@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
@@ -52,6 +53,10 @@ function StripePayoutExplainer({ gym }: { gym: Gym }) {
       <p className="text-xs leading-relaxed text-gray-600">
         Standard payout timing is usually free or low-cost on Stripe&apos;s default schedule. If a currency conversion
         applies, Stripe uses its published rates—any charges are shown before you confirm in their flow.
+      </p>
+      <p className="border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
+        We route every partner through the same payout checks with Stripe—identity and bank details verified the same
+        way—so earnings stay fair, traceable, and secure for everyone on the platform.
       </p>
     </div>
   )
@@ -163,8 +168,14 @@ export function ManagePayoutPreferencesForm({
             </div>
           ) : (
             <p className="border-t border-gray-100 pt-5 text-sm text-gray-600">
-              Your payout account is connected. Update bank details or verification in the sections below if Stripe
-              requests them.
+              Your payout account is connected. Payout dates, transfers, and exports for this listing are on{' '}
+              <Link
+                href={`/manage/balances?gym_id=${encodeURIComponent(gymId)}`}
+                className="font-medium text-[#003580] underline-offset-2 hover:underline"
+              >
+                Balances
+              </Link>
+              . Update bank details or verification in the section below if Stripe requests them.
             </p>
           )}
         </div>

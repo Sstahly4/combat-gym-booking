@@ -9,12 +9,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { loadConnectAndInitialize } from '@stripe/connect-js'
-import {
-  ConnectComponentsProvider,
-  ConnectPayouts,
-  ConnectAccountManagement,
-  ConnectAccountOnboarding,
-} from '@stripe/react-connect-js'
+import { ConnectComponentsProvider, ConnectAccountManagement, ConnectAccountOnboarding } from '@stripe/react-connect-js'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useActiveGym } from '@/components/manage/active-gym-context'
@@ -272,14 +267,14 @@ export function ManagePayoutsWorkspace() {
               {connectLoading ? (
                 <div className={`${dashCard} flex items-center justify-center px-5 py-12 text-gray-400`}>
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  <span className="ml-2 text-sm">Loading payout tools…</span>
+                  <span className="ml-2 text-sm">Loading account tools…</span>
                 </div>
               ) : connectError ? (
                 <div className={`${dashCard} px-5 py-6`}>
                   <p className="text-sm font-medium text-rose-700">{connectError}</p>
                   <p className="mt-2 text-sm text-gray-600">
                     Use <strong className="font-semibold text-gray-900">Start payout setup</strong> above so we can
-                    create your connected account, then embedded tools load here.
+                    create your connected account, then account tools load here.
                   </p>
                 </div>
               ) : connectInstance ? (
@@ -315,13 +310,19 @@ export function ManagePayoutsWorkspace() {
 
                     <section className={`${dashCard} overflow-hidden`}>
                       <header className="border-b border-gray-100 px-5 py-4">
-                        <h3 className="text-base font-semibold text-gray-900">Payout activity</h3>
+                        <h3 className="text-base font-semibold text-gray-900">Payout activity &amp; exports</h3>
                         <p className="mt-0.5 text-sm text-gray-500">
-                          Balance, payout schedule, and transfer history for your connected account.
+                          Dates, transfer status, and downloadable detail for this listing live on your Balances
+                          dashboard—same place you track earnings day to day.
                         </p>
                       </header>
-                      <div className="px-2 py-3 sm:px-4">
-                        <ConnectPayouts />
+                      <div className="px-5 py-5 sm:px-6">
+                        <Link
+                          href={`/manage/balances?gym_id=${encodeURIComponent(gym.id)}`}
+                          className="inline-flex h-9 items-center rounded-md bg-[#003580] px-4 text-sm font-medium text-white hover:bg-[#002a5c]"
+                        >
+                          Open Balances
+                        </Link>
                       </div>
                     </section>
 

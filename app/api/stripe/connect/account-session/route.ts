@@ -2,7 +2,8 @@
  * POST /api/stripe/connect/account-session
  *
  * Creates a short-lived Stripe AccountSession for the embedded Connect
- * components on the Partner Hub Payouts page. The returned `client_secret`
+ * components on the Partner Hub Payouts page (onboarding + bank details only;
+ * payout activity lives on Balances). The returned `client_secret`
  * is consumed by `<ConnectComponentsProvider />` on the client.
  *
  * Body:  { gym_id: string }
@@ -57,7 +58,6 @@ export async function POST(request: Request) {
       account: gym.stripe_account_id as string,
       components: {
         account_onboarding: { enabled: true },
-        payouts: { enabled: true },
         account_management: { enabled: true },
       },
     })
