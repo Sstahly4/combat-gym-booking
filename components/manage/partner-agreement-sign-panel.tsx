@@ -8,11 +8,66 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { clearReadinessSessionCache } from '@/lib/onboarding/readiness-session-cache'
+import type { AgreementBlock } from '@/lib/legal/partner-agreement-document'
 import {
+  AGREEMENT_META,
+  AGREEMENT_SECTIONS,
   CURRENT_PARTNER_AGREEMENT_VERSION,
   PARTNER_AGREEMENT_EFFECTIVE_LABEL,
-  PARTNER_AGREEMENT_SECTIONS,
 } from '@/lib/legal/partner-agreement-document'
+
+function AgreementBlocks({ blocks }: { blocks: AgreementBlock[] }) {
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        const key = `${block.type}-${i}`
+        if (block.type === 'paragraph') {
+          return (
+            <p key={key} className="whitespace-pre-line text-[13px] leading-relaxed text-gray-700">
+              {block.text}
+            </p>
+          )
+        }
+        if (block.type === 'note') {
+          return (
+            <p
+              key={key}
+              className="whitespace-pre-line border-l-2 border-amber-300/90 bg-amber-50/60 py-2 pl-3 pr-2 text-[12.5px] italic leading-relaxed text-amber-950/90"
+            >
+              {block.text}
+            </p>
+          )
+        }
+        if (block.type === 'bullets') {
+          return (
+            <ul key={key} className="list-disc space-y-1.5 pl-5 text-[13px] leading-relaxed text-gray-700">
+              {block.items.map((item, j) => (
+                <li key={j}>{item}</li>
+              ))}
+            </ul>
+          )
+        }
+        return (
+          <div
+            key={key}
+            className="my-1 overflow-x-auto rounded-lg border border-gray-200/90 bg-gray-50/40 text-[12px]"
+          >
+            <table className="w-full min-w-[280px] text-left">
+              <tbody>
+                {block.rows.map(([k, v], r) => (
+                  <tr key={r} className="border-t border-gray-200/80 first:border-t-0">
+                    <td className="w-[34%] align-top px-2.5 py-2 font-medium text-gray-900">{k}</td>
+                    <td className="align-top px-2.5 py-2 text-gray-700">{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const fieldClass =
   'flex h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-[15px] text-gray-900 shadow-sm transition placeholder:text-gray-400 focus-visible:border-[#003580] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/20'
@@ -180,20 +235,32 @@ export function PartnerAgreementSignPanel({
             </span>
           </div>
           <div
-            className="max-h-[min(380px,52vh)] overflow-y-auto rounded-xl border border-gray-100 bg-white px-5 py-5 text-[13px] leading-[1.65] text-gray-700 scroll-smooth"
+            className="max-h-[min(520px,62vh)] overflow-y-auto rounded-xl border border-gray-100 bg-white px-5 py-5 text-[13px] leading-[1.65] text-gray-700 scroll-smooth"
             tabIndex={0}
             role="region"
             aria-label="Partner agreement text"
           >
-            <p className="text-[12px] font-medium text-gray-500">Effective {PARTNER_AGREEMENT_EFFECTIVE_LABEL}</p>
-            <div className="mt-5 space-y-6">
-              {PARTNER_AGREEMENT_SECTIONS.map((section) => (
-                <div key={section.title} className="space-y-2">
-                  <p className="text-[13px] font-semibold text-gray-900">{section.title}</p>
-                  {section.paragraphs.map((para, i) => (
-                    <p key={i} className="text-[13px] leading-relaxed text-gray-700">
-                      {para}
-                    </p>
+            <div className="space-y-1 border-b border-gray-100 pb-4">
+              <p className="text-center text-[13px] font-bold uppercase tracking-wide text-gray-900">
+                {AGREEMENT_META.title}
+              </p>
+              <p className="text-center text-[12px] text-gray-600">{PARTNER_AGREEMENT_EFFECTIVE_LABEL}</p>
+              <p className="text-center text-[11px] text-gray-500">
+                {AGREEMENT_META.issuingParty} · ABN {AGREEMENT_META.abn} · {AGREEMENT_META.website}
+              </p>
+            </div>
+            <div className="mt-5 space-y-8">
+              {AGREEMENT_SECTIONS.map((section) => (
+                <div key={section.key} className="space-y-3">
+                  {section.heading ? (
+                    <p className="text-[13px] font-semibold text-gray-900">{section.heading}</p>
+                  ) : null}
+                  {section.body ? <AgreementBlocks blocks={section.body} /> : null}
+                  {section.subsections?.map((sub) => (
+                    <div key={sub.key} className="space-y-2 pl-0 sm:pl-1">
+                      <p className="text-[12.5px] font-semibold text-gray-800">{sub.heading}</p>
+                      <AgreementBlocks blocks={sub.body} />
+                    </div>
                   ))}
                 </div>
               ))}

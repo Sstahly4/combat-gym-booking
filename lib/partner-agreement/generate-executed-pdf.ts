@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 import {
+  AGREEMENT_META,
   CURRENT_PARTNER_AGREEMENT_VERSION,
   PARTNER_AGREEMENT_EFFECTIVE_LABEL,
   partnerAgreementPlainTextForPdf,
@@ -34,7 +35,7 @@ function wrapLines(text: string, maxChars: number): string[] {
 }
 
 /**
- * Returns PDF bytes for an executed partner agreement (summary + full terms excerpt).
+ * Returns PDF bytes for an executed partner agreement (acceptance record + full agreement text).
  */
 export async function generateExecutedPartnerAgreementPdf(
   input: ExecutedPartnerAgreementPdfInput,
@@ -81,7 +82,7 @@ export async function generateExecutedPartnerAgreementPdf(
     y -= 4
   }
 
-  drawLine('CombatStay — executed partner agreement', { bold: true, size: titleSize })
+  drawLine(`${AGREEMENT_META.title} — executed copy`, { bold: true, size: titleSize })
   y -= 4
   drawWrapped(
     `Version ${CURRENT_PARTNER_AGREEMENT_VERSION} · Effective ${PARTNER_AGREEMENT_EFFECTIVE_LABEL}`,
@@ -105,7 +106,8 @@ export async function generateExecutedPartnerAgreementPdf(
       y -= 6
       continue
     }
-    const isHeading = /^\d+\.\s/.test(line) && line.length < 80
+    const isHeading =
+      (/^\d+\.\s/.test(line) || /^\d+\.\d+\s/.test(line)) && line.length < 120 && !line.includes(': ')
     drawWrapped(line, isHeading ? { bold: true, size: 10 } : { size: 9 })
   }
 
