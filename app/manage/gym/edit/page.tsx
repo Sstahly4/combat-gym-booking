@@ -64,6 +64,7 @@ function EditGymForm() {
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false)
 
   // Form State
+  const [tagline, setTagline] = useState('')
   const [disciplines, setDisciplines] = useState<string[]>([])
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() => ({
     ...DEFAULT_GYM_AMENITIES,
@@ -359,6 +360,9 @@ function EditGymForm() {
         data.longitude != null && !Number.isNaN(Number(data.longitude)) ? String(data.longitude) : ''
       )
     }
+
+    // tagline is always loaded fresh from DB (not cached)
+    setTagline((data as { tagline?: string | null }).tagline || '')
 
     // If no cached state, use data from database
     if (!hasCachedState) {
@@ -750,7 +754,7 @@ function EditGymForm() {
 
       const updates = {
         name: formData.get('name') as string,
-        tagline: (formData.get('tagline') as string || '').trim() || null,
+        tagline: tagline.trim() || null,
         description: formData.get('description') as string,
         address: formData.get('address') as string,
         city: formData.get('city') as string,
@@ -799,6 +803,9 @@ function EditGymForm() {
         console.error('Error updating gym:', error)
         throw error
       }
+
+      // Sync tagline state with what was saved so the field shows the persisted value.
+      setTagline((updates as { tagline?: string | null }).tagline || '')
 
       // Clear any pending local photo files after a successful save.
       setTrainerPhotoFiles({})
@@ -1002,10 +1009,12 @@ function EditGymForm() {
                   name="tagline"
                   type="text"
                   maxLength={80}
-                  defaultValue={(gym as { tagline?: string | null }).tagline || ''}
+                  value={tagline}
+                  onChange={e => setTagline(e.target.value)}
                   className="flex h-10 w-full max-w-2xl rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
                 />
+                <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
                 <p className="text-xs text-gray-500">
                   One line, max 60–80 characters. This is the first thing guests read under your gym name on
                   mobile search. Write it like a headline: location, vibe, what makes you different.
