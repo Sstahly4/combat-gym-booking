@@ -5,6 +5,14 @@ import type { GymImage } from '@/lib/types/database'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const MAX_SLIDES = 12
+/** Max dot indicators on screen; 5th is visually smaller (OTA-style “more” cue). */
+const DOT_CAP = 5
+
+function dotHighlightIndex(activeSlide: number, slideCount: number): number {
+  if (slideCount <= 1) return 0
+  if (slideCount <= DOT_CAP) return activeSlide
+  return Math.round((activeSlide / (slideCount - 1)) * (DOT_CAP - 1))
+}
 
 type Props = {
   images: GymImage[]
@@ -46,6 +54,10 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
     )
   }
 
+  const dotCount = Math.min(slides.length, DOT_CAP)
+  const highlightedDot = dotHighlightIndex(active, slides.length)
+  const fifthIsSmall = dotCount === DOT_CAP
+
   return (
     <div className="absolute inset-0">
       <div
@@ -72,14 +84,20 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
         className="pointer-events-none absolute bottom-2.5 left-0 right-0 z-[1] flex justify-center gap-1.5 px-2"
         aria-hidden
       >
-        {slides.map((_, i) => (
-          <span
-            key={i}
-            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full shadow-sm transition-all duration-200 ${
-              i === active ? 'bg-white ring-1 ring-black/10 scale-110' : 'bg-white/50 ring-1 ring-black/5'
-            }`}
-          />
-        ))}
+        {Array.from({ length: dotCount }, (_, i) => {
+          const isSmall = fifthIsSmall && i === DOT_CAP - 1
+          const isOn = i === highlightedDot
+          // First four: Airbnb-sized pills; fifth when shown as “more” cue stays smaller.
+          const sizeClass = isSmall ? 'h-[5px] w-[5px] min-w-[5px]' : 'h-2 w-2 min-w-[8px]'
+          return (
+            <span
+              key={i}
+              className={`${sizeClass} flex-shrink-0 rounded-full shadow-sm transition-all duration-200 ${
+                isOn ? 'bg-white ring-1 ring-black/15 scale-110' : 'bg-white/55 ring-1 ring-black/10'
+              } ${isSmall && !isOn ? 'opacity-80' : ''}`}
+            />
+          )
+        })}
       </div>
     </div>
   )

@@ -528,7 +528,7 @@ function SearchPageContent() {
     return (
       <div
         key={gym.id}
-        className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+        className="bg-transparent sm:bg-white border-0 sm:border sm:border-gray-200 rounded-none sm:rounded-xl overflow-visible sm:overflow-hidden shadow-none sm:shadow-none hover:shadow-none sm:hover:shadow-md transition-shadow"
       >
         {/* ── Mobile: Airbnb-style dense card — entire block is one tap target (no CTA button) ── */}
         <div className="sm:hidden relative">
@@ -536,10 +536,10 @@ function SearchPageContent() {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-xl active:bg-gray-50/80"
+            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-2xl active:bg-gray-50/50"
           >
-            <div className="relative px-2 pt-2">
-              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-xl bg-gray-100">
+            <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
+              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 shadow-sm sm:shadow-none">
                 <SearchResultGymImageCarousel
                   images={gym.images}
                   alt={gym.name}
@@ -547,7 +547,7 @@ function SearchPageContent() {
                 />
               </div>
             </div>
-            <div className="px-3 pt-2 pb-3 space-y-1">
+            <div className="px-1 pt-2.5 pb-1 sm:px-3 sm:pt-2 sm:pb-3 space-y-1">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-gray-900 line-clamp-2">
                   {gym.name}
@@ -867,9 +867,9 @@ function SearchPageContent() {
               </div>
 
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-4 sm:space-y-3">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden flex h-44">
+                    <div key={i} className="flex h-44 overflow-hidden rounded-2xl border-0 bg-white/90 shadow-sm sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none">
                       <div className="w-[220px] bg-gray-200 animate-pulse flex-shrink-0" />
                       <div className="flex-1 p-4 space-y-3">
                         <div className="h-5 w-2/3 bg-gray-200 rounded animate-pulse" />
@@ -890,7 +890,7 @@ function SearchPageContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4 sm:space-y-3">
                   {filteredByRating.map(gym => renderCard(gym))}
                 </div>
               )}
