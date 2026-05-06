@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { stripe } from '@/lib/stripe'
 
 /**
  * Called after payment is authorized (not captured yet)
@@ -41,6 +42,12 @@ export async function POST(
       return NextResponse.json({ error: 'Booking is not in a payable state' }, { status: 400 })
     }
 
+    // Require a non-empty payment_intent string.
+    if (!payment_intent || typeof payment_intent !== 'string') {
+      console.error('confirm-payment called without a payment_intent value')
+      return NextResponse.json({ error: 'Payment intent is required' }, { status: 400 })
+    }
+
     // Verify payment intent matches before we touch status
     if (booking.stripe_payment_intent_id && booking.stripe_payment_intent_id !== payment_intent) {
       console.error('Payment intent mismatch:', {
@@ -48,6 +55,38 @@ export async function POST(
         url: payment_intent
       })
       return NextResponse.json({ error: 'Invalid payment intent' }, { status: 400 })
+    }
+
+    // Validate with Stripe that this PaymentIntent is actually authorized.
+    // This prevents confirming a booking with a fake or someone else's PI string.
+    if (stripe) {
+      let pi
+      try {
+        pi = await stripe.paymentIntents.retrieve(payment_intent)
+      } catch (stripeErr) {
+        console.error('Stripe PaymentIntent lookup failed:', stripeErr)
+        return NextResponse.json({ error: 'Payment verification failed — please try again or contact support.' }, { status: 400 })
+      }
+
+      const allowedStatuses = new Set(['requires_capture', 'succeeded'])
+      if (!allowedStatuses.has(pi.status)) {
+        console.error(`PaymentIntent ${payment_intent} has unexpected status: ${pi.status}`)
+        return NextResponse.json(
+          { error: `Payment not authorized (status: ${pi.status}). Please complete the payment form.` },
+          { status: 400 }
+        )
+      }
+
+      // If the PI carries a booking_id in metadata, make sure it matches this booking.
+      if (pi.metadata?.booking_id && pi.metadata.booking_id !== bookingId) {
+        console.error('PaymentIntent booking_id mismatch:', {
+          pi_booking_id: pi.metadata.booking_id,
+          requested_booking_id: bookingId,
+        })
+        return NextResponse.json({ error: 'Invalid payment intent for this booking' }, { status: 400 })
+      }
+    } else {
+      console.warn('[confirm-payment] Stripe not configured — skipping PI validation (dev/offline mode)')
     }
 
     // Atomically transition pending → confirmed so only ONE request wins when

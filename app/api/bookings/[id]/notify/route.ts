@@ -51,6 +51,17 @@ export async function POST(
       return NextResponse.json({ success: true, skipped: 'already_confirmed' })
     }
 
+    // Require a Stripe PaymentIntent on the booking before sending any emails.
+    // A booking row is created before the guest enters card details, so /notify
+    // must not fire until confirm-payment has written a real, authorized PI.
+    // This is a defence-in-depth guard — confirm-payment now validates the PI
+    // with Stripe before calling here, but we double-check in case /notify is
+    // called directly or via a future code path.
+    if (!booking.stripe_payment_intent_id) {
+      console.warn('[notify] no stripe_payment_intent_id on booking — emails suppressed (card not on file)', bookingId)
+      return NextResponse.json({ success: true, skipped: 'no_payment_intent' })
+    }
+
     const gym = booking.gym as any
     const package_ = booking.package as any
     const variant = booking.variant as any
