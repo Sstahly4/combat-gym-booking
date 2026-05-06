@@ -127,7 +127,7 @@ function TapGuardLink(
 }
 
 function joinHighlights(parts: string[]): string {
-  return parts.join(' · ')
+  return parts.join(', ')
 }
 
 function withinBudget(parts: string[], budget: number): boolean {
@@ -195,6 +195,19 @@ function gymMobileAmenityHookLine(gym: GymWithImages): string | null {
   if (meals) return 'Meals available on-site'
   if (pickup) return 'Airport pickup'
   return null
+}
+
+/** Always-present second line under highlights (uses · separators). */
+function gymMobileAmenityLineAlways(gym: GymWithImages): string {
+  const hook = gymMobileAmenityHookLine(gym)
+  if (hook) return hook
+
+  // Safe, accurate fallbacks (avoid invented “ocean views”-style claims).
+  const hasPricing =
+    (gym.price_per_day ?? 0) > 0 || (gym.price_per_week ?? 0) > 0 || (gym.price_per_month ?? 0) > 0
+
+  if (hasPricing) return 'Flexible training packages'
+  return 'Training available'
 }
 
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
@@ -669,6 +682,7 @@ function SearchPageContent() {
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
     const mobilePlaceDescription = gymMobileHighlightsLine(gym)
+    const mobileAmenityLine = gymMobileAmenityLineAlways(gym)
     const mobileTitle = (gym.name || '').trim() || 'Gym'
 
     return (
@@ -686,8 +700,8 @@ function SearchPageContent() {
             className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-[12px] active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
-              {/* Modern OTA mobile: 1:1 (not 3:2) + 12px radius; object-cover inside carousel */}
-              <div className="relative w-full aspect-square overflow-hidden rounded-[12px] bg-gray-100 sm:shadow-none">
+              {/* Airbnb-style rectangle: 4:3 + 12px radius; object-cover inside carousel */}
+              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-[12px] bg-gray-100 sm:shadow-none">
                 <SearchResultGymImageCarousel
                   images={gym.images}
                   alt={gym.name}
@@ -696,7 +710,7 @@ function SearchPageContent() {
               </div>
             </div>
             {/* ~4px rhythm (8px grid): gap-1 between title, copy, and price blocks */}
-            <div className="px-0 pt-2 pb-1.5 flex flex-col gap-1">
+            <div className="px-0 pt-3 pb-1.5 flex flex-col gap-1">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="min-w-0 flex-1 text-base font-bold leading-snug text-gray-900 line-clamp-2">
                   {mobileTitle}
@@ -715,6 +729,7 @@ function SearchPageContent() {
               </div>
               {/* OTA pattern: one line highlights (no wrap, no ellipsis). */}
               <p className="text-[13px] leading-normal text-gray-500 whitespace-nowrap">{mobilePlaceDescription}</p>
+              <p className="text-[12px] leading-normal text-gray-500 whitespace-nowrap">{mobileAmenityLine}</p>
               <div className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-semibold tabular-nums leading-tight text-gray-900">
@@ -1009,13 +1024,13 @@ function SearchPageContent() {
               </div>
 
               {loading ? (
-                <div className="space-y-9 sm:space-y-3">
+                <div className="space-y-10 sm:space-y-3">
                   {[1, 2, 3, 4].map(i => (
                     <div
                       key={i}
                       className="flex flex-col overflow-hidden rounded-[12px] border-0 bg-white/90 shadow-sm sm:h-44 sm:flex-row sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none"
                     >
-                      <div className="aspect-square w-full flex-shrink-0 bg-gray-200 animate-pulse sm:aspect-auto sm:h-full sm:w-[220px]" />
+                      <div className="aspect-[4/3] w-full flex-shrink-0 bg-gray-200 animate-pulse sm:aspect-auto sm:h-full sm:w-[220px]" />
                       <div className="flex flex-1 flex-col gap-2 p-3 sm:justify-start sm:space-y-3 sm:gap-0 sm:p-4">
                         <div className="h-5 w-2/3 rounded bg-gray-200 animate-pulse" />
                         <div className="h-3 w-1/3 rounded bg-gray-200 animate-pulse" />
@@ -1035,7 +1050,7 @@ function SearchPageContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-9 sm:space-y-3">
+                <div className="space-y-10 sm:space-y-3">
                   {filteredByRating.map(gym => renderCard(gym))}
                 </div>
               )}
