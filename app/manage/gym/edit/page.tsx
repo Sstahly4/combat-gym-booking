@@ -750,6 +750,7 @@ function EditGymForm() {
 
       const updates = {
         name: formData.get('name') as string,
+        tagline: (formData.get('tagline') as string || '').trim() || null,
         description: formData.get('description') as string,
         address: formData.get('address') as string,
         city: formData.get('city') as string,
@@ -992,6 +993,25 @@ function EditGymForm() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="tagline">
+                  Listing tagline
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">(shown on search cards)</span>
+                </Label>
+                <input
+                  id="tagline"
+                  name="tagline"
+                  type="text"
+                  maxLength={80}
+                  defaultValue={(gym as { tagline?: string | null }).tagline || ''}
+                  className="flex h-10 w-full max-w-2xl rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
+                />
+                <p className="text-xs text-gray-500">
+                  One line, max 60–80 characters. This is the first thing guests read under your gym name on
+                  mobile search. Write it like a headline: location, vibe, what makes you different.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id="description" 
@@ -1003,9 +1023,7 @@ function EditGymForm() {
                   placeholder="Describe your gym, training philosophy, facilities, and what makes it special..."
                 />
                 <p className="text-xs text-gray-500">
-                  A detailed description helps potential customers understand what makes your gym unique.
-                  The opening sentence is often shown under your gym name in mobile search—write a strong first line
-                  (location, vibe, who it is for).
+                  Full description shown on your gym profile page.
                 </p>
               </div>
 

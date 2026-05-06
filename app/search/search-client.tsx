@@ -127,62 +127,45 @@ function TapGuardLink(
 }
 
 /**
- * Build both mobile subtitle lines in one pass — nothing ever appears on both lines.
+ * Two-line mobile card subtitles, built in one pass with zero overlap.
  *
- * Line 1 "highlights" (comma-separated): discipline + quality signal (verification / rating).
- *   Amenities go exclusively on line 2.
+ * tagline  Owner-written headline (up to 80 chars).
+ *          Falls back to description opening, then discipline + city template.
  *
- * Line 2 "detail" (· separated): amenities NOT mentioned on line 1.
- *   If no amenity data, show a different dimension so lines are always complementary.
+ * facts    Always three scannable chips separated by dot:
+ *          {discipline} · {On-site stay | Drop-in} · {city}
  */
-function buildMobileCardLines(gym: GymWithImages): { highlights: string; detail: string } {
-  const BUDGET = 52
-
+function buildMobileCardLines(gym: GymWithImages): { tagline: string; facts: string } {
   const a = (gym as { amenities?: Record<string, unknown> }).amenities
   const acc = Boolean(a?.accommodation)
-  const meals = Boolean(a?.meals)
-  const pickup = Boolean(a?.airport_pickup)
 
   const d0 = (gym.disciplines?.[0] ?? '').trim()
-  const d1 = (gym.disciplines?.[1] ?? '').trim()
-
-  const hasReviews = (gym.review_count || 0) > 0 && (gym.average_rating || 0) > 0
-  const rating = hasReviews ? (gym.average_rating as number) : null
-  const topRated = rating != null && rating >= 4.8
-
-  // Line 1: discipline(s) + quality signal only — no amenities
-  const l1: string[] = []
-  if (d0) l1.push(d0)
-  if (gym.verification_status === 'trusted') l1.push('Guest favourite')
-  else if (gym.verification_status === 'verified') l1.push('Verified')
-  else if (topRated) l1.push('Top rated')
-  else if (d1) l1.push(d1)
-
-  const highlights = l1.join(', ').slice(0, BUDGET).trimEnd()
-
-  // Line 2: amenities only (no overlap with line 1)
-  const amenityParts: string[] = []
-  if (acc && meals) {
-    amenityParts.push('All-inclusive stay')
-  } else {
-    if (acc) amenityParts.push('On-site stay')
-    if (meals) amenityParts.push('Meals on-site')
-  }
-  if (pickup) amenityParts.push('Airport pickup')
-
-  if (amenityParts.length) {
-    return { highlights, detail: amenityParts.join(' · ').slice(0, BUDGET).trimEnd() }
-  }
-
-  // No amenities — use a different dimension so lines are never repetitive
-  const city = (gym.city || '').trim()
-  const country = (gym.country || '').trim()
+  const city = (gym.city ?? '').trim()
+  const country = (gym.country ?? '').trim()
   const place = city || country
-  if (place && d0) return { highlights, detail: d0 + ' gym in ' + place }
-  if (place) return { highlights, detail: 'Training in ' + place }
 
-  const hasPricing = (gym.price_per_day ?? 0) > 0 || (gym.price_per_week ?? 0) > 0
-  return { highlights, detail: hasPricing ? 'Flexible training packages' : 'Training available' }
+  // Line 1: owner tagline > description snippet > template
+  const ownerTagline = ((gym as { tagline?: string | null }).tagline ?? '').trim()
+  let tagline = ownerTagline
+
+  if (!tagline) {
+    const fromDesc = snippetFromGymDescription(gym.description)
+    if (fromDesc) tagline = fromDesc
+  }
+  if (!tagline) {
+    if (d0 && place) tagline = d0 + ' gym in ' + place
+    else if (d0) tagline = d0 + ' gym'
+    else if (place) tagline = 'Training gym in ' + place
+    else tagline = 'Training gym'
+  }
+
+  // Line 2: always 3 scannable chips
+  const discipline = d0 || 'Training'
+  const stayType = acc ? 'On-site stay' : 'Drop-in'
+  const location = city || country || 'Thailand'
+  const facts = discipline + ' · ' + stayType + ' · ' + location
+
+  return { tagline, facts }
 }
 
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
@@ -656,7 +639,7 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
-    const { highlights: mobilePlaceDescription, detail: mobileAmenityLine } = buildMobileCardLines(gym)
+    const { tagline: mobileTagline, facts: mobileFacts } = buildMobileCardLines(gym)
     const mobileTitle = (gym.name || '').trim() || 'Gym'
 
     return (
@@ -670,7 +653,7 @@ function SearchPageContent() {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`${mobileTitle} — ${mobilePlaceDescription}`}
+            aria-label={`${mobileTitle} — ${mobileTagline}`}
             className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-[12px] active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
@@ -683,10 +666,11 @@ function SearchPageContent() {
                 />
               </div>
             </div>
-            {/* ~4px rhythm (8px grid): gap-1 between title, copy, and price blocks */}
-            <div className="px-0 pt-3 pb-1.5 flex flex-col gap-1">
+            {/* Text block: 4px between each line, then 10px gap before price */}
+            <div className="px-0 pt-3 pb-1.5 flex flex-col">
+              {/* Title row */}
               <div className="flex items-start justify-between gap-2">
-                <h2 className="min-w-0 flex-1 text-base font-bold leading-snug text-gray-900 line-clamp-2">
+                <h2 className="min-w-0 flex-1 text-base font-bold leading-tight text-gray-900 line-clamp-1">
                   {mobileTitle}
                 </h2>
                 <div className="flex shrink-0 items-center gap-0.5 text-[12px] text-gray-900">
@@ -701,21 +685,23 @@ function SearchPageContent() {
                   )}
                 </div>
               </div>
-              {/* OTA pattern: one line highlights (no wrap, no ellipsis). */}
-              <p className="text-[13px] leading-normal text-gray-500 whitespace-nowrap">{mobilePlaceDescription}</p>
-              <p className="text-[12px] leading-normal text-gray-500 whitespace-nowrap">{mobileAmenityLine}</p>
-              <div className="flex items-end justify-between gap-3">
+              {/* Line 1: owner tagline (or description/template fallback) — 4px below title */}
+              <p className="mt-[4px] min-w-0 truncate text-[13px] leading-tight text-gray-500">{mobileTagline}</p>
+              {/* Line 2: scannable facts chips — 4px below tagline */}
+              <p className="mt-[4px] min-w-0 truncate text-[12px] leading-tight text-gray-500">{mobileFacts}</p>
+              {/* Price block — 10px below fact chips to separate data blocks */}
+              <div className="mt-[10px] flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-semibold tabular-nums leading-tight text-gray-900">
                     {priceDisplay}
                   </div>
-                  <div className="text-[10px] text-gray-500">
+                  <div className="text-[10px] text-gray-500 mt-[2px]">
                     {priceLabelBottom}
                     {guestsCount ? ` · ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
                   </div>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400 leading-tight">Includes taxes and charges</p>
+              <p className="mt-[2px] text-[10px] text-gray-400 leading-tight">Includes taxes and charges</p>
             </div>
           </TapGuardLink>
           <SaveButton gymId={gym.id} />

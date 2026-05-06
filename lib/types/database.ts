@@ -80,6 +80,8 @@ export interface Gym {
   /** Optional strings matched by gym_suggest (abbreviations, former names, etc.). */
   search_aliases?: string[]
   description: string | null
+  /** Short owner-written listing hook shown on mobile search cards. Max 80 chars. */
+  tagline?: string | null
   city: string
   country: string
   /** Owner-indicated: gym offers bookable accommodation */
