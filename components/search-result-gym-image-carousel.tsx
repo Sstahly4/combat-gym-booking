@@ -6,8 +6,12 @@ import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const MAX_SLIDES = 12
 const DOTS_VISIBLE = 5
-const DOT_PX = 5
-const DOT_GAP_PX = 5
+/** Active / regular dot diameter (px) — 7px matches modern Airbnb size. */
+const DOT_PX = 7
+/** "More photos" cue dot on the far right — slightly smaller but still readable. */
+const DOT_SMALL_PX = 4
+/** Gap between dot centres. */
+const DOT_GAP_PX = 6
 const STEP_PX = DOT_PX + DOT_GAP_PX
 
 type Props = {
@@ -117,7 +121,7 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
       </div>
 
       <div
-        className="pointer-events-none absolute bottom-2 left-0 right-0 z-[1] flex justify-center px-2"
+        className="pointer-events-none absolute bottom-3 left-0 right-0 z-[1] flex justify-center px-2"
         aria-hidden
       >
         <div className="overflow-hidden" style={{ width: clipW }}>
@@ -134,7 +138,7 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
                 n > DOTS_VISIBLE &&
                 slideIdx === first + DOTS_VISIBLE - 1 &&
                 slideIdx < n - 1
-              const d = isSmallRightCue && !isOn ? 3 : DOT_PX
+              const d = isSmallRightCue && !isOn ? DOT_SMALL_PX : DOT_PX
               return (
                 <span
                   key={slideIdx}
@@ -144,9 +148,9 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
                   <span
                     className={`rounded-full transition-[opacity,background-color,box-shadow] duration-150 ${
                       isOn
-                        ? 'bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.12)]'
-                        : 'bg-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]'
-                    } ${isSmallRightCue && !isOn ? 'opacity-75' : ''}`}
+                        ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.15)]'
+                        : 'bg-white/60 shadow-[0_1px_2px_rgba(0,0,0,0.25)]'
+                    } ${isSmallRightCue && !isOn ? 'opacity-70' : ''}`}
                     style={{ width: d, height: d }}
                   />
                 </span>
