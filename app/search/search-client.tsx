@@ -36,31 +36,28 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
-/** Airbnb-style first line: “{type} in {place}” (not the brand name). */
-function gymMobileListingHeadline(gym: GymWithImages): string {
+/** Grey line under brand title: “{first discipline} gym in {city}”. */
+function gymMobilePlaceDescription(gym: GymWithImages): string {
   const city = (gym.city || '').trim()
-  const country = (gym.country || '').trim()
-  const place = city || country || 'Thailand'
   const d0 = gym.disciplines?.[0]?.trim()
-  if (d0) return `${d0} gym in ${place}`
-  return `Training camp in ${place}`
+  if (d0 && city) return `${d0} gym in ${city}`
+  if (d0) return `${d0} gym`
+  if (city) return `Training gym in ${city}`
+  return 'Training gym'
 }
 
-/** One grey line under the headline: gym name + optional amenity hook (no discipline repeat). */
-function gymMobileListingSecondaryLine(gym: GymWithImages): string {
-  const name = (gym.name || '').trim() || 'Gym'
+/** Optional third grey line: amenity hook only (brand + discipline already shown above). */
+function gymMobileAmenityHookLine(gym: GymWithImages): string | null {
   const a = (gym as { amenities?: Record<string, unknown> }).amenities
   const acc = Boolean(a?.accommodation)
   const meals = Boolean(a?.meals)
   const pickup = Boolean(a?.airport_pickup)
-  let hook: string | null = null
-  if (meals && acc) hook = 'All-inclusive · on-site stay'
-  else if (acc && pickup) hook = 'On-site accommodation · airport pickup'
-  else if (acc) hook = 'On-site accommodation'
-  else if (meals) hook = 'Meals available on-site'
-  else if (pickup) hook = 'Airport pickup'
-  if (hook) return `${name} · ${hook}`
-  return name
+  if (meals && acc) return 'All-inclusive · on-site stay'
+  if (acc && pickup) return 'On-site accommodation · airport pickup'
+  if (acc) return 'On-site accommodation'
+  if (meals) return 'Meals available on-site'
+  if (pickup) return 'Airport pickup'
+  return null
 }
 
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
@@ -534,8 +531,9 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
-    const mobileHeadline = gymMobileListingHeadline(gym)
-    const mobileSecondary = gymMobileListingSecondaryLine(gym)
+    const mobilePlaceDescription = gymMobilePlaceDescription(gym)
+    const mobileAmenityHook = gymMobileAmenityHookLine(gym)
+    const mobileTitle = (gym.name || '').trim() || 'Gym'
 
     return (
       <div
@@ -548,7 +546,7 @@ function SearchPageContent() {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`${gym.name} — ${mobileHeadline}`}
+            aria-label={`${mobileTitle} — ${mobilePlaceDescription}`}
             className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-2xl active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
@@ -560,10 +558,10 @@ function SearchPageContent() {
                 />
               </div>
             </div>
-            <div className="px-1 pt-2.5 pb-1 sm:px-3 sm:pt-2 sm:pb-3 space-y-1">
+            <div className="px-0 pt-2.5 pb-2 sm:px-3 sm:pt-2 sm:pb-3 space-y-1">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-gray-900 line-clamp-2">
-                  {mobileHeadline}
+                  {mobileTitle}
                 </h2>
                 <div className="flex shrink-0 items-center gap-0.5 text-[13px] text-gray-900">
                   {hasReviews ? (
@@ -577,7 +575,10 @@ function SearchPageContent() {
                   )}
                 </div>
               </div>
-              <p className="line-clamp-2 text-[12px] leading-snug text-gray-600">{mobileSecondary}</p>
+              <p className="line-clamp-2 text-[12px] leading-snug text-gray-600">{mobilePlaceDescription}</p>
+              {mobileAmenityHook ? (
+                <p className="line-clamp-1 text-[12px] leading-snug text-gray-600">{mobileAmenityHook}</p>
+              ) : null}
               <div className="flex items-end justify-between gap-3 pt-1">
                 <div className="min-w-0">
                   <div className="text-[17px] font-semibold tabular-nums leading-tight text-gray-900">
@@ -735,7 +736,7 @@ function SearchPageContent() {
 
         {/* ── Blue search strip — z-index so the translated search bar + dropdowns stack above the body (map iframes, listing images) ── */}
         <div className="relative z-30 bg-[#003580] pt-5 pb-0">
-          <div className="max-w-6xl mx-auto px-4">
+          <div className="max-w-6xl mx-auto px-5 md:px-4">
             <CategoryTabs value={category} onChange={setCategory} />
             <div className="translate-y-1/2">
               <SearchBarRedesign
@@ -751,7 +752,7 @@ function SearchPageContent() {
 
         {/* White spacer — absorbs the bottom half of the pill; breadcrumb desktop-only (cleaner mobile OTA layout) */}
         <div className="bg-white pt-5 pb-3 md:pt-10 md:pb-4">
-          <div className="max-w-6xl mx-auto px-4">
+          <div className="max-w-6xl mx-auto px-5 md:px-4">
             {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
             <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
               <Link href="/" className="text-[#006ce4] hover:underline">Home</Link>
@@ -798,7 +799,7 @@ function SearchPageContent() {
         </div>
 
         {/* ── Body ──────────────────────────────────────────────────────── */}
-        <div className="max-w-6xl mx-auto px-4 py-5">
+        <div className="max-w-6xl mx-auto px-5 pb-8 pt-5 md:px-4 md:pb-5">
           <div className="flex gap-6 items-start">
 
             {/* ── Sidebar (desktop) ──────────────────────────────────── */}
@@ -872,7 +873,7 @@ function SearchPageContent() {
               </div>
 
               {loading ? (
-                <div className="space-y-4 sm:space-y-3">
+                <div className="space-y-9 sm:space-y-3">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="flex h-44 overflow-hidden rounded-2xl border-0 bg-white/90 shadow-sm sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none">
                       <div className="w-[220px] bg-gray-200 animate-pulse flex-shrink-0" />
@@ -895,7 +896,7 @@ function SearchPageContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4 sm:space-y-3">
+                <div className="space-y-9 sm:space-y-3">
                   {filteredByRating.map(gym => renderCard(gym))}
                 </div>
               )}
