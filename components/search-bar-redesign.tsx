@@ -407,6 +407,12 @@ export function SearchBarRedesign({
     }
   }, [pathname])
 
+  // On /search, keep the mobile pill in sync with URL-driven filters from the parent.
+  useEffect(() => {
+    if (pathname !== '/search') return
+    setWhereQuery(initialQuery || '')
+  }, [pathname, initialQuery])
+
   // iOS Safari tab/app switching can leave fixed overlays shorter until the next scroll.
   // While the mobile modal is open, drive its height from innerHeight / visualViewport.
   useEffect(() => {
@@ -1280,14 +1286,38 @@ export function SearchBarRedesign({
             setMobileModalOpen(true)
             setMobilePanel('where')
           }}
-          className={`w-full flex items-center gap-3 bg-white rounded-full px-4 py-4 text-left transition-shadow ${
+          className={`w-full flex gap-3 bg-white rounded-full px-4 py-3.5 text-left transition-shadow ${
+            pathname === '/search' && (whereQuery.trim() || (checkinDate && checkoutDate))
+              ? 'items-start'
+              : 'items-center'
+          } ${
             yellowBorder
               ? 'shadow-lg ring-[3px] ring-[#febb02]'
               : 'shadow-md hover:shadow-lg ring-1 ring-gray-200'
           }`}
         >
-          <Search className="w-4 h-4 text-gray-500 flex-shrink-0" strokeWidth={2.5} />
-          <span className="flex-1 text-sm text-gray-400 truncate">Start your search</span>
+          <Search
+            className={`w-4 h-4 flex-shrink-0 text-gray-500 ${
+              pathname === '/search' && (whereQuery.trim() || (checkinDate && checkoutDate)) ? 'mt-1' : ''
+            }`}
+            strokeWidth={2.5}
+          />
+          {pathname === '/search' && (whereQuery.trim() || (checkinDate && checkoutDate)) ? (
+            <div className="min-w-0 flex-1 text-left">
+              {whereQuery.trim() ? (
+                <div className="text-[15px] font-semibold leading-snug text-gray-900 truncate">{whereQuery}</div>
+              ) : (
+                <div className="text-[15px] font-semibold leading-snug text-gray-900 truncate">
+                  {CATEGORY_SUBTITLES[activeCategory]}
+                </div>
+              )}
+              {checkinDate && checkoutDate ? (
+                <div className="mt-0.5 text-xs font-normal leading-snug text-gray-500 truncate">{whenDisplay()}</div>
+              ) : null}
+            </div>
+          ) : (
+            <span className="flex-1 text-sm text-gray-400 truncate">Start your search</span>
+          )}
         </button>
       </div>
 

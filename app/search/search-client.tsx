@@ -722,11 +722,11 @@ function SearchPageContent() {
           </div>
         </div>
 
-        {/* White spacer — absorbs the bottom half of the pill + breadcrumb */}
-        <div className="bg-white pt-10 pb-4">
+        {/* White spacer — absorbs the bottom half of the pill; breadcrumb desktop-only (cleaner mobile OTA layout) */}
+        <div className="bg-white pt-5 pb-3 md:pt-10 md:pb-4">
           <div className="max-w-6xl mx-auto px-4">
-            {/* Breadcrumb — same left spacing as nav tabs and search bar content */}
-            <nav className="flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
+            {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
+            <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
               <Link href="/" className="text-[#006ce4] hover:underline">Home</Link>
               {filters.location && (
                 <>
