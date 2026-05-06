@@ -1003,7 +1003,9 @@ function EditGymForm() {
                   placeholder="Describe your gym, training philosophy, facilities, and what makes it special..."
                 />
                 <p className="text-xs text-gray-500">
-                  A detailed description helps potential customers understand what makes your gym unique
+                  A detailed description helps potential customers understand what makes your gym unique.
+                  The opening sentence is often shown under your gym name in mobile search—write a strong first line
+                  (location, vibe, who it is for).
                 </p>
               </div>
 

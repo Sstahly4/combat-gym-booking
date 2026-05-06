@@ -36,8 +36,35 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
-/** Grey line under brand title: “{first discipline} gym in {city}”. */
+const MIN_DESCRIPTION_SNIPPET = 32
+const MAX_DESCRIPTION_SNIPPET = 130
+
+/** Airbnb-style hook from listing copy: first sentence or line of description, accurate because owner-written. */
+function snippetFromGymDescription(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const stripped = raw
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (stripped.length < MIN_DESCRIPTION_SNIPPET) return null
+
+  let head = stripped
+  const sentence = stripped.match(/^[\s\S]{20,}?[.!?](?=\s|$)/)
+  if (sentence) head = sentence[0].trim()
+
+  if (head.length > MAX_DESCRIPTION_SNIPPET) {
+    const slice = head.slice(0, MAX_DESCRIPTION_SNIPPET)
+    const lastSpace = slice.lastIndexOf(' ')
+    head = (lastSpace > 40 ? slice.slice(0, lastSpace) : slice).trimEnd() + '…'
+  }
+  return head
+}
+
+/** Grey line under brand: prefer opening of gym description; else template from discipline + city. */
 function gymMobilePlaceDescription(gym: GymWithImages): string {
+  const fromDesc = snippetFromGymDescription(gym.description)
+  if (fromDesc) return fromDesc
+
   const city = (gym.city || '').trim()
   const d0 = gym.disciplines?.[0]?.trim()
   if (d0 && city) return `${d0} gym in ${city}`
@@ -547,10 +574,10 @@ function SearchPageContent() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${mobileTitle} — ${mobilePlaceDescription}`}
-            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-2xl active:bg-gray-50/50"
+            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-xl active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
-              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 shadow-sm sm:shadow-none">
+              <div className="relative w-full aspect-[3/2] overflow-hidden rounded-xl bg-gray-100 sm:shadow-none">
                 <SearchResultGymImageCarousel
                   images={gym.images}
                   alt={gym.name}
@@ -558,39 +585,39 @@ function SearchPageContent() {
                 />
               </div>
             </div>
-            <div className="px-0 pt-2.5 pb-2 sm:px-3 sm:pt-2 sm:pb-3 space-y-1">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-gray-900 line-clamp-2">
+            <div className="px-0 pt-2 pb-1.5 space-y-0.5">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="min-w-0 flex-1 text-[14px] font-semibold leading-tight text-gray-900 line-clamp-2">
                   {mobileTitle}
                 </h2>
-                <div className="flex shrink-0 items-center gap-0.5 text-[13px] text-gray-900">
+                <div className="flex shrink-0 items-center gap-0.5 text-[12px] text-gray-900">
                   {hasReviews ? (
                     <>
-                      <Star className="h-3.5 w-3.5 fill-gray-900 text-gray-900" strokeWidth={0} aria-hidden />
+                      <Star className="h-3 w-3 fill-gray-900 text-gray-900" strokeWidth={0} aria-hidden />
                       <span className="font-medium">{displayRating.toFixed(2)}</span>
                       <span className="text-gray-500 whitespace-nowrap">({displayCount})</span>
                     </>
                   ) : (
-                    <span className="text-[12px] text-gray-500">New</span>
+                    <span className="text-[11px] text-gray-500">New</span>
                   )}
                 </div>
               </div>
-              <p className="line-clamp-2 text-[12px] leading-snug text-gray-600">{mobilePlaceDescription}</p>
+              <p className="line-clamp-2 text-[11px] leading-snug text-gray-600">{mobilePlaceDescription}</p>
               {mobileAmenityHook ? (
-                <p className="line-clamp-1 text-[12px] leading-snug text-gray-600">{mobileAmenityHook}</p>
+                <p className="line-clamp-1 text-[11px] leading-snug text-gray-600">{mobileAmenityHook}</p>
               ) : null}
-              <div className="flex items-end justify-between gap-3 pt-1">
+              <div className="flex items-end justify-between gap-3 pt-0.5">
                 <div className="min-w-0">
-                  <div className="text-[17px] font-semibold tabular-nums leading-tight text-gray-900">
+                  <div className="text-[15px] font-semibold tabular-nums leading-tight text-gray-900">
                     {priceDisplay}
                   </div>
-                  <div className="text-[11px] text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {priceLabelBottom}
                     {guestsCount ? ` · ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
                   </div>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400">Includes taxes and charges</p>
+              <p className="text-[10px] text-gray-400 leading-tight">Includes taxes and charges</p>
             </div>
           </Link>
           <SaveButton gymId={gym.id} />
@@ -736,7 +763,7 @@ function SearchPageContent() {
 
         {/* ── Blue search strip — z-index so the translated search bar + dropdowns stack above the body (map iframes, listing images) ── */}
         <div className="relative z-30 bg-[#003580] pt-5 pb-0">
-          <div className="max-w-6xl mx-auto px-5 md:px-4">
+          <div className="max-w-6xl mx-auto px-6 md:px-4">
             <CategoryTabs value={category} onChange={setCategory} />
             <div className="translate-y-1/2">
               <SearchBarRedesign
@@ -752,7 +779,7 @@ function SearchPageContent() {
 
         {/* White spacer — absorbs the bottom half of the pill; breadcrumb desktop-only (cleaner mobile OTA layout) */}
         <div className="bg-white pt-5 pb-3 md:pt-10 md:pb-4">
-          <div className="max-w-6xl mx-auto px-5 md:px-4">
+          <div className="max-w-6xl mx-auto px-6 md:px-4">
             {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
             <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
               <Link href="/" className="text-[#006ce4] hover:underline">Home</Link>
@@ -799,7 +826,7 @@ function SearchPageContent() {
         </div>
 
         {/* ── Body ──────────────────────────────────────────────────────── */}
-        <div className="max-w-6xl mx-auto px-5 pb-8 pt-5 md:px-4 md:pb-5">
+        <div className="max-w-6xl mx-auto px-6 pb-8 pt-4 md:px-4 md:pt-5 md:pb-5">
           <div className="flex gap-6 items-start">
 
             {/* ── Sidebar (desktop) ──────────────────────────────────── */}
@@ -807,10 +834,10 @@ function SearchPageContent() {
               {sidebar}
             </aside>
 
-            {/* ── Results ────────────────────────────────────────────── */}
-            <main className="flex-1 min-w-0">
+            {/* ── Results — max width on larger handsets/tablet portrait for OTA-style gutters (desktop unchanged) ── */}
+            <main className="flex-1 min-w-0 w-full max-w-lg mx-auto md:max-w-none md:mx-0">
               {/* Results header (aligned with results column); title hidden on mobile for cleaner OTA toolbar */}
-              <div className="mb-4">
+              <div className="mb-3 md:mb-4">
                 <h1 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">
                   {loading ? (
                     <span className="text-gray-400 text-base font-normal">Searching…</span>
@@ -873,7 +900,7 @@ function SearchPageContent() {
               </div>
 
               {loading ? (
-                <div className="space-y-9 sm:space-y-3">
+                <div className="space-y-8 sm:space-y-3">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="flex h-44 overflow-hidden rounded-2xl border-0 bg-white/90 shadow-sm sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none">
                       <div className="w-[220px] bg-gray-200 animate-pulse flex-shrink-0" />
@@ -896,7 +923,7 @@ function SearchPageContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-9 sm:space-y-3">
+                <div className="space-y-8 sm:space-y-3">
                   {filteredByRating.map(gym => renderCard(gym))}
                 </div>
               )}
