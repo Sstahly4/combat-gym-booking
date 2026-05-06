@@ -14,6 +14,7 @@ import { SearchBarRedesign } from '@/components/search-bar-redesign'
 import { SaveButton } from '@/components/save-button'
 import { parseSearchQuery, SEARCH_DISCIPLINES } from '@/lib/search/search-browse-title'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
+import { SearchResultGymImageCarousel } from '@/components/search-result-gym-image-carousel'
 import { DATES_CONFIRMED_QUERY, gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 
 const COUNTRIES = ['Thailand', 'Indonesia', 'Australia', 'Japan', 'USA', 'Brazil', 'Philippines', 'Malaysia']
@@ -541,16 +542,27 @@ function SearchPageContent() {
               rel="noopener noreferrer"
               className="relative block w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100"
             >
-              {gym.images.length > 0 ? (
-                <ResponsiveGymImage
-                  image={gym.images[0]}
+              {/* Desktop: first image only */}
+              <div className="absolute inset-0 hidden sm:block">
+                {gym.images.length > 0 ? (
+                  <ResponsiveGymImage
+                    image={gym.images[0]}
+                    alt={gym.name}
+                    sizes="(max-width: 640px) 100vw, 320px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                )}
+              </div>
+              {/* Mobile: swipe gallery + dot indicators */}
+              <div className="sm:hidden absolute inset-0">
+                <SearchResultGymImageCarousel
+                  images={gym.images}
                   alt={gym.name}
                   sizes="(max-width: 640px) 100vw, 320px"
-                  className="object-cover"
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
-              )}
+              </div>
               <SaveButton gymId={gym.id} />
             </Link>
           </div>
@@ -781,9 +793,9 @@ function SearchPageContent() {
 
             {/* ── Results ────────────────────────────────────────────── */}
             <main className="flex-1 min-w-0">
-              {/* Results header (aligned with results column) */}
+              {/* Results header (aligned with results column); title hidden on mobile for cleaner OTA toolbar */}
               <div className="mb-4">
-                <h1 className="text-xl font-bold text-gray-900 mb-3">
+                <h1 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">
                   {loading ? (
                     <span className="text-gray-400 text-base font-normal">Searching…</span>
                   ) : (
