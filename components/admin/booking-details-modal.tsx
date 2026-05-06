@@ -31,6 +31,9 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
   const [capturing, setCapturing] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [accepting, setAccepting] = useState(false)
+  const [declining, setDeclining] = useState(false)
+  const [recordingManualPaid, setRecordingManualPaid] = useState(false)
 
   useEffect(() => {
     if (isOpen && bookingId) {
@@ -155,6 +158,83 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
       alert(`Failed to resend email: ${err.message}`)
     } finally {
       setSendingEmail(false)
+    }
+  }
+
+  const handleAcceptRequest = async () => {
+    if (!bookingId || !booking) return
+    setAccepting(true)
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/accept-request`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to accept booking')
+      }
+      alert('Request accepted. The guest will be emailed a link to complete payment (when Stripe is available for this gym).')
+      await fetchBookingDetails(true)
+      if (onRefresh) onRefresh()
+    } catch (err: any) {
+      console.error('Error accepting booking:', err)
+      alert(`Failed to accept: ${err.message}`)
+    } finally {
+      setAccepting(false)
+    }
+  }
+
+  const handleDeclineRequest = async () => {
+    if (!bookingId || !booking) return
+    if (!window.confirm('Decline this booking request? The guest will be notified.')) return
+    setDeclining(true)
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/decline-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to decline booking')
+      }
+      await fetchBookingDetails(true)
+      if (onRefresh) onRefresh()
+    } catch (err: any) {
+      console.error('Error declining booking:', err)
+      alert(`Failed to decline: ${err.message}`)
+    } finally {
+      setDeclining(false)
+    }
+  }
+
+  const handleRecordManualPayment = async () => {
+    if (!bookingId || !booking) return
+    if (
+      !window.confirm(
+        'Mark this booking as paid without Stripe? Use when payment was collected offline (bank transfer, cash, etc.) or the gym is not on Connect yet. The guest will receive the booking confirmation email if we have their address.'
+      )
+    ) {
+      return
+    }
+    setRecordingManualPaid(true)
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}/record-manual-payment`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to record manual payment')
+      }
+      alert(
+        data.already_paid
+          ? 'Booking was already marked paid.'
+          : `Booking marked paid.${data.email_sent ? ' Confirmation email sent to guest.' : ' No confirmation email (missing guest email or send failed).'}`
+      )
+      await fetchBookingDetails(true)
+      if (onRefresh) onRefresh()
+    } catch (err: any) {
+      console.error('Error recording manual payment:', err)
+      alert(`Failed: ${err.message}`)
+    } finally {
+      setRecordingManualPaid(false)
     }
   }
 
@@ -473,6 +553,16 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {(() => {
+                  const bookingCanonical = toCanonicalBookingStatus(booking.status)
+                  const adminActionBusy =
+                    accepting || declining || recordingManualPaid || capturing || syncing
+                  const showManualPaid =
+                    bookingCanonical === 'pending' ||
+                    (bookingCanonical === 'confirmed' && !booking.stripe_payment_intent_id)
+
+                  return (
+                    <>
                 <div className="grid grid-cols-2 gap-4">
                   {(() => {
                     const cur = booking.gym?.currency
@@ -505,14 +595,82 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                     <div className="font-mono text-sm break-all">{booking.stripe_payment_intent_id}</div>
                   </div>
                 )}
-                {/* Action buttons for pending/confirmed bookings */}
-                {(toCanonicalBookingStatus(booking.status) === 'pending' || toCanonicalBookingStatus(booking.status) === 'confirmed') && (
+                {(bookingCanonical === 'pending' || bookingCanonical === 'confirmed') && (
                   <div className="pt-4 border-t space-y-3">
-                    {booking.stripe_payment_intent_id && toCanonicalBookingStatus(booking.status) === 'confirmed' && (
+                    {bookingCanonical === 'pending' && (
+                      <>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <Button
+                            onClick={handleAcceptRequest}
+                            className="w-full bg-[#003580] hover:bg-[#003580]/90 sm:flex-1"
+                            disabled={adminActionBusy}
+                          >
+                            {accepting ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Accepting…
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Accept request
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={handleDeclineRequest}
+                            variant="destructive"
+                            className="w-full sm:flex-1"
+                            disabled={adminActionBusy}
+                          >
+                            {declining ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Declining…
+                              </>
+                            ) : (
+                              'Decline request'
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Same as the gym owner dashboard: accept sends the guest a link to pay by card when the gym
+                          is on Stripe Connect.
+                        </p>
+                      </>
+                    )}
+
+                    {showManualPaid && (
+                      <div className="rounded-md border border-amber-100 bg-amber-50/60 px-3 py-3 space-y-2">
+                        <p className="text-xs font-medium text-amber-950">Offline / not in Stripe yet</p>
+                        <p className="text-xs text-amber-900/90">
+                          If payment was collected outside the platform (bank transfer, cash) or the gym is not
+                          onboarded on Connect, mark the booking paid here. This clears any draft card hold and emails
+                          the guest the confirmation when we have their address.
+                        </p>
+                        <Button
+                          onClick={handleRecordManualPayment}
+                          variant="outline"
+                          className="w-full border-amber-200 bg-white hover:bg-amber-50"
+                          disabled={adminActionBusy}
+                        >
+                          {recordingManualPaid ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Recording…
+                            </>
+                          ) : (
+                            'Record offline payment (mark paid)'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {booking.stripe_payment_intent_id && bookingCanonical === 'confirmed' && (
                       <Button
                         onClick={handleCapturePayment}
                         className="w-full bg-[#003580] hover:bg-[#003580]/90"
-                        disabled={capturing}
+                        disabled={adminActionBusy}
                       >
                         {capturing ? (
                           <>
@@ -531,7 +689,7 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                       onClick={handleSyncStripe}
                       variant="outline"
                       className="w-full"
-                      disabled={syncing}
+                      disabled={adminActionBusy}
                     >
                       {syncing ? (
                         <>
@@ -545,20 +703,19 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                         </>
                       )}
                     </Button>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      {toCanonicalBookingStatus(booking.status) === 'pending'
-                        ? 'Use "Sync with Stripe" if you manually captured the payment in Stripe dashboard. This will check Stripe and update the booking status if payment was captured.'
-                        : 'Use "Sync with Stripe" if you manually captured the payment in Stripe dashboard'}
+                    <p className="text-xs text-gray-500 text-center">
+                      Sync checks Stripe for a captured charge on this booking&apos;s PaymentIntent and updates the
+                      database. Use it when you captured manually in the Stripe Dashboard.
                     </p>
                   </div>
                 )}
-                {(toCanonicalBookingStatus(booking.status) === 'paid' || toCanonicalBookingStatus(booking.status) === 'completed') && booking.guest_email && (
+                {(bookingCanonical === 'paid' || bookingCanonical === 'completed') && booking.guest_email && (
                   <div className="pt-4 border-t">
                     <Button
                       onClick={handleResendConfirmationEmail}
                       variant="outline"
                       className="w-full"
-                      disabled={sendingEmail}
+                      disabled={sendingEmail || adminActionBusy}
                     >
                       {sendingEmail ? (
                         <>
@@ -577,6 +734,9 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
                     </p>
                   </div>
                 )}
+                    </>
+                  )
+                })()}
               </CardContent>
             </Card>
 
