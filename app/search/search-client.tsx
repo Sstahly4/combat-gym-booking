@@ -61,16 +61,60 @@ function snippetFromGymDescription(raw: string | null | undefined): string | nul
   return head
 }
 
-/** Grey line under brand: prefer opening of gym description; else template from discipline + city. */
-function gymMobilePlaceDescription(gym: GymWithImages): string {
+function joinHighlights(parts: string[]): string {
+  return parts.join(' · ')
+}
+
+function withinBudget(parts: string[], budget: number): boolean {
+  return joinHighlights(parts).length <= budget
+}
+
+/** One-line OTA highlight string (no wrap, no ellipsis) built from real fields. */
+function gymMobileHighlightsLine(gym: GymWithImages): string {
+  // Keep this conservative so it never needs CSS truncation on common handsets.
+  const budget = 52
+
+  const d0 = gym.disciplines?.[0]?.trim()
+  const a = (gym as { amenities?: Record<string, unknown> }).amenities
+  const acc = Boolean(a?.accommodation)
+  const meals = Boolean(a?.meals)
+  const pickup = Boolean(a?.airport_pickup)
+
+  const hasReviews = (gym.review_count || 0) > 0 && (gym.average_rating || 0) > 0
+  const rating = hasReviews ? (gym.average_rating as number) : null
+  const topRated = rating != null && rating >= 4.8
+
+  const base: string[] = []
+  if (d0) base.push(d0)
+  if (gym.verification_status === 'trusted') base.push('Guest favourite')
+  else if (gym.verification_status === 'verified') base.push('Verified')
+  else if (topRated) base.push('Top rated')
+
+  const amenityCandidates: string[] = []
+  if (acc) amenityCandidates.push('On-site stay')
+  if (meals) amenityCandidates.push('Meals')
+  if (pickup) amenityCandidates.push('Airport pickup')
+
+  const out: string[] = []
+  for (const p of base) {
+    if (out.length >= 3) break
+    if (withinBudget([...out, p], budget)) out.push(p)
+  }
+  for (const p of amenityCandidates) {
+    if (out.length >= 3) break
+    if (withinBudget([...out, p], budget)) out.push(p)
+  }
+
+  // If we couldn't build enough variety, fall back to description snippet, then template.
+  if (out.length >= 2) return joinHighlights(out)
+
   const fromDesc = snippetFromGymDescription(gym.description)
-  if (fromDesc) return fromDesc
+  if (fromDesc && fromDesc.length <= budget) return fromDesc
 
   const city = (gym.city || '').trim()
-  const d0 = gym.disciplines?.[0]?.trim()
-  if (d0 && city) return `${d0} gym in ${city}`
-  if (d0) return `${d0} gym`
-  if (city) return `Training gym in ${city}`
+  if (d0 && city) return `${d0} gym in ${city}`.slice(0, budget).trimEnd()
+  if (d0) return `${d0} gym`.slice(0, budget).trimEnd()
+  if (city) return `Training gym in ${city}`.slice(0, budget).trimEnd()
   return 'Training gym'
 }
 
@@ -559,8 +603,7 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
-    const mobilePlaceDescription = gymMobilePlaceDescription(gym)
-    const mobileAmenityHook = gymMobileAmenityHookLine(gym)
+    const mobilePlaceDescription = gymMobileHighlightsLine(gym)
     const mobileTitle = (gym.name || '').trim() || 'Gym'
 
     return (
@@ -605,11 +648,8 @@ function SearchPageContent() {
                   )}
                 </div>
               </div>
-              {/* OTA pattern: one line, slightly larger light grey, ellipsis — not two wrapped lines */}
-              <p className="min-w-0 truncate text-[13px] leading-normal text-gray-500">{mobilePlaceDescription}</p>
-              {mobileAmenityHook ? (
-                <p className="min-w-0 truncate text-[12px] leading-normal text-gray-500">{mobileAmenityHook}</p>
-              ) : null}
+              {/* OTA pattern: one line highlights (no wrap, no ellipsis). */}
+              <p className="text-[13px] leading-normal text-gray-500 whitespace-nowrap">{mobilePlaceDescription}</p>
               <div className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-semibold tabular-nums leading-tight text-gray-900">
