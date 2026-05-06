@@ -34,9 +34,12 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameMonth,
+  isSameYear,
   isSameDay,
   isBefore,
   isAfter,
+  isValid,
+  parseISO,
   startOfWeek,
   endOfWeek,
 } from 'date-fns'
@@ -118,6 +121,46 @@ const SUGGESTED_DESTINATIONS = [
   },
 ] as const
 
+type RecentSearchEntry = {
+  query: string
+  checkin?: string
+  checkout?: string
+}
+
+function normalizeRecentEntry(raw: unknown): RecentSearchEntry | null {
+  if (typeof raw === 'string') {
+    const q = raw.trim()
+    if (!q) return null
+    return { query: q }
+  }
+  if (raw && typeof raw === 'object' && 'query' in raw) {
+    const q = String((raw as RecentSearchEntry).query || '').trim()
+    if (!q) return null
+    const checkin = (raw as RecentSearchEntry).checkin?.trim() || undefined
+    const checkout = (raw as RecentSearchEntry).checkout?.trim() || undefined
+    return { query: q, checkin, checkout }
+  }
+  return null
+}
+
+/** Compact range for recent-search rows (e.g. "6–8 May"). */
+function formatRecentSearchDateRange(checkin?: string, checkout?: string): string | null {
+  if (!checkin || !checkout) return null
+  const a = parseISO(`${checkin}T12:00:00`)
+  const b = parseISO(`${checkout}T12:00:00`)
+  if (!isValid(a) || !isValid(b)) return null
+  if (isSameDay(a, b)) {
+    return format(a, 'd MMM')
+  }
+  if (isSameMonth(a, b) && isSameYear(a, b)) {
+    return `${format(a, 'd')}–${format(b, 'd MMM')}`
+  }
+  if (isSameYear(a, b)) {
+    return `${format(a, 'd MMM')} – ${format(b, 'd MMM')}`
+  }
+  return `${format(a, 'd MMM yyyy')} – ${format(b, 'd MMM yyyy')}`
+}
+
 /** Subtitle under any Where row (recents or free text) — matches suggested copy when we recognize a place. */
 function whereRowSubtitleForLabel(raw: string): string {
   const q = raw.trim().toLowerCase()
@@ -147,6 +190,12 @@ function whereRowSubtitleForLabel(raw: string): string {
   if (/\bthailand\b/.test(q)) return 'Training camps and long-stay stays'
 
   return 'From your recent searches'
+}
+
+function recentSearchRowSubtitle(entry: RecentSearchEntry): string {
+  const range = formatRecentSearchDateRange(entry.checkin, entry.checkout)
+  if (range) return range
+  return whereRowSubtitleForLabel(entry.query)
 }
 
 function isDestinationLikeWhereQuery(raw: string): boolean {
@@ -322,7 +371,7 @@ export function SearchBarRedesign({
   const [immersiveSheetDragging, setImmersiveSheetDragging] = useState(false)
   const [immersiveSheetClosing, setImmersiveSheetClosing] = useState(false)
   const [mobileModalViewportH, setMobileModalViewportH] = useState<number | null>(null)
-  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([])
   const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
   /** True when every hit was pg_trgm fuzzy (no substring match on name or aliases). */
@@ -335,7 +384,13 @@ export function SearchBarRedesign({
     if (!mounted) return
     try {
       const stored = localStorage.getItem('cb_recentSearches')
-      if (stored) setRecentSearches(JSON.parse(stored))
+      if (stored) {
+        const parsed = JSON.parse(stored) as unknown
+        if (Array.isArray(parsed)) {
+          const next = parsed.map(normalizeRecentEntry).filter(Boolean) as RecentSearchEntry[]
+          setRecentSearches(next)
+        }
+      }
     } catch {}
   }, [mounted])
 
@@ -958,7 +1013,12 @@ export function SearchBarRedesign({
       params.set('location', whereQuery)
       // Persist to recent searches
       try {
-        const updated = [whereQuery, ...recentSearches.filter(s => s !== whereQuery)].slice(0, 3)
+        const trimmed = whereQuery.trim()
+        const entry: RecentSearchEntry = {
+          query: trimmed,
+          ...(userHasSelectedDates && checkin && checkout ? { checkin, checkout } : {}),
+        }
+        const updated = [entry, ...recentSearches.filter((e) => e.query !== entry.query)].slice(0, 3)
         setRecentSearches(updated)
         localStorage.setItem('cb_recentSearches', JSON.stringify(updated))
       } catch {}
@@ -1330,6 +1390,39 @@ export function SearchBarRedesign({
                 className="mb-4 w-full border-b border-gray-100 pb-3 text-sm text-gray-800 outline-none placeholder-gray-400"
               />
               {renderGymSuggestBlock('desktop')}
+              {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
+                <div className="mb-5">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                    Recent searches
+                  </p>
+                  <div className="space-y-0.5">
+                    {recentSearches.map((entry) => (
+                      <button
+                        key={`${entry.query}-${entry.checkin ?? ''}-${entry.checkout ?? ''}`}
+                        type="button"
+                        onClick={() => {
+                          setWhereQuery(entry.query)
+                          if (entry.checkin && entry.checkout) {
+                            setCheckin(entry.checkin)
+                            setCheckout(entry.checkout)
+                            setUserHasSelectedDates(true)
+                          } else {
+                            setUserHasSelectedDates(false)
+                          }
+                          setActiveSlot('when')
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-gray-50"
+                      >
+                        <WhereRecentSearchIconTile label={entry.query} size="sm" />
+                        <div className="min-w-0 flex-1 text-left">
+                          <div className="truncate text-sm font-semibold text-gray-900">{entry.query}</div>
+                          <div className="truncate text-xs text-gray-500">{recentSearchRowSubtitle(entry)}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
                 Suggested destinations
               </p>
@@ -1542,22 +1635,29 @@ export function SearchBarRedesign({
                   <div className="mb-6 mt-1">
                     <p className="mb-3 text-[12px] font-medium text-gray-700">Recent searches</p>
                     <div className="space-y-1">
-                      {recentSearches.map((s) => (
+                      {recentSearches.map((entry) => (
                         <button
-                          key={s}
+                          key={`${entry.query}-${entry.checkin ?? ''}-${entry.checkout ?? ''}`}
                           type="button"
                           onClick={() => {
-                            setWhereQuery(s)
+                            setWhereQuery(entry.query)
+                            if (entry.checkin && entry.checkout) {
+                              setCheckin(entry.checkin)
+                              setCheckout(entry.checkout)
+                              setUserHasSelectedDates(true)
+                            } else {
+                              setUserHasSelectedDates(false)
+                            }
                             setMobileWhereImmersive(false)
                             setMobilePanel('when')
                           }}
                           className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-100"
                         >
-                          <WhereRecentSearchIconTile label={s} size="md" />
+                          <WhereRecentSearchIconTile label={entry.query} size="md" />
                           <div className="min-w-0 flex-1">
-                            <div className="text-[14px] font-medium leading-tight text-gray-900">{s}</div>
+                            <div className="text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
                             <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
-                              {whereRowSubtitleForLabel(s)}
+                              {recentSearchRowSubtitle(entry)}
                             </div>
                           </div>
                         </button>
@@ -1690,21 +1790,28 @@ export function SearchBarRedesign({
                         <div className="mb-3 flex-shrink-0">
                           <p className="mb-2 text-[12px] font-medium text-gray-700">Recent searches</p>
                           <div className="space-y-1">
-                            {recentSearches.map((s) => (
+                            {recentSearches.map((entry) => (
                               <button
-                                key={s}
+                                key={`${entry.query}-${entry.checkin ?? ''}-${entry.checkout ?? ''}`}
                                 type="button"
                                 onClick={() => {
-                                  setWhereQuery(s)
+                                  setWhereQuery(entry.query)
+                                  if (entry.checkin && entry.checkout) {
+                                    setCheckin(entry.checkin)
+                                    setCheckout(entry.checkout)
+                                    setUserHasSelectedDates(true)
+                                  } else {
+                                    setUserHasSelectedDates(false)
+                                  }
                                   setMobilePanel('when')
                                 }}
                                 className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-50"
                               >
-                                <WhereRecentSearchIconTile label={s} size="md" />
+                                <WhereRecentSearchIconTile label={entry.query} size="md" />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{s}</div>
+                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">
-                                    {whereRowSubtitleForLabel(s)}
+                                    {recentSearchRowSubtitle(entry)}
                                   </div>
                                 </div>
                               </button>
