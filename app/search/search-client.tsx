@@ -61,6 +61,71 @@ function snippetFromGymDescription(raw: string | null | undefined): string | nul
   return head
 }
 
+/** Squared distance threshold: ignore tap navigation if finger moved farther than this (scroll/swipe intent). */
+const MOVE_CANCEL_PX = 12
+const MOVE_CANCEL_SQ = MOVE_CANCEL_PX * MOVE_CANCEL_PX
+
+function TapGuardLink(
+  props: React.ComponentProps<typeof Link> & { className?: string; children: React.ReactNode },
+) {
+  const movedRef = useRef(false)
+  const pointerSessionCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(
+    () => () => {
+      pointerSessionCleanupRef.current?.()
+      pointerSessionCleanupRef.current = null
+    },
+    [],
+  )
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    movedRef.current = false
+    pointerSessionCleanupRef.current?.()
+    pointerSessionCleanupRef.current = null
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const pid = e.pointerId
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (dx * dx + dy * dy > MOVE_CANCEL_SQ) movedRef.current = true
+    }
+
+    const end = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      pointerSessionCleanupRef.current = null
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      pointerSessionCleanupRef.current = null
+    }
+    pointerSessionCleanupRef.current = cleanup
+
+    window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (movedRef.current) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
+  return <Link {...props} onPointerDown={handlePointerDown} onClick={handleClick} />
+}
+
 function joinHighlights(parts: string[]): string {
   return parts.join(' · ')
 }
@@ -613,7 +678,7 @@ function SearchPageContent() {
       >
         {/* ── Mobile: Airbnb-style dense card — entire block is one tap target (no CTA button) ── */}
         <div className="sm:hidden relative">
-          <Link
+          <TapGuardLink
             href={href}
             target="_blank"
             rel="noopener noreferrer"
@@ -663,7 +728,7 @@ function SearchPageContent() {
               </div>
               <p className="text-[10px] text-gray-400 leading-tight">Includes taxes and charges</p>
             </div>
-          </Link>
+          </TapGuardLink>
           <SaveButton gymId={gym.id} />
         </div>
 

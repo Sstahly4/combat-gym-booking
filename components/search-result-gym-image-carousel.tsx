@@ -95,7 +95,7 @@ export function SearchResultGymImageCarousel({ images, alt, sizes }: Props) {
     <div className="absolute inset-0">
       <div
         ref={scrollRef}
-        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain no-scrollbar touch-pan-x"
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain no-scrollbar touch-auto"
       >
         {slides.map((image, i) => (
           <div
