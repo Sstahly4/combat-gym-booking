@@ -36,20 +36,31 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
-/** One tight differentiation line for mobile listing cards (Airbnb-style density). */
-function gymMobileListingTagline(gym: GymWithImages): string {
+/** Airbnb-style first line: “{type} in {place}” (not the brand name). */
+function gymMobileListingHeadline(gym: GymWithImages): string {
+  const city = (gym.city || '').trim()
+  const country = (gym.country || '').trim()
+  const place = city || country || 'Thailand'
+  const d0 = gym.disciplines?.[0]?.trim()
+  if (d0) return `${d0} gym in ${place}`
+  return `Training camp in ${place}`
+}
+
+/** One grey line under the headline: gym name + optional amenity hook (no discipline repeat). */
+function gymMobileListingSecondaryLine(gym: GymWithImages): string {
+  const name = (gym.name || '').trim() || 'Gym'
   const a = (gym as { amenities?: Record<string, unknown> }).amenities
   const acc = Boolean(a?.accommodation)
   const meals = Boolean(a?.meals)
   const pickup = Boolean(a?.airport_pickup)
-  if (meals && acc) return 'All-inclusive camp · on-site accommodation'
-  if (acc && pickup) return 'On-site accommodation · airport pickup'
-  if (acc) return 'On-site accommodation'
-  if (meals) return 'Meals available · train on-site'
-  if (pickup) return 'Airport pickup available'
-  const d0 = gym.disciplines?.[0]
-  if (d0) return `${d0} training camp`
-  return 'Flexible training packages'
+  let hook: string | null = null
+  if (meals && acc) hook = 'All-inclusive · on-site stay'
+  else if (acc && pickup) hook = 'On-site accommodation · airport pickup'
+  else if (acc) hook = 'On-site accommodation'
+  else if (meals) hook = 'Meals available on-site'
+  else if (pickup) hook = 'Airport pickup'
+  if (hook) return `${name} · ${hook}`
+  return name
 }
 
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
@@ -523,7 +534,8 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
-    const mobileTagline = gymMobileListingTagline(gym)
+    const mobileHeadline = gymMobileListingHeadline(gym)
+    const mobileSecondary = gymMobileListingSecondaryLine(gym)
 
     return (
       <div
@@ -536,6 +548,7 @@ function SearchPageContent() {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={`${gym.name} — ${mobileHeadline}`}
             className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-2xl active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
@@ -550,7 +563,7 @@ function SearchPageContent() {
             <div className="px-1 pt-2.5 pb-1 sm:px-3 sm:pt-2 sm:pb-3 space-y-1">
               <div className="flex items-start justify-between gap-3">
                 <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-gray-900 line-clamp-2">
-                  {gym.name}
+                  {mobileHeadline}
                 </h2>
                 <div className="flex shrink-0 items-center gap-0.5 text-[13px] text-gray-900">
                   {hasReviews ? (
@@ -564,17 +577,9 @@ function SearchPageContent() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-[11px] leading-tight text-gray-600">
-                <Check className="h-3 w-3 flex-shrink-0 text-green-700" strokeWidth={2.5} aria-hidden />
-                <span>Verified training facility</span>
-              </div>
-              <p className="truncate text-[12px] text-gray-600 leading-snug">
-                {[gym.city, gym.country].filter(Boolean).join(', ')}
-              </p>
-              <p className="line-clamp-1 text-[12px] text-gray-600 leading-snug">{mobileTagline}</p>
+              <p className="line-clamp-2 text-[12px] leading-snug text-gray-600">{mobileSecondary}</p>
               <div className="flex items-end justify-between gap-3 pt-1">
                 <div className="min-w-0">
-                  <div className="text-[11px] text-gray-500">{priceLabelTop}</div>
                   <div className="text-[17px] font-semibold tabular-nums leading-tight text-gray-900">
                     {priceDisplay}
                   </div>
