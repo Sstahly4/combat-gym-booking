@@ -36,6 +36,22 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
+/** One tight differentiation line for mobile listing cards (Airbnb-style density). */
+function gymMobileListingTagline(gym: GymWithImages): string {
+  const a = (gym as { amenities?: Record<string, unknown> }).amenities
+  const acc = Boolean(a?.accommodation)
+  const meals = Boolean(a?.meals)
+  const pickup = Boolean(a?.airport_pickup)
+  if (meals && acc) return 'All-inclusive camp · on-site accommodation'
+  if (acc && pickup) return 'On-site accommodation · airport pickup'
+  if (acc) return 'On-site accommodation'
+  if (meals) return 'Meals available · train on-site'
+  if (pickup) return 'Airport pickup available'
+  const d0 = gym.disciplines?.[0]
+  if (d0) return `${d0} training camp`
+  return 'Flexible training packages'
+}
+
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
 
 function SearchLocationMap({ location }: { location: string }) {
@@ -328,29 +344,6 @@ function SearchPageContent() {
     return 'Okay'
   }
 
-  const renderStars = (rating: number) => {
-    const rounded = Math.round(rating * 2) / 2
-    return (
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: 5 }).map((_, i) => {
-          const v = i + 1
-          const full = rounded >= v
-          const half = !full && rounded >= v - 0.5
-          if (full) return <Star key={i} className="w-3 h-3 text-[#febb02] fill-[#febb02]" />
-          if (half) return (
-            <span key={i} className="relative inline-flex w-3 h-3">
-              <Star className="absolute inset-0 w-3 h-3 text-gray-300 fill-gray-200" />
-              <span className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
-                <Star className="w-3 h-3 text-[#febb02] fill-[#febb02]" />
-              </span>
-            </span>
-          )
-          return <Star key={i} className="w-3 h-3 text-gray-300 fill-gray-200" />
-        })}
-      </div>
-    )
-  }
-
   const sortedGyms = useMemo(() => {
     const arr = [...gyms]
     if (sortBy === 'price_asc') return arr.sort((a, b) => (a.price_per_day || 0) - (b.price_per_day || 0))
@@ -530,10 +523,75 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
+    const mobileTagline = gymMobileListingTagline(gym)
 
     return (
-      <div key={gym.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-        <div className="flex flex-col sm:flex-row">
+      <div
+        key={gym.id}
+        className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      >
+        {/* ── Mobile: Airbnb-style dense card — entire block is one tap target (no CTA button) ── */}
+        <div className="sm:hidden relative">
+          <Link
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-xl active:bg-gray-50/80"
+          >
+            <div className="relative px-2 pt-2">
+              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-xl bg-gray-100">
+                <SearchResultGymImageCarousel
+                  images={gym.images}
+                  alt={gym.name}
+                  sizes="(max-width: 640px) 100vw, 320px"
+                />
+              </div>
+            </div>
+            <div className="px-3 pt-2 pb-3 space-y-1">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-gray-900 line-clamp-2">
+                  {gym.name}
+                </h2>
+                <div className="flex shrink-0 items-center gap-0.5 text-[13px] text-gray-900">
+                  {hasReviews ? (
+                    <>
+                      <Star className="h-3.5 w-3.5 fill-gray-900 text-gray-900" strokeWidth={0} aria-hidden />
+                      <span className="font-medium">{displayRating.toFixed(2)}</span>
+                      <span className="text-gray-500 whitespace-nowrap">({displayCount})</span>
+                    </>
+                  ) : (
+                    <span className="text-[12px] text-gray-500">New</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] leading-tight text-gray-600">
+                <Check className="h-3 w-3 flex-shrink-0 text-green-700" strokeWidth={2.5} aria-hidden />
+                <span>Verified training facility</span>
+              </div>
+              <p className="truncate text-[12px] text-gray-600 leading-snug">
+                {[gym.city, gym.country].filter(Boolean).join(', ')}
+              </p>
+              <p className="line-clamp-1 text-[12px] text-gray-600 leading-snug">{mobileTagline}</p>
+              <div className="flex items-end justify-between gap-3 pt-1">
+                <div className="min-w-0">
+                  <div className="text-[11px] text-gray-500">{priceLabelTop}</div>
+                  <div className="text-[17px] font-semibold tabular-nums leading-tight text-gray-900">
+                    {priceDisplay}
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    {priceLabelBottom}
+                    {guestsCount ? ` · ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-400">Includes taxes and charges</p>
+            </div>
+          </Link>
+          <SaveButton gymId={gym.id} />
+        </div>
+
+        {/* ── Desktop: existing three-column card ── */}
+        <div className="hidden sm:flex sm:flex-row">
           {/* Image */}
           <div className="sm:w-[260px] md:w-[320px] flex-shrink-0 p-3 sm:p-4">
             <Link
@@ -542,8 +600,7 @@ function SearchPageContent() {
               rel="noopener noreferrer"
               className="relative block w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100"
             >
-              {/* Desktop: first image only */}
-              <div className="absolute inset-0 hidden sm:block">
+              <div className="absolute inset-0">
                 {gym.images.length > 0 ? (
                   <ResponsiveGymImage
                     image={gym.images[0]}
@@ -554,14 +611,6 @@ function SearchPageContent() {
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
                 )}
-              </div>
-              {/* Mobile: swipe gallery + dot indicators */}
-              <div className="sm:hidden absolute inset-0">
-                <SearchResultGymImageCarousel
-                  images={gym.images}
-                  alt={gym.name}
-                  sizes="(max-width: 640px) 100vw, 320px"
-                />
               </div>
               <SaveButton gymId={gym.id} />
             </Link>
@@ -594,17 +643,6 @@ function SearchPageContent() {
                   </a>
                 </div>
               </div>
-
-              {/* Rating (mobile top-right) */}
-              <div className="sm:hidden flex-shrink-0 text-right">
-                <div className="flex items-center gap-1.5 justify-end">
-                  <div className="text-right">
-                    <div className="text-[11px] font-semibold text-gray-900">{ratingLabel(displayRating)}</div>
-                    {hasReviews && <div className="text-[10px] text-gray-500">{displayCount} reviews</div>}
-                  </div>
-                  <ScoreBadge score={displayRating} />
-                </div>
-              </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5 mt-2.5">
@@ -618,7 +656,6 @@ function SearchPageContent() {
               )}
             </div>
 
-            {/* Key details (Booking-like black lines) */}
             <div className="mt-3 space-y-0.5 text-[13px] text-gray-900">
               <div className="font-semibold leading-snug">
                 {gym.disciplines?.length ? `${gym.disciplines[0]} training camp` : 'Training camp'}
@@ -630,7 +667,6 @@ function SearchPageContent() {
               </div>
             </div>
 
-            {/* Highlights (Booking-like green lines) */}
             <div className="mt-3 border-l-2 border-gray-200 pl-3 space-y-1">
               <div className="flex items-start gap-2 text-[12px] text-green-700">
                 <Check className="w-3.5 h-3.5 flex-shrink-0 mt-[1px]" strokeWidth={2.5} />
@@ -654,8 +690,7 @@ function SearchPageContent() {
             </div>
           </div>
 
-          {/* Right column (desktop) */}
-          <div className="hidden sm:flex w-[240px] md:w-[270px] py-4 pr-5 pl-4 border-l border-gray-100 flex-col justify-between">
+          <div className="w-[240px] md:w-[270px] flex-shrink-0 py-4 pr-5 pl-4 border-l border-gray-100 flex-col justify-between flex">
             <div className="flex items-start justify-end gap-2">
               <div className="text-right">
                 <div className="text-[11px] font-semibold text-gray-900">{ratingLabel(displayRating)}</div>
@@ -683,31 +718,6 @@ function SearchPageContent() {
                 See availability
               </Link>
             </div>
-          </div>
-
-          {/* Mobile CTA row */}
-          <div className="sm:hidden px-4 pb-4">
-            <div className="flex items-end justify-between mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-1.5">
-                {renderStars(displayRating)}
-              </div>
-              <div className="text-right">
-                <div className="text-[11px] text-gray-500">{priceLabelTop}</div>
-                <div className="text-[22px] font-semibold text-gray-900 leading-tight">{priceDisplay}</div>
-                <div className="text-[11px] text-gray-500">
-                  {priceLabelBottom}{guestsCount ? `, ${guestsCount} guest${guestsCount !== 1 ? 's' : ''}` : ''}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-1">Includes taxes and charges</div>
-              </div>
-            </div>
-            <Link
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex w-full items-center justify-center bg-[#006ce4] hover:bg-[#0057b8] text-white font-bold py-3 rounded text-sm transition-colors"
-            >
-              See availability
-            </Link>
           </div>
         </div>
       </div>
