@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, Check, Star } from 'lucide-react'
 import { SaveButton } from '@/components/save-button'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/lib/contexts/currency-context'
-import { useBooking } from '@/lib/contexts/booking-context'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 interface FeaturedCarouselProps {
@@ -25,7 +24,6 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
   const { convertPrice, formatPrice } = useCurrency()
-  const { checkin, checkout } = useBooking()
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -142,7 +140,7 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
         {gyms.map((gym: any, idx: number) => (
           <Link 
             key={gym.id} 
-            href={`/gyms/${gym.slug || gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
+            href={`/gyms/${gym.slug || gym.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="min-w-[calc(50%-6px)] snap-start no-underline md:min-w-[calc(25%-12px)]"

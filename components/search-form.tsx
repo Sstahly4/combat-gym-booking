@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { Search } from 'lucide-react'
 import { DateRangePicker } from '@/components/date-range-picker'
+import { DATES_CONFIRMED_QUERY } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
@@ -69,7 +70,8 @@ function parseSearchQuery(query: string): { location: string; discipline: string
 export function SearchForm() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  
+  const [datesTouched, setDatesTouched] = useState(false)
+
   // Use shared booking context for dates so gym card links stay in sync
   const { checkin, setCheckin, checkout, setCheckout } = useBooking()
 
@@ -132,9 +134,12 @@ export function SearchForm() {
     }
     if (location) params.set('location', location)
     if (discipline) params.set('discipline', discipline)
-    if (checkin) params.set('checkin', checkin)
-    if (checkout) params.set('checkout', checkout)
-    
+    if (datesTouched && checkin && checkout) {
+      params.set('checkin', checkin)
+      params.set('checkout', checkout)
+      params.set(DATES_CONFIRMED_QUERY, 'true')
+    }
+
     router.push(`/search?${params.toString()}`)
   }
 
@@ -160,8 +165,14 @@ export function SearchForm() {
             <DateRangePicker
               checkin={checkin}
               checkout={checkout}
-              onCheckinChange={setCheckin}
-              onCheckoutChange={setCheckout}
+              onCheckinChange={(v) => {
+                setCheckin(v)
+                setDatesTouched(true)
+              }}
+              onCheckoutChange={(v) => {
+                setCheckout(v)
+                setDatesTouched(true)
+              }}
             />
           </div>
 

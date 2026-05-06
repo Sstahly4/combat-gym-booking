@@ -4,6 +4,7 @@ import { useState, useRef, type MouseEvent, type TouchEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { hasConfirmedDatesInParams } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
@@ -81,8 +82,8 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
     setSheetTranslateY(0)
   }
   
-  // Check if dates are user-provided (from URL params) or auto-defaulted
-  const hasUserSelectedDates = searchParams.get('checkin') && searchParams.get('checkout')
+  // Dates in URL alone are not intent (homepage/search defaults used to inject them).
+  const hasUserSelectedDates = hasConfirmedDatesInParams(searchParams)
   
   const duration = (checkin && checkout)
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))

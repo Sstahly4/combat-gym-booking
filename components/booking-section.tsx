@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { BookingModal } from '@/components/booking-modal'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { Gym } from '@/lib/types/database'
+import { DATES_CONFIRMED_QUERY } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
 import { AlertCircle } from 'lucide-react'
 
@@ -24,15 +25,15 @@ export function BookingSection({ gym }: { gym: Gym }) {
     checkout, setCheckout 
   } = useBooking()
 
-  // Update URL when dates change
-  useEffect(() => {
-    if (checkin || checkout) {
-      const params = new URLSearchParams(searchParams.toString())
-      if (checkin) params.set('checkin', checkin)
-      if (checkout) params.set('checkout', checkout)
-      router.replace(`?${params.toString()}`, { scroll: false })
-    }
-  }, [checkin, checkout, router, searchParams])
+  const pushConfirmedDatesToUrl = (cin: string, cout: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (cin) params.set('checkin', cin)
+    else params.delete('checkin')
+    if (cout) params.set('checkout', cout)
+    else params.delete('checkout')
+    params.set(DATES_CONFIRMED_QUERY, 'true')
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }
 
   // Calculate duration
   const duration = (checkin && checkout)
@@ -120,7 +121,11 @@ export function BookingSection({ gym }: { gym: Gym }) {
                 <Input 
                   type="date" 
                   value={checkin} 
-                  onChange={(e) => setCheckin(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setCheckin(v)
+                    pushConfirmedDatesToUrl(v, checkout)
+                  }}
                   className="h-9 text-sm"
                 />
               </div>
@@ -129,7 +134,11 @@ export function BookingSection({ gym }: { gym: Gym }) {
                 <Input 
                   type="date" 
                   value={checkout} 
-                  onChange={(e) => setCheckout(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setCheckout(v)
+                    pushConfirmedDatesToUrl(checkin, v)
+                  }}
                   className="h-9 text-sm"
                 />
               </div>

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useCurrency } from '@/lib/contexts/currency-context'
-import { useBooking } from '@/lib/contexts/booking-context'
 import { SaveButton } from '@/components/save-button'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { Star, MapPin } from 'lucide-react'
@@ -19,7 +18,6 @@ type GymRow = {
 export default function SavedPage() {
   const { user, loading: authLoading } = useAuth()
   const { convertPrice, formatPrice } = useCurrency()
-  const { checkin, checkout } = useBooking()
   const [rows, setRows] = useState<GymRow[]>([])
   const [loading, setLoading] = useState(true)
   const isGuest = !authLoading && !user
@@ -101,8 +99,7 @@ export default function SavedPage() {
     })
   }
 
-  const gymHref = (gymId: string) =>
-    `/gyms/${gymId}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`
+  const gymHref = (gym: { slug?: string | null }, gymId: string) => `/gyms/${gym?.slug || gymId}`
 
   if (authLoading || loading) {
     return (
@@ -199,7 +196,7 @@ export default function SavedPage() {
               return (
                 <li key={gym_id}>
                   <Link
-                    href={gymHref(gym_id)}
+                    href={gymHref(gym, gym_id)}
                     className="flex gap-4 p-4 transition-colors hover:bg-gray-50/80 sm:gap-5 sm:p-5"
                   >
                     <div className="relative h-24 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-28 sm:w-36">

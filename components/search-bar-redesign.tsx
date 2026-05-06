@@ -23,6 +23,7 @@ import {
   Trees,
   type LucideIcon,
 } from 'lucide-react'
+import { DATES_CONFIRMED_QUERY } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
 import {
   format,
@@ -962,8 +963,11 @@ export function SearchBarRedesign({
         localStorage.setItem('cb_recentSearches', JSON.stringify(updated))
       } catch {}
     }
-    if (checkin) params.set('checkin', checkin)
-    if (checkout) params.set('checkout', checkout)
+    if (userHasSelectedDates && checkin && checkout) {
+      params.set('checkin', checkin)
+      params.set('checkout', checkout)
+      params.set(DATES_CONFIRMED_QUERY, 'true')
+    }
     const totalGuests = adults + children
     if (totalGuests > 1) params.set('guests', String(totalGuests))
     if (accommodationOnly) params.set('accommodation', 'true')

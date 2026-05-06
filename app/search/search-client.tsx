@@ -14,6 +14,7 @@ import { SearchBarRedesign } from '@/components/search-bar-redesign'
 import { SaveButton } from '@/components/save-button'
 import { parseSearchQuery, SEARCH_DISCIPLINES } from '@/lib/search/search-browse-title'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
+import { DATES_CONFIRMED_QUERY, gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 
 const COUNTRIES = ['Thailand', 'Indonesia', 'Australia', 'Japan', 'USA', 'Brazil', 'Philippines', 'Malaysia']
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -144,6 +145,7 @@ function SearchPageContent() {
   const initialDiscipline = searchParams.get('discipline') || parsedQuery.discipline
   const urlCheckin = searchParams.get('checkin') || ''
   const urlCheckout = searchParams.get('checkout') || ''
+  const urlDatesConfirmed = searchParams.get(DATES_CONFIRMED_QUERY) === 'true'
   const guestsParam = searchParams.get('guests') || ''
 
   const defaultDatesForCategory = (c: typeof category) => {
@@ -503,7 +505,11 @@ function SearchPageContent() {
       )
       : null
 
-    const href = `/gyms/${gym.slug || gym.id}${filters.checkin && filters.checkout ? `?checkin=${filters.checkin}&checkout=${filters.checkout}` : ''}`
+    const href = gymHrefWithOptionalDates(gym.slug || gym.id, {
+      checkin: filters.checkin,
+      checkout: filters.checkout,
+      datesConfirmed: urlDatesConfirmed,
+    })
     const rawPrice =
       estimatedPrice != null && estimatedPrice > 0 ? estimatedPrice : gym.price_per_day || 0
     const priceDisplay = formatPrice(convertPrice(rawPrice, gym.currency || 'USD'))

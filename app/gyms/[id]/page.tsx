@@ -334,7 +334,13 @@ export async function generateMetadata({
   }
 }
 
-export default async function GymDetailsPage({ params, searchParams }: { params: { id: string }, searchParams: { checkin?: string, checkout?: string } }) {
+export default async function GymDetailsPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string }
+  searchParams: { checkin?: string; checkout?: string; dates_confirmed?: string }
+}) {
   const idOrSlug = params.id
   // Fast path: cookie-free, cached fetch — renders statically for verified/trusted gyms.
   let gym = looksLikeUuid(idOrSlug) ? await getPublicGym(idOrSlug) : await getPublicGymBySlug(idOrSlug)
@@ -357,6 +363,7 @@ export default async function GymDetailsPage({ params, searchParams }: { params:
     const qp = new URLSearchParams()
     if (searchParams?.checkin) qp.set('checkin', searchParams.checkin)
     if (searchParams?.checkout) qp.set('checkout', searchParams.checkout)
+    if (searchParams?.dates_confirmed === 'true') qp.set('dates_confirmed', 'true')
     const qs = qp.toString()
     redirect(`/gyms/${gym.slug}${qs ? `?${qs}` : ''}`)
   }

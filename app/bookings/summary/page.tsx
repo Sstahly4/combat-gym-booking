@@ -16,6 +16,7 @@ import { ArrowLeft, MapPin, Calendar, Users, AlertCircle, Dumbbell, Check, Star,
 import Link from 'next/link'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
+import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -1021,7 +1022,11 @@ function BookingSummaryPageContent() {
                   </div>
                 </div>
                 <Link 
-                  href={`/gyms/${gym.id}?checkin=${checkin}&checkout=${checkout}`}
+                  href={gymHrefWithOptionalDates(gym.slug || gym.id, {
+                    checkin,
+                    checkout,
+                    datesConfirmed: true,
+                  })}
                   className="block text-sm text-[#003580] hover:underline mt-3"
                 >
                   Change your selection

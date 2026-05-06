@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useBooking } from '@/lib/contexts/booking-context'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 interface TripPlannerProps {
@@ -28,8 +27,6 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState('train-stay')
-  const { checkin, checkout } = useBooking()
-
   // Filter gyms based on selected filter
   // Data arrives pre-sorted by rating (highest first) from the server
   const filterGyms = () => {
@@ -184,7 +181,7 @@ export function TripPlanner({ gyms }: TripPlannerProps) {
             {displayGyms.map((gym) => (
               <Link
                 key={gym.id}
-                href={`/gyms/${(gym as any).slug || gym.id}${checkin && checkout ? `?checkin=${checkin}&checkout=${checkout}` : ''}`}
+                href={`/gyms/${(gym as any).slug || gym.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="min-w-[calc(50%-12px)] md:min-w-[calc(20%-12.8px)] max-w-[calc(50%-12px)] md:max-w-[calc(20%-12.8px)] snap-start flex-shrink-0"
