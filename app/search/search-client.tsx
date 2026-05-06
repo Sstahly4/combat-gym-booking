@@ -126,88 +126,63 @@ function TapGuardLink(
   return <Link {...props} onPointerDown={handlePointerDown} onClick={handleClick} />
 }
 
-function joinHighlights(parts: string[]): string {
-  return parts.join(', ')
-}
+/**
+ * Build both mobile subtitle lines in one pass — nothing ever appears on both lines.
+ *
+ * Line 1 "highlights" (comma-separated): discipline + quality signal (verification / rating).
+ *   Amenities go exclusively on line 2.
+ *
+ * Line 2 "detail" (· separated): amenities NOT mentioned on line 1.
+ *   If no amenity data, show a different dimension so lines are always complementary.
+ */
+function buildMobileCardLines(gym: GymWithImages): { highlights: string; detail: string } {
+  const BUDGET = 52
 
-function withinBudget(parts: string[], budget: number): boolean {
-  return joinHighlights(parts).length <= budget
-}
-
-/** One-line OTA highlight string (no wrap, no ellipsis) built from real fields. */
-function gymMobileHighlightsLine(gym: GymWithImages): string {
-  // Keep this conservative so it never needs CSS truncation on common handsets.
-  const budget = 52
-
-  const d0 = gym.disciplines?.[0]?.trim()
   const a = (gym as { amenities?: Record<string, unknown> }).amenities
   const acc = Boolean(a?.accommodation)
   const meals = Boolean(a?.meals)
   const pickup = Boolean(a?.airport_pickup)
+
+  const d0 = (gym.disciplines?.[0] ?? '').trim()
+  const d1 = (gym.disciplines?.[1] ?? '').trim()
 
   const hasReviews = (gym.review_count || 0) > 0 && (gym.average_rating || 0) > 0
   const rating = hasReviews ? (gym.average_rating as number) : null
   const topRated = rating != null && rating >= 4.8
 
-  const base: string[] = []
-  if (d0) base.push(d0)
-  if (gym.verification_status === 'trusted') base.push('Guest favourite')
-  else if (gym.verification_status === 'verified') base.push('Verified')
-  else if (topRated) base.push('Top rated')
+  // Line 1: discipline(s) + quality signal only — no amenities
+  const l1: string[] = []
+  if (d0) l1.push(d0)
+  if (gym.verification_status === 'trusted') l1.push('Guest favourite')
+  else if (gym.verification_status === 'verified') l1.push('Verified')
+  else if (topRated) l1.push('Top rated')
+  else if (d1) l1.push(d1)
 
-  const amenityCandidates: string[] = []
-  if (acc) amenityCandidates.push('On-site stay')
-  if (meals) amenityCandidates.push('Meals')
-  if (pickup) amenityCandidates.push('Airport pickup')
+  const highlights = l1.join(', ').slice(0, BUDGET).trimEnd()
 
-  const out: string[] = []
-  for (const p of base) {
-    if (out.length >= 3) break
-    if (withinBudget([...out, p], budget)) out.push(p)
+  // Line 2: amenities only (no overlap with line 1)
+  const amenityParts: string[] = []
+  if (acc && meals) {
+    amenityParts.push('All-inclusive stay')
+  } else {
+    if (acc) amenityParts.push('On-site stay')
+    if (meals) amenityParts.push('Meals on-site')
   }
-  for (const p of amenityCandidates) {
-    if (out.length >= 3) break
-    if (withinBudget([...out, p], budget)) out.push(p)
+  if (pickup) amenityParts.push('Airport pickup')
+
+  if (amenityParts.length) {
+    return { highlights, detail: amenityParts.join(' · ').slice(0, BUDGET).trimEnd() }
   }
 
-  // If we couldn't build enough variety, fall back to description snippet, then template.
-  if (out.length >= 2) return joinHighlights(out)
-
-  const fromDesc = snippetFromGymDescription(gym.description)
-  if (fromDesc && fromDesc.length <= budget) return fromDesc
-
+  // No amenities — use a different dimension so lines are never repetitive
   const city = (gym.city || '').trim()
-  if (d0 && city) return `${d0} gym in ${city}`.slice(0, budget).trimEnd()
-  if (d0) return `${d0} gym`.slice(0, budget).trimEnd()
-  if (city) return `Training gym in ${city}`.slice(0, budget).trimEnd()
-  return 'Training gym'
-}
+  const country = (gym.country || '').trim()
+  const place = city || country
+  if (place && d0) return { highlights, detail: d0 + ' gym in ' + place }
+  if (place) return { highlights, detail: 'Training in ' + place }
 
-/** Optional third grey line: amenity hook only (brand + discipline already shown above). */
-function gymMobileAmenityHookLine(gym: GymWithImages): string | null {
-  const a = (gym as { amenities?: Record<string, unknown> }).amenities
-  const acc = Boolean(a?.accommodation)
-  const meals = Boolean(a?.meals)
-  const pickup = Boolean(a?.airport_pickup)
-  if (meals && acc) return 'All-inclusive · on-site stay'
-  if (acc && pickup) return 'On-site accommodation · airport pickup'
-  if (acc) return 'On-site accommodation'
-  if (meals) return 'Meals available on-site'
-  if (pickup) return 'Airport pickup'
-  return null
-}
-
-/** Always-present second line under highlights (uses · separators). */
-function gymMobileAmenityLineAlways(gym: GymWithImages): string {
-  const hook = gymMobileAmenityHookLine(gym)
-  if (hook) return hook
-
-  // Safe, accurate fallbacks (avoid invented “ocean views”-style claims).
-  const hasPricing =
-    (gym.price_per_day ?? 0) > 0 || (gym.price_per_week ?? 0) > 0 || (gym.price_per_month ?? 0) > 0
-
-  if (hasPricing) return 'Flexible training packages'
-  return 'Training available'
+  const hasPricing = (gym.price_per_day ?? 0) > 0 || (gym.price_per_week ?? 0) > 0
+  return { highlights, detail: hasPricing ? 'Flexible training packages' : 'Training available' }
 }
 
 // ─── Sidebar map ──────────────────────────────────────────────────────────────
@@ -681,8 +656,7 @@ function SearchPageContent() {
       gym.address ||
       (gym.name && gym.city ? `${gym.name}, ${gym.city}, ${gym.country}` : `${gym.city}, ${gym.country}`)
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
-    const mobilePlaceDescription = gymMobileHighlightsLine(gym)
-    const mobileAmenityLine = gymMobileAmenityLineAlways(gym)
+    const { highlights: mobilePlaceDescription, detail: mobileAmenityLine } = buildMobileCardLines(gym)
     const mobileTitle = (gym.name || '').trim() || 'Gym'
 
     return (
