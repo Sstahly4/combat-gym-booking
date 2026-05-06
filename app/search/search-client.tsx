@@ -37,7 +37,8 @@ interface GymWithImages extends Gym {
 }
 
 const MIN_DESCRIPTION_SNIPPET = 32
-const MAX_DESCRIPTION_SNIPPET = 130
+/** ~one handset line at 13px; CSS truncate still applies if needed */
+const MAX_DESCRIPTION_SNIPPET = 78
 
 /** Airbnb-style hook from listing copy: first sentence or line of description, accurate because owner-written. */
 function snippetFromGymDescription(raw: string | null | undefined): string | null {
@@ -55,7 +56,7 @@ function snippetFromGymDescription(raw: string | null | undefined): string | nul
   if (head.length > MAX_DESCRIPTION_SNIPPET) {
     const slice = head.slice(0, MAX_DESCRIPTION_SNIPPET)
     const lastSpace = slice.lastIndexOf(' ')
-    head = (lastSpace > 40 ? slice.slice(0, lastSpace) : slice).trimEnd() + '…'
+    head = (lastSpace > 36 ? slice.slice(0, lastSpace) : slice).trimEnd()
   }
   return head
 }
@@ -574,20 +575,22 @@ function SearchPageContent() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${mobileTitle} — ${mobilePlaceDescription}`}
-            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-xl active:bg-gray-50/50"
+            className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-[12px] active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
-              <div className="relative w-full aspect-[3/2] overflow-hidden rounded-xl bg-gray-100 sm:shadow-none">
+              {/* Modern OTA mobile: 1:1 (not 3:2) + 12px radius; object-cover inside carousel */}
+              <div className="relative w-full aspect-square overflow-hidden rounded-[12px] bg-gray-100 sm:shadow-none">
                 <SearchResultGymImageCarousel
                   images={gym.images}
                   alt={gym.name}
-                  sizes="(max-width: 640px) 100vw, 320px"
+                  sizes="(max-width: 640px) 100vw, 360px"
                 />
               </div>
             </div>
-            <div className="px-0 pt-2 pb-1.5 space-y-0.5">
+            {/* ~4px rhythm (8px grid): gap-1 between title, copy, and price blocks */}
+            <div className="px-0 pt-2 pb-1.5 flex flex-col gap-1">
               <div className="flex items-start justify-between gap-2">
-                <h2 className="min-w-0 flex-1 text-[14px] font-semibold leading-tight text-gray-900 line-clamp-2">
+                <h2 className="min-w-0 flex-1 text-base font-bold leading-snug text-gray-900 line-clamp-2">
                   {mobileTitle}
                 </h2>
                 <div className="flex shrink-0 items-center gap-0.5 text-[12px] text-gray-900">
@@ -602,11 +605,12 @@ function SearchPageContent() {
                   )}
                 </div>
               </div>
-              <p className="line-clamp-2 text-[11px] leading-snug text-gray-600">{mobilePlaceDescription}</p>
+              {/* OTA pattern: one line, slightly larger light grey, ellipsis — not two wrapped lines */}
+              <p className="min-w-0 truncate text-[13px] leading-normal text-gray-500">{mobilePlaceDescription}</p>
               {mobileAmenityHook ? (
-                <p className="line-clamp-1 text-[11px] leading-snug text-gray-600">{mobileAmenityHook}</p>
+                <p className="min-w-0 truncate text-[12px] leading-normal text-gray-500">{mobileAmenityHook}</p>
               ) : null}
-              <div className="flex items-end justify-between gap-3 pt-0.5">
+              <div className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-semibold tabular-nums leading-tight text-gray-900">
                     {priceDisplay}
@@ -834,8 +838,8 @@ function SearchPageContent() {
               {sidebar}
             </aside>
 
-            {/* ── Results — max width on larger handsets/tablet portrait for OTA-style gutters (desktop unchanged) ── */}
-            <main className="flex-1 min-w-0 w-full max-w-lg mx-auto md:max-w-none md:mx-0">
+            {/* ── Results — ~672px max on large phones (Airbnb-style); 24px page gutters via px-6 ── */}
+            <main className="flex-1 min-w-0 w-full max-w-2xl mx-auto md:max-w-none md:mx-0">
               {/* Results header (aligned with results column); title hidden on mobile for cleaner OTA toolbar */}
               <div className="mb-3 md:mb-4">
                 <h1 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">
@@ -900,15 +904,18 @@ function SearchPageContent() {
               </div>
 
               {loading ? (
-                <div className="space-y-8 sm:space-y-3">
+                <div className="space-y-9 sm:space-y-3">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="flex h-44 overflow-hidden rounded-2xl border-0 bg-white/90 shadow-sm sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none">
-                      <div className="w-[220px] bg-gray-200 animate-pulse flex-shrink-0" />
-                      <div className="flex-1 p-4 space-y-3">
-                        <div className="h-5 w-2/3 bg-gray-200 rounded animate-pulse" />
-                        <div className="h-3 w-1/3 bg-gray-200 rounded animate-pulse" />
-                        <div className="h-3 w-full bg-gray-200 rounded animate-pulse" />
-                        <div className="h-3 w-4/5 bg-gray-200 rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="flex flex-col overflow-hidden rounded-[12px] border-0 bg-white/90 shadow-sm sm:h-44 sm:flex-row sm:border sm:border-gray-200 sm:rounded-xl sm:bg-white sm:shadow-none"
+                    >
+                      <div className="aspect-square w-full flex-shrink-0 bg-gray-200 animate-pulse sm:aspect-auto sm:h-full sm:w-[220px]" />
+                      <div className="flex flex-1 flex-col gap-2 p-3 sm:justify-start sm:space-y-3 sm:gap-0 sm:p-4">
+                        <div className="h-5 w-2/3 rounded bg-gray-200 animate-pulse" />
+                        <div className="h-3 w-1/3 rounded bg-gray-200 animate-pulse" />
+                        <div className="hidden h-3 w-full rounded bg-gray-200 animate-pulse sm:block" />
+                        <div className="hidden h-3 w-4/5 rounded bg-gray-200 animate-pulse sm:block" />
                       </div>
                     </div>
                   ))}
@@ -923,7 +930,7 @@ function SearchPageContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-8 sm:space-y-3">
+                <div className="space-y-9 sm:space-y-3">
                   {filteredByRating.map(gym => renderCard(gym))}
                 </div>
               )}
