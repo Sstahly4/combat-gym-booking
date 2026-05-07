@@ -7,6 +7,7 @@ import { WiseConfigError } from '@/lib/wise/wise-config'
 import { WiseApiError } from '@/lib/wise/wise-http'
 import { pickBusinessProfileId, wiseListProfiles } from '@/lib/wise/wise-profiles'
 import { wiseCreateEmailRecipient } from '@/lib/wise/wise-recipient'
+import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 
 type Body = {
   gym_id?: string
@@ -95,6 +96,14 @@ export async function POST(request: NextRequest) {
       console.error('[wise/recipient] gym update', updateError)
       return NextResponse.json({ error: 'Failed to save recipient on gym.' }, { status: 500 })
     }
+
+    // Telemetry: payout details are now ready (Wise rail).
+    await recordOwnerEvent(supabase as never, {
+      event_type: 'payouts_details_set',
+      user_id: userId,
+      gym_id: gymId,
+      metadata: { rail: 'wise' },
+    })
 
     return NextResponse.json({
       wise_recipient_id: created.id,

@@ -29,3 +29,13 @@ export type AdminActivityItem =
       gym_name: string | null
       status: string | null
     }
+  | {
+      kind: 'payouts_ready'
+      id: string
+      created_at: string
+      title: string
+      subtitle: string | null
+      href: string
+      gym_name: string | null
+      status: string | null
+    }

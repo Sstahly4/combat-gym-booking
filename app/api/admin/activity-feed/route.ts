@@ -27,7 +27,7 @@ export async function GET() {
 
   const sinceIso = since.toISOString()
 
-  const [bookingsRes, gymsRes, claimRes] = await Promise.all([
+  const [bookingsRes, gymsRes, claimRes, payoutsRes] = await Promise.all([
     supabase
       .from('bookings')
       .select('id, created_at, status, total_price, gym_id, guest_name')
@@ -45,6 +45,13 @@ export async function GET() {
       .select('id, created_at, event_type, user_id, gym_id, metadata')
       .gte('created_at', sinceIso)
       .in('event_type', ['gym_claim_password_set'])
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('owner_telemetry_events')
+      .select('id, created_at, event_type, user_id, gym_id, metadata')
+      .gte('created_at', sinceIso)
+      .in('event_type', ['payouts_details_set'])
       .order('created_at', { ascending: false })
       .limit(25),
   ])
@@ -65,6 +72,15 @@ export async function GET() {
       e?.code === 'PGRST205' || (/Could not find the table/i.test(msg) && /owner_telemetry_events/i.test(msg))
     if (!missing) {
       console.error('[admin/activity-feed] claim telemetry', claimRes.error)
+    }
+  }
+  if (payoutsRes.error) {
+    const e = payoutsRes.error as unknown as { code?: string; message?: string }
+    const msg = typeof e?.message === 'string' ? e.message : ''
+    const missing =
+      e?.code === 'PGRST205' || (/Could not find the table/i.test(msg) && /owner_telemetry_events/i.test(msg))
+    if (!missing) {
+      console.error('[admin/activity-feed] payouts telemetry', payoutsRes.error)
     }
   }
 
@@ -155,6 +171,15 @@ export async function GET() {
     metadata: any
   }[]
 
+  const payoutsRows = (!payoutsRes.error ? (payoutsRes.data || []) : []) as {
+    id: string
+    created_at: string
+    event_type: string
+    user_id: string | null
+    gym_id: string | null
+    metadata: any
+  }[]
+
   const claimGymIds = [...new Set(claimRows.map((r) => r.gym_id).filter(Boolean))] as string[]
   const claimUserIds = [...new Set(claimRows.map((r) => r.user_id).filter(Boolean))] as string[]
 
@@ -191,6 +216,52 @@ export async function GET() {
       id: r.id,
       created_at: r.created_at,
       title: 'Claim link completed',
+      subtitle,
+      href,
+      gym_name: gymName,
+      status: null,
+    })
+  }
+
+  const payoutsGymIds = [...new Set(payoutsRows.map((r) => r.gym_id).filter(Boolean))] as string[]
+  const payoutsUserIds = [...new Set(payoutsRows.map((r) => r.user_id).filter(Boolean))] as string[]
+
+  const payoutsGymMeta = new Map<string, { name: string; city: string | null; country: string | null }>()
+  if (payoutsGymIds.length > 0) {
+    const { data: rows } = await supabase.from('gyms').select('id, name, city, country').in('id', payoutsGymIds)
+    for (const g of rows || []) {
+      payoutsGymMeta.set(g.id as string, {
+        name: (g.name as string) || '',
+        city: (g.city as string | null) ?? null,
+        country: (g.country as string | null) ?? null,
+      })
+    }
+  }
+
+  const payoutsOwnerMeta = new Map<string, { full_name: string | null }>()
+  if (payoutsUserIds.length > 0) {
+    const { data: rows } = await supabase.from('profiles').select('id, full_name').in('id', payoutsUserIds)
+    for (const p of rows || []) {
+      payoutsOwnerMeta.set(p.id as string, { full_name: (p.full_name as string | null) ?? null })
+    }
+  }
+
+  for (const r of payoutsRows) {
+    const gym = r.gym_id ? payoutsGymMeta.get(r.gym_id) : null
+    const gymName = gym?.name?.trim() || null
+    const loc =
+      gym?.city && gym?.country ? `${gym.city}, ${gym.country}` : gym?.country || gym?.city || null
+    const ownerName = r.user_id ? payoutsOwnerMeta.get(r.user_id)?.full_name?.trim() : null
+    const rail = r.metadata?.rail ? String(r.metadata.rail) : null
+    const subtitle = [ownerName ? `Owner: ${ownerName}` : null, loc, rail ? `Rail: ${rail}` : null]
+      .filter(Boolean)
+      .join(' · ') || null
+    const href = r.gym_id ? `/admin/gyms?gym_id=${encodeURIComponent(r.gym_id)}` : '/admin/gyms'
+    items.push({
+      kind: 'payouts_ready',
+      id: r.id,
+      created_at: r.created_at,
+      title: 'Payout details completed',
       subtitle,
       href,
       gym_name: gymName,

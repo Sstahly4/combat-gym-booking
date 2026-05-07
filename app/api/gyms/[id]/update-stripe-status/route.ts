@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -67,6 +68,15 @@ export async function POST(
       .from('gyms')
       .update({ stripe_connect_verified: verified })
       .eq('id', params.id)
+
+    if (verified) {
+      await recordOwnerEvent(supabase as never, {
+        event_type: 'payouts_details_set',
+        user_id: gym.owner_id,
+        gym_id: params.id,
+        metadata: { rail: 'stripe_connect', source: 'update_stripe_status' },
+      })
+    }
 
     return NextResponse.json({ verified })
   } catch (error: any) {

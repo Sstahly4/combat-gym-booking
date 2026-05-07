@@ -6,6 +6,7 @@ import {
   gymCountryToStripeIso2,
 } from '@/lib/stripe/gym-country'
 import { normalizeStripeRedirectBaseUrl, StripeConfigError } from '@/lib/stripe/stripe-client'
+import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -137,6 +138,12 @@ export async function POST(request: NextRequest) {
         const created = await stripe.accounts.retrieve(account.id)
         if (created.charges_enabled && created.payouts_enabled) {
           await supabase.from('gyms').update({ stripe_connect_verified: true }).eq('id', gym!.id)
+          await recordOwnerEvent(supabase as never, {
+            event_type: 'payouts_details_set',
+            user_id: access.userId,
+            gym_id: gym.id,
+            metadata: { rail: 'stripe_connect', source: 'create_account' },
+          })
         }
       } catch (error) {
         console.error('Error checking Stripe verification status:', error)

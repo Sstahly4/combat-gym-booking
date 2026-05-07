@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bell, Building2, CalendarCheck, CheckCheck, Loader2, UserCheck } from 'lucide-react'
+import { Bell, Building2, CalendarCheck, CheckCheck, CreditCard, Loader2, UserCheck } from 'lucide-react'
 import type { AdminActivityItem } from '@/lib/admin/admin-activity-types'
 
 const STORAGE_KEY = 'combatstay_admin_activity_seen_v1'
@@ -174,7 +174,13 @@ export function AdminNotificationBell() {
                   const k = seenKey(it)
                   const unread = !seenSet.has(k)
                   const Icon =
-                    it.kind === 'booking' ? CalendarCheck : it.kind === 'owner_claimed' ? UserCheck : Building2
+                    it.kind === 'booking'
+                      ? CalendarCheck
+                      : it.kind === 'owner_claimed'
+                        ? UserCheck
+                        : it.kind === 'payouts_ready'
+                          ? CreditCard
+                          : Building2
                   return (
                     <li key={k}>
                       <button
@@ -190,6 +196,8 @@ export function AdminNotificationBell() {
                               ? 'bg-emerald-50 text-emerald-800'
                               : it.kind === 'owner_claimed'
                                 ? 'bg-violet-50 text-violet-900'
+                                : it.kind === 'payouts_ready'
+                                  ? 'bg-amber-50 text-amber-900'
                                 : 'bg-sky-50 text-sky-800'
                           }`}
                         >
