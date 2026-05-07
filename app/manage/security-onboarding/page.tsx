@@ -45,6 +45,11 @@ export default function SecurityOnboardingPage() {
 
   const [healingRole, setHealingRole] = useState(false)
 
+  // Users who signed up via the self-serve invite flow (inviteUserByEmail) arrive
+  // without a password — they authenticated by clicking the email link.
+  // Re-authentication via signInWithPassword would always fail for them.
+  const isInvitedUser = Boolean(user?.user_metadata?.onboarding_entry === 'self_serve')
+
   const profileRecoverFailed = useBootstrapProfileIfMissing({
     authLoading,
     user,
@@ -208,13 +213,17 @@ export default function SecurityOnboardingPage() {
 
     setUpdatingPassword(true)
     try {
-      const response = await fetch('/api/auth/password/update', {
+      // Invited users have no current password — use the set-first endpoint which
+      // skips current-password verification (the invite-link session is trusted).
+      const url = isInvitedUser ? '/api/auth/password/set-first' : '/api/auth/password/update'
+      const body = isInvitedUser
+        ? { new_password: newPassword }
+        : { current_password: currentPassword, new_password: newPassword }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword,
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -231,7 +240,11 @@ export default function SecurityOnboardingPage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setPasswordMessage('Password updated. Use your new password to confirm and continue.')
+      setPasswordMessage(
+        isInvitedUser
+          ? 'Password set successfully.'
+          : 'Password updated. Use your new password to confirm and continue.'
+      )
     } catch (updateError: any) {
       setError(updateError?.message || 'Failed to update password')
     } finally {
@@ -438,14 +451,21 @@ export default function SecurityOnboardingPage() {
 
               {showPasswordReset && (
                 <div className="mt-4 space-y-3 rounded-lg bg-gray-50/70 p-4">
+                  {isInvitedUser && (
+                    <p className="text-[12px] text-gray-500">
+                      Set a password so you can sign in with email and password in the future.
+                    </p>
+                  )}
                   <PasswordStandardsHint className="mb-1" password={newPassword} />
-                  <PasswordInput
-                    placeholder="Current password"
-                    autoComplete="current-password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    className="h-10 bg-white"
-                  />
+                  {!isInvitedUser && (
+                    <PasswordInput
+                      placeholder="Current password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      className="h-10 bg-white"
+                    />
+                  )}
                   <PasswordInput
                     placeholder="New password"
                     autoComplete="new-password"
@@ -464,9 +484,14 @@ export default function SecurityOnboardingPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleUpdatePassword}
-                    disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
+                    disabled={
+                      updatingPassword ||
+                      (!isInvitedUser && !currentPassword) ||
+                      !newPassword ||
+                      !confirmPassword
+                    }
                   >
-                    {updatingPassword ? 'Updating…' : 'Update password'}
+                    {updatingPassword ? 'Updating…' : isInvitedUser ? 'Set password' : 'Update password'}
                   </Button>
                   {passwordMessage && (
                     <p className="text-[12.5px] text-emerald-700">{passwordMessage}</p>
@@ -521,7 +546,15 @@ export default function SecurityOnboardingPage() {
               : 'Complete the fields above to continue.'}
           </p>
           <Button
-            onClick={() => setShowReAuth(true)}
+            onClick={() => {
+              if (isInvitedUser) {
+                // Invited users authenticated via email link — their session is
+                // already the identity proof. Skip ReAuthDialog entirely.
+                void completeSecurityStep()
+              } else {
+                setShowReAuth(true)
+              }
+            }}
             disabled={
               submitting ||
               !emailVerified ||
