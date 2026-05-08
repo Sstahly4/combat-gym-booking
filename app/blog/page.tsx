@@ -83,6 +83,11 @@ export default function BlogPage() {
       excerpt: 'Fight camp recovery-first shortlist: physio + competition-prep signals, compared cleanly.',
       href: '/blog/muay-thai-fight-prep-camps-physiotherapy',
     },
+    {
+      title: "Don’t Get Burned: 4 Things to Check Before Booking a Thailand Training Trip",
+      excerpt: 'A high-intent checklist covering visas, recovery entities, schedule clarity, and commute reality.',
+      href: '/blog/dont-get-burned-thailand-training-trip',
+    },
   ]
 
   const cityGuides = [
@@ -133,6 +138,29 @@ export default function BlogPage() {
     },
   ]
 
+  const microLocations = [
+    {
+      title: 'Best Muay Thai gyms in Bang Tao',
+      excerpt: 'Phuket suburb guide (live listings): compare gyms by reviews, then filter dates and amenities.',
+      href: '/blog/best-muay-thai-gyms/bang-tao',
+    },
+    {
+      title: 'Best Muay Thai gyms in Rawai',
+      excerpt: 'South Phuket shortlist: ranked from verified listings (not recycled affiliate lists).',
+      href: '/blog/best-muay-thai-gyms/rawai',
+    },
+    {
+      title: 'Best Muay Thai gyms in Chalong',
+      excerpt: 'Training base + logistics: commute-first ranking with live gym data.',
+      href: '/blog/best-muay-thai-gyms/chalong',
+    },
+    {
+      title: 'Best Muay Thai gyms in Kamala',
+      excerpt: 'Smaller-area guide: live rankings, FAQs, and a fast path into filtered search.',
+      href: '/blog/best-muay-thai-gyms/kamala',
+    },
+  ]
+
   const combatSports = [
     {
       title: 'Best MMA Camps in Thailand',
@@ -176,6 +204,16 @@ export default function BlogPage() {
       title: 'Thailand Visa Extension & Overstay Guide',
       excerpt: 'TM.7 mindset, official links, timing mistakes, and overstay risk—built for longer training trips.',
       href: '/blog/thailand-visa-extension-overstay-guide',
+    },
+    {
+      title: 'The Ultimate Guide to Combat Sports Travel in Thailand (2026)',
+      excerpt: 'Pillar hub: visas, packing, recovery, gym selection, and mistake-proof planning in one place.',
+      href: '/blog/combat-sports-travel-guide-thailand-2026',
+    },
+    {
+      title: "The 2026 Fighter’s Blueprint: 7 Camps with High-Spec Recovery & On‑Site Housing",
+      excerpt: 'Recovery-first shortlist built from live amenities (ice bath/sauna/physio/massage + accommodation).',
+      href: '/blog/fighters-blueprint-recovery-housing-thailand-2026',
     },
   ]
 
@@ -261,6 +299,29 @@ export default function BlogPage() {
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <MapPin className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">Micro-location guides (suburbs)</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {microLocations.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-gray-500">
+          New suburbs automatically become indexable as soon as gyms appear with matching city/suburb values.
+        </p>
       </section>
 
       <section className="mb-14">

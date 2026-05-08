@@ -4,6 +4,7 @@ import { Clock, MapPin, Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { GuideGym } from '@/lib/guides/thailand-gyms'
 import { trainingScheduleSnippet } from '@/lib/guides/schedule-snippet'
+import { labelGymAmenity, mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
 
 function formatMoney(amount: number, currency: string) {
   try {
@@ -26,6 +27,21 @@ type GuideGymCardProps = {
   fallbackImageSrc?: string
 }
 
+function buildSignalLine(gym: GuideGym): string | null {
+  const amenities = mergeGymAmenitiesFromDb((gym as any).amenities)
+  const signals = [
+    'ice_bath',
+    'sauna',
+    'physiotherapy',
+    'massage',
+    'visa_assistance',
+    'accommodation',
+  ].filter((k) => amenities[k])
+
+  if (signals.length === 0) return null
+  return signals.slice(0, 3).map((k) => labelGymAmenity(k)).join(' · ')
+}
+
 export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: GuideGymCardProps) {
   const imageSrc = gym.images?.[0]?.url || fallbackImageSrc || '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
@@ -38,6 +54,7 @@ export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: Gui
 
   const scheduleLine = trainingScheduleSnippet(gym.training_schedule, 2)
   const blurb = gym.description ? truncate(gym.description, 140) : null
+  const signalLine = buildSignalLine(gym)
 
   return (
     <Link href={`/gyms/${(gym as any).slug || gym.id}`} className="block h-full">
@@ -93,6 +110,12 @@ export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: Gui
             <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
               <Clock className="w-3.5 h-3.5 text-[#003580] shrink-0 mt-0.5" />
               <span className="leading-snug">{scheduleLine}</span>
+            </div>
+          )}
+
+          {signalLine && (
+            <div className="mt-2 text-xs text-gray-600">
+              <span className="font-semibold text-gray-900">Signals:</span> {signalLine}
             </div>
           )}
 
