@@ -32,6 +32,7 @@ import {
 import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -87,6 +88,9 @@ function EditGymForm() {
     failed: number
     total: number
   }>({ active: false, completed: 0, failed: 0, total: 0 })
+
+  const focusFrameRef = useRef<HTMLDivElement | null>(null)
+  const focusDraggingRef = useRef(false)
 
   const [focusModal, setFocusModal] = useState<{
     open: boolean
@@ -544,6 +548,17 @@ function EditGymForm() {
       saving: false,
       error: null,
     })
+  }
+
+  const setFocusFromClientPoint = (clientX: number, clientY: number) => {
+    const el = focusFrameRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    const x = (clientX - rect.left) / rect.width
+    const y = (clientY - rect.top) / rect.height
+    const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+    setFocusModal((p) => ({ ...p, focusX: clamp01(x), focusY: clamp01(y) }))
   }
 
   const saveFocusAdjust = async () => {
@@ -1546,11 +1561,14 @@ function EditGymForm() {
                             : 'border-gray-200 hover:border-[#003580]'
                         } transition-all`}
                       >
-                        <img 
-                          src={img.url} 
-                          alt="Gym" 
-                          className="w-full h-full object-cover pointer-events-none" 
-                        />
+                        <div className="absolute inset-0">
+                          <ResponsiveGymImage
+                            image={img}
+                            alt="Gym"
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                            className="object-cover"
+                          />
+                        </div>
                         <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
                           #{index + 1}
                         </div>
@@ -2029,13 +2047,26 @@ function EditGymForm() {
                 {focusModal.imageUrl ? (
                   <div className="space-y-3">
                     <div
+                      ref={focusFrameRef}
                       className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black"
                       style={{ aspectRatio: '16 / 9' }}
-                      onClick={(e) => {
-                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                        const x = (e.clientX - rect.left) / rect.width
-                        const y = (e.clientY - rect.top) / rect.height
-                        setFocusModal((p) => ({ ...p, focusX: Math.min(1, Math.max(0, x)), focusY: Math.min(1, Math.max(0, y)) }))
+                      onPointerDown={(e) => {
+                        focusDraggingRef.current = true
+                        ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+                        setFocusFromClientPoint(e.clientX, e.clientY)
+                      }}
+                      onPointerMove={(e) => {
+                        if (!focusDraggingRef.current) return
+                        setFocusFromClientPoint(e.clientX, e.clientY)
+                      }}
+                      onPointerUp={(e) => {
+                        focusDraggingRef.current = false
+                        try {
+                          ;(e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId)
+                        } catch {}
+                      }}
+                      onPointerCancel={() => {
+                        focusDraggingRef.current = false
                       }}
                     >
                       <img
@@ -2047,10 +2078,15 @@ function EditGymForm() {
                         }}
                       />
                       <div
-                        className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-white/30 shadow"
+                        className="absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-white/30 shadow active:cursor-grabbing"
                         style={{
                           left: `${focusModal.focusX * 100}%`,
                           top: `${focusModal.focusY * 100}%`,
+                        }}
+                        onPointerDown={(e) => {
+                          e.stopPropagation()
+                          focusDraggingRef.current = true
+                          setFocusFromClientPoint(e.clientX, e.clientY)
                         }}
                         aria-hidden
                       />
@@ -2060,7 +2096,7 @@ function EditGymForm() {
                       <p className="text-sm text-destructive">{focusModal.error}</p>
                     ) : (
                       <p className="text-xs text-gray-500">
-                        Tip: click where you want the focus (faces, ring, mats). We’ll keep that area centered when cropping.
+                        Tip: drag the dot (or drag anywhere in the photo) to set the focus.
                       </p>
                     )}
 
