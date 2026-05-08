@@ -36,7 +36,14 @@ const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxi
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-type PendingGymImage = { file: File; previewUrl: string }
+type PendingGymImageStatus = 'queued' | 'uploading' | 'saving' | 'done' | 'failed' | 'cancelled'
+type PendingGymImage = {
+  id: string
+  file: File
+  previewUrl: string
+  status: PendingGymImageStatus
+  error?: string | null
+}
 
 interface GymWithImages extends Gym {
   images: GymImage[]
@@ -72,6 +79,13 @@ function EditGymForm() {
   const [newImages, setNewImages] = useState<PendingGymImage[]>([])
   const newImagesRef = useRef<PendingGymImage[]>([])
   newImagesRef.current = newImages
+  const cancelImageUploadsRef = useRef(false)
+  const [imageUploadSummary, setImageUploadSummary] = useState<{
+    active: boolean
+    completed: number
+    failed: number
+    total: number
+  }>({ active: false, completed: 0, failed: 0, total: 0 })
   const saveInProgressRef = useRef(false)
   const [imageDragEnabled, setImageDragEnabled] = useState(false)
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
@@ -463,9 +477,12 @@ function EditGymForm() {
         alert('Maximum 30 images allowed')
         return prev
       }
-      const toAdd = files.slice(0, remainingSlots).map((file) => ({
+      const toAdd = files.slice(0, remainingSlots).map((file, idx) => ({
+        id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 10)}`,
         file,
         previewUrl: URL.createObjectURL(file),
+        status: 'queued' as const,
+        error: null,
       }))
       return [...prev, ...toAdd]
     })
@@ -511,64 +528,63 @@ function EditGymForm() {
         : -1
 
     const createMutableCopy = (obj: any): any => {
-      if (typeof structuredClone !== 'undefined') {
-        return structuredClone(obj)
-      }
+      if (typeof structuredClone !== 'undefined') return structuredClone(obj)
       return JSON.parse(JSON.stringify(obj))
     }
 
-    const uploadPromises = pending.map(async (entry, index) => {
-      const { file } = entry
+    cancelImageUploadsRef.current = false
+    setImageUploadSummary({ active: true, completed: 0, failed: 0, total: pending.length })
+
+    const successful: Array<{
+      gym_id: string
+      url: string
+      variants: Record<string, string>
+      order: number
+      storagePaths: string[]
+      pendingId: string
+    }> = []
+
+    for (let index = 0; index < pending.length; index++) {
+      const entry = pending[index]!
+      if (cancelImageUploadsRef.current) {
+        setNewImages((prev) =>
+          prev.map((x) => (x.id === entry.id && x.status !== 'done' ? { ...x, status: 'cancelled' } : x)),
+        )
+        continue
+      }
+
+      setNewImages((prev) => prev.map((x) => (x.id === entry.id ? { ...x, status: 'uploading', error: null } : x)))
       try {
         const stem = `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 10)}`
-        const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file, stem })
-
-        return {
+        const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file: entry.file, stem })
+        successful.push({
           gym_id: gymId,
           url: uploaded.url,
           variants: uploaded.variants,
           order: maxOrder + index + 1,
           storagePaths: uploaded.storagePaths,
-        }
+          pendingId: entry.id,
+        })
+        setImageUploadSummary((s) => ({ ...s, completed: s.completed + 1 }))
+        setNewImages((prev) => prev.map((x) => (x.id === entry.id ? { ...x, status: 'saving' } : x)))
       } catch (e: any) {
-        console.error(`Failed to upload image ${index}:`, e)
-        const errorMessage = e?.message || e?.toString() || 'Unknown error'
-        throw new Error(`Image ${index + 1} (${file.name}): ${errorMessage}`)
+        const errorMessage = e?.message || e?.toString() || 'Upload failed'
+        setImageUploadSummary((s) => ({ ...s, failed: s.failed + 1 }))
+        setNewImages((prev) =>
+          prev.map((x) => (x.id === entry.id ? { ...x, status: 'failed', error: errorMessage } : x)),
+        )
       }
-    })
+    }
 
-    const uploadResults = await Promise.allSettled(uploadPromises)
-    const validImageData: Array<{ gym_id: string; url: string; variants: Record<string, string>; order: number }> = []
-    const errors: string[] = []
-    const uploadedFiles: string[] = []
-
-    uploadResults.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
-        const { storagePaths, ...imageData } = result.value
-        validImageData.push(imageData)
-        uploadedFiles.push(...storagePaths)
-      } else {
-        const errorMsg =
-          result.status === 'rejected'
-            ? result.reason?.message || result.reason?.toString() || 'Unknown error'
-            : 'Unknown error'
-        errors.push(`Image ${index + 1}: ${errorMsg}`)
-        console.error(`Failed to upload image ${index}:`, result)
-      }
-    })
+    const validImageData = successful.map(({ storagePaths: _sp, pendingId: _pid, ...row }) => row)
+    const uploadedFiles = successful.flatMap((s) => s.storagePaths)
 
     if (validImageData.length === 0) {
-      throw new Error(`All image uploads failed. ${errors.join('; ')}`)
+      setImageUploadSummary((s) => ({ ...s, active: false }))
+      throw new Error('All image uploads failed. Please try again or upload fewer images at a time.')
     }
 
-    if (validImageData.length !== pending.length) {
-      await supabase.storage.from('gym-images').remove(uploadedFiles)
-      const errorDetails = errors.length > 0 ? ` Errors: ${errors.join('; ')}` : ''
-      throw new Error(
-        `Only ${validImageData.length} of ${pending.length} images were uploaded successfully.${errorDetails}`,
-      )
-    }
-
+    // Save DB records for all successful uploads.
     const { data: insertedImages, error: insertError } = await supabase
       .from('gym_images')
       .insert(validImageData)
@@ -577,8 +593,18 @@ function EditGymForm() {
     if (insertError) {
       console.error('Database insert error:', insertError)
       await supabase.storage.from('gym-images').remove(uploadedFiles)
+      setImageUploadSummary((s) => ({ ...s, active: false }))
       throw new Error(`Failed to save image records: ${insertError.message}`)
     }
+
+    // Mark successful pending entries as done + revoke previews.
+    const successfulIds = new Set(successful.map((s) => s.pendingId))
+    setNewImages((prev) => {
+      prev.forEach((x) => {
+        if (successfulIds.has(x.id)) URL.revokeObjectURL(x.previewUrl)
+      })
+      return prev.filter((x) => !successfulIds.has(x.id))
+    })
 
     if (insertedImages && insertedImages.length > 0) {
       setGym((prev) => {
@@ -586,14 +612,11 @@ function EditGymForm() {
         const updatedImages = [...(prev.images || []), ...insertedImages].sort(
           (a, b) => (a.order || 0) - (b.order || 0),
         )
-        return {
-          ...createMutableCopy(prev),
-          images: updatedImages,
-        }
+        return { ...createMutableCopy(prev), images: updatedImages }
       })
     }
 
-    pending.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
+    setImageUploadSummary((s) => ({ ...s, active: false }))
 
     return insertedImages || []
   }
@@ -789,9 +812,6 @@ function EditGymForm() {
       }
 
       pendingImagesSnapshot = [...newImages]
-      if (pendingImagesSnapshot.length > 0) {
-        setNewImages([])
-      }
 
       const { error, data } = await supabase
         .from('gyms')
@@ -802,6 +822,13 @@ function EditGymForm() {
       if (error) {
         console.error('Error updating gym:', error)
         throw error
+      }
+
+      const updatedRows = Array.isArray(data) ? data : data ? [data] : []
+      if (updatedRows.length === 0) {
+        throw new Error(
+          'Save was blocked by database permissions. Please confirm this account can edit this gym.',
+        )
       }
 
       // Sync tagline state with what was saved so the field shows the persisted value.
@@ -817,9 +844,10 @@ function EditGymForm() {
       })
       
       // Upload new images before redirecting
-      if (pendingImagesSnapshot.length > 0) {
+      const queued = pendingImagesSnapshot.filter((x) => x.status === 'queued' || x.status === 'failed')
+      if (queued.length > 0) {
         try {
-          await uploadNewImages(gym.id, pendingImagesSnapshot, gym.images || [])
+          await uploadNewImages(gym.id, queued, gym.images || [])
         } catch (uploadError: any) {
           console.error('Image upload error:', uploadError)
           throw new Error(`Failed to upload images: ${uploadError.message}`)
@@ -1417,6 +1445,30 @@ function EditGymForm() {
                     />
                   </div>
                 </div>
+
+                {imageUploadSummary.active ? (
+                  <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        Uploading images… {imageUploadSummary.completed + imageUploadSummary.failed}/
+                        {imageUploadSummary.total}
+                      </p>
+                      <p className="text-amber-900/80">
+                        Keep this tab open until uploads finish. You can remove failed images and retry.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 border-amber-200 bg-white text-amber-950 hover:bg-amber-100"
+                      onClick={() => {
+                        cancelImageUploadsRef.current = true
+                      }}
+                    >
+                      Cancel uploads
+                    </Button>
+                  </div>
+                ) : null}
                 
                 {(gym.images && gym.images.length > 0) || newImages.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1464,6 +1516,26 @@ function EditGymForm() {
                     {/* New images (preview before upload) */}
                     {newImages.map((entry, i) => {
                       const displayIndex = (gym.images?.length || 0) + i
+                      const badge =
+                        entry.status === 'queued'
+                          ? 'Queued'
+                          : entry.status === 'uploading'
+                            ? 'Uploading…'
+                            : entry.status === 'saving'
+                              ? 'Saving…'
+                              : entry.status === 'failed'
+                                ? 'Failed'
+                                : entry.status === 'cancelled'
+                                  ? 'Cancelled'
+                                  : 'New'
+                      const badgeClass =
+                        entry.status === 'failed'
+                          ? 'bg-red-600'
+                          : entry.status === 'uploading' || entry.status === 'saving'
+                            ? 'bg-amber-600'
+                            : entry.status === 'cancelled'
+                              ? 'bg-gray-600'
+                              : 'bg-blue-600'
                       return (
                         <div
                           key={entry.previewUrl}
@@ -1478,6 +1550,9 @@ function EditGymForm() {
                           <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
                             #{displayIndex + 1} (New)
                           </div>
+                          <div className={`absolute top-2 right-2 ${badgeClass} text-white text-[11px] px-2 py-1 rounded font-medium pointer-events-none`}>
+                            {badge}
+                          </div>
                           <button
                             type="button"
                             onPointerDown={(ev) => ev.stopPropagation()}
@@ -1487,8 +1562,8 @@ function EditGymForm() {
                           >
                             ×
                           </button>
-                          <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
-                            Will be uploaded on save
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded font-medium">
+                            {entry.error ? entry.error : 'Will upload on save'}
                           </div>
                         </div>
                       )
