@@ -182,6 +182,9 @@ export interface GymImage {
   gym_id: string
   url: string
   variants?: GymImageVariants | null
+  /** Normalized focal point for object-cover cropping (0..1). */
+  focus_x?: number | null
+  focus_y?: number | null
   order: number
   created_at: string
 }
