@@ -31,6 +31,7 @@ import {
 } from '@/lib/navigation/manage-gym-edit-return'
 import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
@@ -86,6 +87,24 @@ function EditGymForm() {
     failed: number
     total: number
   }>({ active: false, completed: 0, failed: 0, total: 0 })
+
+  const [focusModal, setFocusModal] = useState<{
+    open: boolean
+    imageId: string | null
+    imageUrl: string | null
+    focusX: number
+    focusY: number
+    saving: boolean
+    error: string | null
+  }>({
+    open: false,
+    imageId: null,
+    imageUrl: null,
+    focusX: 0.5,
+    focusY: 0.5,
+    saving: false,
+    error: null,
+  })
   const saveInProgressRef = useRef(false)
   const [imageDragEnabled, setImageDragEnabled] = useState(false)
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
@@ -511,6 +530,45 @@ function EditGymForm() {
     } else {
       fetchGym(gym!.id)
     }
+  }
+
+  const openFocusAdjust = (img: GymImage) => {
+    const fx = typeof (img as any).focus_x === 'number' ? (img as any).focus_x : 0.5
+    const fy = typeof (img as any).focus_y === 'number' ? (img as any).focus_y : 0.5
+    setFocusModal({
+      open: true,
+      imageId: img.id,
+      imageUrl: img.url,
+      focusX: Number.isFinite(fx) ? fx : 0.5,
+      focusY: Number.isFinite(fy) ? fy : 0.5,
+      saving: false,
+      error: null,
+    })
+  }
+
+  const saveFocusAdjust = async () => {
+    if (!focusModal.imageId) return
+    const supabase = createClient()
+    setFocusModal((p) => ({ ...p, saving: true, error: null }))
+    const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+    const focus_x = clamp01(focusModal.focusX)
+    const focus_y = clamp01(focusModal.focusY)
+    const { error } = await supabase
+      .from('gym_images')
+      .update({ focus_x, focus_y })
+      .eq('id', focusModal.imageId)
+    if (error) {
+      setFocusModal((p) => ({ ...p, saving: false, error: error.message || 'Failed to save focal point' }))
+      return
+    }
+    setGym((prev) => {
+      if (!prev) return prev
+      const nextImages = (prev.images || []).map((img) =>
+        img.id === focusModal.imageId ? ({ ...(img as any), focus_x, focus_y } as any) : img
+      )
+      return { ...(prev as any), images: nextImages }
+    })
+    setFocusModal((p) => ({ ...p, saving: false, open: false }))
   }
 
   const uploadNewImages = async (
@@ -1505,6 +1563,14 @@ function EditGymForm() {
                         >
                           ×
                         </button>
+                        <button
+                          type="button"
+                          onPointerDown={(ev) => ev.stopPropagation()}
+                          onClick={() => openFocusAdjust(img)}
+                          className="absolute bottom-1 right-1 z-20 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-gray-900 shadow hover:bg-white"
+                        >
+                          Adjust
+                        </button>
                         {index === 0 && (
                           <div className="absolute bottom-2 left-2 bg-[#003580] text-white text-xs px-2 py-1 rounded font-medium">
                             Main Photo
@@ -1942,6 +2008,89 @@ function EditGymForm() {
             {profile?.role === 'admin' && gym?.id && gym.name ? (
               <AdminDeleteGymSection gymId={gym.id} gymName={gym.name} />
             ) : null}
+
+            <Dialog
+              open={focusModal.open}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setFocusModal((p) => ({ ...p, open: false, saving: false, error: null }))
+                }
+              }}
+              stackClassName="z-[140]"
+            >
+              <DialogContent className="max-w-xl">
+                <DialogHeader className="space-y-2">
+                  <DialogTitle>Adjust photo focal point</DialogTitle>
+                  <DialogDescription>
+                    Drag inside the frame to choose what stays in view when this photo is cropped.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {focusModal.imageUrl ? (
+                  <div className="space-y-3">
+                    <div
+                      className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black"
+                      style={{ aspectRatio: '16 / 9' }}
+                      onClick={(e) => {
+                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                        const x = (e.clientX - rect.left) / rect.width
+                        const y = (e.clientY - rect.top) / rect.height
+                        setFocusModal((p) => ({ ...p, focusX: Math.min(1, Math.max(0, x)), focusY: Math.min(1, Math.max(0, y)) }))
+                      }}
+                    >
+                      <img
+                        src={focusModal.imageUrl}
+                        alt="Adjust focal point"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        style={{
+                          objectPosition: `${Math.round(focusModal.focusX * 100)}% ${Math.round(focusModal.focusY * 100)}%`,
+                        }}
+                      />
+                      <div
+                        className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-white/30 shadow"
+                        style={{
+                          left: `${focusModal.focusX * 100}%`,
+                          top: `${focusModal.focusY * 100}%`,
+                        }}
+                        aria-hidden
+                      />
+                    </div>
+
+                    {focusModal.error ? (
+                      <p className="text-sm text-destructive">{focusModal.error}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Tip: click where you want the focus (faces, ring, mats). We’ll keep that area centered when cropping.
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFocusModal((p) => ({ ...p, focusX: 0.5, focusY: 0.5 }))}
+                        disabled={focusModal.saving}
+                      >
+                        Reset to center
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFocusModal((p) => ({ ...p, open: false }))}
+                        disabled={focusModal.saving}
+                      >
+                        Close
+                      </Button>
+                      <Button type="button" onClick={() => void saveFocusAdjust()} disabled={focusModal.saving}>
+                        {focusModal.saving ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No image selected.</p>
+                )}
+              </DialogContent>
+            </Dialog>
       </main>
     </div>
   )
