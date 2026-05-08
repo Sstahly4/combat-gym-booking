@@ -382,7 +382,7 @@ function SearchPageContent() {
     const supabase = createClient()
     let query = supabase
       .from('gyms')
-      .select('*, images:gym_images(*)')
+      .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
       .eq('verification_status', 'verified')
       .eq('status', 'approved')
 
