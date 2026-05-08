@@ -88,7 +88,7 @@ function BookingSummaryPageContent() {
       .from('gyms')
       .select(`
         *,
-        images:gym_images(*)
+        images:gym_images(url, variants, order, focus_x, focus_y)
       `)
       .eq('id', gymId)
       .single()
