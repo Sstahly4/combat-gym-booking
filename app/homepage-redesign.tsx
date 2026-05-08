@@ -171,7 +171,7 @@ async function getGyms(limit: number = 20) {
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('gyms')
-    .select('*, images:gym_images(url, variants, order)')
+    .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
     .in('verification_status', ['verified', 'trusted'])
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -193,7 +193,7 @@ async function getGymsWithPackages() {
     .from('gyms')
     .select(`
       *,
-      images:gym_images(url, variants, order),
+      images:gym_images(url, variants, order, focus_x, focus_y),
       packages(id, type, includes_accommodation, includes_meals, name, description, offer_type, event_date, event_end_date, max_attendees, price_per_day)
     `)
     .in('verification_status', ['verified', 'trusted'])
@@ -219,7 +219,7 @@ async function getTopRatedGyms(limit: number = 10) {
   
   const { data: allGyms } = await supabase
     .from('gyms')
-    .select('*, images:gym_images(url, variants, order)')
+    .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
     .in('verification_status', ['verified', 'trusted'])
   
   if (!allGyms) return []

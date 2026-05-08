@@ -53,7 +53,7 @@ export default function AdminGymsPage() {
     const [gymsRes, adminProfilesRes] = await Promise.all([
       supabase
         .from('gyms')
-        .select(`*, images:gym_images(url, variants, order)`)
+        .select(`*, images:gym_images(url, variants, order, focus_x, focus_y)`)
         .order('created_at', { ascending: false }),
       supabase.from('profiles').select('id').eq('role', 'admin'),
     ])
