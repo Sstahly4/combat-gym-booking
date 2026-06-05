@@ -199,7 +199,11 @@ export default function PhuketFighterConditioningGymsPage() {
           <Link href="/blog/best-muay-thai-gyms-phuket" className="font-medium text-[#003580] underline">
             best Muay Thai gyms in Phuket
           </Link>{' '}
-          guide, then layer S&amp;C around the camp schedule you choose.
+          guide, then layer S&amp;C around the camp schedule you choose. On Fitness Street (Soi Ta Iad),{' '}
+          <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
+            LUDUS Sports Complex
+          </Link>{' '}
+          bundles gym, spa, pool, and hotel in one complex—useful if recovery amenities matter as much as barbells.
         </p>
       </GuideSection>
 

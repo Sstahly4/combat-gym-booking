@@ -229,6 +229,14 @@ export default async function BestMuayThaiGymsPhuketPage() {
             and match our {CITY} location filter. Rankings follow the same review-first logic as our national guides so you
             can compare consistently.
           </p>
+          <p>
+            Training on Fitness Street (Soi Ta Iad) in Chalong? See our deep dive on{' '}
+            <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
+              LUDUS Sports Complex
+            </Link>{' '}
+            —a 5,000 m² resort-style gym with on-site hotel, spa, and Muay Thai/MMA classes—and how it compares to Tiger and
+            Unit 27 on the same soi.
+          </p>
         </div>
       </section>
 

@@ -155,6 +155,15 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
             This page only includes verified/trusted listings that match our <em>{city}</em> city/suburb filter and list Muay
             Thai. Rankings follow the same review-first methodology as the rest of CombatStay’s guides.
           </p>
+          {city.toLowerCase() === 'chalong' && (
+            <p>
+              For Soi Ta Iad’s newest full-scale option, read our{' '}
+              <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
+                LUDUS Sports Complex guide
+              </Link>{' '}
+              (prices, coaches, spa/hotel amenities, and Tiger vs Unit 27 comparison).
+            </p>
+          )}
         </div>
       </section>
 

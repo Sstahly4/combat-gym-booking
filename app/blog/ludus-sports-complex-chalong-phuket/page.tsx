@@ -16,7 +16,10 @@ import { getThailandGymsForGuide, type GuideGym } from '@/lib/guides/thailand-gy
 import { gymImageSrc } from '@/lib/images/gym-image-variants'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
+import { absoluteUrl } from '@/lib/seo/site-url'
 import { Building2, MapPin, Waves } from 'lucide-react'
+
+const GOOGLE_MAPS_URL = 'https://maps.app.goo.gl/MiNR1d9mrAe7DSAU7'
 
 /** Production listing — used as fallback if name/city filters miss the gym. */
 const LUDUS_GYM_ID = 'ce09dd1f-6fa8-4801-b7eb-a6534d2bb1b3'
@@ -48,15 +51,34 @@ const DESCRIPTION =
 const ADDRESS = '10/130 Moo 5, Chalong, Mueang Phuket, Phuket 83130, Thailand'
 const LUDUS_WEBSITE = 'https://ludusphuket.com/'
 
-export const metadata: Metadata = {
-  title: `${SEO_TITLE} | CombatStay`,
-  description: DESCRIPTION,
-  alternates: { canonical: PATH },
-  openGraph: { title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION, type: 'article' },
-  twitter: { card: 'summary_large_image', title: `${SEO_TITLE} | CombatStay`, description: DESCRIPTION },
+export async function generateMetadata(): Promise<Metadata> {
+  const ludusGym = await resolveLudusGym()
+  const heroImage = pickGymImage(ludusGym, 0, STAND_IN_IMAGES.hero)
+  const ogImage =
+    heroImage.startsWith('http://') || heroImage.startsWith('https://') ? heroImage : absoluteUrl(heroImage)
+
+  return {
+    title: `${SEO_TITLE} | CombatStay`,
+    description: DESCRIPTION,
+    alternates: { canonical: PATH },
+    openGraph: {
+      title: `${SEO_TITLE} | CombatStay`,
+      description: DESCRIPTION,
+      type: 'article',
+      url: PATH,
+      images: [{ url: ogImage, alt: 'LUDUS Sports Complex Chalong, Phuket' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${SEO_TITLE} | CombatStay`,
+      description: DESCRIPTION,
+      images: [ogImage],
+    },
+  }
 }
 
-const FAQ_ITEMS = [
+function buildFaqItems(gymHref: string) {
+  return [
   {
     q: 'Where is LUDUS Sports Complex located in Phuket?',
     a: 'LUDUS sits at 10/130 Moo 5 in Chalong on Soi Ta Iad—Phuket’s Fitness Street. You are roughly 15–20 minutes from Rawai, Nai Harn, and Kata beaches, and 40–50 minutes from Phuket International Airport depending on traffic.',
@@ -87,17 +109,19 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I book LUDUS through CombatStay?',
-    a: 'Search Chalong listings on CombatStay for live availability, photos, and reviews. If LUDUS is verified on the platform, you can book directly from the gym profile; otherwise use ludusphuket.com and cross-check accommodation options on CombatStay for nearby stays.',
+    a: `Yes—LUDUS is live on CombatStay with packages, photos, and opening hours. Book at ${absoluteUrl(gymHref)} or compare nearby Chalong gyms if you want a wider shortlist.`,
   },
-]
+  ]
+}
 
-function buildLudusLocalBusinessLd() {
+function buildLudusLocalBusinessLd(gymHref: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'SportsActivityLocation',
     name: 'LUDUS Sports Complex & Training Camp Chalong',
     description: DESCRIPTION,
-    url: LUDUS_WEBSITE,
+    url: absoluteUrl(gymHref),
+    sameAs: [LUDUS_WEBSITE, GOOGLE_MAPS_URL],
     address: {
       '@type': 'PostalAddress',
       streetAddress: '10/130 Moo 5, Soi Ta Iad',
@@ -151,14 +175,20 @@ export default async function LudusSportsComplexChalongPage() {
     dateModified: DATE_MODIFIED,
     imagePath: heroImage,
   })
-  const faqLd = buildFaqLd(FAQ_ITEMS)
+  const faqItems = buildFaqItems(gymHref)
+  const faqLd = buildFaqLd(faqItems)
   const breadcrumbLd = buildBreadcrumbLd([
     { name: 'Home', path: '/' },
     { name: 'Training Guides', path: '/blog' },
     { name: 'Thailand', path: '/search?country=Thailand' },
     { name: 'LUDUS Sports Complex Chalong', path: PATH },
   ])
-  const localBusinessLd = buildLudusLocalBusinessLd()
+  const localBusinessLd = buildLudusLocalBusinessLd(gymHref)
+
+  const combatStayDayPrice =
+    ludusGym && ludusGym.price_per_day > 0
+      ? `${ludusGym.currency || 'USD'} ${ludusGym.price_per_day.toFixed(2)}`
+      : null
 
   return (
     <ArticleShell
@@ -214,6 +244,8 @@ export default async function LudusSportsComplexChalongPage() {
                 ['On-site hotel', '55 rooms (6 junior suites)'],
                 ['Recovery', '25 m pool · 13 spa rooms · saunas · hammam · steam rooms'],
                 ['Cardio kit', '22 modern cardio machines'],
+                ['Google Maps', GOOGLE_MAPS_URL],
+                ['Book on CombatStay', gymHref],
                 ['Website', LUDUS_WEBSITE],
               ].map(([label, value]) => (
                 <tr key={label}>
@@ -223,6 +255,14 @@ export default async function LudusSportsComplexChalongPage() {
                       <a href={value} className="font-medium text-[#003580] underline" rel="noopener noreferrer">
                         ludusphuket.com
                       </a>
+                    ) : label === 'Google Maps' ? (
+                      <a href={value} className="font-medium text-[#003580] underline" rel="noopener noreferrer">
+                        Open in Google Maps
+                      </a>
+                    ) : label === 'Book on CombatStay' ? (
+                      <Link href={value} className="font-medium text-[#003580] underline">
+                        LUDUS on CombatStay
+                      </Link>
                     ) : (
                       value
                     )}
@@ -382,6 +422,15 @@ export default async function LudusSportsComplexChalongPage() {
                 ['Gym + functional zone (3 months)', '5,800', 'Promo; was 7,780'],
                 ['Day pass', '1,000', 'Gym, functional zone + scheduled group Muay Thai'],
                 ['Private coaching', 'from 800', 'One-on-one'],
+                ...(combatStayDayPrice
+                  ? [
+                      [
+                        'CombatStay training package (from)',
+                        combatStayDayPrice,
+                        'Live bookable rate on CombatStay—incl. taxes per listing',
+                      ] as const,
+                    ]
+                  : []),
               ].map(([product, price, notes]) => (
                 <tr key={product}>
                   <td className="px-4 py-3 font-medium">{product}</td>
@@ -589,7 +638,7 @@ export default async function LudusSportsComplexChalongPage() {
         <p className="mb-8 text-gray-600">
           Common questions about training and staying at LUDUS Sports Complex Chalong—answered with specifics, not fluff.
         </p>
-        <GuideFaqList items={FAQ_ITEMS} />
+        <GuideFaqList items={faqItems} />
       </GuideSection>
 
       <RelatedGuides
