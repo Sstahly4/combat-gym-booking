@@ -12,10 +12,12 @@ import { revalidatePath, revalidateTag } from 'next/cache'
  *
  * Safe to call even if the cache entry doesn't exist — Next.js just no-ops.
  */
-export function revalidateGymCache(id?: string | null) {
+export function revalidateGymCache(id?: string | null, slug?: string | null) {
   try {
     revalidateTag('gyms')
     if (id) revalidatePath(`/gyms/${id}`)
+    const canonical = slug?.trim()
+    if (canonical && canonical !== id) revalidatePath(`/gyms/${canonical}`)
   } catch (err) {
     // revalidate* can throw outside of a request context (e.g. during a
     // migration script). Never let that break the actual write.

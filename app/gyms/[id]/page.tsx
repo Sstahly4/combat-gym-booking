@@ -382,12 +382,14 @@ export default async function GymDetailsPage({
   const primaryImage =
     gym.images && gym.images.length > 0 ? gym.images[0]?.url : undefined
 
+  const gymPublicPath = `/gyms/${gym.slug?.trim() || gym.id}`
+
   const sportsActivityLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'SportsActivityLocation',
-    '@id': absoluteUrl(`/gyms/${gym.id}`),
+    '@id': absoluteUrl(gymPublicPath),
     name: gym.name,
-    url: absoluteUrl(`/gyms/${gym.id}`),
+    url: absoluteUrl(gymPublicPath),
     description: gym.description || `Train at ${gym.name} in ${gym.city}, ${gym.country}. Book combat sports camps on CombatStay.`,
     image: primaryImage ? [primaryImage] : undefined,
     address: {

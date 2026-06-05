@@ -69,6 +69,12 @@ export default function BlogPage() {
       href: '/blog/phuket-fighter-conditioning-gyms',
     },
     {
+      title: 'LUDUS Sports Complex Chalong: Training & Stay Guide (2026)',
+      excerpt:
+        '5,000 m² Fitness Street resort: Muay Thai & MMA prices, coach résumés, spa/hotel amenities, and honest Tiger vs Unit 27 comparison.',
+      href: '/blog/ludus-sports-complex-chalong-phuket',
+    },
+    {
       title: 'Muay Thai Camps with Private AC Rooms in Krabi',
       excerpt: 'High-intent stay-and-train shortlist with a clean side-by-side comparison table.',
       href: '/blog/muay-thai-krabi-private-ac-rooms',

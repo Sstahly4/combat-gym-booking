@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { Clock, MapPin, Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { GuideGym } from '@/lib/guides/thailand-gyms'
+import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import { trainingScheduleSnippet } from '@/lib/guides/schedule-snippet'
 import { labelGymAmenity, mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
 
@@ -57,7 +58,7 @@ export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: Gui
   const signalLine = buildSignalLine(gym)
 
   return (
-    <Link href={`/gyms/${(gym as any).slug || gym.id}`} className="block h-full">
+    <Link href={gymCanonicalPath(gym)} className="block h-full">
       <Card className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full overflow-hidden">
         <div className="relative w-full aspect-[16/9] bg-gray-100">
           <Image

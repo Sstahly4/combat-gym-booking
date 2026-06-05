@@ -57,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/blog/best-boxing-gyms-thailand',
     '/blog/best-kickboxing-gyms-thailand',
     '/blog/best-judo-gyms-thailand',
+    '/blog/ludus-sports-complex-chalong-phuket',
   ]
 
   const staticRoutes: MetadataRoute.Sitemap = staticPaths.map((path) => ({
@@ -70,12 +71,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const supabase = createPublicClient()
     const { data: gyms } = await supabase
       .from('gyms')
-      .select('id, updated_at')
+      .select('id, slug, updated_at')
       .eq('verification_status', 'verified')
 
     gymRoutes =
       gyms?.map((g) => ({
-        url: `${siteUrl}/gyms/${g.id}`,
+        url: `${siteUrl}/gyms/${g.slug?.trim() || g.id}`,
         lastModified: g.updated_at ? new Date(g.updated_at) : now,
       })) ?? []
 

@@ -13,6 +13,7 @@ import {
 } from '@/components/guides/guide-page-blocks'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
 import { mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
+import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
 import { ShieldCheck, Table2, Users } from 'lucide-react'
 
@@ -150,7 +151,7 @@ export default async function BestMuayThaiGymFemaleSoloTravelers2026Page() {
               {shortlist.map((g) => (
                 <tr key={g.id} className="bg-white">
                   <td className="px-4 py-3 font-semibold">
-                    <Link href={`/gyms/${g.id}`} className="text-[#003580] underline">
+                    <Link href={gymCanonicalPath(g)} className="text-[#003580] underline">
                       {g.name}
                     </Link>
                     <div className="mt-1 text-xs font-normal text-gray-500">
@@ -165,7 +166,7 @@ export default async function BestMuayThaiGymFemaleSoloTravelers2026Page() {
                   <td className="px-4 py-3">{yesNo(g._amenities.accommodation)}</td>
                   <td className="px-4 py-3">{yesNo(g._amenities.security)}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/gyms/${g.id}`} className="font-semibold text-[#003580] underline">
+                    <Link href={gymCanonicalPath(g)} className="font-semibold text-[#003580] underline">
                       View →
                     </Link>
                   </td>

@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ManagePayoutPreferencesForm } from '@/components/manage/manage-payout-preferences-form'
+import { StripeAuthenticatorCoachPanel } from '@/components/manage/stripe-authenticator-coach-panel'
 import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement-sign-panel'
 import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
@@ -325,31 +326,38 @@ export function ManagePayoutsWorkspace() {
                 <ConnectComponentsProvider connectInstance={connectInstance as never}>
                   <div className="space-y-6">
                     {!gym.stripe_connect_verified ? (
-                      <section id="stripe-onboarding" className={`${dashCard} overflow-hidden`}>
-                        <header className="border-b border-gray-100 px-5 py-4">
-                          <h3 className="text-base font-semibold text-gray-900">Finish payout account setup</h3>
-                          <p className="mt-0.5 text-sm text-gray-500">
-                            Complete the steps below. If a secure Stripe window opens, follow the prompts—it closes
-                            when you are done and you return here. We then refresh your listing status.
-                          </p>
-                        </header>
-                        <div className="px-2 py-3 sm:px-4">
-                          <ConnectAccountOnboarding
-                            onExit={() => {
-                              void (async () => {
-                                try {
-                                  await fetch(`/api/gyms/${encodeURIComponent(gym.id)}/update-stripe-status`, {
-                                    method: 'POST',
-                                  })
-                                } catch {
-                                  /* best-effort sync */
-                                }
-                                await loadGym()
-                              })()
-                            }}
-                          />
-                        </div>
-                      </section>
+                      /* P2: 2-col on desktop — Stripe onboarding left, coach panel right */
+                      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+                        <section id="stripe-onboarding" className={`${dashCard} overflow-hidden`}>
+                          <header className="border-b border-gray-100 px-5 py-4">
+                            <h3 className="text-base font-semibold text-gray-900">Finish payout account setup</h3>
+                            <p className="mt-0.5 text-sm text-gray-500">
+                              Complete the steps below. If a secure Stripe window opens, follow the prompts—it closes
+                              when you are done and you return here. We then refresh your listing status.
+                            </p>
+                          </header>
+                          <div className="px-2 py-3 sm:px-4">
+                            <ConnectAccountOnboarding
+                              onExit={() => {
+                                void (async () => {
+                                  try {
+                                    await fetch(`/api/gyms/${encodeURIComponent(gym.id)}/update-stripe-status`, {
+                                      method: 'POST',
+                                    })
+                                  } catch {
+                                    /* best-effort sync */
+                                  }
+                                  await loadGym()
+                                })()
+                              }}
+                            />
+                          </div>
+                        </section>
+
+                        <StripeAuthenticatorCoachPanel
+                          preferredLanguage={profile?.preferred_language}
+                        />
+                      </div>
                     ) : null}
 
                     <section id="account-management" className={`${dashCard} overflow-hidden`}>

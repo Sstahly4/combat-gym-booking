@@ -1,4 +1,5 @@
 import { siteUrl, absoluteUrl } from './site-url'
+import { gymCanonicalPath } from './gym-canonical-path'
 import { BRAND_NAME } from '@/lib/brand'
 
 const DEFAULT_LOGO_PATH = '/favicon-512x512-rounded.png'
@@ -75,6 +76,7 @@ export function buildBreadcrumbLd(crumbs: Array<{ name: string; path: string }>)
 
 type GymForSchema = {
   id: string
+  slug?: string | null
   name: string
   city?: string | null
   country?: string | null
@@ -102,7 +104,7 @@ export function buildGymItemListLd(args: {
       const item: Record<string, unknown> = {
         '@type': 'SportsActivityLocation',
         name: gym.name,
-        url: absoluteUrl(`/gyms/${gym.id}`),
+        url: absoluteUrl(gymCanonicalPath(gym)),
       }
 
       if (gym.city || gym.country) {
