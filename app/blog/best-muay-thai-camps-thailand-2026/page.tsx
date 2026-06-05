@@ -32,7 +32,7 @@ const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 const TITLE = '25 Best Muay Thai Camps in Thailand (2026)'
 const SEO_TITLE = '25 Best Muay Thai Camps in Thailand 2026 [Prices + Reviews]'
 const DESCRIPTION =
-  'Ranked 2026 guide to the best Muay Thai camps in Thailand. Compare real prices, guest reviews, and training packages in Bangkok, Phuket, Chiang Mai and more—book directly on CombatStay.'
+  'Stop messaging gyms on Instagram. Compare real prices and book Muay Thai training camps in Thailand instantly — Bangkok, Phuket, Chiang Mai and beyond.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
