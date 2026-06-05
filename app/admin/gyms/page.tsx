@@ -306,6 +306,12 @@ export default function AdminGymsPage() {
                     currentlyDue={(gym.stripe_requirements_currently_due as string[] | null) ?? null}
                     lastSyncAt={gym.last_stripe_account_sync_at ?? null}
                   />
+                  <Link
+                    href={`/admin/gyms/${gym.id}/payout-status`}
+                    className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50"
+                  >
+                    Payout status →
+                  </Link>
                 </CardFooter>
               </Card>
               </div>
