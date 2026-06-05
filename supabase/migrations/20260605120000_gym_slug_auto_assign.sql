@@ -62,12 +62,25 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS gyms_assign_slug_trigger ON public.gyms;
-
-CREATE TRIGGER gyms_assign_slug_trigger
-  BEFORE INSERT OR UPDATE OF name, slug ON public.gyms
-  FOR EACH ROW
-  EXECUTE FUNCTION public.gyms_assign_slug();
+-- Create trigger only if missing (avoids DROP TRIGGER — safe to re-run in SQL editor).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE t.tgname = 'gyms_assign_slug_trigger'
+      AND n.nspname = 'public'
+      AND c.relname = 'gyms'
+  ) THEN
+    CREATE TRIGGER gyms_assign_slug_trigger
+      BEFORE INSERT OR UPDATE OF name, slug ON public.gyms
+      FOR EACH ROW
+      EXECUTE FUNCTION public.gyms_assign_slug();
+  END IF;
+END;
+$$;
 
 -- Backfill any gyms still missing a slug (including rows created after the first migration).
 DO $$

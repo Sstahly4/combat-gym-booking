@@ -303,6 +303,8 @@ export default function AdminGymsPage() {
                     gymId={gym.id}
                     stripeAccountId={gym.stripe_account_id ?? null}
                     stripeConnectVerified={gym.stripe_connect_verified ?? null}
+                    currentlyDue={(gym.stripe_requirements_currently_due as string[] | null) ?? null}
+                    lastSyncAt={gym.last_stripe_account_sync_at ?? null}
                   />
                 </CardFooter>
               </Card>
