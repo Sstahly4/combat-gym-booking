@@ -49,8 +49,12 @@ const EXACT_MAP: Record<string, RequirementLabel> = {
     en: 'Upload additional verification document',
     th: 'อัปโหลดเอกสารเพิ่มเติม',
   },
-  // Confirmed tos_acceptance key from Stripe Dashboard
+  // Both tos_acceptance keys confirmed from production accounts (Jun 2026)
   'tos_acceptance.date': {
+    en: "Accept Stripe's terms of service",
+    th: 'ยอมรับข้อกำหนดของ Stripe',
+  },
+  'tos_acceptance.ip': {
     en: "Accept Stripe's terms of service",
     th: 'ยอมรับข้อกำหนดของ Stripe',
   },
@@ -75,6 +79,9 @@ type PrefixEntry = RequirementLabel & { prefix: string }
 const PREFIX_MAP: PrefixEntry[] = [
   { prefix: 'tos_acceptance.', en: "Accept Stripe's terms of service", th: 'ยอมรับข้อกำหนดของ Stripe' },
   { prefix: 'business_profile.', en: 'Complete your business profile', th: 'กรอกข้อมูลธุรกิจ' },
+  // Both representative.* and person.* are used by Stripe for the account holder — confirmed
+  // from real production accounts (RCrachai / Chinnarach, Jun 2026).
+  { prefix: 'representative.', en: 'Verify your identity', th: 'ยืนยันตัวตน' },
   { prefix: 'person.', en: 'Verify your identity', th: 'ยืนยันตัวตน' },
   { prefix: 'individual.', en: 'Complete identity verification', th: 'ยืนยันตัวตน' },
 ]
