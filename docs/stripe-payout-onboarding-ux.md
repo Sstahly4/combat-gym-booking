@@ -1,6 +1,6 @@
 # Stripe Payout Onboarding UX — Implementation Spec
 
-**Status:** P1 + P4 ready to build · P3 needs webhook fix first · P2 blocked on assets  
+**Status:** P1 + P3 + P4 shipped · P2 blocked on MP4 asset  
 **Owner:** Engineering  
 **Last updated:** 2026-06-05  
 **Related:** `components/manage/manage-payouts-workspace.tsx`, `components/manage/manage-payout-preferences-form.tsx`, `app/api/webhooks/stripe/route.ts`
@@ -33,7 +33,7 @@ Reduce Thai gym partner drop-off at Stripe Connect onboarding (especially authen
 |----------|--------|---------|
 | **P1** — Pre-drawer gate | ✅ Start now | None |
 | **P4** — Pending earnings card | ✅ Start now | None |
-| **P3** — Recovery UI | ⚠️ Fix webhook first, then build | Sync issue below |
+| **P3** — Recovery UI | ✅ Shipped · QA signed off 2026-06-05 | — |
 | **P2** — Coach panel | 🔴 Blocked | MP4 asset + LINE/WhatsApp env vars |
 
 ---
@@ -44,6 +44,8 @@ Reduce Thai gym partner drop-off at Stripe Connect onboarding (especially authen
 |------|------|-------|
 | 2026-06-05 | P1 shipped | Pre-drawer gate, EN/TH copy, localStorage per gym, CTA gated on checkbox |
 | 2026-06-05 | Webhook fix shipped | `update-stripe-status` now mirrors full webhook payload (requirements + sync timestamp) |
+| 2026-06-05 | P3 shipped | `StripePayoutRecoveryCard` + `stripe-requirements-labels.ts` |
+| 2026-06-05 | P3 QA sign-off | Admin partner preview EN/TH — screenshots below |
 
 ---
 
@@ -318,7 +320,7 @@ NOW:  P1 (gate) + P4 (earnings card) — start immediately
 | **P1** | ✅ Shipped | — |
 | **Webhook fix** | ✅ Shipped | Verify SQL after next `onExit` trigger |
 | **P4** | Start now | — |
-| **P3** | Start now (parallel with P4) | Verify `currently_due` non-empty on test account first |
+| **P3** | ✅ Shipped · QA signed off | — |
 | **P2** | 🔴 Blocked | Seth to record MP4; env vars before deploy |
 
 ---
@@ -326,6 +328,57 @@ NOW:  P1 (gate) + P4 (earnings card) — start immediately
 ## Immediate support action (not a product task)
 
 RC rachai (`acct_1TV54mCsWF3mE3nT`) and Chinnarach (`acct_1TdqEnCXl8C40eJQ`) are blocked on KYC right now. Stripe Dashboard shows 7 overdue items on each. **Do not wait for P3 to ship.** Seth should message both partners directly with the specific items Stripe is showing, so they can unblock now. This is a support action, not a product action.
+
+---
+
+## QA sign-off — P3 recovery card (2026-06-05)
+
+**Signed off by:** Seth (co-founder QA)  
+**Environment:** Production admin — **Admin → Gyms** → Stripe sync panel → **Show partner view**  
+**Test account:** LUDUS Sports Complex Chalong (`stripe_connect_verified = false`, 7 items in `currently_due`)  
+**Sync timestamp shown:** 5 Jun 2026 at 6:17 pm
+
+### What was verified
+
+| Check | Result |
+|-------|--------|
+| Recovery card renders in admin partner preview | ✅ |
+| EN copy: heading, steps label, 7 human-readable steps | ✅ |
+| TH copy: `ดำเนินการต่อจากที่ค้างไว้` + 7 translated steps | ✅ |
+| Admin language toggle (EN / TH) switches preview without reload | ✅ |
+| `last_stripe_account_sync_at` displayed (`Last checked: …`) | ✅ |
+| Step labels match `stripe-requirements-labels.ts` (not raw Stripe keys) | ✅ |
+| Seven steps shown match Stripe Dashboard overdue items for test gym | ✅ |
+
+### Steps displayed (both locales)
+
+1. Select your business category / เลือกหมวดหมู่ธุรกิจ  
+2. Describe your services / อธิบายบริการของคุณ  
+3. Add your business website / เพิ่มเว็บไซต์ธุรกิจ  
+4. Select your business type / เลือกประเภทธุรกิจ  
+5. Add your bank account / เพิ่มบัญชีธนาคาร  
+6. Verify your identity / ยืนยันตัวตน  
+7. Accept Stripe's terms of service / ยอมรับข้อกำหนดของ Stripe  
+
+### Screenshots
+
+**English (`preferred_language` ≠ `th-TH`)**
+
+![P3 recovery card — English partner preview](./assets/stripe-payout-onboarding/recovery-card-en-2026-06-05.png)
+
+**Thai (`preferred_language: th-TH`)**
+
+![P3 recovery card — Thai partner preview](./assets/stripe-payout-onboarding/recovery-card-th-2026-06-05.png)
+
+> Admin preview lives in `components/admin/admin-gym-stripe-sync.tsx` — toggles **Show/Hide partner view** and EN/TH without touching the partner's real Settings page. Partners see the same `StripePayoutRecoveryCard` at **Settings → Payouts** when `stripe_account_id` is set and `stripe_connect_verified` is false.
+
+### Not covered by this sign-off (still open)
+
+- [ ] P1 authenticator gate — EN/TH on real partner Settings page  
+- [ ] P4 pending earnings card on `/manage` dashboard  
+- [ ] P2 coach panel (blocked on MP4)  
+- [ ] Full Stripe drawer screen recording (see below)  
+- [ ] Native Thai speaker review of all TH copy before broad partner rollout  
 
 ---
 
@@ -345,12 +398,13 @@ Store: Loom link or `docs/recordings/` (gitignored).
 
 ## Testing checklist
 
-- [ ] EN + TH (`preferred_language: th-TH`) for P1, P3, P4
+- [x] EN + TH (`preferred_language: th-TH`) for **P3 recovery card** — QA 2026-06-05
+- [ ] EN + TH for P1 gate and P4 pending earnings card
 - [ ] Checkbox persists via `combatStay_authenticatorConfirmed_{gymId}`
 - [ ] P1 gate on both Start and Continue
-- [ ] Webhook fix confirmed: incomplete test account shows non-empty `currently_due` after sync
-- [ ] Recovery card shows human step labels (not default) for known keys
-- [ ] `last_stripe_account_sync_at` visible on recovery card
+- [x] Webhook fix confirmed: incomplete test account shows non-empty `currently_due` after sync — LUDUS, 7 steps
+- [x] Recovery card shows human step labels (not default) for known keys — QA 2026-06-05
+- [x] `last_stripe_account_sync_at` visible on recovery card — QA 2026-06-05
 - [ ] P4 copy does not claim funds are in Stripe balance
 - [ ] Captured booking + unverified → pending card shown; verified → hidden
 - [ ] Mobile: coach panel below drawer; drawer usable

@@ -81,7 +81,7 @@ function buildFaqItems(gymHref: string) {
   return [
   {
     q: 'Where is LUDUS Sports Complex located in Phuket?',
-    a: 'LUDUS sits at 10/130 Moo 5 in Chalong on Soi Ta Iad—Phuket’s Fitness Street. You are roughly 15–20 minutes from Rawai, Nai Harn, and Kata beaches, and 40–50 minutes from Phuket International Airport depending on traffic.',
+    a: 'LUDUS sits at 10/130 Moo 5 in Chalong on Soi Ta Iad (Fitness Street). You are roughly 15–20 minutes from Rawai, Nai Harn, and Kata beaches, and 40–50 minutes from Phuket International Airport depending on traffic.',
   },
   {
     q: 'What martial arts does LUDUS offer?',
@@ -105,7 +105,7 @@ function buildFaqItems(gymHref: string) {
   },
   {
     q: 'Who should train at LUDUS?',
-    a: 'Travelers who want Muay Thai or MMA classes without committing to a single camp schedule; remote workers layering gym + yoga + spa; couples where one person trains and the other wants hotel-grade comfort; and beginners who prefer air-conditioned, high-spec facilities over open-air traditional sheds.',
+    a: 'Travelers who want Muay Thai or MMA classes without committing to a single camp schedule; remote workers layering gym + yoga + spa; couples where one person trains and the other wants hotel-grade comfort; and beginners who prefer air-conditioned, high-spec facilities over the open-air camp style typical on Fitness Street.',
   },
   {
     q: 'Can I book LUDUS through CombatStay?',
@@ -193,7 +193,7 @@ export default async function LudusSportsComplexChalongPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="LUDUS is not another Soi Ta Iad shed gym—it is a 5,000 m² sports resort on Fitness Street. Here is who it fits, what it costs, and how it stacks up against Tiger and Unit 27."
+      subtitle="LUDUS is not another open-air camp on Fitness Street (Soi Ta Iad)—it is a 5,000 m² sports resort with hotel, spa, and pool. Here is who it fits, what it costs, and how it compares to Tiger and Unit 27."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -237,7 +237,7 @@ export default async function LudusSportsComplexChalongPage() {
             <tbody className="divide-y divide-gray-100 text-gray-800">
               {[
                 ['Address', ADDRESS],
-                ['Street', 'Soi Ta Iad (Fitness Street / Soi Taied), Chalong'],
+                ['Street', 'Soi Ta Iad — also called Fitness Street or Soi Ta-Iad (Chalong)'],
                 ['Operator', 'Vedasiam'],
                 ['Floor space', '5,000 m² across 8 training zones'],
                 ['Weekly classes', '50+ (Muay Thai, MMA, boxing, CrossFit, yoga, Pilates, HIIT, cycling)'],
@@ -290,13 +290,14 @@ export default async function LudusSportsComplexChalongPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Fitness Street context</p>
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
-              Why LUDUS is different from every other gym on the soi
+              Why LUDUS is different from other gyms on Fitness Street
             </h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Soi Ta Iad built its reputation on gritty Muay Thai camps—Tiger, Sinbi, various MMA rooms, CrossFit
-                boxes like Unit 27. You train hard, walk to a protein café, sleep in a fan room, repeat. That model
-                works. It also burns people out by week three when sleep and recovery lag behind volume.
+                <strong>Soi Ta Iad</strong> (ซอยตาเอียด)—known to fighters as <strong>Fitness Street</strong>—is a short
+                road in Chalong lined with Muay Thai camps, MMA rooms, and CrossFit boxes (Tiger, Sinbi, Unit 27, and
+                others). The classic setup: train hard, walk to a protein café, sleep in a fan-cooled room, repeat.
+                That model works. It also burns people out by week three when sleep and recovery lag behind volume.
               </p>
               <p>
                 LUDUS flips the script: <strong>gym + hotel + spa + food hall + pool in one gated complex</strong>.
@@ -305,9 +306,9 @@ export default async function LudusSportsComplexChalongPage() {
                 “too intense” or Unit 27 “too CrossFit-centric” are showing up here.
               </p>
               <p>
-                TripAdvisor and thin directory listings cannot explain that positioning—they list an address and a star
-                rating. This guide covers pricing, coach credentials, and honest comparisons because that is what you
-                actually need before booking a month on Fitness Street.
+                If you searched for LUDUS on TripAdvisor or Google Maps, you mostly get an address, a few photos, and
+                sparse reviews—not pricing, coach backgrounds, or how LUDUS compares to neighbors on the same street.
+                This guide fills that gap so you can plan a real training stay, not just tick off an attraction listing.
               </p>
             </div>
           </div>
@@ -333,11 +334,11 @@ export default async function LudusSportsComplexChalongPage() {
       </section>
 
       <section id="training" className="mb-14 scroll-mt-24">
-        <GuideAccentIntro icon={Waves} title="Training & coaches" subtitle="Combat sports with real fight résumés" />
+        <GuideAccentIntro icon={Waves} title="Training & coaches" subtitle="Combat sports with real fight records" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            LUDUS is not running tourist pad-work only. The Muay Thai roster includes stadium-experienced coaches—worth
-            verifying on arrival, but the public coach list is stronger than most resort gyms:
+            LUDUS is not pad-work for tourists only. The Muay Thai roster includes stadium-experienced coaches—worth
+            verifying on arrival, but the public coach list is stronger than most resort-style gyms:
           </p>
         </div>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-gray-700">
@@ -475,7 +476,7 @@ export default async function LudusSportsComplexChalongPage() {
                 ['Pool / spa', '25 m pool + full spa', 'Pool at camp', 'Recovery area · no full spa'],
                 ['Muay Thai depth', 'Strong coaches · class-based', 'Deep camp lineage · highest volume', 'Striking classes · not MT-focused'],
                 ['Typical stay', '1–4 weeks mixed training', '2–8 weeks camp', '2–6 weeks performance block'],
-                ['Walk to protein cafés', 'Yes—same soi', 'Yes', 'Yes'],
+                ['Walk to protein cafés', 'Yes—same street', 'Yes', 'Yes'],
               ].map(([factor, ludus, tiger, unit]) => (
                 <tr key={factor}>
                   <td className="px-4 py-3 font-semibold">{factor}</td>
@@ -499,7 +500,7 @@ export default async function LudusSportsComplexChalongPage() {
           <div className="space-y-4 text-base leading-relaxed text-gray-700">
             <p>
               <strong>On-site (simplest):</strong> 55 hotel rooms inside the complex. Walking from bed to gym in two
-              minutes beats every guesthouse on the soi when you are training twice daily in 33°C heat.
+              minutes beats most guesthouses on Fitness Street when you are training twice daily in 33°C heat.
             </p>
             <p>
               <strong>Walking distance on Soi Ta Iad:</strong> Budget bungalows, gym-focused hotels (The Blue Mavi,
@@ -551,7 +552,7 @@ export default async function LudusSportsComplexChalongPage() {
               body: '40–50 minutes to Phuket International (HKT) off-peak; add 20+ minutes in high season. Pre-book a taxi or use Grab; scooter rental is common but risky if you are not experienced—crashes end camps.',
             },
             {
-              title: 'Daily life on the soi',
+              title: 'Daily life on Fitness Street',
               body: 'Protein bowls, meal-prep cafés, supplement shops, and laundry within walking distance. Budget roughly 400–800 THB/day for food if you eat locally; more if you optimize every macro.',
             },
             {
