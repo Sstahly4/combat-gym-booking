@@ -125,18 +125,22 @@ export default async function AdminGymPayoutStatusPage({
     ? 0
     : computePendingCapturedEarnings(bookings ?? [], params.id)
 
-  // — Audit log ———————————————————————————————————————————————————————————
-  // Structured log parseable by server log aggregators. Promote to DB table
-  // when admin team grows beyond 1–2 people.
-  console.log(
-    JSON.stringify({
+  // — Audit log (durable DB write) ——————————————————————————————————————
+  // Uses service-role client to bypass RLS — the INSERT policy only allows
+  // the admin SDK, never a user session. Fire-and-forget; don't block render.
+  admin
+    .from('admin_audit_log')
+    .insert({
       event: 'admin_viewed_payout_status',
-      gym_id: params.id,
-      gym_name: gym.name,
       admin_user_id: user.id,
-      timestamp: new Date().toISOString(),
+      gym_id: params.id,
+      metadata: { gym_name: gym.name },
     })
-  )
+    .then(({ error }) => {
+      if (error) {
+        console.error('[audit] failed to write admin_audit_log', error.message)
+      }
+    })
 
   // — Derived data ——————————————————————————————————————————————————————
   const currentlyDue = (gym.stripe_requirements_currently_due as string[] | null) ?? []
