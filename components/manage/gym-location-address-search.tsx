@@ -110,7 +110,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
       setOpen(false)
       setSearchError(null)
       setCityGuidance(
-        "We couldn't find an English city name for this location. Please enter the city name as international guests would search for it (e.g. Koh Phangan, Phuket, Chiang Mai)."
+        "We couldn't find an English city name for this location. Please enter the city name using the English or Latin spelling — e.g. \"Koh Phangan\", \"Tokyo\", \"Bangkok\"."
       )
       return
     }

@@ -25,6 +25,7 @@ import {
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
+import { hasNonLatinChars } from '@/lib/geo/nominatim-address'
 import {
   manageGymEditHubBreadcrumb,
   resolvePostGymEditReturnPath,
@@ -231,7 +232,7 @@ function EditGymForm() {
         setLocationAddress(typeof loc.locationAddress === 'string' ? loc.locationAddress : '')
         const cachedCity = typeof loc.locationCity === 'string' ? loc.locationCity : ''
         setLocationCity(cachedCity)
-        if (/[^\x00-\x7F]/.test(cachedCity)) setCityNonLatinWarning(true)
+        if (hasNonLatinChars(cachedCity)) setCityNonLatinWarning(true)
         setLocationLat(typeof loc.locationLat === 'string' ? loc.locationLat : '')
         setLocationLng(typeof loc.locationLng === 'string' ? loc.locationLng : '')
         restoredLocationFromCache = true
@@ -394,7 +395,7 @@ function EditGymForm() {
       setLocationAddress(data.address || '')
       const loadedCity = data.city || ''
       setLocationCity(loadedCity)
-      if (/[^\x00-\x7F]/.test(loadedCity)) setCityNonLatinWarning(true)
+      if (hasNonLatinChars(loadedCity)) setCityNonLatinWarning(true)
       setLocationLat(
         data.latitude != null && !Number.isNaN(Number(data.latitude)) ? String(data.latitude) : ''
       )
@@ -1197,7 +1198,7 @@ function EditGymForm() {
                   onApply={({ address, city, latitude, longitude, country }) => {
                     setLocationAddress(address)
                     setLocationCity(city)
-                    setCityNonLatinWarning(/[^\x00-\x7F]/.test(city))
+                    setCityNonLatinWarning(hasNonLatinChars(city))
                     setLocationLat(latitude)
                     setLocationLng(longitude)
                     if (country) setSelectedCountry(country)
@@ -1229,10 +1230,10 @@ function EditGymForm() {
                     onChange={(e) => {
                       setLocationCity(e.target.value)
                       if (cityNonLatinWarning) {
-                        setCityNonLatinWarning(/[^\x00-\x7F]/.test(e.target.value))
+                        setCityNonLatinWarning(hasNonLatinChars(e.target.value))
                       }
                     }}
-                    onBlur={(e) => setCityNonLatinWarning(/[^\x00-\x7F]/.test(e.target.value))}
+                    onBlur={(e) => setCityNonLatinWarning(hasNonLatinChars(e.target.value))}
                     required
                     title="Prefilled from map search; edit if you prefer a different area name for guests"
                   />
@@ -1242,9 +1243,9 @@ function EditGymForm() {
                   </p>
                   {cityNonLatinWarning && (
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-                      ⚠️ Your city name contains non-English characters. International guests searching &quot;Koh
-                      Phangan&quot; or &quot;Phuket&quot; won&apos;t find your gym. Please use the English name —
-                      e.g. &quot;Koh Phangan&quot; not &quot;ตำบลเกาะพะงัน&quot;.
+                      ⚠️ Your city name may not appear in search results for international guests. Please use the
+                      English or Latin spelling — e.g. &quot;Koh Phangan&quot;, &quot;Tokyo&quot;,
+                      &quot;Bangkok&quot;.
                     </p>
                   )}
                 </div>

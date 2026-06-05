@@ -1,6 +1,10 @@
-/** Returns true when the string contains any non-ASCII character (e.g. Thai, Arabic, CJK). */
+/**
+ * Returns true when the string contains characters from a non-Latin script
+ * (Thai, CJK, Hangul, Cyrillic, Arabic, Devanagari, etc.).
+ * Extended-Latin characters (München, São Paulo, Kraków) pass through cleanly.
+ */
 export function hasNonLatinChars(s: string): boolean {
-  return /[^\x00-\x7F]/.test(s)
+  return /[\u0E00-\u0E7F\u3000-\u9FFF\uAC00-\uD7AF\u0400-\u04FF\u0600-\u06FF\u0900-\u097F]/.test(s)
 }
 
 /**
