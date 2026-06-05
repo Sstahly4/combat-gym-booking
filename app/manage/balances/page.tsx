@@ -38,7 +38,7 @@ type StripePayoutRow = {
 }
 
 type BalancesResponse = {
-  payout_rail?: 'wise' | 'stripe_connect'
+  payout_rail?: 'stripe_connect'
   currency: string
   available: { total: number }
   pending: { total: number }
@@ -48,9 +48,7 @@ type BalancesResponse = {
     id: string
     stripe_account_id: string | null
     stripe_connect_verified: boolean
-    payout_rail?: 'wise' | 'stripe_connect'
-    wise_payout_ready?: boolean
-    wise_recipient_currency?: string | null
+    payout_rail?: 'stripe_connect'
     payouts_hold_active?: boolean
     payouts_hold_reason?: string | null
     payouts_hold_set_at?: string | null
@@ -118,7 +116,6 @@ function bookingStatusBadge(status: string): { label: string; cls: string } {
 
 function platformRailLabel(rail: string): string {
   const r = (rail || '').toLowerCase()
-  if (r === 'wise') return 'Wise'
   if (r === 'manual') return 'Manual transfer'
   return 'Payout'
 }
@@ -288,22 +285,10 @@ export default function BalancesPage() {
   const payouts = data?.payouts ?? []
   const visiblePayouts = activityTab === 'payouts' ? payouts : payouts
 
-  /**
-   * Payout-method state for the callout. New gyms default to `payout_rail='wise'` but
-   * haven't configured Wise yet, so treat "wise rail + not ready" as "needs setup"
-   * rather than advertising a Wise balance that will always be zero.
-   */
-  type PayoutState =
-    | 'loading'
-    | 'needs_setup'
-    | 'wise_ready'
-    | 'wise_pending'
-    | 'stripe'
+  type PayoutState = 'loading' | 'needs_setup' | 'stripe'
   const payoutState: PayoutState = (() => {
     if (loading || !data) return 'loading'
-    if (data.payout_rail === 'stripe_connect') return 'stripe'
-    const wiseReady = Boolean(data.gym?.wise_payout_ready)
-    if (wiseReady) return 'wise_ready'
+    if (data.gym?.stripe_connect_verified) return 'stripe'
     return 'needs_setup'
   })()
   const payoutsHref = manageSettingsPayoutsHref(activeGymId)
@@ -311,15 +296,9 @@ export default function BalancesPage() {
     ? `/manage/bookings?gym_id=${encodeURIComponent(activeGymId)}`
     : '/manage/bookings'
 
-  const usePlatformEarnings = !loading && Boolean(data) && data?.payout_rail !== 'stripe_connect'
-  /** Platform route: unpaid earned (awaiting transfer). Stripe Connect: available balance. */
-  const headlineLabel = usePlatformEarnings ? 'Available to pay out' : 'Available'
-  const headlineValue = (() => {
-    if (loading) return '—'
-    if (usePlatformEarnings)
-      return formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)
-    return formatMinorForViewer(availableMinor, primaryCurrency)
-  })()
+  /** Stripe Connect: available balance from connected account. */
+  const headlineLabel = 'Available'
+  const headlineValue = loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)
 
   if (authLoading || profileRecoverFailed || (user && !profile)) {
     return (
@@ -354,9 +333,7 @@ export default function BalancesPage() {
               >
                 {!data
                   ? 'Loading balance information for this listing…'
-                  : usePlatformEarnings
-                    ? 'Upcoming is from confirmed stays that have not ended yet. Available to pay out is your host share from ended or completed stays that has not been transferred yet. Paid out sums transfers already sent to your payout method (Wise, manual, or other platform rails). Stripe Connect listings use Stripe balances instead.'
-                    : 'Shows your connected payout account: available is what can be transferred to your bank; pending is still clearing with your payment provider. Open Settings → Payouts to review payout method and account details.'}
+                  : 'Shows your connected payout account: available is what can be transferred to your bank; pending is still clearing with your payment provider. Open Settings → Payouts to review payout method and account details.'}
               </span>
             </span>
           </div>
@@ -470,22 +447,6 @@ export default function BalancesPage() {
           </div>
         ) : null}
 
-        {!error && payoutState === 'wise_ready' ? (
-          <div className="rounded-xl border border-sky-200/80 bg-sky-50/50 px-4 py-3 text-sm text-sky-950 shadow-sm shadow-sky-900/5">
-            <p className="font-medium text-sky-950">Wise payouts active</p>
-            <p className="mt-1 text-xs leading-relaxed text-sky-900/90">
-              Paid stays settle to your bank through Wise. Track income under{' '}
-              <Link href={bookingsHref} className="font-semibold text-[#003580] underline-offset-2 hover:underline">
-                Bookings
-              </Link>
-              ; update recipient details under{' '}
-              <Link href={payoutsHref} className="font-semibold text-[#003580] underline-offset-2 hover:underline">
-                Settings → Payouts
-              </Link>
-              .
-            </p>
-          </div>
-        ) : null}
 
         {showDescriptor && payoutState === 'stripe' ? (
           <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
@@ -519,103 +480,45 @@ export default function BalancesPage() {
           <div className="space-y-6">
             <section>
               <h2 className="text-sm font-semibold text-gray-900">Balance summary</h2>
-              {usePlatformEarnings ? (
-                <>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div className="flex h-full w-full">
-                      <div
-                        className="h-full"
-                        style={{ width: `${earningsStack.upcomingPct}%`, backgroundColor: '#d1d5db' }}
-                      />
-                      <div
-                        className="h-full"
-                        style={{ width: `${earningsStack.unpaidPct}%`, backgroundColor: BRAND }}
-                      />
-                      <div
-                        className="h-full"
-                        style={{ width: `${earningsStack.paidOutPct}%`, backgroundColor: '#059669' }}
-                      />
-                    </div>
+              <>
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="flex h-full w-full">
+                    <div
+                      className="h-full"
+                      style={{ width: `${stack.pendingPct}%`, backgroundColor: '#d1d5db' }}
+                    />
+                    <div
+                      className="h-full"
+                      style={{ width: `${stack.availablePct}%`, backgroundColor: BRAND }}
+                    />
                   </div>
-                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
-                    <div className="text-gray-500">Source</div>
-                    <div className="text-right text-gray-500">Amount</div>
+                </div>
+                <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
+                  <div className="text-gray-500">Payments type</div>
+                  <div className="text-right text-gray-500">Amount</div>
 
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
-                      Upcoming bookings
-                    </div>
-                    <div className="text-right font-light tabular-nums text-gray-900">
-                      {bookingLoading
-                        ? '—'
-                        : formatMajorForViewer(platformSnapshot.upcomingNet, gymCurrency)}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
-                      Available to pay out
-                    </div>
-                    <div className="text-right font-light tabular-nums text-gray-900">
-                      {bookingLoading
-                        ? '—'
-                        : formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" aria-hidden />
-                      Paid out
-                    </div>
-                    <div className="text-right font-light tabular-nums text-gray-900">
-                      {bookingLoading
-                        ? '—'
-                        : formatMajorForViewer(platformSnapshot.paidOutNet, gymCurrency)}
-                    </div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
+                    Incoming
                   </div>
-                  <p className="mt-3 text-[11px] text-gray-500">
-                    Amounts are net of the platform fee. Paid out reflects transfers recorded for this listing.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div className="flex h-full w-full">
-                      <div
-                        className="h-full"
-                        style={{ width: `${stack.pendingPct}%`, backgroundColor: '#d1d5db' }}
-                      />
-                      <div
-                        className="h-full"
-                        style={{ width: `${stack.availablePct}%`, backgroundColor: BRAND }}
-                      />
-                    </div>
+                  <div className="text-right font-light tabular-nums text-gray-900">
+                    {loading ? '—' : formatMinorForViewer(pendingMinor, primaryCurrency)}
                   </div>
-                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm">
-                    <div className="text-gray-500">Payments type</div>
-                    <div className="text-right text-gray-500">Amount</div>
 
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <span className="h-2.5 w-2.5 rounded-sm bg-gray-300" aria-hidden />
-                      Incoming
-                    </div>
-                    <div className="text-right font-light tabular-nums text-gray-900">
-                      {loading ? '—' : formatMinorForViewer(pendingMinor, primaryCurrency)}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
-                      Available
-                    </div>
-                    <div className="text-right font-light tabular-nums text-gray-900">
-                      {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
-                    </div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: BRAND }} aria-hidden />
+                    Available
                   </div>
-                </>
-              )}
+                  <div className="text-right font-light tabular-nums text-gray-900">
+                    {loading ? '—' : formatMinorForViewer(availableMinor, primaryCurrency)}
+                  </div>
+                </div>
+              </>
             </section>
 
             <section>
               <h2 className="text-sm font-semibold text-gray-900">Recent activity</h2>
-              {usePlatformEarnings ? (
+              {false ? (
                 <div className="mt-2">
                   <div className="grid grid-cols-[160px_1fr_140px_120px] gap-4 border-b border-gray-100 py-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
                     <span>Amount</span>
@@ -869,21 +772,6 @@ export default function BalancesPage() {
                         Set up payouts
                       </Link>
                     </li>
-                  </ul>
-                ) : payoutState === 'wise_ready' ? (
-                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                    <li>
-                      Method: <span className="font-medium text-gray-800">Wise</span>
-                    </li>
-                    <li>
-                      Recipient: <span className="font-medium text-emerald-800">Ready</span>
-                    </li>
-                    {data?.gym?.wise_recipient_currency ? (
-                      <li>
-                        Payout currency:{' '}
-                        <span className="font-medium text-gray-800">{data.gym.wise_recipient_currency}</span>
-                      </li>
-                    ) : null}
                   </ul>
                 ) : (
                   <ul className="mt-2 space-y-1 text-xs text-gray-600">

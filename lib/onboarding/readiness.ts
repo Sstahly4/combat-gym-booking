@@ -45,7 +45,7 @@ export async function getGymReadiness({
     supabase
       .from('gyms')
       .select(
-        'id, owner_id, name, address, description, disciplines, stripe_connect_verified, payout_rail, wise_recipient_id, wise_recipient_currency, wise_payout_ready'
+        'id, owner_id, name, address, description, disciplines, stripe_connect_verified, payout_rail'
       )
       .eq('id', gymId)
       .eq('owner_id', ownerId)
@@ -104,16 +104,7 @@ export async function getGymReadiness({
   const partnerAgreementWaived =
     ownerProfile?.placeholder_account === true || ownerProfile?.role === 'admin'
 
-  const rail: 'wise' | 'stripe_connect' =
-    gym?.payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
-  const payoutsPassed =
-    rail === 'stripe_connect'
-      ? Boolean(gym?.stripe_connect_verified)
-      : Boolean(
-          gym?.wise_payout_ready &&
-            gym?.wise_recipient_id &&
-            (gym?.wise_recipient_currency && String(gym.wise_recipient_currency).trim().length > 0)
-        )
+  const payoutsPassed = Boolean(gym?.stripe_connect_verified)
 
   const required: ReadinessItem[] = [
     {
@@ -179,15 +170,12 @@ export async function getGymReadiness({
   const optional: OptionalReadinessItem[] = [
     {
       key: 'payouts',
-      label: rail === 'stripe_connect' ? 'Connected payout account' : 'Payout details',
+      label: 'Connected payout account',
       passed: payoutsPassed,
       nudgeText: payoutsPassed
         ? 'Payout account connected.'
         : 'Set up payouts to receive your earnings.',
-      deepLink:
-        rail === 'stripe_connect'
-          ? manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
-          : manageSettingsPayoutsHref(gymId),
+      deepLink: manageSettingsPayoutsHref(gymId, 'stripe-onboarding'),
     },
     {
       key: 'policy_review',

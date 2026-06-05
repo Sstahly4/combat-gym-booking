@@ -385,6 +385,7 @@ function SearchPageContent() {
       .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
       .eq('verification_status', 'verified')
       .eq('status', 'approved')
+      .eq('is_live', true)
 
     if (filters.location) query = query.or(`city.ilike.%${filters.location}%,country.ilike.%${filters.location}%`)
     if (filters.country) query = query.ilike('country', `%${filters.country}%`)

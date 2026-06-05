@@ -132,9 +132,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
   const [gymCurrency, setGymCurrency] = useState('USD')
   const [packagesPanelOpen, setPackagesPanelOpen] = useState(false)
   const [photoCount, setPhotoCount] = useState<number>(0)
-  /** Payout step: Stripe Connect verified OR Wise recipient ready (matches readiness). */
+  /** Payout step: Stripe Connect verified (matches readiness). */
   const [payoutStepComplete, setPayoutStepComplete] = useState<boolean>(false)
-  const [payoutRail, setPayoutRail] = useState<'wise' | 'stripe_connect'>('wise')
   const [securityDone, setSecurityDone] = useState<boolean>(false)
   const [packagesPreview, setPackagesPreview] = useState<PackagePreviewRow[]>([])
   const [legalFirstName, setLegalFirstName] = useState('')
@@ -290,7 +289,6 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       })
       setOffersAccommodation(false)
       setPayoutStepComplete(false)
-      setPayoutRail('wise')
       setPackageCount(0)
       setPhotoCount(0)
       setPackagesPreview([])
@@ -326,7 +324,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
           const { data: gym } = await supabase
             .from('gyms')
             .select(
-              'name, description, address, city, country, latitude, longitude, disciplines, stripe_connect_verified, currency, offers_accommodation, google_maps_link, instagram_link, facebook_link, payout_rail, wise_payout_ready, wise_recipient_id, wise_recipient_currency'
+              'name, description, address, city, country, latitude, longitude, disciplines, stripe_connect_verified, currency, offers_accommodation, google_maps_link, instagram_link, facebook_link'
             )
             .eq('id', gymId)
             .maybeSingle()
@@ -357,17 +355,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
               facebook_link: g.facebook_link || '',
             })
             setOffersAccommodation(Boolean((gym as { offers_accommodation?: boolean }).offers_accommodation))
-            const pr = (gym as { payout_rail?: string | null }).payout_rail
-            const rail: 'wise' | 'stripe_connect' = pr === 'stripe_connect' ? 'stripe_connect' : 'wise'
-            setPayoutRail(rail)
-            const payoutsOk =
-              rail === 'stripe_connect'
-                ? Boolean(gym.stripe_connect_verified)
-                : Boolean(
-                    (gym as { wise_payout_ready?: boolean }).wise_payout_ready &&
-                      (gym as { wise_recipient_id?: string | null }).wise_recipient_id
-                  )
-            setPayoutStepComplete(payoutsOk)
+            setPayoutStepComplete(Boolean(gym.stripe_connect_verified))
           }
 
           const [{ count: packages }, { count: photos }] = await Promise.all([
@@ -526,12 +514,8 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
         key: 'payouts',
         label: 'Payouts',
         detail: payoutStepComplete
-          ? payoutRail === 'stripe_connect'
-            ? 'Connected payout account is ready.'
-            : 'Bank transfer payout details are on file.'
-          : payoutRail === 'stripe_connect'
-            ? 'Finish connected account setup so completed bookings can be paid out.'
-            : 'Add payout details under Settings → Payouts (or switch method there).',
+          ? 'Connected payout account is ready.'
+          : 'Finish connected account setup so completed bookings can be paid out.',
         ready: payoutStepComplete,
       },
       {
@@ -559,7 +543,6 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
       packageCount,
       photoCount,
       payoutStepComplete,
-      payoutRail,
       verificationSummary.securityOk,
       partnerAgreementSigned,
       profile?.placeholder_account,
@@ -1235,30 +1218,13 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
   const refreshPayoutStatus = async () => {
     const gymId = await ensureActiveGym()
-    const supabase = createClient()
-    const { data: row } = await supabase
-      .from('gyms')
-      .select('payout_rail, stripe_connect_verified, wise_payout_ready, wise_recipient_id')
-      .eq('id', gymId)
-      .maybeSingle()
-    const rail: 'wise' | 'stripe_connect' =
-      row?.payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
-    setPayoutRail(rail)
-
-    if (rail === 'stripe_connect') {
-      const response = await fetch(`/api/gyms/${gymId}/update-stripe-status`, { method: 'POST' })
-      if (!response.ok) {
-        setError('Failed to refresh Stripe status')
-        return
-      }
-      const data = await response.json()
-      const ok = Boolean(data.verified)
-      setPayoutStepComplete(ok)
-      if (ok) await saveStepCompletion(true)
+    const response = await fetch(`/api/gyms/${gymId}/update-stripe-status`, { method: 'POST' })
+    if (!response.ok) {
+      setError('Failed to refresh Stripe status')
       return
     }
-
-    const ok = Boolean(row?.wise_payout_ready && row?.wise_recipient_id)
+    const data = await response.json()
+    const ok = Boolean(data.verified)
     setPayoutStepComplete(ok)
     if (ok) await saveStepCompletion(true)
   }
@@ -1302,16 +1268,10 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
     if (step.key === 'payouts') {
       const { data } = await supabase
         .from('gyms')
-        .select('payout_rail, stripe_connect_verified, wise_payout_ready, wise_recipient_id')
+        .select('stripe_connect_verified')
         .eq('id', gymId)
         .maybeSingle()
-      const rail: 'wise' | 'stripe_connect' =
-        data?.payout_rail === 'stripe_connect' ? 'stripe_connect' : 'wise'
-      setPayoutRail(rail)
-      const ok =
-        rail === 'stripe_connect'
-          ? Boolean(data?.stripe_connect_verified)
-          : Boolean(data?.wise_payout_ready && data?.wise_recipient_id)
+      const ok = Boolean(data?.stripe_connect_verified)
       setPayoutStepComplete(ok)
       return ok
     }
@@ -2117,7 +2077,7 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                     <p className={wizBody}>
                       Method:{' '}
                       <span className="font-semibold text-gray-900">
-                        {payoutRail === 'stripe_connect' ? 'Connected account' : 'Bank transfer'}
+                        {'Connected account'}
                       </span>
                       {' · '}
                       <span className="font-semibold text-gray-900">

@@ -36,14 +36,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
   } | null>(null)
   const [loadingStripe, setLoadingStripe] = useState(true)
 
-  const payoutRail = (gym.payout_rail as 'wise' | 'stripe_connect' | undefined) ?? 'wise'
-
   useEffect(() => {
-    if (payoutRail !== 'stripe_connect') {
-      setStripeStatus(null)
-      setLoadingStripe(false)
-      return
-    }
     const checkStripeStatus = async () => {
       try {
         const response = await fetch(`/api/gyms/${gym.id}/check-stripe-status`)
@@ -56,9 +49,8 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       }
     }
     void checkStripeStatus()
-  }, [gym.id, payoutRail])
+  }, [gym.id])
 
-  const wisePayoutOk = Boolean(gym.wise_payout_ready && gym.wise_recipient_id)
   const stripePayoutOk = Boolean(stripeStatus?.verified)
 
   const partnerAgreementOk = Boolean(
@@ -73,8 +65,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       googleMaps: !!gym.google_maps_link,
       socialMedia: !!(gym.instagram_link || gym.facebook_link),
       partnerAgreement: partnerAgreementOk,
-      payouts:
-        payoutRail === 'stripe_connect' ? stripePayoutOk : wisePayoutOk,
+      payouts: stripePayoutOk,
       adminApproved: gym.admin_approved || false,
     }),
     [
@@ -82,9 +73,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       gym.instagram_link,
       gym.facebook_link,
       gym.admin_approved,
-      payoutRail,
       stripePayoutOk,
-      wisePayoutOk,
       partnerAgreementOk,
     ]
   )
@@ -146,29 +135,17 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       },
       {
         id: 'payouts',
-        title: payoutRail === 'stripe_connect' ? 'Payout account' : 'Payout details',
-        description:
-          payoutRail === 'stripe_connect'
-            ? loadingStripe
-              ? 'Checking payout account…'
-              : requirements.payouts
-                ? 'Your payout account is ready.'
-                : stripeStatus?.has_account
-                  ? 'Finish identity and bank details for your connected account.'
-                  : 'Connect a payout account to receive earnings from bookings.'
-            : requirements.payouts
-              ? 'Bank transfer recipient is on file.'
-              : 'Add recipient details under Settings → Payouts.',
+        title: 'Payout account',
+        description: loadingStripe
+          ? 'Checking payout account…'
+          : requirements.payouts
+            ? 'Your payout account is ready.'
+            : stripeStatus?.has_account
+              ? 'Finish identity and bank details for your connected account.'
+              : 'Connect a payout account to receive earnings from bookings.',
         done: requirements.payouts,
-        loading: payoutRail === 'stripe_connect' ? loadingStripe : false,
-        actionLabel:
-          payoutRail === 'stripe_connect'
-            ? requirements.payouts
-              ? 'Open payouts'
-              : 'Finish setup'
-            : requirements.payouts
-              ? 'Open payouts'
-              : 'Add payout details',
+        loading: loadingStripe,
+        actionLabel: requirements.payouts ? 'Open payouts' : 'Finish setup',
         href: manageSettingsPayoutsHref(gym.id),
       },
       {
@@ -190,7 +167,6 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
       loadingStripe,
       requirements,
       stripeStatus?.has_account,
-      payoutRail,
       profile?.placeholder_account,
       profile?.partner_agreement_signed_at,
       profile?.partner_agreement_version,
@@ -312,11 +288,7 @@ export function VerificationChecklist({ gym }: VerificationChecklistProps) {
             <Button asChild variant="outline" className="border-gray-300 bg-white">
               <Link href={`/manage/gym/edit?id=${gym.id}`}>Edit gym profile</Link>
             </Button>
-            {payoutRail === 'stripe_connect' && !gym.stripe_account_id ? (
-              <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
-                <Link href={manageSettingsPayoutsHref(gym.id)}>Payout setup</Link>
-              </Button>
-            ) : payoutRail === 'wise' && !wisePayoutOk ? (
+            {!gym.stripe_account_id ? (
               <Button asChild className="bg-[#003580] hover:bg-[#002a66]">
                 <Link href={manageSettingsPayoutsHref(gym.id)}>Payout setup</Link>
               </Button>

@@ -62,7 +62,7 @@ export const MANAGE_DASHBOARD_QUICK_HITS: ManageDashboardSearchHit[] = [
     subtitle: 'Settings · Wise or Stripe, bank details, Connect activity',
     href: '/manage/settings?tab=payouts#settings-tab-payouts',
     quick: true,
-    keywords: ['payouts', 'payout settings', 'bank', 'transfers', 'earnings', 'payments', 'balances', 'wise', 'connected account'],
+    keywords: ['payouts', 'payout settings', 'bank', 'transfers', 'earnings', 'payments', 'balances', 'connected account'],
   },
 ]
 

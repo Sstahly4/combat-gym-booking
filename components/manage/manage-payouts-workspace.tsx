@@ -99,9 +99,7 @@ export function ManagePayoutsWorkspace() {
     void loadGym()
   }, [authLoading, user, profile?.role, loadGym])
 
-  const rail = (gym?.payout_rail as 'wise' | 'stripe_connect') || 'wise'
-  const useConnectedAccount = rail === 'stripe_connect'
-  /** Account session requires `acct_…`; wait until create-account (embedded_only) has run after switching rail. */
+  /** Account session requires `acct_…`; wait until create-account (embedded_only) has run. */
   const stripeAccountId = gym?.stripe_account_id ?? null
 
   useEffect(() => {
@@ -128,7 +126,7 @@ export function ManagePayoutsWorkspace() {
 
   useEffect(() => {
     let cancelled = false
-    if (!activeGymId || !useConnectedAccount || !stripeAccountId || !connectUiStarted) {
+    if (!activeGymId || !stripeAccountId || !connectUiStarted) {
       setConnectInstance(null)
       setConnectError(null)
       setConnectLoading(false)
@@ -190,7 +188,7 @@ export function ManagePayoutsWorkspace() {
     return () => {
       cancelled = true
     }
-  }, [activeGymId, useConnectedAccount, stripeAccountId, connectUiStarted])
+  }, [activeGymId, stripeAccountId, connectUiStarted])
 
   /** Hosted Account Link return URL lands here with `from_stripe=1` — sync verification then drop the flag. */
   const fromStripe = searchParams.get('from_stripe') === '1' || searchParams.get('success') === 'true'
@@ -307,7 +305,7 @@ export function ManagePayoutsWorkspace() {
             onStripeSetupStarted={() => setConnectUiStarted(true)}
           />
 
-          {useConnectedAccount && connectUiStarted ? (
+          {connectUiStarted ? (
             <>
               {connectLoading ? (
                 <div className={`${dashCard} flex items-center justify-center px-5 py-12 text-gray-400`}>

@@ -130,8 +130,7 @@ export function ManagePayoutPreferencesForm({
     setSavingRail(true)
     setError(null)
     try {
-      const serverRail = (gym.payout_rail as 'wise' | 'stripe_connect') || 'wise'
-      if (serverRail !== 'stripe_connect') {
+      if (gym.payout_rail !== 'stripe_connect') {
         const res = await fetch(`/api/gyms/${encodeURIComponent(gymId)}/payout-settings`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
