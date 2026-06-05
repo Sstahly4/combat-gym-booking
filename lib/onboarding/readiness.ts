@@ -165,20 +165,6 @@ export async function getGymReadiness({
       deepLink: buildOnboardingWizardUrl('step-3', gymId),
     },
     {
-      key: 'payouts',
-      label: rail === 'stripe_connect' ? 'Connected payout account' : 'Payout details',
-      passed: payoutsPassed,
-      reason: payoutsPassed
-        ? null
-        : rail === 'stripe_connect'
-          ? 'Finish payout account setup for your connected account.'
-          : 'Add payout recipient details.',
-      deepLink:
-        rail === 'stripe_connect'
-          ? manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
-          : manageSettingsPayoutsHref(gymId),
-    },
-    {
       key: 'partner_agreement',
       label: 'Partner Agreement signed',
       passed: hasSignedCurrentPartnerAgreement || partnerAgreementWaived,
@@ -191,6 +177,18 @@ export async function getGymReadiness({
   ]
 
   const optional: OptionalReadinessItem[] = [
+    {
+      key: 'payouts',
+      label: rail === 'stripe_connect' ? 'Connected payout account' : 'Payout details',
+      passed: payoutsPassed,
+      nudgeText: payoutsPassed
+        ? 'Payout account connected.'
+        : 'Set up payouts to receive your earnings.',
+      deepLink:
+        rail === 'stripe_connect'
+          ? manageSettingsPayoutsHref(gymId, 'stripe-onboarding')
+          : manageSettingsPayoutsHref(gymId),
+    },
     {
       key: 'policy_review',
       label: 'Cancellation policy review',

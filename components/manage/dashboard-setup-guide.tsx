@@ -26,7 +26,7 @@ const GROUPS: { id: string; title: string; keys: string[] }[] = [
   { id: 'listing', title: 'Listing & account', keys: ['security', 'gym_basics', 'disciplines'] },
   { id: 'packages', title: 'Packages & pricing', keys: ['packages_pricing'] },
   { id: 'photos', title: 'Photos', keys: ['photos'] },
-  { id: 'payouts', title: 'Payouts & agreement', keys: ['partner_agreement', 'payouts'] },
+  { id: 'payouts', title: 'Partner agreement', keys: ['partner_agreement'] },
 ]
 
 function itemByKey(required: ReadinessRequiredItem[], key: string) {
@@ -271,7 +271,7 @@ export function DashboardSetupGuide({
                             optionalAllDone && 'text-gray-400 line-through decoration-gray-300'
                           )}
                         >
-                          Improve your visibility
+                          Recommended steps
                         </span>
                         <ChevronDown
                           className={cn(
