@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Package, PackageVariant } from '@/lib/types/database'
 import { Trash2, Edit2, Plus, Package as PackageIcon, BedDouble } from 'lucide-react'
 import { syncGymSearchPrice } from '@/lib/manage/sync-gym-search-price'
+import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
 const PACKAGE_TYPES = [
@@ -545,8 +546,8 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
         setEditingId(data.id)
       }
 
-      // Sync cheapest package price → gym search listing price (one direction only)
       if (gymId) {
+        await syncGymAccommodationFlags(supabase, gymId)
         const newPrice = await syncGymSearchPrice(supabase, gymId)
         if (newPrice !== null) {
           setSearchPriceMsg(`Search listing price updated to ${currency} ${newPrice.toLocaleString()}/day`)

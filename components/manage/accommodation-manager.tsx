@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 import { 
   BedDouble, 
   Plus, 
@@ -251,6 +252,7 @@ export function AccommodationManager({ gymId, currency, hideHeader = false }: Ac
         if (error) throw error
       }
       
+      await syncGymAccommodationFlags(supabase, gymId)
       fetchAccommodations()
       resetForm()
       setShowModal(false)
@@ -273,6 +275,7 @@ export function AccommodationManager({ gymId, currency, hideHeader = false }: Ac
     if (error) {
       alert(`Failed to delete: ${error.message}`)
     } else {
+      await syncGymAccommodationFlags(supabase, gymId)
       fetchAccommodations()
     }
   }
@@ -352,6 +355,7 @@ export function AccommodationManager({ gymId, currency, hideHeader = false }: Ac
       
       if (error) throw error
       
+      await syncGymAccommodationFlags(supabase, gymId)
       alert(`Successfully imported ${accommodationsToInsert.length} accommodation(s)`)
       setShowCsvModal(false)
       setCsvData('')

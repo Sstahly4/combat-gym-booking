@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 import {
   BedDouble,
   ChevronDown,
@@ -444,6 +445,7 @@ export function AccommodationQuickModal({
         })
         if (error) throw error
       }
+      await syncGymAccommodationFlags(supabase, gymId)
       await fetchRows()
       onSaved?.()
       setMode('list')
@@ -463,6 +465,7 @@ export function AccommodationQuickModal({
       alert(error.message)
       return
     }
+    await syncGymAccommodationFlags(supabase, gymId)
     await fetchRows()
     onSaved?.()
   }
