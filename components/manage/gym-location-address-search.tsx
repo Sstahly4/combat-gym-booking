@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, MapPin } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
-import { matchGymCountryName } from '@/lib/geo/nominatim-address'
+import { hasNonLatinChars, matchGymCountryName } from '@/lib/geo/nominatim-address'
 
 const DEBOUNCE_MS = 400
 
@@ -35,6 +35,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<AddressSearchResultRow[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [cityGuidance, setCityGuidance] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -93,6 +94,27 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
       return
     }
     const matched = row.country ? matchGymCountryName(row.country, ALL_GYM_COUNTRIES) : null
+
+    if (hasNonLatinChars(city)) {
+      // OSM returned a local-script city name despite accept-language: en.
+      // Pass an empty city so the owner is forced to type the English name.
+      onApply({
+        address: row.display_name,
+        city: '',
+        latitude: row.lat,
+        longitude: row.lon,
+        country: matched,
+      })
+      setQuery('')
+      setResults([])
+      setOpen(false)
+      setSearchError(null)
+      setCityGuidance(
+        "We couldn't find an English city name for this location. Please enter the city name as international guests would search for it (e.g. Koh Phangan, Phuket, Chiang Mai)."
+      )
+      return
+    }
+
     onApply({
       address: row.display_name,
       city,
@@ -104,6 +126,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
     setResults([])
     setOpen(false)
     setSearchError(null)
+    setCityGuidance(null)
   }
 
   return (
@@ -134,6 +157,11 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
         (e.g. Ko Lanta) while you may prefer a wider area (e.g. Krabi) for guests and search.
       </p>
       {searchError && <p className="text-xs text-red-600">{searchError}</p>}
+      {cityGuidance && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+          {cityGuidance}
+        </p>
+      )}
       {open && results.length > 0 && (
         <ul
           className="absolute z-30 mt-1 w-full max-h-56 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"

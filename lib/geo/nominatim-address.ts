@@ -1,3 +1,8 @@
+/** Returns true when the string contains any non-ASCII character (e.g. Thai, Arabic, CJK). */
+export function hasNonLatinChars(s: string): boolean {
+  return /[^\x00-\x7F]/.test(s)
+}
+
 /**
  * Derive a display "city" label from Nominatim `address` object (addressdetails=1).
  * Order follows populated-place granularity: city → town → village → … → county.

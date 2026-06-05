@@ -127,6 +127,7 @@ function EditGymForm() {
   const [selectedCountry, setSelectedCountry] = useState<string>('')
   const [locationAddress, setLocationAddress] = useState('')
   const [locationCity, setLocationCity] = useState('')
+  const [cityNonLatinWarning, setCityNonLatinWarning] = useState(false)
   const [locationLat, setLocationLat] = useState('')
   const [locationLng, setLocationLng] = useState('')
 
@@ -228,7 +229,9 @@ function EditGymForm() {
       let restoredLocationFromCache = false
       if (hasLocationCache) {
         setLocationAddress(typeof loc.locationAddress === 'string' ? loc.locationAddress : '')
-        setLocationCity(typeof loc.locationCity === 'string' ? loc.locationCity : '')
+        const cachedCity = typeof loc.locationCity === 'string' ? loc.locationCity : ''
+        setLocationCity(cachedCity)
+        if (/[^\x00-\x7F]/.test(cachedCity)) setCityNonLatinWarning(true)
         setLocationLat(typeof loc.locationLat === 'string' ? loc.locationLat : '')
         setLocationLng(typeof loc.locationLng === 'string' ? loc.locationLng : '')
         restoredLocationFromCache = true
@@ -389,7 +392,9 @@ function EditGymForm() {
 
     if (!restoredLocationFromCache) {
       setLocationAddress(data.address || '')
-      setLocationCity(data.city || '')
+      const loadedCity = data.city || ''
+      setLocationCity(loadedCity)
+      if (/[^\x00-\x7F]/.test(loadedCity)) setCityNonLatinWarning(true)
       setLocationLat(
         data.latitude != null && !Number.isNaN(Number(data.latitude)) ? String(data.latitude) : ''
       )
@@ -1140,14 +1145,14 @@ function EditGymForm() {
               {/* Base Pricing - Moved here from separate section */}
               <div className="pt-6 border-t space-y-4">
                 <div>
-                  <Label className="text-base font-semibold">Base Pricing</Label>
+                  <Label className="text-base font-semibold">Search listing price</Label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Base prices used for "Starting from" display. Detailed pricing is managed in Packages below.
+                    This is the price visitors see in search results and the homepage. Set it to match your lowest package price — it updates automatically when you save packages.
                   </p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-4 max-w-3xl">
                   <div className="space-y-2">
-                    <Label htmlFor="price_per_day">Base Price per Day <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="price_per_day">Search listing price (per day) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="price_per_day" 
                       name="price_per_day" 
@@ -1156,7 +1161,7 @@ function EditGymForm() {
                       defaultValue={gym.price_per_day} 
                       required 
                     />
-                    <p className="text-xs text-gray-500">Used for "Starting from" display</p>
+                    <p className="text-xs text-gray-500">Shown in search results and "Starting from" price displays</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="price_per_week">Base Price per Week (optional)</Label>
@@ -1192,6 +1197,7 @@ function EditGymForm() {
                   onApply={({ address, city, latitude, longitude, country }) => {
                     setLocationAddress(address)
                     setLocationCity(city)
+                    setCityNonLatinWarning(/[^\x00-\x7F]/.test(city))
                     setLocationLat(latitude)
                     setLocationLng(longitude)
                     if (country) setSelectedCountry(country)
@@ -1220,7 +1226,13 @@ function EditGymForm() {
                     id="city"
                     name="city"
                     value={locationCity}
-                    onChange={(e) => setLocationCity(e.target.value)}
+                    onChange={(e) => {
+                      setLocationCity(e.target.value)
+                      if (cityNonLatinWarning) {
+                        setCityNonLatinWarning(/[^\x00-\x7F]/.test(e.target.value))
+                      }
+                    }}
+                    onBlur={(e) => setCityNonLatinWarning(/[^\x00-\x7F]/.test(e.target.value))}
                     required
                     title="Prefilled from map search; edit if you prefer a different area name for guests"
                   />
@@ -1228,6 +1240,13 @@ function EditGymForm() {
                     Prefilled from map search. You can change it if the map label is too local for how you list this
                     gym.
                   </p>
+                  {cityNonLatinWarning && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                      ⚠️ Your city name contains non-English characters. International guests searching &quot;Koh
+                      Phangan&quot; or &quot;Phuket&quot; won&apos;t find your gym. Please use the English name —
+                      e.g. &quot;Koh Phangan&quot; not &quot;ตำบลเกาะพะงัน&quot;.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>

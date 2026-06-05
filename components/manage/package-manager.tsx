@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Package, PackageVariant } from '@/lib/types/database'
 import { Trash2, Edit2, Plus, Package as PackageIcon, BedDouble } from 'lucide-react'
+import { syncGymSearchPrice } from '@/lib/manage/sync-gym-search-price'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
 const PACKAGE_TYPES = [
@@ -24,6 +25,7 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchPriceMsg, setSearchPriceMsg] = useState<string | null>(null)
   
   // Ensure we have a valid gymId before allowing any operations
   const isValidGymId = !!gymId && typeof gymId === 'string' && gymId.trim() !== ''
@@ -541,6 +543,15 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
           return
         }
         setEditingId(data.id)
+      }
+
+      // Sync cheapest package price → gym search listing price (one direction only)
+      if (gymId) {
+        const newPrice = await syncGymSearchPrice(supabase, gymId)
+        if (newPrice !== null) {
+          setSearchPriceMsg(`Search listing price updated to ${currency} ${newPrice.toLocaleString()}/day`)
+          setTimeout(() => setSearchPriceMsg(null), 4000)
+        }
       }
 
       fetchPackages()
