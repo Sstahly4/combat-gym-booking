@@ -603,6 +603,13 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
         </h3>
       </div>
 
+      {searchPriceMsg && (
+        <div className="flex items-center gap-2 rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-800">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+          {searchPriceMsg}
+        </div>
+      )}
+
       {/* Package List */}
       <div className="grid gap-4">
         {packages.map(pkg => (
