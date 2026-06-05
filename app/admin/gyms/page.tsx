@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
+import { AdminGymStripeSync } from '@/components/admin/admin-gym-stripe-sync'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import {
   restoreAdminGymsListScrollIfStashed,
@@ -298,6 +299,11 @@ export default function AdminGymsPage() {
                       </Button>
                     </Link>
                   )}
+                  <AdminGymStripeSync
+                    gymId={gym.id}
+                    stripeAccountId={gym.stripe_account_id ?? null}
+                    stripeConnectVerified={gym.stripe_connect_verified ?? null}
+                  />
                 </CardFooter>
               </Card>
               </div>

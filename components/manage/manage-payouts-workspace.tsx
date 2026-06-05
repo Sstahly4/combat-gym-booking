@@ -301,6 +301,7 @@ export function ManagePayoutsWorkspace() {
             gym={gym}
             accountEmail={accountEmail}
             defaultAccountHolderName={defaultHolder}
+            preferredLanguage={profile?.preferred_language ?? null}
             onGymRefresh={loadGym}
             onStripeSetupStarted={() => setConnectUiStarted(true)}
           />

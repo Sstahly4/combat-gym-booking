@@ -29,6 +29,8 @@ import {
 } from '@/lib/onboarding/readiness-session-cache'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
+import { PendingPayoutEarningsCard } from '@/components/manage/pending-payout-earnings-card'
+import { computePendingCapturedEarnings } from '@/lib/manage/pending-captured-earnings'
 
 interface GymWithImage extends Gym {
   images: GymImage[]
@@ -64,6 +66,8 @@ type DashboardBookingRow = {
   gym_id: string
   status: string
   total_price: number | null
+  platform_fee: number | null
+  payment_captured_at: string | null
   start_date: string
   created_at: string
   guest_name: string | null
@@ -240,7 +244,7 @@ export default function ManagePage() {
     const [bookingsResult, reviewsResult] = await Promise.all([
       supabase
         .from('bookings')
-        .select('id, gym_id, status, total_price, start_date, created_at, guest_name, discipline')
+        .select('id, gym_id, status, total_price, platform_fee, payment_captured_at, start_date, created_at, guest_name, discipline')
         .in('gym_id', gymIds)
         .order('start_date', { ascending: true }),
       supabase
@@ -477,6 +481,13 @@ export default function ManagePage() {
 
   const bookingCurrency = resolveOwnerCurrency(currencyGym, profile)
 
+  const pendingEarnings = useMemo(() => {
+    if (!currencyGym) return 0
+    if (currencyGym.payout_rail !== 'stripe_connect') return 0
+    if (currencyGym.stripe_connect_verified) return 0
+    return computePendingCapturedEarnings(dashboardBookings, currencyGym.id)
+  }, [currencyGym, dashboardBookings])
+
   /** Rebuild overview window labels when the local calendar day changes (not only on refetch). */
   const [overviewDateKey, setOverviewDateKey] = useState(() => toLocalDayKey(new Date()))
   useEffect(() => {
@@ -568,6 +579,14 @@ export default function ManagePage() {
             </Card>
           ) : (
             <div className="space-y-8 sm:space-y-16">
+            {pendingEarnings > 0 && currencyGym ? (
+              <PendingPayoutEarningsCard
+                gymId={currencyGym.id}
+                pendingAmount={pendingEarnings}
+                currency={bookingCurrency}
+                preferredLanguage={profile?.preferred_language}
+              />
+            ) : null}
             <DashboardTodaySection
               metricsCurrency={bookingCurrency}
               metrics={stats.todayMetrics}

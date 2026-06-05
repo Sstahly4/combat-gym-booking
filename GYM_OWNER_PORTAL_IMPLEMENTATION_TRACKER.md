@@ -167,10 +167,19 @@ These are **explicitly out of scope** for the milestone-4 “baseline complete�
 
 ## Prioritized next actions (post–Milestone 4)
 
-1. **In-repo readiness contract** (short markdown) linked from `getGymReadiness` / onboarding docs.
-2. **Cross-cutting:** feature flags, telemetry, automated regression tests (see section above).
-3. **Optional product polish:** dedicated owner↔guest message thread in manage bookings (mailto is current).
-4. **Milestone 4 deferred backlog:** trusted-device UX, new-device alerts, payout-change hold notifications, custom reset policy, backup recovery codes — prioritize with security/product.
+1. **Stripe payout onboarding UX** — spec ready: `docs/stripe-payout-onboarding-ux.md` (P1 pre-drawer gate → P3 recovery w/ `totp.*` mapper → P2 coach panel → P4 pending earnings). Pre-build: confirm `stripe_requirements_currently_due` keys from DB.
+2. **In-repo readiness contract** (short markdown) linked from `getGymReadiness` / onboarding docs.
+3. **Cross-cutting:** feature flags, telemetry, automated regression tests (see section above).
+4. **Optional product polish:** dedicated owner↔guest message thread in manage bookings (mailto is current).
+5. **Milestone 4 deferred backlog:** trusted-device UX, new-device alerts, payout-change hold notifications, custom reset policy, backup recovery codes — prioritize with security/product.
+
+---
+
+## Tech debt tracker
+
+| Item | Notes | Priority |
+|------|-------|----------|
+| **Stripe V2 event migration** | Current webhook handler in `app/api/webhooks/stripe/route.ts` only processes V1 `account.updated`. New Connect accounts may emit V2-only events. Monitor Stripe changelog for deprecation. The `update-stripe-status` API route covers the `onExit` path so there's no live gap today. Revisit when V1 is deprecated or P3 recovery card shows sync gaps in production. | Q3/Q4 |
 
 ---
 
