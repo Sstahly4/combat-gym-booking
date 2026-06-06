@@ -12,6 +12,7 @@ import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/type
 import { MapPin, Dumbbell, ArrowRight, CreditCard, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
+import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -119,9 +120,7 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
             </>
           )}
         </Button>
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Your card will be authorised now and charged once the gym confirms availability.
-        </p>
+        <PaymentHoldExplainer />
       </div>
 
       {/* Desktop: Inline button */}
@@ -138,9 +137,7 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
             </>
           )}
         </Button>
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Your card will be authorised now and charged once the gym confirms availability.
-        </p>
+        <PaymentHoldExplainer />
       </div>
     </form>
   )
@@ -546,12 +543,6 @@ export default function PaymentPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-300 rounded-md">
-                <p className="text-sm text-blue-900">
-                  <strong>Important:</strong> Your card will be authorised now and charged once the gym confirms availability.
-                </p>
-              </div>
-
               <div className="space-y-4">
                 <div className="text-base font-semibold text-gray-900">How would you like to pay?</div>
                 <div className="flex items-center gap-3 p-4 border-2 border-[#003580] rounded-lg bg-blue-50/10">
@@ -805,12 +796,8 @@ export default function PaymentPage() {
           <div className="lg:col-span-2 space-y-4">
             <div>
               <h1 className="text-2xl font-bold mb-3 text-gray-900">Pay online</h1>
-              <p className="text-gray-600 mb-3">You'll pay when you complete this booking.</p>
-              <div className="p-3 bg-blue-50 border border-blue-300 rounded-md">
-                <p className="text-sm text-blue-900">
-                  <strong>Important:</strong> Your card will be authorised now and charged once the gym confirms availability.
-                </p>
-              </div>
+              <p className="text-gray-600 mb-1">You&apos;ll pay when you complete this booking.</p>
+              <PaymentHoldExplainer className="text-xs text-gray-500 mb-3" />
             </div>
 
             <Card className="border border-gray-300 rounded-lg shadow-sm">

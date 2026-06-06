@@ -210,6 +210,40 @@ const faqs: FAQItem[] = [
       'We usually place a temporary hold on your card at checkout. You are charged only after the free-cancellation deadline on your package (if there is one). Cancel before that time and the hold is released. No free-cancellation window? You may be charged sooner — the checkout screen states the exact rule. Some flows still need the gym to confirm dates first.',
   },
   {
+    id: 'what-happens-to-my-money',
+    category: 'payments',
+    question: 'What happens to my money when I book?',
+    answer: (
+      <div className="space-y-4 text-sm leading-relaxed text-gray-700">
+        <p>
+          When you book, we place a temporary hold on your card — you&apos;re not charged yet. Here&apos;s the full
+          journey:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>You book</strong> → hold placed on your card. No charge yet.
+          </li>
+          <li>
+            <strong>Gym confirms</strong> → hold stays in place until your free cancellation window closes.
+          </li>
+          <li>
+            <strong>Cancellation window ends</strong> → payment captured. CombatStay appears on your statement, not
+            the gym.
+          </li>
+          <li>
+            <strong>You stay</strong> → gym is paid after your arrival. Your money never goes directly to the gym.
+          </li>
+        </ol>
+        <p>
+          <strong>If something goes wrong:</strong> Cancel in time → hold released, no charge. Gym declines → hold
+          released, no charge. Refund needed → initiated within 1 business day, 5–10 days to appear depending on
+          your bank.
+        </p>
+        <p>Your card details are never shared with the gym.</p>
+      </div>
+    ),
+  },
+  {
     id: 'payments-1',
     category: 'payments',
     question: 'Who charges my card?',
@@ -540,7 +574,7 @@ const faqs: FAQItem[] = [
   },
 ]
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('safety')
+  const [selectedCategory, setSelectedCategory] = useState<string>('payments')
   const [openItems, setOpenItems] = useState<Set<string>>(new Set())
 
   const toggleItem = (id: string) => {

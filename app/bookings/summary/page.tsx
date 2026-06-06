@@ -15,6 +15,7 @@ import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { ArrowLeft, MapPin, Calendar, Users, AlertCircle, Dumbbell, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
+import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
@@ -860,9 +861,7 @@ function BookingSummaryPageContent() {
                   </>
                 )}
               </Button>
-              <p className="text-xs text-center text-gray-500 mt-2">
-                You won't be charged yet. Availability confirmed by gym.
-              </p>
+              <PaymentHoldExplainer />
             </div>
           </div>
 
@@ -1383,9 +1382,7 @@ function BookingSummaryPageContent() {
                   </>
                 )}
               </Button>
-              <p className="text-xs text-center text-gray-500 mt-3">
-                You won't be charged yet. Availability confirmed by gym.
-              </p>
+              <PaymentHoldExplainer className="text-xs text-center text-gray-500 mt-3" />
             </div>
           </div>
         </div>
