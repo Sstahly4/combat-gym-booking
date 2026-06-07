@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/types/database'
-import { MapPin, Dumbbell, ArrowRight, CreditCard, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
+import { MapPin, Dumbbell, ArrowLeft, ArrowRight, CreditCard, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
+import Link from 'next/link'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -258,6 +259,17 @@ export default function PaymentPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <BookingProgressBar currentStep={3} loading />
+        {/* Nav row during load */}
+        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <div className="w-7 h-7" aria-hidden="true" />
+        </div>
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
@@ -321,7 +333,16 @@ export default function PaymentPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <BookingProgressBar currentStep={3} loading />
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <div className="w-7 h-7" aria-hidden="true" />
+        </div>
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
               <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
@@ -352,10 +373,32 @@ export default function PaymentPage() {
   const totalPrice = booking.total_price
   const finalTotal = totalPrice
 
+  // Reconstruct Step 2 URL so back-nav works even after a page refresh
+  const step2Url = `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}`
+  const gymListingHref = `/gyms/${booking.gym.slug || booking.gym.id}`
+
   return (
     <div className="min-h-screen bg-white">
       {/* Progress Bar */}
       <BookingProgressBar currentStep={3} />
+
+      {/* Checkout nav: ← Back to details | × Exit to listing */}
+      <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+        <Link
+          href={step2Url}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </Link>
+        <Link
+          href={gymListingHref}
+          className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          aria-label="Return to gym listing"
+        >
+          <X className="w-5 h-5" />
+        </Link>
+      </div>
 
       {/* Mobile Layout */}
       <div className="md:hidden space-y-6 pb-24">

@@ -50,6 +50,20 @@
 }
 
 @layer base {
+  /*
+   * Prevent horizontal overflow from creating a page-wide scroll container.
+   * Without this, any overflowing element (e.g. the booking progress bar on
+   * narrow viewports) widens the scrollable canvas, causing `position:fixed`
+   * CTAs to anchor to the wrong width and layouts to break at non-100% zoom.
+   * `overflow-x: clip` would be ideal but has weaker Safari support; `hidden`
+   * achieves the same visual result without creating a scroll container issue
+   * because the body is already the primary scroll container here.
+   */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   * {
     @apply border-border;
   }

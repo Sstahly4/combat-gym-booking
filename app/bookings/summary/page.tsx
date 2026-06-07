@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,6 @@ import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
-const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
 
 function BookingSummaryPageContent() {
   const router = useRouter()
@@ -43,7 +42,6 @@ function BookingSummaryPageContent() {
   const [checkout, setCheckout] = useState(searchParams.get('checkout') || '')
   const [guestCount, setGuestCount] = useState(1)
   const [discipline, setDiscipline] = useState('')
-  const [experienceLevel, setExperienceLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
   const [notes, setNotes] = useState('')
   
   // User details (KYC)
@@ -55,6 +53,10 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+
+  // Tracks when initial data load + session restore is done; prevents the
+  // persist effect from overwriting a valid saved session with blank defaults.
+  const sessionLoadedRef = useRef(false)
 
   const copyAddress = async () => {
     if (!gym?.address) return
@@ -71,6 +73,20 @@ function BookingSummaryPageContent() {
     fetchBookingData()
   }, [])
 
+  // Persist form state to sessionStorage so it survives back-navigation.
+  // Only runs after the initial load so we never overwrite a valid saved session.
+  useEffect(() => {
+    if (!sessionLoadedRef.current) return
+    const gymId = searchParams.get('gymId')
+    if (!gymId) return
+    try {
+      sessionStorage.setItem(
+        `booking_session_${gymId}`,
+        JSON.stringify({ checkin, checkout, guestCount, discipline, notes, firstName, lastName, email, phone, country, bookingFor })
+      )
+    } catch {}
+  }, [checkin, checkout, guestCount, discipline, notes, firstName, lastName, email, phone, country, bookingFor])
+
   const fetchBookingData = async () => {
     const gymId = searchParams.get('gymId')
     const packageId = searchParams.get('packageId')
@@ -80,6 +96,27 @@ function BookingSummaryPageContent() {
       setError('Missing booking information')
       setLoading(false)
       return
+    }
+
+    // Restore any previously saved form state for this gym (e.g. after back-nav)
+    const sessionKey = `booking_session_${gymId}`
+    let savedSession: Record<string, any> | null = null
+    try {
+      const raw = sessionStorage.getItem(sessionKey)
+      if (raw) savedSession = JSON.parse(raw)
+    } catch {}
+    if (savedSession) {
+      if (savedSession.checkin) setCheckin(savedSession.checkin)
+      if (savedSession.checkout) setCheckout(savedSession.checkout)
+      if (typeof savedSession.guestCount === 'number') setGuestCount(savedSession.guestCount)
+      if (savedSession.discipline) setDiscipline(savedSession.discipline)
+      if (savedSession.notes !== undefined) setNotes(savedSession.notes)
+      if (savedSession.firstName) setFirstName(savedSession.firstName)
+      if (savedSession.lastName) setLastName(savedSession.lastName)
+      if (savedSession.email) setEmail(savedSession.email)
+      if (savedSession.phone) setPhone(savedSession.phone)
+      if (savedSession.country) setCountry(savedSession.country)
+      if (savedSession.bookingFor) setBookingFor(savedSession.bookingFor as 'self' | 'other')
     }
 
     const supabase = createClient()
@@ -137,6 +174,11 @@ function BookingSummaryPageContent() {
     }
 
     setGym(gymData as Gym)
+    // Auto-select the gym's primary discipline; user can still change it
+    // (skip if a discipline was already restored from sessionStorage)
+    if (!savedSession?.discipline && gymData.disciplines && gymData.disciplines.length > 0) {
+      setDiscipline(gymData.disciplines[0])
+    }
     setPackage_(packageData as Package)
 
     // If variant ID provided, find the variant
@@ -147,10 +189,9 @@ function BookingSummaryPageContent() {
       }
     }
 
+    sessionLoadedRef.current = true
     setLoading(false)
   }
-
-  const duration = (checkin && checkout)
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
@@ -196,10 +237,6 @@ function BookingSummaryPageContent() {
       setError(`This package requires a minimum stay of ${minStay} ${minStay === 1 ? 'day' : 'days'}`)
       return
     }
-    if (!discipline) {
-      setError('Please select a discipline')
-      return
-    }
     if (!firstName || !lastName || !email || !phone) {
       setError('Please fill in all required personal details')
       return
@@ -219,8 +256,7 @@ function BookingSummaryPageContent() {
           package_variant_id: variant?.id || null,
           start_date: checkin,
           end_date: checkout,
-          discipline,
-          experience_level: experienceLevel,
+          discipline: discipline || null,
           notes: notes || null,
           total_price: totalPrice,
           // Guest booking details
@@ -236,6 +272,9 @@ function BookingSummaryPageContent() {
         throw new Error(data.error || 'Failed to create booking')
       }
 
+      // Clear saved session — booking is now in progress
+      try { sessionStorage.removeItem(`booking_session_${gym.id}`) } catch {}
+
       // Redirect to payment
       router.push(`/bookings/${data.booking_id}/payment`)
     } catch (err: any) {
@@ -248,7 +287,17 @@ function BookingSummaryPageContent() {
     return (
       <div className="min-h-screen bg-gray-50">
         <BookingProgressBar currentStep={2} loading />
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Nav row: back + exit — shown during load so the page never feels trapped */}
+        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <div className="w-7 h-7" aria-hidden="true" />
+        </div>
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
               <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
@@ -300,6 +349,24 @@ function BookingSummaryPageContent() {
     <div className="min-h-screen bg-gray-50">
       {/* Progress Bar */}
       <BookingProgressBar currentStep={2} />
+
+      {/* Checkout nav: ← Back | × Exit to listing */}
+      <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
+        <Link
+          href={`/gyms/${gym.slug || gym.id}`}
+          className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          aria-label="Return to gym listing"
+        >
+          <X className="w-5 h-5" />
+        </Link>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Mobile Layout - Single Page, Information Dense */}
@@ -766,38 +833,17 @@ function BookingSummaryPageContent() {
             {/* Discipline */}
             <div className="space-y-2">
               <Label htmlFor="discipline-mobile" className="text-sm font-medium">
-                Discipline <span className="text-red-600">*</span>
+                Discipline
               </Label>
               <Select
                 id="discipline-mobile"
                 value={discipline}
                 onChange={(e) => setDiscipline(e.target.value)}
                 className="h-11"
-                required
               >
                 <option value="">Select a discipline</option>
                 {DISCIPLINES.map(d => (
                   <option key={d} value={d}>{d}</option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Experience Level */}
-            <div className="space-y-2">
-              <Label htmlFor="experience-mobile" className="text-sm font-medium">
-                Experience Level <span className="text-red-600">*</span>
-              </Label>
-              <Select
-                id="experience-mobile"
-                value={experienceLevel}
-                onChange={(e) => setExperienceLevel(e.target.value as any)}
-                className="h-11"
-                required
-              >
-                {EXPERIENCE_LEVELS.map(level => (
-                  <option key={level} value={level}>
-                    {level.charAt(0).toUpperCase() + level.slice(1)}
-                  </option>
                 ))}
               </Select>
             </div>
@@ -816,33 +862,12 @@ function BookingSummaryPageContent() {
               </label>
             </div>
 
-            {/* Paperless confirmation checkbox */}
-            <div className="space-y-3 pt-2">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-1 w-4 h-4 text-[#003580] border-gray-300 rounded focus:ring-[#003580]"
-                  defaultChecked
-                />
-                <div>
-                  <span className="text-sm text-gray-700">Yes, I'd like free paperless confirmation (recommended)</span>
-                  <p className="text-xs text-gray-500 mt-1">We'll text you a link to download our app</p>
-                </div>
-              </label>
-            </div>
+            {/* Paperless confirmation — plain reassurance, no checkbox needed */}
+            <p className="text-xs text-gray-500 pt-1">
+              A confirmation email will be sent to the address above.
+            </p>
 
-            {/* Update account checkbox - Moved to bottom */}
-            <div className="space-y-3 pt-2 pb-2">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-1 w-4 h-4 text-[#003580] border-gray-300 rounded focus:ring-[#003580]"
-                />
-                <div>
-                  <span className="text-sm text-gray-700">Update my account to include these new details</span>
-                </div>
-              </label>
-            </div>
+
               </CardContent>
             </Card>
           </div>
@@ -1219,19 +1244,10 @@ function BookingSummaryPageContent() {
                   <p className="text-xs text-gray-500">To verify your booking, and for the property to connect if needed</p>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-1 w-4 h-4 text-[#003580] border-gray-300 rounded focus:ring-[#003580]"
-                      defaultChecked
-                    />
-                    <div>
-                      <span className="text-sm text-gray-700">Yes, I'd like free paperless confirmation (recommended)</span>
-                      <p className="text-xs text-gray-500 mt-1">We'll text you a link to download our app</p>
-                    </div>
-                  </label>
-                </div>
+                {/* Confirmation email — plain reassurance, no checkbox needed */}
+                <p className="text-xs text-gray-500 pt-1">
+                  A confirmation email will be sent to the address above.
+                </p>
 
                 {/* Divider */}
                 <div className="border-t border-gray-300 pt-5 mt-2">
@@ -1316,36 +1332,18 @@ function BookingSummaryPageContent() {
                   </div>
 
                   <div className="space-y-2">
-                  <Label htmlFor="discipline" className="text-sm font-medium">Discipline *</Label>
+                  <Label htmlFor="discipline" className="text-sm font-medium">Discipline</Label>
                     <Select
                       id="discipline"
                       value={discipline}
                       onChange={(e) => setDiscipline(e.target.value)}
                     className="h-11"
-                      required
                     >
                       <option value="">Select a discipline</option>
                       {DISCIPLINES.map(d => (
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="experience" className="text-sm font-medium">Experience Level *</Label>
-                  <Select
-                    id="experience"
-                    value={experienceLevel}
-                    onChange={(e) => setExperienceLevel(e.target.value as any)}
-                    className="h-11"
-                    required
-                  >
-                    {EXPERIENCE_LEVELS.map(level => (
-                      <option key={level} value={level}>
-                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                      </option>
-                    ))}
-                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -1373,7 +1371,7 @@ function BookingSummaryPageContent() {
               <Button
                 className="w-full h-14 text-lg font-bold bg-[#003580] hover:bg-[#003580]/90 text-white"
                 onClick={handleSubmit}
-                disabled={!isValidDuration || !meetsMinimumStay || !discipline || !firstName || !lastName || !email || !phone || submitting}
+                disabled={!isValidDuration || !meetsMinimumStay || !firstName || !lastName || !email || !phone || submitting}
               >
                 {submitting ? 'Submitting...' : (
                   <>
