@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Star, X, Calendar, Users, ChevronRight, MapPin, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
+import { Star, X, Calendar, Users, ChevronRight, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
@@ -296,7 +296,7 @@ function ReviewPageContent() {
       {/* ── Scrollable content ──────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pt-2 pb-36">
         {/* Page title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-5">Review and continue</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-5">Review and continue</h1>
         {/* ── Gym + booking summary card ─────────────────────────────── */}
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
 
@@ -313,20 +313,22 @@ function ReviewPageContent() {
                 <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
               )}
               <div className="pt-0.5 min-w-0 flex-1">
-                <p className="font-semibold text-sm text-gray-900 leading-snug line-clamp-2">
+                <p className="font-bold text-base text-gray-900 leading-snug line-clamp-2">
                   {gym.name}
                 </p>
-                <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                  <MapPin className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{gym.address || `${gym.city}, ${gym.country}`}</span>
+                {/* Rating + package type inline */}
+                <div className="flex items-center gap-4 mt-1">
+                  {reviewCount > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-gray-900 text-gray-900" />
+                      <span className="text-xs font-medium text-gray-800">{averageRating.toFixed(1)}</span>
+                      <span className="text-xs text-gray-500">({reviewCount})</span>
+                    </div>
+                  )}
+                  {package_ && (
+                    <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
+                  )}
                 </div>
-                {reviewCount > 0 && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <Star className="w-3 h-3 fill-[#febb02] text-[#febb02]" />
-                    <span className="text-xs font-medium text-gray-800">{averageRating.toFixed(1)}</span>
-                    <span className="text-xs text-gray-500">({reviewCount})</span>
-                  </div>
-                )}
                 {gym.amenities && (
                   <div className="flex flex-wrap gap-3 mt-2">
                     {gym.amenities.wifi && (
@@ -362,9 +364,6 @@ function ReviewPageContent() {
 
           {/* ── Summary rows ─────────────────────────────────────────── */}
           <div className="divide-y divide-gray-100 px-4">
-            {/* Package */}
-            <Row label="Package" value={package_.name} />
-
             {/* Dates */}
             <Row
               label="Dates"
@@ -404,7 +403,7 @@ function ReviewPageContent() {
             {/* Trust / cancellation signal */}
             {package_ && checkin && (
               <div className="py-3">
-                <BookingTrustLine pkg={package_ as any} checkin={checkin} />
+                <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} />
               </div>
             )}
           </div>
@@ -425,24 +424,22 @@ function ReviewPageContent() {
 
       {/* ── Date picker overlay ─────────────────────────────────────── */}
       {datePickerOpen && (
-        <>
+        <div className="fixed inset-0 z-[100]">
           <div
             className="fixed inset-0 bg-black/40 z-[45]"
             onClick={() => setDatePickerOpen(false)}
           />
-          <div className="fixed inset-0 z-[50] pointer-events-none">
-            <div className="pointer-events-auto">
-              <DateRangePicker
-                checkin={checkin}
-                checkout={checkout}
-                forceOpen={true}
-                onClose={() => setDatePickerOpen(false)}
-                onCheckinChange={setCheckin}
-                onCheckoutChange={setCheckout}
-              />
-            </div>
+          <div className="relative z-[50] [&>div:first-child]:hidden">
+            <DateRangePicker
+              checkin={checkin}
+              checkout={checkout}
+              forceOpen={true}
+              onClose={() => setDatePickerOpen(false)}
+              onCheckinChange={setCheckin}
+              onCheckoutChange={setCheckout}
+            />
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Guest count sheet ───────────────────────────────────────── */}

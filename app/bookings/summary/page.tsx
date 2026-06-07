@@ -717,7 +717,7 @@ function BookingSummaryPageContent() {
               <CardContent className="space-y-5">
                 {/* Trust signal */}
                 {package_ && checkin && (
-                  <BookingTrustLine pkg={package_} checkin={checkin} />
+                  <BookingTrustLine pkg={package_} gym={gym} checkin={checkin} />
                 )}
                 {/* Blue Info Box */}
                 <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">
@@ -1162,7 +1162,7 @@ function BookingSummaryPageContent() {
               <CardContent className="space-y-5">
                 {/* Trust signal */}
                 {package_ && checkin && (
-                  <BookingTrustLine pkg={package_} checkin={checkin} />
+                  <BookingTrustLine pkg={package_} gym={gym} checkin={checkin} />
                 )}
                 {/* Blue Info Box - Separate floating box */}
                 <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">

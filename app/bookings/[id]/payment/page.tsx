@@ -98,6 +98,7 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
         {(booking as any).package && booking.start_date && (
           <BookingTrustLine
             pkg={(booking as any).package}
+            gym={booking.gym}
             checkin={booking.start_date}
             className="mb-1"
           />
