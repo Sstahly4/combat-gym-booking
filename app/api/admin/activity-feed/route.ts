@@ -32,6 +32,7 @@ export async function GET() {
       .from('bookings')
       .select('id, created_at, status, total_price, gym_id, guest_name')
       .gte('created_at', sinceIso)
+      .in('status', ['confirmed', 'paid', 'completed'])
       .order('created_at', { ascending: false })
       .limit(45),
     supabase
