@@ -192,6 +192,8 @@ function BookingSummaryPageContent() {
     sessionLoadedRef.current = true
     setLoading(false)
   }
+
+  const duration = (checkin && checkout)
     ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
     : 0
 
