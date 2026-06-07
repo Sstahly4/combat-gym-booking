@@ -71,10 +71,48 @@ const nextConfig = {
     }))
   },
   async headers() {
+    // Content-Security-Policy in Report-Only mode: violations are logged to the
+    // browser console but nothing is blocked. Run this for a sprint, inspect
+    // console errors for any legitimate sources being flagged, add them to the
+    // allowlist below, then rename the key to 'Content-Security-Policy' to
+    // start enforcing.
+    //
+    // Known omissions vs. a strict policy (address before enforcement):
+    //   - script-src still carries 'unsafe-inline' because layout.tsx uses
+    //     dangerouslySetInnerHTML for the JSON-LD org block. Replace that with
+    //     a <Script id="…" type="application/ld+json"> tag (Next.js handles the
+    //     nonce automatically) to eliminate 'unsafe-inline' from script-src.
+    //   - 'unsafe-eval' is intentionally absent — Next.js production builds
+    //     don't need it and including it would defeat most of the policy.
+    const csp = [
+      "default-src 'self'",
+      // next/script chunks (self), Stripe payment JS, Stripe Connect embedded
+      // components, Vercel Analytics/Speed Insights (served via /_vercel/ on
+      // Vercel, i.e. self — va.vercel-scripts.com is the CDN fallback in dev).
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com",
+      // Stripe Elements iframe, Stripe Connect iframe, Google Maps embed iframe.
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com",
+      // Supabase REST/Auth/Storage/Realtime, Stripe API, Vercel vitals beacon.
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com",
+      // next/image optimised URLs (self + blob), Supabase Storage, all five
+      // remotePatterns from next.config.js images section, Google Maps tiles.
+      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com",
+      // Tailwind and Radix component inline styles.
+      "style-src 'self' 'unsafe-inline'",
+      // next/font/google downloads Inter at build time and self-hosts it —
+      // no runtime call to fonts.googleapis.com needed.
+      "font-src 'self' data:",
+      "worker-src 'none'",
+    ].join('; ')
+
     return [
       {
         source: '/:path*',
         headers: [
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: csp,
+          },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',

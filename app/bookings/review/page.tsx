@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Star, X, Calendar, Users, ChevronRight } from 'lucide-react'
+import { Star, X, Calendar, Users, ChevronRight, MapPin, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
@@ -86,16 +86,16 @@ function Row({
   onEdit?: () => void
 }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+    <div className="flex items-start justify-between py-4 border-b border-gray-100 last:border-0">
       <div>
-        <div className="text-xs text-gray-500 mb-0.5">{label}</div>
-        <div className="text-sm font-semibold text-gray-900">{value}</div>
-        {sub && <div className="text-xs text-gray-500 mt-0.5">{sub}</div>}
+        <div className="text-sm font-semibold text-gray-900 mb-0.5">{label}</div>
+        <div className="text-sm text-gray-600">{value}</div>
+        {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
       </div>
       {onEdit && (
         <button
           onClick={onEdit}
-          className="text-[#003580] text-sm font-semibold underline underline-offset-2 hover:text-[#003580]/80 shrink-0 ml-4"
+          className="shrink-0 ml-4 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
         >
           Change
         </button>
@@ -199,7 +199,21 @@ function ReviewPageContent() {
   const formatDate = (d: string) => {
     if (!d) return '–'
     const dt = new Date(d + 'T00:00:00')
-    return dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  // "7–14 June 2026" — share month/year when both dates are in the same month
+  const formatDateRange = (from: string, to: string) => {
+    if (!from || !to) return 'No dates selected'
+    const a = new Date(from + 'T00:00:00')
+    const b = new Date(to + 'T00:00:00')
+    const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
+    if (sameMonth) {
+      const month = a.toLocaleDateString('en-GB', { month: 'long' })
+      const year = a.getFullYear()
+      return `${a.getDate()}–${b.getDate()} ${month} ${year}`
+    }
+    return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'long' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
   }
 
   const mainImage =
@@ -230,7 +244,7 @@ function ReviewPageContent() {
           <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
           <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
         </div>
-        <div className="flex-1 px-4 space-y-4 pt-2">
+        <div className="flex-1 px-4 space-y-4 pt-2 pb-36">
           <div className="flex gap-3">
             <div className="w-20 h-20 rounded-xl bg-gray-200 animate-pulse shrink-0" />
             <div className="flex-1 space-y-2 pt-1">
@@ -247,7 +261,7 @@ function ReviewPageContent() {
             </div>
           ))}
         </div>
-        <div className="px-4 pb-8 pt-4 space-y-3">
+        <div className="fixed bottom-0 left-0 right-0 px-4 pb-8 pt-4 space-y-3 bg-white border-t border-gray-100 z-40">
           <StepProgressBar step={1} />
           <div className="h-13 w-full bg-gray-200 rounded-xl animate-pulse" />
         </div>
@@ -269,15 +283,7 @@ function ReviewPageContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* ── Top nav ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-        <button
-          onClick={() => router.back()}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="w-4 h-4 text-gray-700" />
-        </button>
-        <h1 className="text-base font-semibold text-gray-900">Review and continue</h1>
+      <div className="flex items-center justify-end px-4 pt-4 pb-2">
         <Link
           href={`/gyms/${gymSlugOrId}`}
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
@@ -288,93 +294,125 @@ function ReviewPageContent() {
       </div>
 
       {/* ── Scrollable content ──────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4">
-        {/* Gym card */}
-        <div className="flex gap-3 mb-5">
-          {mainImage ? (
-            <img
-              src={mainImage}
-              alt={gym.name}
-              className="w-20 h-20 rounded-xl object-cover shrink-0"
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-36">
+        {/* Page title */}
+        <h1 className="text-2xl font-bold text-gray-900 mb-5">Review and continue</h1>
+        {/* ── Gym + booking summary card ─────────────────────────────── */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+
+          {/* Gym identity */}
+          <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+            <div className="flex gap-3 items-start">
+              {mainImage ? (
+                <img
+                  src={mainImage}
+                  alt={gym.name}
+                  className="w-20 h-20 rounded-xl object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
+              )}
+              <div className="pt-0.5 min-w-0 flex-1">
+                <p className="font-semibold text-sm text-gray-900 leading-snug line-clamp-2">
+                  {gym.name}
+                </p>
+                <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{gym.address || `${gym.city}, ${gym.country}`}</span>
+                </div>
+                {reviewCount > 0 && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="w-3 h-3 fill-[#febb02] text-[#febb02]" />
+                    <span className="text-xs font-medium text-gray-800">{averageRating.toFixed(1)}</span>
+                    <span className="text-xs text-gray-500">({reviewCount})</span>
+                  </div>
+                )}
+                {gym.amenities && (
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    {gym.amenities.wifi && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Wifi className="w-3 h-3" /><span>WiFi</span>
+                      </div>
+                    )}
+                    {gym.amenities.parking && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Car className="w-3 h-3" /><span>Parking</span>
+                      </div>
+                    )}
+                    {gym.amenities.meals && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <UtensilsCrossed className="w-3 h-3" /><span>Restaurant</span>
+                      </div>
+                    )}
+                    {gym.amenities.showers && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Droplets className="w-3 h-3" /><span>Showers</span>
+                      </div>
+                    )}
+                    {gym.amenities.accommodation && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Building2 className="w-3 h-3" /><span>Accommodation</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Summary rows ─────────────────────────────────────────── */}
+          <div className="divide-y divide-gray-100 px-4">
+            {/* Package */}
+            <Row label="Package" value={package_.name} />
+
+            {/* Dates */}
+            <Row
+              label="Dates"
+              value={formatDateRange(checkin, checkout)}
+              sub={
+                duration > 0
+                  ? `${isTraining ? pricingDuration : duration} ${
+                      isTraining
+                        ? pricingDuration === 1 ? 'day' : 'days'
+                        : duration === 1 ? 'night' : 'nights'
+                    }`
+                  : undefined
+              }
+              onEdit={() => setDatePickerOpen(true)}
             />
-          ) : (
-            <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
-          )}
-          <div className="pt-0.5 min-w-0">
-            <p className="font-semibold text-sm text-gray-900 leading-snug line-clamp-2">
-              {gym.name}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">{gym.city}, {gym.country}</p>
-            {reviewCount > 0 && (
-              <div className="flex items-center gap-1 mt-1">
-                <Star className="w-3 h-3 fill-[#febb02] text-[#febb02]" />
-                <span className="text-xs font-medium text-gray-800">
-                  {averageRating.toFixed(1)}
-                </span>
-                <span className="text-xs text-gray-500">({reviewCount})</span>
+
+            {/* Guests */}
+            <Row
+              label="Guests"
+              value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
+              onEdit={() => setGuestSheetOpen(true)}
+            />
+
+            {/* Price */}
+            <Row
+              label="Total price"
+              value={
+                totalPrice != null
+                  ? formatPrice(totalPrice)
+                  : checkin && checkout
+                  ? 'Calculating…'
+                  : 'Select dates for pricing'
+              }
+              sub={priceInfo?.durationLabel || undefined}
+            />
+
+            {/* Trust / cancellation signal */}
+            {package_ && checkin && (
+              <div className="py-3">
+                <BookingTrustLine pkg={package_ as any} checkin={checkin} />
               </div>
             )}
           </div>
         </div>
-
-        {/* ── Summary rows ───────────────────────────────────────────── */}
-        <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 px-4 mb-4">
-          {/* Package */}
-          <Row label="Package" value={package_.name} />
-
-          {/* Dates */}
-          <Row
-            label="Dates"
-            value={
-              checkin && checkout
-                ? `${formatDate(checkin)} – ${formatDate(checkout)}`
-                : 'No dates selected'
-            }
-            sub={
-              duration > 0
-                ? `${isTraining ? pricingDuration : duration} ${
-                    isTraining
-                      ? pricingDuration === 1 ? 'day' : 'days'
-                      : duration === 1 ? 'night' : 'nights'
-                  }`
-                : undefined
-            }
-            onEdit={() => setDatePickerOpen(true)}
-          />
-
-          {/* Guests */}
-          <Row
-            label="Guests"
-            value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
-            onEdit={() => setGuestSheetOpen(true)}
-          />
-
-          {/* Price */}
-          <Row
-            label="Total price"
-            value={
-              totalPrice != null
-                ? formatPrice(totalPrice)
-                : checkin && checkout
-                ? 'Calculating…'
-                : 'Select dates for pricing'
-            }
-            sub={priceInfo?.durationLabel || undefined}
-          />
-        </div>
-
-        {/* Trust / cancellation signal */}
-        {package_ && checkin && (
-          <BookingTrustLine
-            pkg={package_ as any}
-            checkin={checkin}
-            className="mb-4"
-          />
-        )}
       </div>
 
-      {/* ── Sticky bottom: progress + CTA ───────────────────────────── */}
-      <div className="border-t border-gray-100 bg-white px-4 pt-3 pb-8 space-y-3">
+      {/* ── Fixed bottom: progress + CTA ────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 pb-8 space-y-3 z-40" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
         <StepProgressBar step={1} />
         <Button
           onClick={() => router.push(buildContinueUrl())}
