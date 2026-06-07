@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
       start_date, 
       end_date, 
       discipline, 
-      experience_level, 
       notes, 
       total_price, 
       guest_email,
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!gym_id || !start_date || !end_date || !discipline || !experience_level || !total_price) {
+    if (!gym_id || !start_date || !end_date || !total_price) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -155,7 +154,6 @@ export async function POST(request: NextRequest) {
         start_date,
         end_date,
         discipline,
-        experience_level,
         notes: notes || null,
         total_price,
         platform_fee,
@@ -181,7 +179,6 @@ export async function POST(request: NextRequest) {
     if (user?.id) {
       try {
         const disciplineNorm = (discipline || '').toString().trim()
-        const levelNorm = (experience_level || '').toString().trim().toLowerCase()
 
         // Update profile fields opportunistically (best-effort; never block booking creation).
         const { data: existingProfile } = await supabase
@@ -203,9 +200,6 @@ export async function POST(request: NextRequest) {
           .update({
             combat_primary_discipline: disciplineNorm || null,
             combat_disciplines: mergedDisciplines.length > 0 ? mergedDisciplines : null,
-            combat_skill_level: (levelNorm === 'beginner' || levelNorm === 'intermediate' || levelNorm === 'advanced')
-              ? levelNorm
-              : null,
           })
           .eq('id', user.id)
 
