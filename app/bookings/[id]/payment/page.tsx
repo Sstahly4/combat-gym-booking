@@ -13,6 +13,7 @@ import { MapPin, Dumbbell, ArrowLeft, ArrowRight, CreditCard, Check, Star, Wifi,
 import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
+import { BookingTrustLine } from '@/components/booking-trust-line'
 import Link from 'next/link'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -94,6 +95,13 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
       <div className="space-y-3 md:space-y-4">
+        {(booking as any).package && booking.start_date && (
+          <BookingTrustLine
+            pkg={(booking as any).package}
+            checkin={booking.start_date}
+            className="mb-1"
+          />
+        )}
         <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
           <CreditCard className="w-4 h-4" />
           <span>We accept all major credit cards</span>

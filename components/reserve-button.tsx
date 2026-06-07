@@ -35,7 +35,8 @@ export function ReserveButton({ gym }: { gym: Gym }) {
       params.set('variantId', (selectedPackage as any).variant_id)
     }
 
-    router.push(`/bookings/summary?${params.toString()}`)
+    // Mobile → review page, desktop → summary directly (review page redirects desktop automatically)
+    router.push(`/bookings/review?${params.toString()}`)
   }
 
   const formatDate = (dateString: string) => {

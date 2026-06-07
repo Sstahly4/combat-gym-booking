@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
+import { BookingTrustLine } from '@/components/booking-trust-line'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
@@ -40,7 +41,9 @@ function BookingSummaryPageContent() {
   
   const [checkin, setCheckin] = useState(searchParams.get('checkin') || '')
   const [checkout, setCheckout] = useState(searchParams.get('checkout') || '')
-  const [guestCount, setGuestCount] = useState(1)
+  const [guestCount, setGuestCount] = useState(
+    parseInt(searchParams.get('guests') || '1') || 1
+  )
   const [discipline, setDiscipline] = useState('')
   const [notes, setNotes] = useState('')
   
@@ -712,6 +715,10 @@ function BookingSummaryPageContent() {
                 <CardTitle className="text-lg font-semibold">Enter your details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                {/* Trust signal */}
+                {package_ && checkin && (
+                  <BookingTrustLine pkg={package_} checkin={checkin} />
+                )}
                 {/* Blue Info Box */}
                 <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">
                   <AlertCircle className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
@@ -1153,6 +1160,10 @@ function BookingSummaryPageContent() {
                 <CardTitle className="text-lg font-semibold">Enter your details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                {/* Trust signal */}
+                {package_ && checkin && (
+                  <BookingTrustLine pkg={package_} checkin={checkin} />
+                )}
                 {/* Blue Info Box - Separate floating box */}
                 <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">
                   <AlertCircle className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />

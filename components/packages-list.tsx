@@ -148,7 +148,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
         checkin: eventStart || '',
         checkout: eventEnd || eventStart || '',
       })
-      router.push(`/bookings/summary?${params.toString()}`)
+      router.push(`/bookings/review?${params.toString()}`)
       return
     }
 
@@ -182,7 +182,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       checkin: finalCheckin || '',
       checkout: finalCheckout || '',
     })
-    router.push(`/bookings/summary?${params.toString()}`)
+    router.push(`/bookings/review?${params.toString()}`)
   }
 
   const handleSelectVariant = (pkg: Package, variant: PackageVariant) => {
@@ -217,7 +217,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       checkin: finalCheckin || '',
       checkout: finalCheckout || finalCheckin || '',
     })
-    router.push(`/bookings/summary?${params.toString()}`)
+    router.push(`/bookings/review?${params.toString()}`)
   }
 
   // Sort: one-time events first, then training-only, then everything else
