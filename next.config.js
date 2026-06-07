@@ -80,10 +80,12 @@ const nextConfig = {
       // next/script chunks (self), Stripe payment JS, Stripe Connect embedded
       // components, Vercel Analytics/Speed Insights (served via /_vercel/ on
       // Vercel, i.e. self — va.vercel-scripts.com is the CDN fallback in dev).
-      // Note: the JSON-LD <Script> in layout.tsx uses type="application/ld+json"
-      // which the HTML spec classifies as a data block, not executable JS —
-      // browsers exempt it from script-src, so no 'unsafe-inline' needed here.
-      "script-src 'self' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com",
+      // 'unsafe-inline' is required here because @stripe/react-connect-js
+      // (the payout onboarding UI) injects dynamically generated inline scripts
+      // whose content changes on every load — per-load hashes are not feasible
+      // and Stripe does not expose a nonce hook. This is a known limitation of
+      // Stripe Connect embedded components; all other script sources are locked.
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com",
       // Stripe Elements iframe, Stripe Connect iframe, Google Maps embed iframe.
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com",
       // Supabase REST/Auth/Storage/Realtime, Stripe API, Vercel vitals beacon.
@@ -104,7 +106,7 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
-            key: 'Content-Security-Policy-Report-Only',
+            key: 'Content-Security-Policy',
             value: csp,
           },
           {
