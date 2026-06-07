@@ -19,8 +19,12 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, 'auth:evaluate-password')
+  if (!rateLimit.allowed) return rateLimit.response
+
   try {
     const supabase = await createClient()
     const {

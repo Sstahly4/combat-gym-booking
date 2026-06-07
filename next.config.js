@@ -71,25 +71,19 @@ const nextConfig = {
     }))
   },
   async headers() {
-    // Content-Security-Policy in Report-Only mode: violations are logged to the
-    // browser console but nothing is blocked. Run this for a sprint, inspect
-    // console errors for any legitimate sources being flagged, add them to the
-    // allowlist below, then rename the key to 'Content-Security-Policy' to
-    // start enforcing.
-    //
-    // Known omissions vs. a strict policy (address before enforcement):
-    //   - script-src still carries 'unsafe-inline' because layout.tsx uses
-    //     dangerouslySetInnerHTML for the JSON-LD org block. Replace that with
-    //     a <Script id="…" type="application/ld+json"> tag (Next.js handles the
-    //     nonce automatically) to eliminate 'unsafe-inline' from script-src.
-    //   - 'unsafe-eval' is intentionally absent — Next.js production builds
-    //     don't need it and including it would defeat most of the policy.
+    // 'unsafe-eval' is intentionally absent — Next.js production builds don't
+    // need it and including it would defeat most of the CSP.
+    // style-src retains 'unsafe-inline' — unavoidable with Tailwind utility
+    // classes and Radix component styles without migrating to CSS modules.
     const csp = [
       "default-src 'self'",
       // next/script chunks (self), Stripe payment JS, Stripe Connect embedded
       // components, Vercel Analytics/Speed Insights (served via /_vercel/ on
       // Vercel, i.e. self — va.vercel-scripts.com is the CDN fallback in dev).
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com",
+      // Note: the JSON-LD <Script> in layout.tsx uses type="application/ld+json"
+      // which the HTML spec classifies as a data block, not executable JS —
+      // browsers exempt it from script-src, so no 'unsafe-inline' needed here.
+      "script-src 'self' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com",
       // Stripe Elements iframe, Stripe Connect iframe, Google Maps embed iframe.
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com",
       // Supabase REST/Auth/Storage/Realtime, Stripe API, Vercel vitals beacon.
@@ -110,7 +104,7 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
-            key: 'Content-Security-Policy-Report-Only',
+            key: 'Content-Security-Policy',
             value: csp,
           },
           {

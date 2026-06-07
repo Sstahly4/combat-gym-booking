@@ -7,6 +7,7 @@ import { headers } from 'next/headers'
 import { createHash } from 'crypto'
 import { isFeatureEnabled } from '@/lib/flags/feature-flags'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 function deviceFingerprint(userAgent: string | null, clientHint: string | null): string {
   const seed = `${userAgent ?? ''}|${clientHint ?? ''}`
@@ -14,6 +15,9 @@ function deviceFingerprint(userAgent: string | null, clientHint: string | null):
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, 'auth:record-sign-in')
+  if (!rateLimit.allowed) return rateLimit.response
+
   try {
     const supabase = await createClient()
     const {
