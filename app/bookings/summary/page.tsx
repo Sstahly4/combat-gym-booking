@@ -300,6 +300,7 @@ function BookingSummaryPageContent() {
           </button>
           <div className="w-7 h-7" aria-hidden="true" />
         </div>
+        <div className="max-w-7xl mx-auto px-4 pb-6">
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
               <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
