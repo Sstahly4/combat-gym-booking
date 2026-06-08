@@ -414,6 +414,7 @@ export default async function GymDetailsPage({
   function schemaLowestPricePerDay(
     packages: Package[],
     gymCurrency: string,
+    gymPricePerDay: number,
   ): string | undefined {
     const SYMBOLS: Record<string, string> = {
       USD: '$', EUR: '€', GBP: '£', AUD: 'A$', THB: '฿',
@@ -449,7 +450,7 @@ export default async function GymDetailsPage({
     }
 
     // Fall back to gym-level price if no package price found
-    if (min === null && gym.price_per_day > 0) min = gym.price_per_day
+    if (min === null && gymPricePerDay > 0) min = gymPricePerDay
 
     if (min === null) return undefined
     const formatted = Math.round(min).toLocaleString('en-US')
@@ -504,7 +505,7 @@ export default async function GymDetailsPage({
         : undefined,
     telephone: gym.public_contact_phone || undefined,
     sport: Array.isArray(gym.disciplines) && gym.disciplines.length > 0 ? gym.disciplines : undefined,
-    priceRange: schemaLowestPricePerDay(gym.packages, gym.currency),
+    priceRange: schemaLowestPricePerDay(gym.packages, gym.currency, gym.price_per_day),
     aggregateRating:
       gym.reviews.length > 0
         ? {
