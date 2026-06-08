@@ -39,35 +39,44 @@ function GuestSheet({
 }) {
   return (
     <div className="fixed inset-0 z-[100]">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl px-5 pt-5 pb-8 z-10">
-        <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-5" />
-        <h3 className="text-lg font-semibold mb-5">Number of guests</h3>
-        <div className="flex items-center justify-between">
-          <span className="text-base text-gray-700">Adults</span>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => onChange(Math.max(1, value - 1))}
-              className="w-9 h-9 rounded-full border border-gray-400 flex items-center justify-center text-gray-700 text-lg disabled:opacity-30"
-              disabled={value <= 1}
-            >
-              −
-            </button>
-            <span className="w-5 text-center text-base font-medium">{value}</span>
-            <button
-              onClick={() => onChange(value + 1)}
-              className="w-9 h-9 rounded-full border border-gray-400 flex items-center justify-center text-gray-700 text-lg"
-            >
-              +
-            </button>
+      <div className="fixed inset-0 bg-black/50 z-[101]" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[102] flex flex-col max-h-[85dvh]">
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-lg font-semibold">Guests</h3>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl">✕</button>
+        </div>
+        <div className="px-5 py-6 flex-1">
+          <div className="flex items-center justify-between py-4">
+            <div>
+              <div className="text-base font-medium text-gray-900">Adults</div>
+              <div className="text-sm text-gray-500">Ages 13 or above</div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => onChange(Math.max(1, value - 1))}
+                disabled={value <= 1}
+                className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-700 text-xl disabled:opacity-30 hover:border-gray-500 transition-colors"
+              >
+                −
+              </button>
+              <span className="w-6 text-center text-base font-medium">{value}</span>
+              <button
+                onClick={() => onChange(value + 1)}
+                className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-700 text-xl hover:border-gray-500 transition-colors"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
-        <Button
-          className="w-full mt-7 h-12 bg-[#003580] hover:bg-[#003580]/90 font-semibold"
-          onClick={onClose}
-        >
-          Done
-        </Button>
+        <div className="px-5 pb-8 flex-shrink-0" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+          <Button className="w-full h-12 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base" onClick={onClose}>
+            Done
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -110,7 +119,7 @@ function ReviewPageContent() {
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
 
-  const [gym, setGym] = useState<(Gym & { images?: { url: string }[] }) | null>(null)
+  const [gym, setGym] = useState<(Gym & { images?: { url: string; order?: number }[] }) | null>(null)
   const [package_, setPackage_] = useState<Package | null>(null)
   const [loading, setLoading] = useState(true)
   const [averageRating, setAverageRating] = useState(0)
@@ -148,6 +157,7 @@ function ReviewPageContent() {
         .from('gyms')
         .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
         .eq('id', gymId)
+        .order('order', { referencedTable: 'gym_images', ascending: true })
         .single(),
       supabase.from('packages').select('*').eq('id', packageId).single(),
     ])
@@ -217,7 +227,9 @@ function ReviewPageContent() {
   }
 
   const mainImage =
-    gym?.images && gym.images.length > 0 ? gym.images[0].url : null
+    gym?.images && gym.images.length > 0
+      ? [...gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
+      : null
 
   const gymSlugOrId = (gym as any)?.slug || gym?.id || ''
 
@@ -429,16 +441,16 @@ function ReviewPageContent() {
             className="fixed inset-0 bg-black/40 z-[45]"
             onClick={() => setDatePickerOpen(false)}
           />
-          <div className="relative z-[50] [&>div:first-child]:hidden">
-            <DateRangePicker
-              checkin={checkin}
-              checkout={checkout}
-              forceOpen={true}
-              onClose={() => setDatePickerOpen(false)}
-              onCheckinChange={setCheckin}
-              onCheckoutChange={setCheckout}
-            />
-          </div>
+          <div className="fixed inset-0 z-[52] pointer-events-none [&>div]:pointer-events-auto [&>div>div:first-child]:opacity-0 [&>div>div:first-child]:pointer-events-none">
+                <DateRangePicker
+                  checkin={checkin}
+                  checkout={checkout}
+                  forceOpen={true}
+                  onClose={() => setDatePickerOpen(false)}
+                  onCheckinChange={setCheckin}
+                  onCheckoutChange={setCheckout}
+                />
+              </div>
         </div>
       )}
 

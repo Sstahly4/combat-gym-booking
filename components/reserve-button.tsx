@@ -3,12 +3,14 @@
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useBooking } from '@/lib/contexts/booking-context'
+import { useReviewModal } from '@/lib/contexts/review-modal-context'
 import type { Gym } from '@/lib/types/database'
 import { Calendar } from 'lucide-react'
 
 export function ReserveButton({ gym }: { gym: Gym }) {
   const router = useRouter()
   const { selectedPackage, checkin, checkout } = useBooking()
+  const { openReviewModal } = useReviewModal()
 
   const handleReserve = () => {
     // Block booking for draft gyms
@@ -18,25 +20,32 @@ export function ReserveButton({ gym }: { gym: Gym }) {
     }
 
     if (!selectedPackage) {
-      // Scroll to packages section
       document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return
     }
 
-    // Navigate to booking summary with selected package
-    const params = new URLSearchParams({
-      gymId: gym.id,
-      packageId: selectedPackage.id,
-      checkin: checkin || '',
-      checkout: checkout || '',
-    })
-    
-    if ((selectedPackage as any)?.variant_id) {
-      params.set('variantId', (selectedPackage as any).variant_id)
-    }
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
-    // Mobile → review page, desktop → summary directly (review page redirects desktop automatically)
-    router.push(`/bookings/review?${params.toString()}`)
+    if (isMobile) {
+      // Mobile: open full-screen overlay modal — instant, no navigation
+      openReviewModal({
+        gymId: gym.id,
+        packageId: selectedPackage.id,
+        variantId: (selectedPackage as any)?.variant_id,
+        checkin: checkin || '',
+        checkout: checkout || '',
+      })
+    } else {
+      // Desktop: navigate straight to summary
+      const params = new URLSearchParams({
+        gymId: gym.id,
+        packageId: selectedPackage.id,
+        checkin: checkin || '',
+        checkout: checkout || '',
+      })
+      if ((selectedPackage as any)?.variant_id) params.set('variantId', (selectedPackage as any).variant_id)
+      router.push(`/bookings/summary?${params.toString()}`)
+    }
   }
 
   const formatDate = (dateString: string) => {

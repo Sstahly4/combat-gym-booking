@@ -11,6 +11,7 @@ import { GymGallery } from '@/components/gym-gallery'
 import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper'
 import { GymMap } from '@/components/gym-map'
 import { BookingProvider } from '@/lib/contexts/booking-context'
+import { ReviewModalProvider } from '@/lib/contexts/review-modal-context'
 import { ReserveButton } from '@/components/reserve-button'
 import { SaveButton } from '@/components/save-button'
 import { PropertyHighlightsCard } from '@/components/property-highlights-card'
@@ -290,7 +291,7 @@ const getGymMetadata = unstable_cache(
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('gyms')
-      .select('id, slug, name, description, verification_status')
+      .select('id, slug, name, description, tagline, city, disciplines, verification_status')
       .or(looksLikeUuid(idOrSlug) ? `id.eq.${idOrSlug}` : `slug.eq.${idOrSlug}`)
       .maybeSingle()
     return data
@@ -314,20 +315,44 @@ export async function generateMetadata({
   }
 
   const name = data.name?.trim() || 'Training Camp'
-  const description =
-    data.description?.trim() ||
-    `Train at ${name}. Book your next combat sports camp on CombatStay.`
+  const city: string = (data as any).city?.trim() || ''
+  const rawDisciplines: string[] = Array.isArray((data as any).disciplines) ? (data as any).disciplines : []
+
+  // Title: [Gym Name] [City] | [Discipline(s)] Training | CombatStay
+  const disciplineLabel =
+    rawDisciplines.length > 0
+      ? rawDisciplines.slice(0, 2).join(' & ')
+      : 'Combat Sports'
+  const titleCity = city ? ` ${city}` : ''
+  const pageTitle = `${name}${titleCity} | ${disciplineLabel} Training | CombatStay`
+
+  // Meta description: single punchy ~150-char line
+  const tagline: string | null = (data as any).tagline ?? null
+  const rawDesc: string | null = data.description ?? null
+  const firstDiscipline = rawDisciplines[0] ?? 'combat sports'
+  let metaDescription = `Train ${firstDiscipline} at ${name}${city ? ` in ${city}` : ''}.`
+  if (tagline) {
+    metaDescription += ` ${tagline}`
+  } else if (rawDesc) {
+    const firstSentence = rawDesc.split(/[.!?]/)[0]?.trim()
+    if (firstSentence && firstSentence.length > 15) {
+      metaDescription += ` ${firstSentence}.`
+    }
+  }
+  metaDescription += ' Book instantly.'
+  if (metaDescription.length > 160) metaDescription = `${metaDescription.substring(0, 157)}...`
+
   const canonicalSlug = (data as any)?.slug || params.id
 
   return {
-    title: `${name} — Book Training Camps | CombatStay`,
-    description,
+    title: pageTitle,
+    description: metaDescription,
     alternates: {
       canonical: `/gyms/${canonicalSlug}`,
     },
     openGraph: {
-      title: `${name} — Book Training Camps | CombatStay`,
-      description,
+      title: pageTitle,
+      description: metaDescription,
       url: `/gyms/${canonicalSlug}`,
       type: 'website',
     },
@@ -384,6 +409,77 @@ export default async function GymDetailsPage({
 
   const gymPublicPath = `/gyms/${gym.slug?.trim() || gym.id}`
 
+  // Derive the lowest per-day price across all packages (schema priceRange).
+  // Mirrors what the PackagesList renders: "per day" for training packages.
+  function schemaLowestPricePerDay(
+    packages: Package[],
+    gymCurrency: string,
+  ): string | undefined {
+    const SYMBOLS: Record<string, string> = {
+      USD: '$', EUR: '€', GBP: '£', AUD: 'A$', THB: '฿',
+      IDR: 'Rp', JPY: '¥', CNY: '¥', SGD: 'S$', MYR: 'RM',
+      NZD: 'NZ$', CAD: 'C$', HKD: 'HK$', INR: '₹', KRW: '₩',
+      PHP: '₱', VND: '₫',
+    }
+    const currency = (gymCurrency || 'USD').toUpperCase()
+    const symbol = SYMBOLS[currency] ?? currency
+
+    let min: number | null = null
+    for (const pkg of packages) {
+      // pricing_config 'rate' mode — use declared daily rate
+      if (pkg.pricing_config?.mode === 'rate') {
+        const daily = pkg.pricing_config.rates?.daily
+        if (daily && daily > 0) min = min === null ? daily : Math.min(min, daily)
+        continue
+      }
+      // pricing_config 'fixed' mode — cheapest duration ÷ days gives effective daily rate
+      if (pkg.pricing_config?.mode === 'fixed') {
+        for (const d of pkg.pricing_config.durations ?? []) {
+          if (d.price > 0 && d.days > 0) {
+            const perDay = d.price / d.days
+            min = min === null ? perDay : Math.min(min, perDay)
+          }
+        }
+        continue
+      }
+      // Fallback: flat price_per_day field
+      if (pkg.price_per_day && pkg.price_per_day > 0) {
+        min = min === null ? pkg.price_per_day : Math.min(min, pkg.price_per_day)
+      }
+    }
+
+    // Fall back to gym-level price if no package price found
+    if (min === null && gym.price_per_day > 0) min = gym.price_per_day
+
+    if (min === null) return undefined
+    const formatted = Math.round(min).toLocaleString('en-US')
+    return `From ${symbol}${formatted}/day`
+  }
+
+  // Convert opening_hours object to schema.org openingHours array format
+  // e.g. { monday: "7:00 - 20:00" } → ["Mo 07:00-20:00"]
+  function gymOpeningHoursToSchema(hours: Record<string, string> | undefined): string[] | undefined {
+    if (!hours || typeof hours !== 'object') return undefined
+    const abbr: Record<string, string> = {
+      monday: 'Mo', tuesday: 'Tu', wednesday: 'We', thursday: 'Th',
+      friday: 'Fr', saturday: 'Sa', sunday: 'Su',
+    }
+    const result: string[] = []
+    for (const [day, val] of Object.entries(hours)) {
+      const short = abbr[day.toLowerCase()]
+      if (!short || !val || /closed/i.test(val)) continue
+      // Normalise "7:00 - 20:00", "07:00-20:00", "7:00–20:00" etc.
+      const parts = val.replace(/[–—]/g, '-').replace(/\s/g, '').split('-')
+      if (parts.length < 2) continue
+      const pad = (t: string) => {
+        const [h, m = '00'] = t.split(':')
+        return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
+      }
+      result.push(`${short} ${pad(parts[0])}-${pad(parts[1])}`)
+    }
+    return result.length > 0 ? result : undefined
+  }
+
   const sportsActivityLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'SportsActivityLocation',
@@ -408,10 +504,7 @@ export default async function GymDetailsPage({
         : undefined,
     telephone: gym.public_contact_phone || undefined,
     sport: Array.isArray(gym.disciplines) && gym.disciplines.length > 0 ? gym.disciplines : undefined,
-    priceRange:
-      typeof gym.price_per_day === 'number' && gym.price_per_day > 0
-        ? `From $${gym.price_per_day}/day`
-        : undefined,
+    priceRange: schemaLowestPricePerDay(gym.packages, gym.currency),
     aggregateRating:
       gym.reviews.length > 0
         ? {
@@ -422,6 +515,7 @@ export default async function GymDetailsPage({
             worstRating: 1,
           }
         : undefined,
+    openingHours: gymOpeningHoursToSchema(gym.opening_hours),
     isPartOf: {
       '@type': 'WebSite',
       name: 'CombatStay',
@@ -444,6 +538,7 @@ export default async function GymDetailsPage({
 
   return (
     <BookingProvider initialCheckin={searchParams.checkin} initialCheckout={searchParams.checkout}>
+    <ReviewModalProvider gymSlugOrId={gym.slug?.trim() || gym.id}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
@@ -710,6 +805,7 @@ export default async function GymDetailsPage({
           </div>
         </div>
       </div>
+    </ReviewModalProvider>
     </BookingProvider>
   )
 }

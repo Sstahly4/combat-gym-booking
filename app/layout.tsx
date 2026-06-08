@@ -20,6 +20,10 @@ const organizationJsonLd = {
   name: BRAND_NAME,
   url: siteUrl,
   logo: `${siteUrl}/favicon-512x512-rounded.png`,
+  sameAs: [
+    "https://www.instagram.com/combatstay/",
+    "https://www.facebook.com/profile.php?id=61590281596581",
+  ],
 }
 
 const defaultTitle =

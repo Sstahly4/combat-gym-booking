@@ -31,6 +31,14 @@ export function MobileBottomNav() {
   const lastScrollYRef = useRef(0)
   const tickingRef = useRef(false)
   const [hidden, setHidden] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  useEffect(() => {
+    const check = () => setFilterOpen(document.body.hasAttribute('data-filter-open'))
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-filter-open'] })
+    return () => observer.disconnect()
+  }, [])
   /**
    * After the slide-out transition finishes, fully detach the bar from layout.
    * iOS Safari only collapses its bottom URL toolbar when nothing is `position: fixed`
@@ -188,7 +196,7 @@ export function MobileBottomNav() {
           if (hidden) setRemovedFromLayout(true)
         }}
         className={`pointer-events-auto transform-gpu bg-white px-5 pt-2 transition-transform duration-200 ease-out will-change-transform backface-hidden supports-[padding:max(0px)]:pb-[max(0.65rem,env(safe-area-inset-bottom))] pb-2.5 ${
-          hidden
+          hidden || filterOpen
             ? 'pointer-events-none translate-y-[calc(100%+3px)] border-transparent'
             : 'translate-y-0 border-t border-[#ebebeb]'
         }`}

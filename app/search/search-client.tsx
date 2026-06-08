@@ -264,6 +264,15 @@ function SearchPageContent() {
   const [gyms, setGyms] = useState<GymWithImages[]>([])
   const [loading, setLoading] = useState(true)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  useEffect(() => {
+    if (mobileFiltersOpen) {
+      document.body.setAttribute('data-filter-open', '1')
+    } else {
+      document.body.removeAttribute('data-filter-open')
+    }
+    return () => { document.body.removeAttribute('data-filter-open') }
+  }, [mobileFiltersOpen])
   const [sortBy, setSortBy] = useState('recommended')
   const [sortOpen, setSortOpen] = useState(false)
   const [category, setCategory] = useState<'gyms' | 'train-stay' | 'seminars'>('gyms')

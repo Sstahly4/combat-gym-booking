@@ -1,0 +1,174 @@
+# CombatStay
+
+> Book Muay Thai and combat sports training camps worldwide.
+> Compare real prices, verified gyms, and packages — instant
+> booking, no DMs.
+
+CombatStay is an OTA (online travel agency) marketplace connecting combat sports
+travelers with gyms offering training, accommodation, and stay-and-train packages
+in a single booking. Primary market: Thailand. Global expansion planned.
+
+## About
+
+- **Domain:** https://www.combatstay.com
+- **Founded:** 2026
+- **Focus:** Thailand — Bangkok, Phuket, Chiang Mai, Pattaya, Krabi, Koh Samui, Koh Phangan, Koh Tao, Hua Hin, and surrounding areas
+- **Business model:** 15% commission on completed bookings. No subscription or listing fees for gyms.
+- **Disciplines covered:** Muay Thai, MMA, BJJ (Brazilian Jiu-Jitsu), Boxing, Kickboxing, Judo, wrestling, strength & conditioning
+
+## What CombatStay does
+
+- Gym owners list their facilities, packages, and pricing directly on the platform
+- Travelers search, compare, and book training camps with real-time availability
+- Packages range from training-only day passes to multi-week stay-and-train programs with accommodation and meals
+- Instant booking with Stripe payments — no back-and-forth DMs or deposit negotiations
+- All listed gyms are verified before appearing in search results
+
+## Key pages
+
+- Homepage: https://www.combatstay.com
+- Search / browse gyms: https://www.combatstay.com/search
+- Search filtered to Thailand: https://www.combatstay.com/search?country=Thailand
+- Blog / training guides: https://www.combatstay.com/blog
+- FAQ / help centre: https://www.combatstay.com/faq
+
+## Gym listings
+
+All gym pages follow the pattern:
+
+```
+https://www.combatstay.com/gyms/[gym-slug]
+```
+
+Example: `https://www.combatstay.com/gyms/tiger-muay-thai`
+
+Gym pages include: photos, amenities, package options with prices, availability calendar, reviews, and an instant-book flow.
+
+## Booking flow
+
+1. **Search** — filter by location, discipline, dates, guests, price
+2. **Review** — summary card with gym details, dates, guests, total price, cancellation policy
+3. **Your details** — name, email, guest count, discipline preference
+4. **Confirm & Pay** — Stripe-powered payment; booking confirmed on success
+
+## Blog — Flagship guides
+
+- https://www.combatstay.com/blog/best-muay-thai-camps-thailand-2026
+- https://www.combatstay.com/blog/combat-sports-travel-guide-thailand-2026
+- https://www.combatstay.com/blog/fighters-blueprint-recovery-housing-thailand-2026
+- https://www.combatstay.com/blog/best-muay-thai-gym-female-solo-travelers-2026
+- https://www.combatstay.com/blog/dont-get-burned-thailand-training-trip
+
+## Blog — Training basics & cost
+
+- https://www.combatstay.com/blog/muay-thai-camp-thailand-cost
+- https://www.combatstay.com/blog/muay-thai-camp-1-week-vs-1-month
+- https://www.combatstay.com/blog/packing-list-combat-sports-camp-thailand
+- https://www.combatstay.com/blog/beginners-guide-muay-thai-chiang-mai
+- https://www.combatstay.com/blog/koh-tao-vs-koh-phangan-muay-thai
+- https://www.combatstay.com/blog/phuket-fighter-conditioning-gyms
+- https://www.combatstay.com/blog/muay-thai-krabi-private-ac-rooms
+- https://www.combatstay.com/blog/muay-thai-fight-prep-camps-physiotherapy
+- https://www.combatstay.com/blog/ludus-sports-complex-chalong-phuket
+
+## Blog — City guides (Muay Thai)
+
+- https://www.combatstay.com/blog/best-muay-thai-gyms-phuket
+- https://www.combatstay.com/blog/best-muay-thai-gyms-bangkok
+- https://www.combatstay.com/blog/best-muay-thai-gyms-chiang-mai
+- https://www.combatstay.com/blog/best-muay-thai-gyms-pattaya
+- https://www.combatstay.com/blog/best-muay-thai-gyms-krabi
+- https://www.combatstay.com/blog/best-muay-thai-gyms-koh-samui
+- https://www.combatstay.com/blog/best-muay-thai-gyms-koh-phangan
+- https://www.combatstay.com/blog/best-muay-thai-gyms-koh-tao
+- https://www.combatstay.com/blog/best-muay-thai-gyms-hua-hin
+
+## Blog — Micro-location guides (suburbs / areas)
+
+Dynamic route: `https://www.combatstay.com/blog/best-muay-thai-gyms/[suburb-slug]`
+
+Examples:
+- https://www.combatstay.com/blog/best-muay-thai-gyms/bang-tao
+- https://www.combatstay.com/blog/best-muay-thai-gyms/rawai
+- https://www.combatstay.com/blog/best-muay-thai-gyms/chalong
+- https://www.combatstay.com/blog/best-muay-thai-gyms/kamala
+
+New suburb guides are generated automatically as gyms are added in new areas.
+
+## Blog — Combat sports beyond Muay Thai
+
+- https://www.combatstay.com/blog/best-mma-camps-thailand
+- https://www.combatstay.com/blog/best-bjj-gyms-thailand
+- https://www.combatstay.com/blog/best-boxing-gyms-thailand
+- https://www.combatstay.com/blog/best-kickboxing-gyms-thailand
+- https://www.combatstay.com/blog/best-judo-gyms-thailand
+- https://www.combatstay.com/blog/bjj-in-thailand-rise-top-camps
+- https://www.combatstay.com/blog/western-boxing-bangkok
+
+## Blog — Visas & planning
+
+- https://www.combatstay.com/blog/thailand-training-visa-dtv
+- https://www.combatstay.com/blog/ed-visa-martial-arts-training-thailand
+- https://www.combatstay.com/blog/thailand-visa-extension-overstay-guide
+
+## FAQ categories
+
+The help centre at https://www.combatstay.com/faq covers:
+
+- **Safety & Security** — verified gym process, traveler protections, dispute resolution
+- **Bookings** — how to book, modify, or cancel; cancellation policies; confirmation emails
+- **Payments & Disputes** — Stripe payments, refund timelines, chargebacks
+- **Gyms & Training** — what to expect at a training camp, package types, discipline levels
+- **General** — account, contact, platform policies
+
+## Gym data structure (for AI context)
+
+Each gym listing may include:
+
+- Name, slug, city, country, description
+- Disciplines (e.g. Muay Thai, MMA, BJJ, Boxing, Kickboxing, Judo)
+- Verification status: `verified` or `trusted`
+- Images (ordered gallery)
+- Amenities: WiFi, accommodation, meals, airport transfer, physiotherapy, recovery facilities, nutritionist, pool, sauna, ice bath, massage
+- Packages: name, duration (days/weeks), price per person, includes_accommodation, includes_meals, cancellation_policy_days, meal_plan_details
+- Reviews: rating (out of 5), count
+- Location: lat/lng, address, Google Maps link
+
+## Package types
+
+Packages broadly fall into:
+
+- **Training Only** — daily/weekly sessions, no accommodation
+- **Train & Stay** — accommodation included
+- **Train, Stay & Eat** — accommodation + meals included
+- **Fight Camp** — intensive competition-prep program
+
+## Pricing context
+
+- Training-only day passes: ~฿500–฿1,200/day (~$14–$35 USD)
+- Weekly training packages: ~฿3,000–฿8,000/week (~$85–$230 USD)
+- Stay-and-train packages: ~฿8,000–฿35,000/week depending on room type and inclusions
+- All prices shown in the user's preferred currency via real-time conversion
+
+## Cancellation policy logic
+
+- `cancellation_policy_days: null` — no stated policy
+- `cancellation_policy_days: 0` — non-refundable
+- `cancellation_policy_days: N` — free cancellation if cancelled more than N days before check-in
+
+## Content policy
+
+CombatStay does not generate or surface:
+
+- Fictional gym listings
+- Unverified pricing
+- Legal or medical advice (visa guides are editorial, not legal advice)
+- Affiliate-style "top 7" lists without live booking data
+
+All guides are backed by live listings on the platform.
+
+## Contact & links
+
+- Website: https://www.combatstay.com
+- Sitemap: https://www.combatstay.com/sitemap.xml
+- For gym owners: list your gym via the platform (gym owner portal in-app)

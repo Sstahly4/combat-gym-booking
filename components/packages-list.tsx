@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { hasConfirmedDatesInParams } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
+import { useReviewModal } from '@/lib/contexts/review-modal-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
@@ -43,6 +44,18 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   const router = useRouter()
   const searchParams = useSearchParams()
   const { selectedPackage, setSelectedPackage, checkin, checkout, setCheckin, setCheckout } = useBooking()
+  const { openReviewModal } = useReviewModal()
+
+  const goToReview = (params: { gymId: string; packageId: string; variantId?: string; checkin: string; checkout: string }) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    if (isMobile) {
+      openReviewModal({ ...params, guestCount: 1 })
+    } else {
+      const p = new URLSearchParams({ gymId: params.gymId, packageId: params.packageId, checkin: params.checkin, checkout: params.checkout })
+      if (params.variantId) p.set('variantId', params.variantId)
+      router.push(`/bookings/summary?${p.toString()}`)
+    }
+  }
   const { convertPrice, formatPrice } = useCurrency()
   const [variantsModalOpen, setVariantsModalOpen] = useState(false)
   const [activePackage, setActivePackage] = useState<Package | null>(null)
@@ -142,13 +155,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
     if (pkg.offer_type === 'TYPE_ONE_TIME_EVENT') {
       const eventStart = pkg.event_date ? pkg.event_date.split('T')[0] : checkin
       const eventEnd = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (eventStart || checkout)
-      const params = new URLSearchParams({
-        gymId: gym.id,
-        packageId: pkg.id,
-        checkin: eventStart || '',
-        checkout: eventEnd || eventStart || '',
-      })
-      router.push(`/bookings/review?${params.toString()}`)
+      goToReview({ gymId: gym.id, packageId: pkg.id, checkin: eventStart || '', checkout: eventEnd || eventStart || '' })
       return
     }
 
@@ -176,13 +183,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       }
     }
 
-    const params = new URLSearchParams({
-      gymId: gym.id,
-      packageId: pkg.id,
-      checkin: finalCheckin || '',
-      checkout: finalCheckout || '',
-    })
-    router.push(`/bookings/review?${params.toString()}`)
+    goToReview({ gymId: gym.id, packageId: pkg.id, checkin: finalCheckin || '', checkout: finalCheckout || '' })
   }
 
   const handleSelectVariant = (pkg: Package, variant: PackageVariant) => {
@@ -210,14 +211,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       finalCheckout = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (finalCheckin || checkout)
     }
 
-    const params = new URLSearchParams({
-      gymId: gym.id,
-      packageId: pkg.id,
-      variantId: variant.id,
-      checkin: finalCheckin || '',
-      checkout: finalCheckout || finalCheckin || '',
-    })
-    router.push(`/bookings/review?${params.toString()}`)
+    goToReview({ gymId: gym.id, packageId: pkg.id, variantId: variant.id, checkin: finalCheckin || '', checkout: finalCheckout || finalCheckin || '' })
   }
 
   // Sort: one-time events first, then training-only, then everything else
