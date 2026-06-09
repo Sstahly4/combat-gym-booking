@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 
 type Currency = string
 
@@ -15,6 +15,13 @@ interface CurrencyContextType {
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined)
+
+/** Lets gym listing pages register their native currency for first-visit fallback. */
+const GymCurrencyRegistrationContext = createContext<((currency: string | null) => void) | null>(null)
+
+function hasExchangeRate(code: string, rates: Record<string, number>): boolean {
+  return !!(rates[code] || FALLBACK_RATES[code])
+}
 
 // Fallback exchange rates (used if API fails)
 const FALLBACK_RATES: Record<string, number> = {
@@ -249,10 +256,20 @@ const LANGUAGES = [
 ]
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [selectedCurrency, setSelectedCurrencyState] = useState<Currency>('USD')
+  const [selectedCurrency, setSelectedCurrencyState] = useState<Currency>(() => {
+    if (typeof window === 'undefined') return 'USD'
+    const saved = localStorage.getItem('selectedCurrency')?.toUpperCase()
+    if (saved && supportedCurrency(saved)) return saved as Currency
+    return 'USD'
+  })
   const [selectedLanguage, setSelectedLanguageState] = useState<string>('en-GB')
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(FALLBACK_RATES)
   const [ratesLoading, setRatesLoading] = useState(true)
+  const [pageGymCurrency, setPageGymCurrency] = useState<string | null>(null)
+
+  const registerPageGymCurrency = useCallback((currency: string | null) => {
+    setPageGymCurrency(currency)
+  }, [])
 
   // Fetch exchange rates on mount
   useEffect(() => {
@@ -285,23 +302,27 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Load from localStorage first; only auto-detect on the visitor's first session.
+    // Priority: saved pick → locale/timezone → gym native (on listing page) → USD initial state
     const saved = localStorage.getItem('selectedCurrency')?.toUpperCase()
-    if (saved && supportedCurrency(saved) && (exchangeRates[saved] || FALLBACK_RATES[saved])) {
+    if (saved && supportedCurrency(saved) && hasExchangeRate(saved, exchangeRates)) {
       setSelectedCurrencyState(saved)
     } else {
       const regionalCurrency = detectRegionalCurrency()
-      if (regionalCurrency && (exchangeRates[regionalCurrency] || FALLBACK_RATES[regionalCurrency])) {
+      if (regionalCurrency && hasExchangeRate(regionalCurrency, exchangeRates)) {
         setSelectedCurrencyState(regionalCurrency)
         localStorage.setItem('selectedCurrency', regionalCurrency)
         localStorage.setItem('selectedCurrencySource', 'regional')
+      } else if (pageGymCurrency && hasExchangeRate(pageGymCurrency, exchangeRates)) {
+        setSelectedCurrencyState(pageGymCurrency)
+        localStorage.setItem('selectedCurrency', pageGymCurrency)
+        localStorage.setItem('selectedCurrencySource', 'gym')
       }
     }
     const savedLanguage = localStorage.getItem('selectedLanguage')
     if (savedLanguage && LANGUAGES.some(language => language.code === savedLanguage)) {
       setSelectedLanguageState(savedLanguage)
     }
-  }, [exchangeRates])
+  }, [exchangeRates, pageGymCurrency])
 
   const setSelectedCurrency = (currency: Currency) => {
     const code = currency.toUpperCase()
@@ -343,18 +364,37 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CurrencyContext.Provider value={{ 
-      selectedCurrency, 
-      setSelectedCurrency, 
-      selectedLanguage,
-      setSelectedLanguage,
-      convertPrice, 
-      formatPrice,
-      ratesLoading 
-    }}>
-      {children}
-    </CurrencyContext.Provider>
+    <GymCurrencyRegistrationContext.Provider value={registerPageGymCurrency}>
+      <CurrencyContext.Provider value={{
+        selectedCurrency,
+        setSelectedCurrency,
+        selectedLanguage,
+        setSelectedLanguage,
+        convertPrice,
+        formatPrice,
+        ratesLoading,
+      }}>
+        {children}
+      </CurrencyContext.Provider>
+    </GymCurrencyRegistrationContext.Provider>
   )
+}
+
+/**
+ * Mount on gym listing pages so first-time visitors with unsupported locales
+ * (e.g. en-ZA) fall back to the gym's native currency instead of USD.
+ */
+export function GymPageCurrencyHint({ currency }: { currency: string }) {
+  const register = useContext(GymCurrencyRegistrationContext)
+
+  useEffect(() => {
+    if (!register) return
+    const code = supportedCurrency(currency)
+    register(code)
+    return () => register(null)
+  }, [currency, register])
+
+  return null
 }
 
 export function useCurrency() {

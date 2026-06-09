@@ -23,6 +23,7 @@ import { NotificationBell } from '@/components/manage/notification-bell'
 import { AdminNotificationBell } from '@/components/admin/admin-notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
+import { getFlagUrl } from '@/lib/utils/flag-url'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
@@ -96,10 +97,7 @@ export function Navbar() {
     ? `${selectedLanguageItem.name} (${selectedLanguageItem.region})`
     : 'English (United Kingdom)'
 
-  const countryCode = (selectedLanguage?.split('-')[1] || '').toLowerCase()
-  const flagSrc = countryCode ? `https://flagcdn.com/${countryCode}.svg` : null
-  const flagPng1x = countryCode ? `https://flagcdn.com/w40/${countryCode}.png` : null
-  const flagPng2x = countryCode ? `https://flagcdn.com/w80/${countryCode}.png` : null
+  const flagUrl = getFlagUrl(selectedLanguage)
 
   const handleSignOut = async () => {
     await signOut()
@@ -487,16 +485,12 @@ export function Navbar() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {flagSrc ? (
+                        {flagUrl ? (
                           <img
-                            src={flagSrc}
-                            srcSet={
-                              flagPng1x && flagPng2x
-                                ? `${flagPng1x} 1x, ${flagPng2x} 2x`
-                                : undefined
-                            }
-                            alt=""
-                            aria-hidden
+                            src={flagUrl}
+                            alt={selectedLanguage}
+                            width={20}
+                            height={15}
                             className="w-full h-full object-cover"
                           />
                         ) : (

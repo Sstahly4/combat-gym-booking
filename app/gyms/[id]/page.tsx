@@ -12,6 +12,7 @@ import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper
 import { GymMap } from '@/components/gym-map'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ReviewModalProvider } from '@/lib/contexts/review-modal-context'
+import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
 import { ReserveButton } from '@/components/reserve-button'
 import { SaveButton } from '@/components/save-button'
 import { PropertyHighlightsCard } from '@/components/property-highlights-card'
@@ -547,6 +548,7 @@ export default async function GymDetailsPage({
         !!(searchParams as Record<string, string | undefined>).pkg
       }
     >
+      <GymPageCurrencyHint currency={gym.currency} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
