@@ -1,4 +1,5 @@
 import { clearBookingPrefillIfForeignGym } from '@/lib/utils/booking-prefill'
+import { clearGuestDetailsIfForeignGym } from '@/lib/utils/checkout-details-prefill'
 
 export interface ReviewModalRestoreParams {
   gymId: string
@@ -67,6 +68,7 @@ export function clearReviewModalRestoreIfForeignGym(gymId: string): void {
 /** Remove checkout session keys that belong to another gym listing. */
 export function purgeStaleCheckoutSessionForGym(gymId: string, slugOrId?: string): void {
   clearBookingPrefillIfForeignGym(gymId, slugOrId)
+  clearGuestDetailsIfForeignGym(gymId)
   clearReviewModalRestoreIfForeignGym(gymId)
   const exit = readCheckoutExitTarget()
   if (!exit) return

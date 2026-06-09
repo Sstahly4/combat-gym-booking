@@ -677,21 +677,21 @@ export function ReviewModal({
             </div>
           </div>
 
-          {/* ── Fixed bottom: progress + CTA ──────────────────────── */}
-          <div
-            className={`fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 ${
-              currencyModalOpen ? 'z-[340]' : 'z-[210]'
-            }`}
-            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-          >
-            <StepProgressBar step={1} />
-            <Button
-              onClick={handleContinue}
-              className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl"
+          {/* ── Fixed bottom: progress + CTA (hidden under nested sheets) ─ */}
+          {!currencyModalOpen && (
+            <div
+              className="fixed bottom-0 left-0 right-0 z-[210] border-t border-gray-100 bg-white px-4 pt-2 space-y-2"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
             >
-              Continue <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
+              <StepProgressBar step={1} />
+              <Button
+                onClick={handleContinue}
+                className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl"
+              >
+                Continue <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          )}
 
           {/* ── Date picker overlay ────────────────────────────────── */}
           {datePickerOpen && (

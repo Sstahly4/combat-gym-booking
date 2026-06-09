@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,15 @@ import {
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useAuth } from '@/lib/hooks/use-auth'
+import {
+  clearGuestCheckoutSession,
+  detailsFromProfile,
+  readGuestDetails,
+  readGuestFlowSession,
+  writeGuestDetails,
+  writeGuestFlowSession,
+} from '@/lib/utils/checkout-details-prefill'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 
@@ -73,6 +82,7 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
   const handleExit = () => {
     showReviewChrome()
     clearReviewModalRestore()
+    clearGuestCheckoutSession(gym.id)
     setCheckoutExitToGym(gym.slug || gym.id, gym.id)
     router.replace(`/gyms/${gym.slug || gym.id}`)
   }
@@ -147,6 +157,7 @@ function CheckoutBottomBar({
 function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, profile, loading: authLoading } = useAuth()
   const { convertPrice, formatPrice } = useCurrency()
   const { hideReviewChrome } = useReviewCheckoutChrome()
 
@@ -184,9 +195,10 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
-  // Tracks when initial data load + session restore is done; prevents the
-  // persist effect from overwriting a valid saved session with blank defaults.
+  // Tracks when initial data load is done; prevents persist from overwriting restored data.
   const sessionLoadedRef = useRef(!!initialPrefill)
+  // Guest details / profile prefill applied — gates guest sessionStorage writes.
+  const detailsHydratedRef = useRef(false)
 
   const copyAddress = async () => {
     if (!gym?.address) return
@@ -254,53 +266,87 @@ function BookingSummaryPageContent() {
     }
   }, [])
 
-  // Persist form state to sessionStorage so it survives back-navigation.
-  // Only runs after the initial load so we never overwrite a valid saved session.
+  /** Signed-in: profile only. Guest: sessionStorage as they type. */
+  const hydrateCheckoutDetails = useCallback(
+    (gymId: string, isSignedIn: boolean) => {
+      if (isSignedIn) {
+        if (profile) {
+          const d = detailsFromProfile(profile, user?.email)
+          setFirstName(d.firstName)
+          setLastName(d.lastName)
+          setEmail(d.email)
+          setPhone(d.phone)
+          setCountry(d.country)
+        } else if (user?.email) {
+          setEmail(user.email)
+        }
+        detailsHydratedRef.current = true
+        return
+      }
+
+      const flow = readGuestFlowSession(gymId)
+      if (flow) {
+        if (flow.checkin) setCheckin(flow.checkin)
+        if (flow.checkout) setCheckout(flow.checkout)
+        if (typeof flow.guestCount === 'number') setGuestCount(flow.guestCount)
+        if (flow.bookingFor) setBookingFor(flow.bookingFor)
+      }
+
+      const saved = readGuestDetails(gymId)
+      if (saved) {
+        if (saved.firstName) setFirstName(saved.firstName)
+        if (saved.lastName) setLastName(saved.lastName)
+        if (saved.email) setEmail(saved.email)
+        if (saved.phone) setPhone(saved.phone)
+        if (saved.country) setCountry(saved.country)
+        if (saved.notes !== undefined) setNotes(saved.notes)
+        if (saved.discipline) setDiscipline(saved.discipline)
+      }
+      detailsHydratedRef.current = true
+    },
+    [profile, user?.email]
+  )
+
   useEffect(() => {
-    if (!sessionLoadedRef.current) return
+    if (authLoading || !sessionLoadedRef.current || detailsHydratedRef.current) return
     const gymId = searchParams.get('gymId')
     if (!gymId) return
-    try {
-      sessionStorage.setItem(
-        `booking_session_${gymId}`,
-        JSON.stringify({ checkin, checkout, guestCount, discipline, notes, firstName, lastName, email, phone, country, bookingFor })
-      )
-    } catch {}
-  }, [checkin, checkout, guestCount, discipline, notes, firstName, lastName, email, phone, country, bookingFor])
+    hydrateCheckoutDetails(gymId, !!user)
+  }, [authLoading, user, profile, hydrateCheckoutDetails, searchParams])
 
-  /** Restore saved form fields from sessionStorage (back-nav recovery) */
-  const restoreFormSession = (gymId: string): Record<string, any> | null => {
-    let saved: Record<string, any> | null = null
-    try {
-      const raw = sessionStorage.getItem(`booking_session_${gymId}`)
-      if (raw) saved = JSON.parse(raw)
-    } catch {}
-    if (saved) {
-      if (saved.checkin) setCheckin(saved.checkin)
-      if (saved.checkout) setCheckout(saved.checkout)
-      if (typeof saved.guestCount === 'number') setGuestCount(saved.guestCount)
-      if (saved.discipline) setDiscipline(saved.discipline)
-      if (saved.notes !== undefined) setNotes(saved.notes)
-      if (saved.firstName) setFirstName(saved.firstName)
-      if (saved.lastName) setLastName(saved.lastName)
-      if (saved.email) setEmail(saved.email)
-      if (saved.phone) setPhone(saved.phone)
-      if (saved.country) setCountry(saved.country)
-      if (saved.bookingFor) setBookingFor(saved.bookingFor as 'self' | 'other')
-    }
-    return saved
-  }
+  // Guest only — persist Your details + flow fields for back-nav from payment.
+  useEffect(() => {
+    if (!sessionLoadedRef.current || !detailsHydratedRef.current || user) return
+    const gymId = searchParams.get('gymId')
+    if (!gymId) return
+    writeGuestDetails(gymId, {
+      firstName,
+      lastName,
+      email,
+      phone,
+      country,
+      notes,
+      discipline,
+    })
+  }, [user, firstName, lastName, email, phone, country, notes, discipline, searchParams])
+
+  useEffect(() => {
+    if (!sessionLoadedRef.current || !detailsHydratedRef.current || user) return
+    const gymId = searchParams.get('gymId')
+    if (!gymId) return
+    writeGuestFlowSession(gymId, { checkin, checkout, guestCount, bookingFor })
+  }, [user, checkin, checkout, guestCount, bookingFor, searchParams])
 
   /** Apply gym + package data to state and resolve variant/discipline */
   const applyGymPackageData = (
     gymData: any,
     packageData: any,
     variantId: string | null,
-    savedSession: Record<string, any> | null
+    savedDiscipline?: string | null
   ) => {
     setGym(gymData as Gym)
     setPackage_(packageData as Package)
-    if (!savedSession?.discipline && gymData.disciplines?.length > 0) {
+    if (!savedDiscipline && gymData.disciplines?.length > 0) {
       setDiscipline(gymData.disciplines[0])
     }
     if (variantId && packageData.variants) {
@@ -316,8 +362,7 @@ function BookingSummaryPageContent() {
   const validateInBackground = async (
     gymId: string,
     packageId: string,
-    variantId: string | null,
-    savedSession: Record<string, any> | null
+    variantId: string | null
   ) => {
     try {
       const supabase = createClient()
@@ -334,7 +379,13 @@ function BookingSummaryPageContent() {
           .single(),
       ])
       if (gymData) setGym(gymData as Gym)
-      if (packageData) applyGymPackageData(gymData, packageData, variantId, savedSession)
+      if (packageData) {
+        setPackage_(packageData as Package)
+        if (variantId && packageData.variants) {
+          const v = packageData.variants.find((x: PackageVariant) => x.id === variantId)
+          if (v) setVariant(v)
+        }
+      }
     } catch {}
   }
 
@@ -349,21 +400,19 @@ function BookingSummaryPageContent() {
       return
     }
 
-    const savedSession = restoreFormSession(gymId)
-
     // ── Fast path: prefill from review modal ──────────────────────────────────
     // The review modal writes gym + package data to sessionStorage before
     // navigating here. If the data matches this gymId + packageId we can render
     // immediately and validate in the background.
     const prefill = readBookingPrefill(gymId, packageId)
     if (prefill) {
-      applyGymPackageData(prefill.gym, prefill.package_, variantId, savedSession)
+      applyGymPackageData(prefill.gym, prefill.package_, variantId, null)
       setAverageRating(prefill.reviewAverage)
       setReviewCount(prefill.reviewCount)
       sessionLoadedRef.current = true
       setLoading(false)
       // Background fetch validates price/availability silently — no UI block
-      validateInBackground(gymId, packageId, variantId, savedSession)
+      validateInBackground(gymId, packageId, variantId)
       return
     }
 
@@ -394,7 +443,7 @@ function BookingSummaryPageContent() {
       return
     }
 
-    applyGymPackageData(gymData, packageData, variantId, savedSession)
+    applyGymPackageData(gymData, packageData, variantId, null)
 
     // Reviews fetched on cold path only (prefill path has them from the modal)
     const [{ data: bookingReviews }, { data: manualReviews }] = await Promise.all([
@@ -511,9 +560,6 @@ function BookingSummaryPageContent() {
       if (!data.booking_id) {
         throw new Error('Booking was created but no booking ID was returned')
       }
-
-      // Clear saved session — booking is now in progress
-      try { sessionStorage.removeItem(`booking_session_${gym.id}`) } catch {}
 
       const bookingId = data.booking_id as string
 

@@ -17,13 +17,9 @@ interface CurrencyModalProps {
   currencyOnly?: boolean
   /** Stack above nested overlays (e.g. checkout review modal) */
   stackClassName?: string
-  /** Review checkout: portal sheet, shade content only, keep bottom Continue bar visible */
+  /** Review checkout: portal sheet above review modal, hides bottom Continue bar */
   checkoutSheet?: boolean
 }
-
-/** Height of the review modal fixed footer (progress + Continue). */
-const CHECKOUT_FOOTER_OFFSET =
-  'max(6.25rem, calc(5.25rem + env(safe-area-inset-bottom)))'
 
 type ModalTab = 'language' | 'currency'
 
@@ -139,24 +135,49 @@ export function CurrencyModal({
 
   const confirmFooter = confirmSelection ? (
     <div
-      className="flex flex-row items-center gap-3 px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-white"
-      style={checkoutSheet ? undefined : { paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      className={`flex flex-row items-center flex-shrink-0 bg-white border-t border-gray-100 ${
+        checkoutSheet
+          ? 'justify-end gap-4 px-4 py-2.5'
+          : 'gap-3 px-4 py-3'
+      }`}
+      style={{ paddingBottom: checkoutSheet ? 'max(0.75rem, env(safe-area-inset-bottom))' : 'max(1rem, env(safe-area-inset-bottom))' }}
     >
-      <Button
-        type="button"
-        variant="outline"
-        className="flex-1 h-11 font-semibold rounded-xl"
-        onClick={handleCancel}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="button"
-        className="flex-1 h-11 font-semibold rounded-xl bg-[#003580] hover:bg-[#003580]/90"
-        onClick={handleConfirm}
-      >
-        Done
-      </Button>
+      {checkoutSheet ? (
+        <>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="text-sm font-semibold text-gray-900 px-1 py-1.5 hover:text-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <Button
+            type="button"
+            className="h-9 px-5 text-sm font-semibold rounded-xl bg-[#003580] hover:bg-[#003580]/90 text-white"
+            onClick={handleConfirm}
+          >
+            Done
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 h-11 font-semibold rounded-xl"
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 h-11 font-semibold rounded-xl bg-[#003580] hover:bg-[#003580]/90"
+            onClick={handleConfirm}
+          >
+            Done
+          </Button>
+        </>
+      )}
     </div>
   ) : null
 
@@ -304,8 +325,7 @@ export function CurrencyModal({
           <button
             type="button"
             aria-label="Close"
-            className={`fixed inset-x-0 top-0 bg-black/50 ${mobileBackdropZ}`}
-            style={checkoutSheet ? { bottom: CHECKOUT_FOOTER_OFFSET } : { bottom: 0 }}
+            className={`fixed inset-0 bg-black/50 ${mobileBackdropZ}`}
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -316,10 +336,8 @@ export function CurrencyModal({
           <div
             className={`fixed inset-x-0 ${mobileSheetZ} animate-slide-up bg-white rounded-t-3xl flex flex-col transition-transform duration-100 ease-out will-change-transform shadow-[0_-8px_30px_rgba(0,0,0,0.12)]`}
             style={{
-              bottom: checkoutSheet ? CHECKOUT_FOOTER_OFFSET : 0,
-              maxHeight: checkoutSheet
-                ? 'min(75dvh, calc(100dvh - 6.25rem - env(safe-area-inset-bottom)))'
-                : '88dvh',
+              bottom: 0,
+              maxHeight: checkoutSheet ? '85dvh' : '88dvh',
               transform: `translateY(${sheetTranslateY}px)`,
             }}
           >

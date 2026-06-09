@@ -24,6 +24,7 @@ import {
   clearPaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
 import Link from 'next/link'
+import { clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -423,6 +424,7 @@ export default function PaymentPage() {
         <Link
           href={gymListingHref}
           onClick={() => {
+            if (booking?.gym_id) clearGuestCheckoutSession(booking.gym_id)
             try { sessionStorage.removeItem('review_modal_restore') } catch {}
             try { sessionStorage.removeItem('booking_prefill') } catch {}
           }}
