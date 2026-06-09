@@ -9,6 +9,7 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
+import { LoadingOverlay } from '@/components/loading-overlay'
 import type { Gym, Package } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 
@@ -245,41 +246,13 @@ export function ReviewModal({
     return `/bookings/summary?${p.toString()}`
   }
 
-  // ── Skeleton ────────────────────────────────────────────────────────────────
-  const skeleton = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-end px-4 pt-4 pb-2">
-        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
-          <X className="w-4 h-4 text-gray-700" />
-        </button>
-      </div>
-      <div className="flex-1 px-4 space-y-4 pt-2 pb-36">
-        <div className="flex gap-3">
-          <div className="w-20 h-20 rounded-xl bg-gray-200 animate-pulse shrink-0" />
-          <div className="flex-1 space-y-2 pt-1">
-            <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse" />
-          </div>
-        </div>
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-14 border-b border-gray-100 flex items-center">
-            <div className="flex-1 space-y-1.5">
-              <div className="h-2.5 w-12 bg-gray-200 rounded animate-pulse" />
-              <div className="h-3.5 w-32 bg-gray-200 rounded animate-pulse" />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="fixed bottom-0 left-0 right-0 px-4 pb-8 pt-4 space-y-3 bg-white border-t border-gray-100 z-[210]">
-        <StepProgressBar step={1} />
-        <div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse" />
-      </div>
-    </div>
-  )
-
   return (
     <div className="fixed inset-0 z-[200] bg-white flex flex-col overflow-hidden">
-      {loading ? skeleton : !gym || !package_ ? (
+      {/* Overlay — fades out when data is ready; z-[220] sits above modal chrome */}
+      <LoadingOverlay show={loading} zClass="z-[220]" />
+
+      {/* Error state — only when loading finished and data is missing */}
+      {!loading && (!gym || !package_) ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
           <p className="text-gray-600 text-sm">Booking information not found.</p>
           <button onClick={onClose} className="text-[#003580] text-sm font-medium">Go back</button>
@@ -306,12 +279,12 @@ export function ReviewModal({
               <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex gap-3 items-start">
                   {mainImage ? (
-                    <img src={mainImage} alt={gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                    <img src={mainImage} alt={gym?.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
                   ) : (
                     <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
                   )}
                   <div className="pt-0.5 min-w-0 flex-1">
-                    <p className="font-bold text-base text-gray-900 leading-snug line-clamp-2">{gym.name}</p>
+                    <p className="font-bold text-base text-gray-900 leading-snug line-clamp-2">{gym?.name}</p>
                     <div className="flex items-center gap-4 mt-1">
                       {reviewCount > 0 && (
                         <div className="flex items-center gap-1">
@@ -320,7 +293,7 @@ export function ReviewModal({
                           <span className="text-xs text-gray-500">({reviewCount})</span>
                         </div>
                       )}
-                      <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
+                      <span className="text-xs text-gray-600 font-medium">{package_?.name}</span>
                     </div>
                   </div>
                 </div>

@@ -14,6 +14,7 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingTrustLine } from '@/components/booking-trust-line'
+import { LoadingOverlay } from '@/components/loading-overlay'
 import Link from 'next/link'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -264,50 +265,6 @@ export default function PaymentPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <BookingProgressBar currentStep={3} loading />
-        {/* Nav row during load */}
-        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-          <div className="w-7 h-7" aria-hidden="true" />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-4">
-              <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-                <div className="aspect-video bg-gray-200 animate-pulse" />
-                <div className="p-5 space-y-3">
-                  <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse" />
-                </div>
-              </div>
-              <div className="border border-gray-300 rounded-lg p-5 bg-white space-y-3">
-                <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="lg:col-span-2 space-y-4">
-              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-              <div className="border border-gray-300 rounded-lg p-6 bg-white space-y-4">
-                <div className="h-6 w-40 bg-gray-200 rounded animate-pulse" />
-                <div className="h-32 w-full bg-gray-200 rounded animate-pulse" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (error || !clientSecret || !stripePromise) {
     return (
@@ -338,39 +295,6 @@ export default function PaymentPage() {
     )
   }
 
-  if (!booking) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <BookingProgressBar currentStep={3} loading />
-        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-          <div className="w-7 h-7" aria-hidden="true" />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 pb-6">
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-4">
-              <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-                <div className="aspect-video bg-gray-200 animate-pulse" />
-                <div className="p-5 space-y-3">
-                  <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-              </div>
-            </div>
-            <div className="lg:col-span-2 space-y-4">
-              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const options = {
     clientSecret,
@@ -379,16 +303,31 @@ export default function PaymentPage() {
     },
   }
 
-  const mainImage = booking.gym.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
-  const totalPrice = booking.total_price
+  const mainImage = booking?.gym?.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
+  const totalPrice = booking?.total_price ?? 0
   const finalTotal = totalPrice
 
   // Reconstruct Step 2 URL so back-nav works even after a page refresh
-  const step2Url = `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}`
-  const gymListingHref = `/gyms/${booking.gym.slug || booking.gym.id}`
+  const step2Url = booking
+    ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}`
+    : '#'
+  const gymListingHref = booking ? `/gyms/${booking.gym.slug || booking.gym.id}` : '#'
+
+  // During loading or while booking is null the overlay covers the page.
+  // We still render the shell so the page isn't blank underneath the blur.
+  if (!booking) {
+    return (
+      <div className="min-h-screen bg-white">
+        <LoadingOverlay show={true} />
+        <BookingProgressBar currentStep={3} />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Overlay — covers while booking data loads, fades out when ready */}
+      <LoadingOverlay show={loading} />
       {/* Progress Bar */}
       <BookingProgressBar currentStep={3} />
 

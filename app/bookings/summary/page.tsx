@@ -18,6 +18,7 @@ import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { BookingTrustLine } from '@/components/booking-trust-line'
+import { LoadingOverlay } from '@/components/loading-overlay'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
@@ -303,56 +304,6 @@ function BookingSummaryPageContent() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="hidden md:block"><BookingProgressBar currentStep={2} loading /></div>
-        {/* Nav row: back + exit — shown during load so the page never feels trapped */}
-        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-          <div className="w-7 h-7" aria-hidden="true" />
-        </div>
-        {/* Mobile fixed bottom skeleton */}
-        <div
-          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-50 md:hidden"
-          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
-        >
-          <StepProgressBar step={2} />
-          <div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse" />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 pb-6">
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-4">
-              <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-                <div className="aspect-video bg-gray-200 animate-pulse" />
-                <div className="p-5 space-y-3">
-                  <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-              </div>
-            </div>
-            <div className="lg:col-span-2 space-y-4">
-              <div className="border border-gray-300 rounded-lg p-6 bg-white space-y-4">
-                <div className="h-6 w-40 bg-gray-200 rounded animate-pulse" />
-                <div className="space-y-3">
-                  <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-                  <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-                  <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (error && !gym) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -370,7 +321,31 @@ function BookingSummaryPageContent() {
     )
   }
 
-  if (!gym || !package_) return null
+  // During loading the overlay covers the page shell.
+  // Once loading finishes, if gym/package are still null show the overlay over a blank page.
+  if (loading || !gym || !package_) {
+    return (
+      <div className="min-h-screen bg-white">
+        <LoadingOverlay show={true} />
+        <div className="hidden md:block"><BookingProgressBar currentStep={2} /></div>
+        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+        </div>
+        <div
+          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-10 md:hidden"
+          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        >
+          <StepProgressBar step={2} />
+        </div>
+      </div>
+    )
+  }
 
   const mainImage = gym.images && gym.images.length > 0 ? gym.images[0].url : null
 
@@ -390,13 +365,15 @@ function BookingSummaryPageContent() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
         </button>
-        <Link
-          href={`/gyms/${gym.slug || gym.id}`}
-          className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-          aria-label="Return to gym listing"
-        >
-          <X className="w-5 h-5" />
-        </Link>
+        {gym && (
+          <Link
+            href={`/gyms/${gym.slug || gym.id}`}
+            className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Return to gym listing"
+          >
+            <X className="w-5 h-5" />
+          </Link>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
