@@ -28,6 +28,7 @@ export function ReserveButton({ gym }: { gym: Gym }) {
 
     if (isMobile) {
       // Mobile: open full-screen overlay modal — pass pre-loaded data so it renders instantly
+      const reviews = (gym as any).reviews as { rating: number }[] | undefined ?? []
       openReviewModal({
         gymId: gym.id,
         packageId: selectedPackage.id,
@@ -36,6 +37,10 @@ export function ReserveButton({ gym }: { gym: Gym }) {
         checkout: checkout || '',
         gymData: gym as unknown as Record<string, unknown>,
         packageData: selectedPackage as unknown as Record<string, unknown>,
+        initialReviewCount: reviews.length,
+        initialReviewAverage: reviews.length > 0
+          ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+          : 0,
       })
     } else {
       // Desktop: navigate straight to summary

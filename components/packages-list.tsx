@@ -49,12 +49,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   const goToReview = (params: { gymId: string; packageId: string; variantId?: string; checkin: string; checkout: string; pkg?: Package }) => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
     if (isMobile) {
+      const reviews = (gym as any).reviews as { rating: number }[] | undefined ?? []
       openReviewModal({
         ...params,
         guestCount: 1,
-        // Pass pre-loaded data so the modal renders immediately with no skeleton
         gymData: gym as unknown as Record<string, unknown>,
         packageData: params.pkg as unknown as Record<string, unknown>,
+        initialReviewCount: reviews.length,
+        initialReviewAverage: reviews.length > 0
+          ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+          : 0,
       })
     } else {
       const p = new URLSearchParams({ gymId: params.gymId, packageId: params.packageId, checkin: params.checkin, checkout: params.checkout })

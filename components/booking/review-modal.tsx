@@ -144,8 +144,10 @@ export function ReviewModal({
     hasPreloaded ? (initialParams.packageData as unknown as Package) : null
   )
   const [loading, setLoading] = useState(!hasPreloaded)
-  const [averageRating, setAverageRating] = useState(0)
-  const [reviewCount, setReviewCount] = useState(0)
+  // Seed from caller-supplied values so stars render on first paint; background
+  // fetch will update them silently if they've changed since the gym page loaded.
+  const [averageRating, setAverageRating] = useState(initialParams.initialReviewAverage ?? 0)
+  const [reviewCount, setReviewCount] = useState(initialParams.initialReviewCount ?? 0)
 
   const [checkin, setCheckin] = useState(initialParams.checkin)
   const [checkout, setCheckout] = useState(initialParams.checkout)

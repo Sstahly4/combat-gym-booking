@@ -14,6 +14,9 @@ export interface ReviewModalParams {
   // without a Supabase round-trip. Both are optional so the modal degrades gracefully.
   gymData?: Record<string, unknown>
   packageData?: Record<string, unknown>
+  // Review stats already computed on the gym page — prevents star-rating flicker
+  initialReviewCount?: number
+  initialReviewAverage?: number
 }
 
 interface ReviewModalContextType {
