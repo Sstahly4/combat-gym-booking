@@ -63,10 +63,12 @@ function BookingSummaryPageContent() {
   const initialPrefill = readSummaryPrefillFromUrl()
 
   const [gym, setGym] = useState<Gym & { images?: { url: string }[] } | null>(() =>
-    initialPrefill ? (initialPrefill.gym as Gym & { images?: { url: string }[] }) : null
+    initialPrefill
+      ? (initialPrefill.gym as unknown as Gym & { images?: { url: string }[] })
+      : null
   )
   const [package_, setPackage_] = useState<Package | null>(() =>
-    initialPrefill ? (initialPrefill.package_ as Package) : null
+    initialPrefill ? (initialPrefill.package_ as unknown as Package) : null
   )
   const [variant, setVariant] = useState<PackageVariant | null>(null)
   const [loading, setLoading] = useState(() => !initialPrefill)
