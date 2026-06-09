@@ -58,6 +58,15 @@ function formatPriceWithCode(amount: number, currency: string): string {
   return symbol ? `${symbol}${formatted} ${currency}` : `${currency} ${formatted}`
 }
 
+function formatAmountOnly(amount: number, currency: string): string {
+  const formatted = amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
+  return symbol ? `${symbol}${formatted}` : formatted
+}
+
 function lineUnitLabel(line: PriceLine): string {
   if (line.label.toLowerCase().includes('session')) {
     return line.qty === 1 ? 'session' : 'sessions'
@@ -385,7 +394,7 @@ export function ReviewModal({
   onClose: () => void
 }) {
   const router = useRouter()
-  const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
+  const { convertPrice, selectedCurrency } = useCurrency()
   const continuingRef = useRef(false)
 
   // Pre-loaded from gym page, hydrated from booking_prefill on back-nav, or fetched.
@@ -614,19 +623,18 @@ export function ReviewModal({
                   label="Total price"
                   value={
                     totalPrice != null ? (
-                      <div className="flex items-baseline justify-between gap-4">
-                        <span>{formatPrice(totalPrice)}</span>
-                        <span className="font-semibold text-gray-900 underline shrink-0">
+                      <span className="inline-flex items-baseline gap-1">
+                        <span>{formatAmountOnly(totalPrice, selectedCurrency)}</span>
+                        <span className="font-semibold text-gray-900 underline">
                           {selectedCurrency}
                         </span>
-                      </div>
+                      </span>
                     ) : checkin && checkout ? (
                       'Calculating…'
                     ) : (
                       'Select dates for pricing'
                     )
                   }
-                  sub={priceInfo?.durationLabel || undefined}
                   onEdit={priceInfo && totalPrice != null ? () => setPriceSheetOpen(true) : undefined}
                   editLabel="Details"
                 />
@@ -639,7 +647,7 @@ export function ReviewModal({
             </div>
 
             <div className="mt-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Choose when to pay</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Choose when to pay</h2>
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <label className="flex items-center justify-between gap-4 px-4 py-4 cursor-default">
                   <span className="text-[15px] font-semibold text-gray-900">
@@ -655,7 +663,7 @@ export function ReviewModal({
                     className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-900 bg-white"
                     aria-hidden
                   >
-                    <span className="h-2.5 w-2.5 rounded-full bg-gray-900" />
+                    <span className="h-3.5 w-3.5 rounded-full bg-gray-900" />
                   </span>
                   <input
                     type="radio"

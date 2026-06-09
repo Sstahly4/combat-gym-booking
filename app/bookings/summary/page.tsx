@@ -54,7 +54,7 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
 }
 
 function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string } | null }) {
-  if (!gym) return null
+  if (!gym) return <div className="w-8 h-8 shrink-0" aria-hidden />
   return (
     <Link
       href={`/gyms/${gym.slug || gym.id}`}
@@ -67,6 +67,28 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
     >
       <X className="w-4 h-4 text-gray-700" />
     </Link>
+  )
+}
+
+function CheckoutTopBar({
+  gym,
+  onBack,
+}: {
+  gym: { slug?: string | null; id: string } | null
+  onBack: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back</span>
+      </button>
+      <CheckoutExitButton gym={gym} />
+    </div>
   )
 }
 
@@ -491,9 +513,7 @@ function BookingSummaryPageContent() {
     return (
       <div className="min-h-screen bg-white flex flex-col overflow-hidden">
         <LoadingOverlay show={true} />
-        <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
-          <CheckoutExitButton gym={gym} />
-        </div>
+        <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
         <CheckoutBottomBar
           error={error}
           submitting={submitting}
@@ -516,9 +536,7 @@ function BookingSummaryPageContent() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
-      <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
-        <CheckoutExitButton gym={gym} />
-      </div>
+      <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
 
       <div className="flex-1 overflow-y-auto pb-36">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">

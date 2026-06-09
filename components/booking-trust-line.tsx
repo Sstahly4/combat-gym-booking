@@ -190,7 +190,7 @@ export function BookingTrustLine({
     return (
       <div className={className}>
         <p className="text-sm font-medium text-gray-900">{mainText}</p>
-        <p className="mt-0.5 text-xs text-gray-500">{subText}</p>
+        <p className="mt-0.5 text-sm text-gray-700">{subText}</p>
       </div>
     )
   }
