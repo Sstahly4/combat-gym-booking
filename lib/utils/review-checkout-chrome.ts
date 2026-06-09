@@ -103,6 +103,24 @@ export function isReviewCheckoutChromeHidden(): boolean {
   }
 }
 
+export const REVIEW_CHECKOUT_HTML_ATTR = 'data-review-checkout'
+
+/** Sync the html flag used by globals.css to hide navbar/footer before hydration. */
+export function syncReviewCheckoutChromeHtmlFlag(hidden: boolean): void {
+  if (typeof document === 'undefined') return
+  if (hidden) {
+    document.documentElement.setAttribute(REVIEW_CHECKOUT_HTML_ATTR, '1')
+  } else {
+    document.documentElement.removeAttribute(REVIEW_CHECKOUT_HTML_ATTR)
+  }
+}
+
+/**
+ * Inline boot script — runs before React hydrates so a hard reload of
+ * Review and continue never flashes the site footer or mobile nav.
+ */
+export const REVIEW_CHECKOUT_CHROME_BOOT_SCRIPT = `(function(){try{var d=document.documentElement;var p=new URLSearchParams(location.search);if(sessionStorage.getItem('${HIDE_SITE_CHROME_KEY}')==='review'||(location.pathname.indexOf('/gyms/')===0&&p.get('review')==='1'&&p.get('pkg'))){d.setAttribute('${REVIEW_CHECKOUT_HTML_ATTR}','1')}}catch(e){}})();`
+
 export function writeReviewModalRestore(params: ReviewModalRestoreParams): void {
   try {
     sessionStorage.setItem(REVIEW_RESTORE_KEY, JSON.stringify(params))

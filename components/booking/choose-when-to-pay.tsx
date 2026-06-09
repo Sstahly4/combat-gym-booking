@@ -51,8 +51,18 @@ export function PayWhenOptions({
   const showKlarna = totalPrice != null
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-      <label className="flex items-center justify-between gap-4 px-4 py-3.5 cursor-pointer hover:bg-gray-50/80 transition-colors">
+    <div
+      className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100"
+      role="radiogroup"
+      aria-label="Choose when to pay"
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === 'now'}
+        onClick={() => onChange('now')}
+        className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left cursor-pointer hover:bg-gray-50/80 transition-colors"
+      >
         <span className="text-[15px] font-medium text-gray-900">
           {totalPrice != null ? (
             <>Pay {formatCheckoutPriceWithCode(totalPrice, selectedCurrency)} now</>
@@ -63,19 +73,22 @@ export function PayWhenOptions({
           )}
         </span>
         <PayWhenRadio selected={value === 'now'} />
-        <input
-          type="radio"
-          name="pay-when"
-          value="now"
-          checked={value === 'now'}
-          onChange={() => onChange('now')}
-          className="sr-only"
-          aria-label="Pay now"
-        />
-      </label>
+      </button>
 
       {showKlarna && (
-        <label className="flex items-start justify-between gap-4 px-4 py-3.5 cursor-pointer hover:bg-gray-50/80 transition-colors">
+        <div
+          role="radio"
+          aria-checked={value === 'klarna'}
+          tabIndex={0}
+          onClick={() => onChange('klarna')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onChange('klarna')
+            }
+          }}
+          className="flex items-start justify-between gap-4 px-4 py-3.5 cursor-pointer hover:bg-gray-50/80 transition-colors"
+        >
           <div className="min-w-0 flex-1">
             <div className="text-[15px] font-medium text-gray-900">
               Pay in 4 payments with Klarna
@@ -86,7 +99,6 @@ export function PayWhenOptions({
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault()
                 e.stopPropagation()
                 onOpenKlarnaInfo()
               }}
@@ -96,16 +108,7 @@ export function PayWhenOptions({
             </button>
           </div>
           <PayWhenRadio selected={value === 'klarna'} />
-          <input
-            type="radio"
-            name="pay-when"
-            value="klarna"
-            checked={value === 'klarna'}
-            onChange={() => onChange('klarna')}
-            className="sr-only"
-            aria-label="Pay in 4 payments with Klarna"
-          />
-        </label>
+        </div>
       )}
     </div>
   )

@@ -231,7 +231,10 @@ export function Navbar() {
   return (
     <>
     {isOwnersPage && <div className="h-16" aria-hidden="true" />}
-    <div className={`${isOwnersPage ? 'fixed inset-x-0 top-0' : 'sticky top-0'} z-50`}>
+    <div
+      data-site-chrome="navbar"
+      className={`${isOwnersPage ? 'fixed inset-x-0 top-0' : 'sticky top-0'} z-50`}
+    >
     <nav className={isOwnersPage ? 'bg-transparent' : 'bg-[#003580]'}>
       <div className="max-w-6xl mx-auto px-4">
         <div

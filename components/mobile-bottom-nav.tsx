@@ -188,6 +188,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
+      data-site-chrome="mobile-nav"
       aria-label="Primary mobile navigation"
       aria-hidden={hidden}
       className={`pointer-events-none fixed inset-x-0 bottom-0 z-[60] md:hidden ${

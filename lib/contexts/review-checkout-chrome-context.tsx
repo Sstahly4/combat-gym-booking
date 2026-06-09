@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from 'react'
@@ -13,6 +14,7 @@ import {
   clearReviewCheckoutChromeHidden,
   isReviewCheckoutChromeHidden,
   setReviewCheckoutChromeHidden,
+  syncReviewCheckoutChromeHtmlFlag,
 } from '@/lib/utils/review-checkout-chrome'
 
 interface ReviewCheckoutChromeContextType {
@@ -27,24 +29,35 @@ const ReviewCheckoutChromeContext = createContext<ReviewCheckoutChromeContextTyp
 
 export function ReviewCheckoutChromeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const [isHidden, setIsHidden] = useState(() =>
-    typeof window !== 'undefined' ? isReviewCheckoutChromeHidden() : false
-  )
+  const [isHidden, setIsHidden] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const hidden = isReviewCheckoutChromeHidden()
+    syncReviewCheckoutChromeHtmlFlag(hidden)
+    return hidden
+  })
 
   const hideReviewChrome = useCallback(() => {
     setReviewCheckoutChromeHidden()
     setIsHidden(true)
+    syncReviewCheckoutChromeHtmlFlag(true)
   }, [])
 
   const showReviewChrome = useCallback(() => {
     clearReviewCheckoutChromeHidden()
     setIsHidden(false)
+    syncReviewCheckoutChromeHtmlFlag(false)
   }, [])
 
   // Keep in sync on route changes (back-nav, shared links).
   useEffect(() => {
-    setIsHidden(isReviewCheckoutChromeHidden())
+    const hidden = isReviewCheckoutChromeHidden()
+    setIsHidden(hidden)
+    syncReviewCheckoutChromeHtmlFlag(hidden)
   }, [pathname])
+
+  useLayoutEffect(() => {
+    syncReviewCheckoutChromeHtmlFlag(isHidden)
+  }, [isHidden])
 
   return (
     <ReviewCheckoutChromeContext.Provider value={{ isHidden, hideReviewChrome, showReviewChrome }}>

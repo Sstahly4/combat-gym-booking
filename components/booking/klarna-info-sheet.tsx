@@ -37,7 +37,7 @@ export function KlarnaInfoSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[320] flex items-end justify-center px-4 pb-6 sm:items-center sm:pb-4"
+      className="fixed inset-0 z-[320] overscroll-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="klarna-info-title"
@@ -45,10 +45,13 @@ export function KlarnaInfoSheet({
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/40 touch-none"
+        className="absolute inset-0 bg-black/50 touch-none"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl px-6 pt-6 pb-6 max-h-[min(85dvh,32rem)] overflow-y-auto overscroll-contain">
+      <div
+        className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl px-6 pt-6 max-h-[min(85dvh,32rem)] overflow-y-auto overscroll-contain"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -58,7 +61,7 @@ export function KlarnaInfoSheet({
           <X className="w-4 h-4 text-gray-800" />
         </button>
 
-        <KlarnaWordmark className="text-[1.75rem] leading-none" />
+        <KlarnaWordmark className="h-7" />
 
         <h2 id="klarna-info-title" className="mt-5 text-[1.625rem] font-bold leading-tight text-gray-900">
           Pay in 4 payments
@@ -75,7 +78,7 @@ export function KlarnaInfoSheet({
 
         <hr className="my-5 border-gray-200" />
 
-        <p className="text-xs leading-relaxed text-gray-500">
+        <p className="text-xs leading-relaxed text-gray-700">
           Pay in 4 is offered by Klarna. Please note that a higher initial payment may be required
           for some consumers. Missed payments may be subject to late fees. Read Klarna&apos;s Pay
           later in 4 installments{' '}
@@ -83,7 +86,7 @@ export function KlarnaInfoSheet({
             href={KLARNA_PAY_IN_4_TERMS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-700 underline font-medium hover:text-gray-900"
+            className="text-gray-900 underline font-medium hover:text-gray-800"
           >
             terms
           </a>{' '}

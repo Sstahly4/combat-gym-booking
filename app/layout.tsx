@@ -7,6 +7,7 @@ import { ConditionalFooter } from "@/components/conditional-footer"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { AppRootProviders } from "@/components/app-root-providers"
 import { BRAND_NAME, canonicalSiteUrl } from "@/lib/brand"
+import { REVIEW_CHECKOUT_CHROME_BOOT_SCRIPT } from "@/lib/utils/review-checkout-chrome"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
@@ -96,6 +97,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} flex flex-col min-h-screen`}>
+        <Script
+          id="review-checkout-chrome-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: REVIEW_CHECKOUT_CHROME_BOOT_SCRIPT }}
+        />
         <Script
           id="org-jsonld"
           type="application/ld+json"

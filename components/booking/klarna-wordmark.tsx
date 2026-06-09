@@ -1,13 +1,14 @@
 'use client'
 
-/** Klarna wordmark — approximates Klarna Sans; replace with official asset if provided */
+/** Official Klarna wordmark — Wikimedia Commons / Klarna AB */
+export const KLARNA_WORDMARK_ASSET = '/icons/payment/klarna-wordmark.svg'
+
 export function KlarnaWordmark({ className }: { className?: string }) {
   return (
-    <span
-      className={`inline-block font-bold text-gray-900 tracking-[-0.03em] ${className ?? 'text-2xl'}`}
-      aria-label="Klarna"
-    >
-      Klarna
-    </span>
+    <img
+      src={KLARNA_WORDMARK_ASSET}
+      alt="Klarna"
+      className={`inline-block w-auto shrink-0 object-contain object-left ${className ?? 'h-7'}`}
+    />
   )
 }

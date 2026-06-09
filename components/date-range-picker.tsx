@@ -12,9 +12,23 @@ interface DateRangePickerProps {
   className?: string
   forceOpen?: boolean // When true, calendar is always visible (for modal use)
   onClose?: () => void // Callback to close when used in modal (for Done button)
+  /** Renders calendar inline inside a parent sheet (no trigger, no fixed positioning) */
+  embedded?: boolean
+  /** Hides Clear/Done footer — parent sheet owns the primary action */
+  hideMobileActions?: boolean
 }
 
-export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckoutChange, className = '', forceOpen = false, onClose }: DateRangePickerProps) {
+export function DateRangePicker({
+  checkin,
+  checkout,
+  onCheckinChange,
+  onCheckoutChange,
+  className = '',
+  forceOpen = false,
+  onClose,
+  embedded = false,
+  hideMobileActions = false,
+}: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(forceOpen)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [hoverDate, setHoverDate] = useState<Date | null>(null)
@@ -212,32 +226,34 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
   })()
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${embedded ? 'h-full flex flex-col min-h-0' : ''} ${className}`}>
       {/* Input Field */}
-      <div 
-        onClick={() => {
-          // When opening, anchor the view around the selected check-in (or today)
-          if (!isOpen) {
-            const base = checkinDate || new Date()
-            const anchored = new Date(base)
-            anchored.setDate(1)
-            setCurrentMonth(anchored)
-          }
-          setIsOpen(!isOpen)
-        }}
-        className="h-10 md:h-12 border-2 border-transparent focus-within:border-[#003580] rounded-sm bg-white cursor-pointer flex items-center px-2 md:px-3 hover:border-gray-300 transition-colors"
-      >
-        <Calendar className="w-4 h-4 md:w-5 md:h-5 text-gray-400 mr-2 md:mr-3 flex-shrink-0" />
-        <div className="flex-1 text-xs md:text-base text-gray-700 min-w-0">
-          {getDisplayText()}
+      {!embedded && (
+        <div
+          onClick={() => {
+            // When opening, anchor the view around the selected check-in (or today)
+            if (!isOpen) {
+              const base = checkinDate || new Date()
+              const anchored = new Date(base)
+              anchored.setDate(1)
+              setCurrentMonth(anchored)
+            }
+            setIsOpen(!isOpen)
+          }}
+          className="h-10 md:h-12 border-2 border-transparent focus-within:border-[#003580] rounded-sm bg-white cursor-pointer flex items-center px-2 md:px-3 hover:border-gray-300 transition-colors"
+        >
+          <Calendar className="w-4 h-4 md:w-5 md:h-5 text-gray-400 mr-2 md:mr-3 flex-shrink-0" />
+          <div className="flex-1 text-xs md:text-base text-gray-700 min-w-0">
+            {getDisplayText()}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Calendar Popup */}
       {(isOpen || forceOpen) && (
         <>
           {/* ─── MOBILE: Slide-up bottom sheet (md:hidden) ───────────────────── */}
-          <div className="md:hidden">
+          <div className={`md:hidden ${embedded ? 'absolute inset-0 flex flex-col min-h-0' : ''}`}>
             {/* Backdrop - only when not forced open */}
             {!forceOpen && (
               <div
@@ -248,10 +264,15 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
 
             {/* Sheet */}
             <div
-              className="fixed inset-x-0 bottom-0 z-[70] animate-slide-up bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] transition-transform duration-100 ease-out will-change-transform"
-              style={{ transform: `translateY(${sheetTranslateY}px)` }}
+              className={
+                embedded
+                  ? 'absolute inset-0 flex flex-col min-h-0 bg-white'
+                  : 'fixed inset-x-0 bottom-0 z-[70] animate-slide-up bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] transition-transform duration-100 ease-out will-change-transform'
+              }
+              style={embedded ? undefined : { transform: `translateY(${sheetTranslateY}px)` }}
             >
             {/* Header Area (Draggable) */}
+            {!embedded && (
             <div
               className="flex-shrink-0 touch-none"
               onTouchStart={handleSheetTouchStart}
@@ -279,6 +300,7 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
                 </div>
               )}
             </div>
+            )}
 
             {/* Weekday header */}
             <div className="px-4 pt-3 flex-shrink-0">
@@ -343,6 +365,7 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
             </div>
 
             {/* Bottom actions */}
+            {!hideMobileActions && (
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
               <div className="text-xs text-gray-600">
                 {checkinDate && checkoutDate ? (
@@ -380,6 +403,7 @@ export function DateRangePicker({ checkin, checkout, onCheckinChange, onCheckout
                 </button>
               </div>
             </div>
+            )}
             </div>{/* end Sheet */}
           </div>{/* end md:hidden */}
 

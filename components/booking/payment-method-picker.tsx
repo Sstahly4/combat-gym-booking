@@ -37,15 +37,16 @@ function PaymentMethodOption({
   return (
     <button
       type="button"
-      onClick={onSelect}
-      className="w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors hover:bg-gray-50/80"
-      aria-pressed={selected}
+      role="radio"
+      aria-checked={selected}
       aria-label={ariaLabel}
+      onClick={onSelect}
+      className="w-full text-left px-4 py-3.5 flex items-center gap-3 touch-manipulation select-none transition-colors hover:bg-gray-50/80 active:bg-gray-100"
     >
-      <div className="flex w-11 shrink-0 items-center justify-start text-gray-900">
+      <div className="pointer-events-none flex w-11 shrink-0 items-center justify-start text-gray-900">
         {icon}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="pointer-events-none min-w-0 flex-1">
         <div className="text-[15px] font-medium text-gray-900">{label}</div>
         {children}
       </div>
@@ -62,7 +63,11 @@ export function PaymentMethodPicker({
   onChange: (method: PaymentMethodChoice) => void
 }) {
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+    <div
+      className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100"
+      role="radiogroup"
+      aria-label="Pay with"
+    >
       <PaymentMethodOption
         selected={value === 'card'}
         onSelect={() => onChange('card')}

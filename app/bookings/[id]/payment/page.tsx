@@ -1,6 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode, type TouchEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type MouseEvent,
+  type ReactNode,
+  type TouchEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
@@ -46,7 +54,9 @@ import {
   readBookingPrefill,
   readPaymentIntentCache,
   clearPaymentIntentCache,
+  writeBookingPrefill,
 } from '@/lib/utils/booking-prefill'
+import { DateRangePicker } from '@/components/date-range-picker'
 import { clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
@@ -134,9 +144,9 @@ function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions
   }
 }
 
-/** Off-screen Stripe mount — display:none prevents iOS iframe compositor bleed over picker logos */
+/** Off-screen Stripe mount — 1px + clip keeps Elements alive without compositor bleed */
 const CARD_ELEMENT_OFFSCREEN_CLASS =
-  'fixed top-0 left-0 -z-50 w-[min(100%,28rem)] max-w-md pointer-events-none overflow-hidden [clip-path:inset(50%)]'
+  'fixed top-0 left-0 -z-50 h-px w-px overflow-hidden opacity-0 pointer-events-none invisible [clip-path:inset(100%)]'
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
   card: 'Credit or debit card',
@@ -165,7 +175,6 @@ function PaymentMethodSheet({
   layer?: 'primary' | 'nested'
 }) {
   const rootZ = layer === 'nested' ? 'z-[310]' : 'z-[300]'
-  const backdropZ = layer === 'nested' ? 'z-[311]' : 'z-[301]'
   const sheetZ = layer === 'nested' ? 'z-[312]' : 'z-[302]'
   const [sheetTranslateY, setSheetTranslateY] = useState(0)
   const sheetStartY = useRef(0)
@@ -192,6 +201,11 @@ function PaymentMethodSheet({
     setSheetTranslateY(0)
   }
 
+  const handleRootClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return
+    onClose()
+  }
+
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
@@ -213,27 +227,23 @@ function PaymentMethodSheet({
     return () => handle.removeEventListener('touchmove', preventDragScroll)
   }, [])
 
+  const sheetDragging = sheetTranslateY > 0
+
   const sheet = (
     <div
       ref={rootRef}
-      className={`md:hidden fixed inset-0 ${rootZ} overscroll-none`}
+      className={`md:hidden fixed inset-0 ${rootZ} overscroll-none bg-black/50`}
       role="dialog"
       aria-modal="true"
+      onClick={handleRootClick}
     >
-      <button
-        type="button"
-        aria-label="Close"
-        className={`absolute inset-0 bg-black/50 ${backdropZ} touch-none`}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          onClose()
-        }}
-      />
       <div
         ref={sheetRef}
-        className={`absolute inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform overscroll-contain`}
-        style={{ transform: `translateY(${sheetTranslateY}px)` }}
+        className={`absolute inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl overscroll-contain ${
+          sheetDragging ? 'transition-transform duration-100 ease-out' : ''
+        }`}
+        style={sheetDragging ? { transform: `translateY(${sheetTranslateY}px)` } : undefined}
+        onClick={(e) => e.stopPropagation()}
       >
         <div
           ref={dragHandleRef}
@@ -555,13 +565,10 @@ function CheckoutForm({
               primaryLabel={draftPaymentMethod === 'card' ? 'Next' : 'Done'}
               onPrimary={handlePickPrimary}
             >
-              <div className="relative z-10 flex-shrink-0 isolate [transform:translateZ(0)]">
-                <PaymentMethodPicker
-                  value={draftPaymentMethod}
-                  onChange={(method) => onDraftPaymentMethodChange?.(method)}
-                />
-              </div>
-              <div className="flex-1 min-h-0" aria-hidden />
+              <PaymentMethodPicker
+                value={draftPaymentMethod}
+                onChange={(method) => onDraftPaymentMethodChange?.(method)}
+              />
             </PaymentMethodSheet>
           )}
           {paymentFieldsMounted &&
@@ -755,6 +762,12 @@ export default function PaymentPage() {
   const [payWhenSheetOpen, setPayWhenSheetOpen] = useState(false)
   const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>('now')
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [guestSheetOpen, setGuestSheetOpen] = useState(false)
+  const [guestCount, setGuestCount] = useState(1)
+  const [draftGuestCount, setDraftGuestCount] = useState(1)
+  const [draftCheckin, setDraftCheckin] = useState('')
+  const [draftCheckout, setDraftCheckout] = useState('')
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -787,8 +800,101 @@ export default function PaymentPage() {
     setPaymentModalStep('pick')
   }
 
+  const openDatePicker = () => {
+    if (!booking) return
+    setDraftCheckin(booking.start_date)
+    setDraftCheckout(booking.end_date)
+    setDatePickerOpen(true)
+  }
+
+  const dismissDatePicker = () => {
+    setDatePickerOpen(false)
+  }
+
+  const handleDatePickerCancel = () => {
+    dismissDatePicker()
+  }
+
+  const handleDatePickerSave = () => {
+    if (!booking || !draftCheckin || !draftCheckout) return
+    const nights = Math.floor(
+      (new Date(draftCheckout).getTime() - new Date(draftCheckin).getTime()) /
+        (1000 * 60 * 60 * 24)
+    )
+    const isTrainingPkg = booking.package?.type === 'training'
+    const pricingDuration = isTrainingPkg ? Math.max(1, nights + 1) : nights
+    const recalculated =
+      booking.package && pricingDuration > 0
+        ? calculatePackagePrice(pricingDuration, booking.package.type, {
+            daily: booking.variant?.price_per_day ?? booking.package.price_per_day,
+            weekly: booking.variant?.price_per_week ?? booking.package.price_per_week,
+            monthly: booking.variant?.price_per_month ?? booking.package.price_per_month,
+          })
+        : null
+
+    setBooking((prev) =>
+      prev
+        ? {
+            ...prev,
+            start_date: draftCheckin,
+            end_date: draftCheckout,
+            total_price: recalculated?.price ?? prev.total_price,
+          }
+        : prev
+    )
+    const cached =
+      booking.gym_id && booking.package_id
+        ? readBookingPrefill(booking.gym_id, booking.package_id)
+        : null
+    if (cached) {
+      writeBookingPrefill({
+        ...cached,
+        checkin: draftCheckin,
+        checkout: draftCheckout,
+      })
+    }
+    dismissDatePicker()
+  }
+
+  const openGuestSheet = () => {
+    setDraftGuestCount(guestCount)
+    setGuestSheetOpen(true)
+  }
+
+  const dismissGuestSheet = () => {
+    setGuestSheetOpen(false)
+  }
+
+  const handleGuestSheetCancel = () => {
+    setDraftGuestCount(guestCount)
+    dismissGuestSheet()
+  }
+
+  const handleGuestSheetSave = () => {
+    setGuestCount(draftGuestCount)
+    if (booking?.gym_id && booking.package_id) {
+      const cached = readBookingPrefill(booking.gym_id, booking.package_id)
+      if (cached) {
+        writeBookingPrefill({
+          ...cached,
+          guestCount: draftGuestCount,
+        })
+      }
+    }
+    dismissGuestSheet()
+  }
+
   useEffect(() => {
-    if (!paymentMethodOpen && !priceSheetOpen && !payWhenSheetOpen) return
+    if (!booking?.gym_id || !booking.package_id) return
+    const cached = readBookingPrefill(booking.gym_id, booking.package_id)
+    if (cached?.guestCount) {
+      setGuestCount(cached.guestCount)
+      setDraftGuestCount(cached.guestCount)
+    }
+  }, [booking?.gym_id, booking?.package_id])
+
+  useEffect(() => {
+    if (!paymentMethodOpen && !priceSheetOpen && !payWhenSheetOpen && !datePickerOpen && !guestSheetOpen) return
     const prevBody = document.body.style.overflow
     const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -797,7 +903,7 @@ export default function PaymentPage() {
       document.body.style.overflow = prevBody
       document.documentElement.style.overflow = prevHtml
     }
-  }, [paymentMethodOpen, priceSheetOpen, payWhenSheetOpen])
+  }, [paymentMethodOpen, priceSheetOpen, payWhenSheetOpen, datePickerOpen, guestSheetOpen])
 
   useEffect(() => {
     try {
@@ -1015,7 +1121,6 @@ export default function PaymentPage() {
     gymImages && gymImages.length > 0
       ? [...gymImages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
       : null
-  const guestCount = prefill?.guestCount ?? 1
   const gymCurrency = booking?.gym?.currency ?? 'USD'
 
   const priceInfo =
@@ -1136,12 +1241,12 @@ export default function PaymentPage() {
               <CheckoutSummaryRow
                 label="Dates"
                 value={formatCheckoutDateRange(booking.start_date, booking.end_date)}
-                onEdit={() => router.replace(step2Url)}
+                onEdit={openDatePicker}
               />
               <CheckoutSummaryRow
                 label="Guests"
                 value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
-                onEdit={() => router.replace(step2Url)}
+                onEdit={openGuestSheet}
               />
               <CheckoutSummaryRow
                 label="Total price"
@@ -1205,6 +1310,66 @@ export default function PaymentPage() {
               <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
             </button>
           </div>
+
+          {datePickerOpen && (
+            <PaymentMethodSheet
+              onClose={handleDatePickerCancel}
+              onCancel={handleDatePickerCancel}
+              title="Change dates"
+              primaryLabel="Done"
+              onPrimary={handleDatePickerSave}
+            >
+              <div className="relative flex-1 min-h-0 -mx-6">
+                <DateRangePicker
+                  checkin={draftCheckin}
+                  checkout={draftCheckout}
+                  forceOpen
+                  embedded
+                  hideMobileActions
+                  onCheckinChange={setDraftCheckin}
+                  onCheckoutChange={setDraftCheckout}
+                />
+              </div>
+            </PaymentMethodSheet>
+          )}
+
+          {guestSheetOpen && (
+            <PaymentMethodSheet
+              onClose={handleGuestSheetCancel}
+              onCancel={handleGuestSheetCancel}
+              title="Change guests"
+              primaryLabel="Done"
+              onPrimary={handleGuestSheetSave}
+            >
+              <div className="flex items-center justify-between py-4">
+                <div>
+                  <div className="text-base font-medium text-gray-900">Adults</div>
+                  <div className="text-sm text-gray-500">Ages 13 or above</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setDraftGuestCount((n) => Math.max(1, n - 1))}
+                    disabled={draftGuestCount <= 1}
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-700 text-xl disabled:opacity-30 hover:border-gray-500 transition-colors"
+                    aria-label="Decrease guests"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center text-base font-medium">{draftGuestCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDraftGuestCount((n) => n + 1)}
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-700 text-xl hover:border-gray-500 transition-colors"
+                    aria-label="Increase guests"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0" aria-hidden />
+            </PaymentMethodSheet>
+          )}
 
           {payWhenSheetOpen && displayTotalPrice != null && (
             <PaymentMethodSheet

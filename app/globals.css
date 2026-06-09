@@ -177,3 +177,10 @@
     animation: slide-down 200ms ease-out;
   }
 }
+
+/* Review checkout: hide global chrome before React hydrates (layout boot script). */
+html[data-review-checkout] footer,
+html[data-review-checkout] [data-site-chrome='navbar'],
+html[data-review-checkout] [data-site-chrome='mobile-nav'] {
+  display: none !important;
+}
