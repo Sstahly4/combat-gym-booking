@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { CalendarDays, Heart, LayoutDashboard, Search, Shield, UserCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { isReviewCheckoutChromeHidden } from '@/lib/utils/review-checkout-chrome'
 
 type BottomNavItem = {
   href: string
@@ -166,7 +167,7 @@ export function MobileBottomNav() {
     }
   }, [loading, pathname, profile?.role, user])
 
-  if (isHiddenRoute(pathname)) return null
+  if (isHiddenRoute(pathname) || isReviewCheckoutChromeHidden()) return null
 
   const items: BottomNavItem[] = [
     {

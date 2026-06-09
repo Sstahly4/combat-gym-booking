@@ -10,6 +10,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
+import { CurrencyModal } from '@/components/currency-modal'
 import { writeBookingPrefill, readBookingPrefill } from '@/lib/utils/booking-prefill'
 import type { Gym, Package } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
@@ -424,6 +425,7 @@ export function ReviewModal({
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -616,9 +618,14 @@ export function ReviewModal({
                     totalPrice != null ? (
                       <span className="inline-flex items-baseline gap-1">
                         <span>{formatAmountOnly(totalPrice, selectedCurrency)}</span>
-                        <span className="font-semibold text-gray-900 underline">
+                        <button
+                          type="button"
+                          onClick={() => setCurrencyModalOpen(true)}
+                          className="font-semibold text-gray-900 underline hover:text-gray-700 transition-colors"
+                          aria-label={`Change currency, currently ${selectedCurrency}`}
+                        >
                           {selectedCurrency}
-                        </span>
+                        </button>
                       </span>
                     ) : checkin && checkout ? (
                       'Calculating…'
@@ -726,6 +733,15 @@ export function ReviewModal({
               onClose={() => setPriceSheetOpen(false)}
             />
           )}
+
+          <CurrencyModal
+            open={currencyModalOpen}
+            onOpenChange={setCurrencyModalOpen}
+            initialTab="currency"
+            currencyOnly
+            confirmSelection
+            stackClassName="z-[320]"
+          />
         </>
       ) : null}
     </div>

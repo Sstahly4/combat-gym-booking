@@ -21,6 +21,10 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
+import {
+  setReviewCheckoutChromeHidden,
+  writeReviewModalRestore,
+} from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -65,6 +69,7 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
       href={`/gyms/${gym.slug || gym.id}`}
       onClick={() => {
         try { sessionStorage.removeItem('review_modal_restore') } catch {}
+        try { sessionStorage.removeItem('hide_site_chrome') } catch {}
         try { sessionStorage.removeItem('booking_prefill') } catch {}
       }}
       className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
@@ -191,22 +196,35 @@ function BookingSummaryPageContent() {
     const pkgId = package_?.id || packageId
     if (slugOrId && pkgId && gym && package_) {
       // Keep booking_prefill fresh so the review modal paints instantly on back-nav.
+      const backCheckin = checkin || searchParams.get('checkin') || ''
+      const backCheckout = checkout || searchParams.get('checkout') || ''
+      const backVariantId = variant?.id || searchParams.get('variantId') || undefined
+
       writeBookingPrefill({
         gymId: gym.id,
         packageId: pkgId,
-        variantId: variant?.id || searchParams.get('variantId') || undefined,
+        variantId: backVariantId,
         gym: gym as unknown as Record<string, unknown>,
         package_: package_ as unknown as Record<string, unknown>,
-        checkin: checkin || searchParams.get('checkin') || '',
-        checkout: checkout || searchParams.get('checkout') || '',
+        checkin: backCheckin,
+        checkout: backCheckout,
         guestCount,
         reviewCount,
         reviewAverage: averageRating,
       })
+      writeReviewModalRestore({
+        gymId: gym.id,
+        packageId: pkgId,
+        variantId: backVariantId,
+        checkin: backCheckin,
+        checkout: backCheckout,
+        guestCount,
+      })
+      setReviewCheckoutChromeHidden()
       const backHref = buildReviewBackHref(slugOrId, pkgId, {
-        variantId: variant?.id || searchParams.get('variantId') || undefined,
-        checkin: checkin || searchParams.get('checkin') || undefined,
-        checkout: checkout || searchParams.get('checkout') || undefined,
+        variantId: backVariantId,
+        checkin: backCheckin || undefined,
+        checkout: backCheckout || undefined,
         guests: guestCount,
       })
       router.prefetch(backHref)

@@ -1,7 +1,8 @@
 'use client'
 
 import { X, Languages } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { useCurrency, CURRENCIES, LANGUAGES } from '@/lib/contexts/currency-context'
 import { useState, useEffect, useRef, type TouchEvent } from 'react'
 
@@ -9,6 +10,12 @@ interface CurrencyModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab?: ModalTab
+  /** Pick a currency then confirm with Cancel / Done instead of closing on each tap */
+  confirmSelection?: boolean
+  /** Hide language tab — currency picker only */
+  currencyOnly?: boolean
+  /** Stack above nested overlays (e.g. checkout review modal) */
+  stackClassName?: string
 }
 
 type ModalTab = 'language' | 'currency'
@@ -16,10 +23,28 @@ type ModalTab = 'language' | 'currency'
 const suggestedCurrencies = ['EUR', 'GBP', 'USD', 'AUD', 'THB', 'SGD']
 const suggestedLanguages = ['en-AU', 'en-GB', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'zh-CN', 'ja-JP', 'ko-KR', 'pt-BR']
 
-export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: CurrencyModalProps) {
+function sheetZFromBackdrop(backdrop: string): string {
+  const match = backdrop.match(/z-\[(\d+)\]/)
+  return match ? `z-[${Number(match[1]) + 1}]` : 'z-[130]'
+}
+
+export function CurrencyModal({
+  open,
+  onOpenChange,
+  initialTab = 'language',
+  confirmSelection = false,
+  currencyOnly = false,
+  stackClassName,
+}: CurrencyModalProps) {
   const { selectedCurrency, setSelectedCurrency, selectedLanguage, setSelectedLanguage } = useCurrency()
   const [activeTab, setActiveTab] = useState<ModalTab>('language')
+  const [draftCurrency, setDraftCurrency] = useState(selectedCurrency)
+  const [draftLanguage, setDraftLanguage] = useState(selectedLanguage)
   const [isDesktop, setIsDesktop] = useState(false)
+
+  const mobileBackdropZ = stackClassName ?? 'z-[120]'
+  const mobileSheetZ = stackClassName ? sheetZFromBackdrop(stackClassName) : 'z-[130]'
+  const desktopStack = stackClassName ?? 'z-[100]'
 
   // Swipe logic for mobile bottom sheet
   const [sheetTranslateY, setSheetTranslateY] = useState(0)
@@ -51,20 +76,42 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
   }
 
   const handleSelectCurrency = (currency: string) => {
+    if (confirmSelection) {
+      setDraftCurrency(currency)
+      return
+    }
     setSelectedCurrency(currency)
     onOpenChange(false)
   }
 
   const handleSelectLanguage = (language: string) => {
+    if (confirmSelection) {
+      setDraftLanguage(language)
+      return
+    }
     setSelectedLanguage(language)
+    onOpenChange(false)
+  }
+
+  const handleConfirm = () => {
+    if (confirmSelection) {
+      setSelectedCurrency(draftCurrency)
+      if (!currencyOnly) setSelectedLanguage(draftLanguage)
+    }
+    onOpenChange(false)
+  }
+
+  const handleCancel = () => {
     onOpenChange(false)
   }
 
   useEffect(() => {
     if (open) {
-      setActiveTab(initialTab)
+      setActiveTab(currencyOnly ? 'currency' : initialTab)
+      setDraftCurrency(selectedCurrency)
+      setDraftLanguage(selectedLanguage)
     }
-  }, [open, initialTab])
+  }, [open, initialTab, currencyOnly, selectedCurrency, selectedLanguage])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)')
@@ -84,10 +131,36 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
   const suggestedLanguageItems = LANGUAGES.filter(language => suggestedLanguages.includes(language.code))
   const allLanguageItems = LANGUAGES.filter(language => !suggestedLanguages.includes(language.code))
 
+  const displayCurrency = confirmSelection ? draftCurrency : selectedCurrency
+  const displayLanguage = confirmSelection ? draftLanguage : selectedLanguage
+
+  const confirmFooter = confirmSelection ? (
+    <div
+      className="flex gap-3 px-4 py-4 border-t border-gray-100 flex-shrink-0 bg-white"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1 h-11 font-semibold"
+        onClick={handleCancel}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        className="flex-1 h-11 font-semibold bg-[#003580] hover:bg-[#003580]/90"
+        onClick={handleConfirm}
+      >
+        Done
+      </Button>
+    </div>
+  ) : null
+
   const renderLanguageGrid = (items: typeof LANGUAGES, cols = 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4') => (
     <div className={`grid ${cols} gap-x-4 gap-y-0`}>
       {items.map(language => {
-        const isSelected = selectedLanguage === language.code
+        const isSelected = displayLanguage === language.code
         return (
           <button
             key={language.code}
@@ -107,7 +180,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
   const renderCurrencyGrid = (items: typeof CURRENCIES, columns = 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4') => (
     <div className={`grid ${columns} gap-x-4 gap-y-0`}>
       {items.map(currency => {
-        const isSelected = selectedCurrency === currency.code
+        const isSelected = displayCurrency === currency.code
         return (
           <button
             key={currency.code}
@@ -127,7 +200,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
   if (!open) return null
 
   return isDesktop ? (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} stackClassName={desktopStack}>
       <DialogContent className="flex flex-col max-w-5xl w-[92vw] max-h-[88vh] overflow-hidden p-0 rounded-3xl [&>button]:hidden">
         {/* Hidden but required for a11y */}
         <DialogTitle className="sr-only">
@@ -136,26 +209,30 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
 
         {/* Header row: tabs left, X right */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
-          <div className="inline-flex rounded-full bg-gray-100 p-1 gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('language')}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'language' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-              }`}
-            >
-              Language
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('currency')}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'currency' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-              }`}
-            >
-              Currency
-            </button>
-          </div>
+          {currencyOnly ? (
+            <h2 className="text-lg font-semibold text-gray-900">Currency</h2>
+          ) : (
+            <div className="inline-flex rounded-full bg-gray-100 p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('language')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'language' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Language
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('currency')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'currency' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Currency
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
@@ -168,7 +245,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0 px-6 py-6 space-y-8">
-          {activeTab === 'language' ? (
+          {!currencyOnly && activeTab === 'language' ? (
             <>
               <div className="rounded-2xl bg-gray-50 px-5 py-4 border border-gray-100 max-w-2xl">
                 <div className="flex items-center justify-between gap-4">
@@ -214,6 +291,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
             </>
           )}
         </div>
+        {confirmFooter}
       </DialogContent>
     </Dialog>
   ) : (
@@ -223,7 +301,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
         <button
           type="button"
           aria-label="Close"
-          className="fixed inset-0 bg-black/50 z-[120]"
+          className={`fixed inset-0 bg-black/50 ${mobileBackdropZ}`}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -232,7 +310,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
         />
 
         <div
-          className="fixed inset-x-0 bottom-0 z-[130] animate-slide-up bg-white rounded-t-3xl flex flex-col max-h-[88dvh] transition-transform duration-100 ease-out will-change-transform"
+          className={`fixed inset-x-0 bottom-0 ${mobileSheetZ} animate-slide-up bg-white rounded-t-3xl flex flex-col max-h-[88dvh] transition-transform duration-100 ease-out will-change-transform`}
           style={{ transform: `translateY(${sheetTranslateY}px)` }}
         >
           {/* Swipe handle only — keep close button outside touch-none so taps register reliably */}
@@ -250,12 +328,12 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
           <div className="relative z-10 flex-shrink-0 bg-white px-4 pt-1 pb-3 border-b border-gray-100 flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-gray-900 leading-tight">
-                {activeTab === 'language' ? 'Language and region' : 'Currency'}
+                {currencyOnly || activeTab === 'currency' ? 'Currency' : 'Language and region'}
               </h2>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                {activeTab === 'language'
-                  ? 'Choose your preferred language and region.'
-                  : 'Choose how prices are displayed on the site.'}
+                {currencyOnly || activeTab === 'currency'
+                  ? 'Choose how prices are displayed on the site.'
+                  : 'Choose your preferred language and region.'}
               </p>
             </div>
             <button
@@ -272,31 +350,33 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
             </button>
           </div>
 
-          <div className="px-4 pt-3">
-            <div className="grid grid-cols-2 rounded-full bg-gray-100 p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('language')}
-                className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'language' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-                }`}
-              >
-                Language
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('currency')}
-                className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'currency' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-                }`}
-              >
-                Currency
-              </button>
+          {!currencyOnly && (
+            <div className="px-4 pt-3">
+              <div className="grid grid-cols-2 rounded-full bg-gray-100 p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('language')}
+                  className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'language' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                  }`}
+                >
+                  Language
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('currency')}
+                  className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'currency' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                  }`}
+                >
+                  Currency
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="overflow-y-auto flex-1 px-4 py-4 pb-8 space-y-6">
-            {activeTab === 'language' ? (
+          <div className={`overflow-y-auto flex-1 px-4 py-4 space-y-6 ${confirmSelection ? 'pb-4' : 'pb-8'}`}>
+            {!currencyOnly && activeTab === 'language' ? (
               <>
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
                   <div className="flex items-center justify-between gap-3">
@@ -340,6 +420,7 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
               </>
             )}
           </div>
+          {confirmFooter}
         </div>
       </div>
     </>

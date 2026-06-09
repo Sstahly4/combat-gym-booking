@@ -3,7 +3,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { LoadingOverlay } from '@/components/loading-overlay'
+import { ReviewModalShell } from '@/components/booking/review-modal-shell'
 import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
+import {
+  clearReviewCheckoutChromeHidden,
+  clearReviewModalRestore,
+  readReviewModalRestore,
+  setReviewCheckoutChromeHidden,
+  writeReviewModalRestore,
+} from '@/lib/utils/review-checkout-chrome'
 
 export interface ReviewModalParams {
   gymId: string
@@ -37,31 +45,12 @@ const ReviewModal = dynamic(
   { ssr: false }
 )
 
-const STORAGE_KEY = 'review_modal_restore'
-
 // The URL params that encode modal state for sharing/deep-linking
 const REVIEW_URL_PARAMS = ['review', 'pkg', 'checkin', 'checkout', 'guests', 'variant'] as const
 
-// Serialise only the lightweight params (not bulky gymData/packageData) so
-// sessionStorage stays small.
 function saveRestoreParams(p: ReviewModalParams) {
-  try {
-    const { gymData: _g, packageData: _p, ...lite } = p
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(lite))
-  } catch {}
-}
-
-function clearRestoreParams() {
-  try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
-}
-
-function readRestoreParams(): ReviewModalParams | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  const { gymData: _g, packageData: _p, initialReviewCount: _c, initialReviewAverage: _a, ...lite } = p
+  writeReviewModalRestore(lite)
 }
 
 /** Stamp review params into the address bar without adding a history entry. */
@@ -134,11 +123,11 @@ export function ReviewModalProvider({
     if (typeof window === 'undefined') return null
     const fromUrl = readUrlParams(gymId)
     if (fromUrl) return hydrateReviewParams(fromUrl)
-    const stored = readRestoreParams()
+    const stored = readReviewModalRestore()
     if (stored?.gymId === gymId) return hydrateReviewParams(stored)
     // Purge stale restore data from a different gym so it never re-triggers
     // a modal/cover on the wrong listing.
-    if (stored) clearRestoreParams()
+    if (stored) clearReviewModalRestore()
     return null
   })
 
@@ -166,28 +155,33 @@ export function ReviewModalProvider({
     return () => { cancelled = true }
   }, [params])
 
-  // Cover is ONLY for the brief gap before the modal paints — never for the
-  // full modal lifetime. Before hydration: SSR detected ?review=1. After
-  // hydration: params are set but the dynamic chunk hasn't loaded yet.
-  // Once the modal is mounted its own z-[200] shell replaces the cover.
+  // Shell paints instantly from prefill while the modal chunk loads.
+  const showShell = !!params && !modalChunkLoaded
+
+  // Cover only when we have no shell yet (SSR review intent before hydration).
   const showCover =
-    (!mounted && hasReviewIntent) || (!!params && !modalChunkLoaded)
+    !showShell && ((!mounted && hasReviewIntent) || (!!params && !modalChunkLoaded))
+
+  const hideGymListing = !!params || hasReviewIntent
 
   const openReviewModal = (p: ReviewModalParams) => {
     const hydrated = hydrateReviewParams(p)
     saveRestoreParams(hydrated)
+    setReviewCheckoutChromeHidden()
     pushReviewUrl(hydrated)
     setParams(hydrated)
   }
 
   const close = () => {
-    clearRestoreParams()
+    clearReviewModalRestore()
+    clearReviewCheckoutChromeHidden()
     clearReviewUrl()
     setParams(null)
   }
 
   useEffect(() => {
     if (params) {
+      setReviewCheckoutChromeHidden()
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -197,12 +191,12 @@ export function ReviewModalProvider({
 
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
-      {children}
-      {/* White cover prevents the gym page from showing through while the
-          modal component lazy-loads. In SSR, hasReviewIntent puts this in
-          the initial HTML so there is zero flash even on a fresh page load. */}
+      <div className={hideGymListing ? 'hidden' : undefined} aria-hidden={hideGymListing}>
+        {children}
+      </div>
       <LoadingOverlay show={showCover} zClass="z-[199]" />
-      {params && (
+      {showShell && params && <ReviewModalShell params={params} />}
+      {params && modalChunkLoaded && (
         <ReviewModal params={params} gymSlugOrId={gymSlugOrId} onClose={close} />
       )}
     </ReviewModalContext.Provider>
