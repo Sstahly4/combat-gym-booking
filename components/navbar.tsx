@@ -78,6 +78,18 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [desktopMenuOpen])
 
+  // Defensive: checkout/search modals set inline body styles that can leak across
+  // client navigations if a provider unmounts mid-transition.
+  useEffect(() => {
+    document.documentElement.style.overflow = ''
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.top = ''
+    document.body.style.left = ''
+    document.body.style.right = ''
+    document.body.style.width = ''
+  }, [pathname])
+
   const currencyName = CURRENCIES.find(c => c.code === selectedCurrency)?.name || selectedCurrency
   const selectedLanguageItem = LANGUAGES.find(l => l.code === selectedLanguage)
   const languageName = selectedLanguageItem

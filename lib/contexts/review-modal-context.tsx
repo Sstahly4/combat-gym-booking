@@ -132,11 +132,11 @@ export function ReviewModalProvider({
     if (typeof window === 'undefined') return null
     const fromUrl = readUrlParams(gymId)
     if (fromUrl) return fromUrl
-    // Only restore from sessionStorage if the stored params are for THIS gym.
-    // Without this check, stale params from a previous gym bleed into every
-    // subsequent gym page and cause the cover div to block all interactions.
     const stored = readRestoreParams()
     if (stored?.gymId === gymId) return stored
+    // Purge stale restore data from a different gym so it never re-triggers
+    // a modal/cover on the wrong listing.
+    if (stored) clearRestoreParams()
     return null
   })
 
@@ -145,10 +145,26 @@ export function ReviewModalProvider({
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
-  // Before hydration: show cover when the server detected review intent.
-  // After hydration: show cover whenever the modal params are set (modal open or opening).
-  // This ensures the gym page is never visible under the modal — not even for a frame.
-  const showCover = mounted ? !!params : hasReviewIntent
+  // True once the dynamically-imported modal chunk has loaded.
+  const [modalChunkLoaded, setModalChunkLoaded] = useState(false)
+  useEffect(() => {
+    if (!params) {
+      setModalChunkLoaded(false)
+      return
+    }
+    let cancelled = false
+    import('@/components/booking/review-modal').then(() => {
+      if (!cancelled) setModalChunkLoaded(true)
+    })
+    return () => { cancelled = true }
+  }, [params])
+
+  // Cover is ONLY for the brief gap before the modal paints — never for the
+  // full modal lifetime. Before hydration: SSR detected ?review=1. After
+  // hydration: params are set but the dynamic chunk hasn't loaded yet.
+  // Once the modal is mounted its own z-[200] shell replaces the cover.
+  const showCover =
+    (!mounted && hasReviewIntent) || (!!params && !modalChunkLoaded)
 
   const openReviewModal = (p: ReviewModalParams) => {
     saveRestoreParams(p)
