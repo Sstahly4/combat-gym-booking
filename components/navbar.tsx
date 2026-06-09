@@ -91,6 +91,16 @@ export function Navbar() {
     document.body.style.width = ''
   }, [pathname])
 
+  // Slide the mobile bottom tab bar away while menu or currency sheets are open.
+  useEffect(() => {
+    if (mobileMenuOpen || currencyModalOpen) {
+      document.body.setAttribute('data-bottom-sheet-open', '1')
+    } else {
+      document.body.removeAttribute('data-bottom-sheet-open')
+    }
+    return () => document.body.removeAttribute('data-bottom-sheet-open')
+  }, [mobileMenuOpen, currencyModalOpen])
+
   const currencyName = CURRENCIES.find(c => c.code === selectedCurrency)?.name || selectedCurrency
   const selectedLanguageItem = LANGUAGES.find(l => l.code === selectedLanguage)
   const languageName = selectedLanguageItem
@@ -450,12 +460,12 @@ export function Navbar() {
             <button
               type="button"
               aria-label="Close menu"
-              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
 
             {/* Bottom Sheet - Same size as date picker */}
-            <div className="fixed inset-x-0 bottom-0 z-[60] md:hidden animate-slide-up bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 pointer-events-auto">
+            <div className="fixed inset-x-0 bottom-0 z-[70] md:hidden animate-slide-up bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 pointer-events-auto">
               {/* Header - Same as date picker */}
               <div className="px-4 pt-4 pb-3 border-b border-gray-200 flex items-center justify-between">
                 <div>

@@ -34,9 +34,17 @@ export function MobileBottomNav() {
   const [filterOpen, setFilterOpen] = useState(false)
 
   useEffect(() => {
-    const check = () => setFilterOpen(document.body.hasAttribute('data-filter-open'))
+    const check = () =>
+      setFilterOpen(
+        document.body.hasAttribute('data-filter-open') ||
+          document.body.hasAttribute('data-bottom-sheet-open'),
+      )
     const observer = new MutationObserver(check)
-    observer.observe(document.body, { attributes: true, attributeFilter: ['data-filter-open'] })
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-filter-open', 'data-bottom-sheet-open'],
+    })
+    check()
     return () => observer.disconnect()
   }, [])
   /**
