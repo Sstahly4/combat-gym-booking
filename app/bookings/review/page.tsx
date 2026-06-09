@@ -251,13 +251,12 @@ function ReviewPageContent() {
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <div className="flex items-center justify-between px-4 pt-4 pb-3">
-          <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
-          <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
-          <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
-        </div>
-        <div className="flex-1 px-4 space-y-4 pt-2 pb-36">
+      <div className="min-h-screen bg-white flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto pb-36">
+          <div className="flex items-center justify-end px-5 pt-4 pb-2">
+            <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+          </div>
+          <div className="px-4 space-y-4 pt-2">
           <div className="flex gap-3">
             <div className="w-20 h-20 rounded-xl bg-gray-200 animate-pulse shrink-0" />
             <div className="flex-1 space-y-2 pt-1">
@@ -273,6 +272,7 @@ function ReviewPageContent() {
               </div>
             </div>
           ))}
+          </div>
         </div>
         <div className="fixed bottom-0 left-0 right-0 px-4 pb-8 pt-4 space-y-3 bg-white border-t border-gray-100 z-40">
           <StepProgressBar step={1} />
@@ -294,21 +294,18 @@ function ReviewPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* ── Top nav ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end px-4 pt-4 pb-2">
-        <Link
-          href={`/gyms/${gymSlugOrId}`}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Exit to gym listing"
-        >
-          <X className="w-4 h-4 text-gray-700" />
-        </Link>
-      </div>
-
-      {/* ── Scrollable content ──────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-36">
-        {/* Page title */}
+    <div className="min-h-screen bg-white flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto pb-36">
+        <div className="flex items-center justify-end px-5 pt-4 pb-2">
+          <Link
+            href={`/gyms/${gymSlugOrId}`}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Exit to gym listing"
+          >
+            <X className="w-4 h-4 text-gray-700" />
+          </Link>
+        </div>
+        <div className="px-4 pt-2">
         <h1 className="text-3xl font-bold text-gray-900 mb-5">Review and continue</h1>
         {/* ── Gym + booking summary card ─────────────────────────────── */}
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
@@ -391,6 +388,7 @@ function ReviewPageContent() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 

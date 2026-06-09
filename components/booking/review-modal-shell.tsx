@@ -123,13 +123,13 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
     <div className="fixed inset-0 z-[200] bg-white flex flex-col overflow-hidden">
       <LoadingOverlay show={true} zClass="z-[220]" />
 
-      <div className="flex items-center justify-end px-5 pt-4 pb-2 flex-shrink-0">
-        <div className="w-8 h-8 flex items-center justify-center rounded-full">
-          <X className="w-4 h-4 text-gray-700" />
+      <div className="flex-1 overflow-y-auto pb-36">
+        <div className="flex items-center justify-end px-5 pt-4 pb-2">
+          <div className="w-8 h-8 flex items-center justify-center rounded-full">
+            <X className="w-4 h-4 text-gray-700" />
+          </div>
         </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-36">
+        <div className="px-4 pt-2">
         <h1 className="text-3xl font-bold text-gray-900 mb-5">Review and continue</h1>
 
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
@@ -199,6 +199,7 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
               </span>
             </div>
           </div>
+        </div>
         </div>
       </div>
 

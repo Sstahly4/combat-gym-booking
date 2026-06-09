@@ -263,19 +263,18 @@ export function ReviewModal({
         </div>
       ) : ready ? (
         <>
-          {/* ── Top nav ─────────────────────────────────────────────── */}
-          <div className="flex items-center justify-end px-5 pt-4 pb-2 flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4 text-gray-700" />
-            </button>
-          </div>
-
-          {/* ── Scrollable content ──────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto px-4 pt-2 pb-36">
+          {/* ── Scrollable content (top bar scrolls with page, like steps 2–3) ── */}
+          <div className="flex-1 overflow-y-auto pb-36">
+            <div className="flex items-center justify-end px-5 pt-4 pb-2">
+              <button
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 text-gray-700" />
+              </button>
+            </div>
+            <div className="px-4 pt-2">
             <h1 className="text-3xl font-bold text-gray-900 mb-5">Review and continue</h1>
 
             <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
@@ -377,6 +376,7 @@ export function ReviewModal({
                   />
                 </label>
               </div>
+            </div>
             </div>
           </div>
 

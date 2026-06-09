@@ -145,6 +145,7 @@ function PaymentMethodSheet({
   primaryLabel,
   onPrimary,
   children,
+  layer = 'primary',
 }: {
   onClose: () => void
   onCancel: () => void
@@ -152,7 +153,11 @@ function PaymentMethodSheet({
   primaryLabel: 'Next' | 'Done'
   onPrimary: () => void
   children: ReactNode
+  /** Nested sheet stacks above the Pay with picker (e.g. Add card details) */
+  layer?: 'primary' | 'nested'
 }) {
+  const backdropZ = layer === 'nested' ? 'z-[311]' : 'z-[301]'
+  const sheetZ = layer === 'nested' ? 'z-[312]' : 'z-[302]'
   const [sheetTranslateY, setSheetTranslateY] = useState(0)
   const sheetStartY = useRef(0)
   const sheetIsDragging = useRef(false)
@@ -180,7 +185,7 @@ function PaymentMethodSheet({
       <button
         type="button"
         aria-label="Close"
-        className="fixed inset-0 bg-black/50 z-[301]"
+        className={`fixed inset-0 bg-black/50 ${backdropZ}`}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -188,7 +193,7 @@ function PaymentMethodSheet({
         }}
       />
       <div
-        className="fixed inset-x-0 top-[4%] bottom-0 z-[302] flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform"
+        className={`fixed inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform`}
         style={{ transform: `translateY(${sheetTranslateY}px)` }}
       >
         <div
@@ -450,31 +455,28 @@ function CheckoutForm({
     await handlePaymentResult(confirmError ?? null, paymentIntent)
   }
 
-  const modalPrimaryLabel: 'Next' | 'Done' =
-    paymentModalStep === 'card-details'
-      ? 'Done'
-      : draftPaymentMethod === 'card'
-        ? 'Next'
-        : 'Done'
-
-  const handleModalPrimary = () => {
-    if (paymentModalStep === 'pick') {
-      if (draftPaymentMethod === 'card') {
-        onPaymentMethodChange?.('card')
-        onCardFieldsMounted?.()
-        onPaymentModalStepChange?.('card-details')
-        return
-      }
-      onPaymentMethodChange?.(draftPaymentMethod)
-      onCloseMobilePaymentModal?.()
+  const handlePickPrimary = () => {
+    if (draftPaymentMethod === 'card') {
+      onPaymentMethodChange?.('card')
+      onCardFieldsMounted?.()
+      onPaymentModalStepChange?.('card-details')
       return
     }
+    onPaymentMethodChange?.(draftPaymentMethod)
     onCloseMobilePaymentModal?.()
   }
 
-  const handleModalCancel = () => {
+  const handlePickDismiss = () => {
     onDraftPaymentMethodChange?.(selectedPaymentMethod)
     onPaymentModalStepChange?.('pick')
+    onCloseMobilePaymentModal?.()
+  }
+
+  const handleCardDetailsDismiss = () => {
+    onPaymentModalStepChange?.('pick')
+  }
+
+  const handleCardDetailsDone = () => {
     onCloseMobilePaymentModal?.()
   }
 
@@ -489,7 +491,7 @@ function CheckoutForm({
     paymentFieldsMounted &&
     cardFieldsMounted &&
     selectedPaymentMethod === 'card' &&
-    !mobilePaymentModalOpen
+    (!mobilePaymentModalOpen || paymentModalStep !== 'card-details')
 
   if (hideMobileSubmit) {
     return (
@@ -502,23 +504,32 @@ function CheckoutForm({
           )}
           {paymentFieldsMounted && mobilePaymentModalOpen && (
             <PaymentMethodSheet
-              onClose={handleModalCancel}
-              onCancel={handleModalCancel}
-              title={paymentModalStep === 'card-details' ? 'Add card details' : 'Pay with'}
-              primaryLabel={modalPrimaryLabel}
-              onPrimary={handleModalPrimary}
+              onClose={handlePickDismiss}
+              onCancel={handlePickDismiss}
+              title="Pay with"
+              primaryLabel={draftPaymentMethod === 'card' ? 'Next' : 'Done'}
+              onPrimary={handlePickPrimary}
             >
-              {paymentModalStep === 'pick' ? (
-                <>
-                  <div className="relative z-10 flex-shrink-0">
-                    <PaymentMethodPicker
-                      value={draftPaymentMethod}
-                      onChange={(method) => onDraftPaymentMethodChange?.(method)}
-                    />
-                  </div>
-                  <div className="flex-1 min-h-0" aria-hidden />
-                </>
-              ) : (
+              <div className="relative z-10 flex-shrink-0">
+                <PaymentMethodPicker
+                  value={draftPaymentMethod}
+                  onChange={(method) => onDraftPaymentMethodChange?.(method)}
+                />
+              </div>
+              <div className="flex-1 min-h-0" aria-hidden />
+            </PaymentMethodSheet>
+          )}
+          {paymentFieldsMounted &&
+            mobilePaymentModalOpen &&
+            paymentModalStep === 'card-details' && (
+              <PaymentMethodSheet
+                layer="nested"
+                onClose={handleCardDetailsDismiss}
+                onCancel={handleCardDetailsDismiss}
+                title="Add card details"
+                primaryLabel="Done"
+                onPrimary={handleCardDetailsDone}
+              >
                 <div className="relative z-10 flex-shrink-0 overflow-y-auto space-y-3 pb-4">
                   <p className="text-sm text-gray-600">
                     You&apos;ll pay when you complete this booking.
@@ -527,12 +538,11 @@ function CheckoutForm({
                     <PaymentElement options={CARD_ELEMENT_OPTIONS} />
                   )}
                 </div>
-              )}
-              {error && (
-                <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
-              )}
-            </PaymentMethodSheet>
-          )}
+                {error && (
+                  <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
+                )}
+              </PaymentMethodSheet>
+            )}
         </form>
         {!mobilePaymentModalOpen && (
           <div className="space-y-2">

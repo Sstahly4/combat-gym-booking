@@ -11,18 +11,28 @@ export const PAYMENT_BRAND_ASSETS = {
 } as const
 
 /**
- * Industry-standard display sizes (Airbnb/Stripe checkout patterns):
- * - list: ~24–28px tall in the payment-method picker rows
- * - compact: ~20px icon in collapsed summary rows (or text-only for wallets)
+ * @see https://developer.apple.com/apple-pay/marketing/ — preserve aspect ratio; min clear space ≈ ¼ mark height
  */
-const WALLET_MARK_SIZES = {
+const APPLE_PAY_MARK_SIZES = {
   list: 'h-6 w-auto max-w-[2.75rem] object-contain',
   compact: 'h-5 w-auto max-w-[2.25rem] object-contain',
 } as const
 
-type WalletMarkSize = keyof typeof WALLET_MARK_SIZES
+/**
+ * Google Pay acceptance mark is much wider (~1.47:1) than Apple Pay.
+ * @see https://developers.google.com/pay/api/web/guides/brand-guidelines
+ * - Match height to peer payment marks; never smaller than other identities
+ * - Clear space ≥ 0.5× capital G height (≥ 8dp) — applied via frame padding
+ * - Do not cap width with Apple’s max-w; that shrinks the mark below its set height
+ */
+const GOOGLE_PAY_MARK_SIZES = {
+  list: 'h-7 w-auto min-w-[3.25rem] max-w-[5rem] object-contain',
+  compact: 'h-6 w-auto min-w-[2.75rem] max-w-[4.25rem] object-contain',
+} as const
 
-function WalletMarkFrame({
+type WalletMarkSize = keyof typeof APPLE_PAY_MARK_SIZES
+
+function ApplePayMarkFrame({
   children,
   size,
 }: {
@@ -30,6 +40,22 @@ function WalletMarkFrame({
   size: WalletMarkSize
 }) {
   const pad = size === 'list' ? 'p-1' : 'p-0.5'
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center box-content ${pad}`}>
+      {children}
+    </span>
+  )
+}
+
+/** Google mark clear space: min 8dp on all sides per brand guidelines */
+function GooglePayMarkFrame({
+  children,
+  size,
+}: {
+  children: ReactNode
+  size: WalletMarkSize
+}) {
+  const pad = size === 'list' ? 'p-2' : 'p-1.5'
   return (
     <span className={`inline-flex shrink-0 items-center justify-center box-content ${pad}`}>
       {children}
@@ -123,11 +149,11 @@ export function GooglePayMark({
   size?: WalletMarkSize
   className?: string
 }) {
-  const markClass = [WALLET_MARK_SIZES[size], className].filter(Boolean).join(' ')
+  const markClass = [GOOGLE_PAY_MARK_SIZES[size], className].filter(Boolean).join(' ')
   return (
-    <WalletMarkFrame size={size}>
+    <GooglePayMarkFrame size={size}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.googlePay} alt="Google Pay" className={markClass} />
-    </WalletMarkFrame>
+    </GooglePayMarkFrame>
   )
 }
 
@@ -139,20 +165,42 @@ export function ApplePayMark({
   size?: WalletMarkSize
   className?: string
 }) {
-  const markClass = [WALLET_MARK_SIZES[size], className].filter(Boolean).join(' ')
+  const markClass = [APPLE_PAY_MARK_SIZES[size], className].filter(Boolean).join(' ')
   return (
-    <WalletMarkFrame size={size}>
+    <ApplePayMarkFrame size={size}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.applePay} alt="Apple Pay" className={markClass} />
-    </WalletMarkFrame>
+    </ApplePayMarkFrame>
   )
 }
 
-export function CardBrandLogosRow({ className }: { className?: string }) {
+const CARD_BRAND_LOGO_SIZES = {
+  compact: {
+    visa: 'h-3 w-auto',
+    mastercard: 'h-3.5 w-auto',
+    amex: 'h-3 w-auto',
+    gap: 'gap-2.5',
+  },
+  list: {
+    visa: 'h-4 w-auto',
+    mastercard: 'h-4 w-auto',
+    amex: 'h-4 w-auto',
+    gap: 'gap-1.5',
+  },
+} as const
+
+export function CardBrandLogosRow({
+  className,
+  size = 'compact',
+}: {
+  className?: string
+  size?: keyof typeof CARD_BRAND_LOGO_SIZES
+}) {
+  const s = CARD_BRAND_LOGO_SIZES[size]
   return (
-    <div className={`flex items-center gap-2.5 ${className ?? ''}`}>
-      <VisaLogo className="h-3 w-auto" />
-      <MastercardLogo className="h-3.5 w-auto" />
-      <AmexLogo className="h-3 w-auto" />
+    <div className={`flex items-center ${s.gap} ${className ?? ''}`}>
+      <VisaLogo className={s.visa} />
+      <MastercardLogo className={s.mastercard} />
+      <AmexLogo className={s.amex} />
     </div>
   )
 }

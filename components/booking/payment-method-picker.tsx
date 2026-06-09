@@ -1,8 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { CreditCard } from 'lucide-react'
-import { ApplePayMark, GooglePayMark } from '@/components/booking/payment-brand-logos'
+import { ApplePayMark, CardBrandLogosRow, GooglePayMark } from '@/components/booking/payment-brand-logos'
 
 export type PaymentMethodChoice = 'card' | 'apple_pay' | 'google_pay'
 
@@ -26,6 +25,7 @@ function PaymentMethodOption({
   icon,
   children,
   ariaLabel,
+  iconClassName,
 }: {
   selected: boolean
   onSelect: () => void
@@ -33,6 +33,7 @@ function PaymentMethodOption({
   icon: ReactNode
   children?: ReactNode
   ariaLabel: string
+  iconClassName?: string
 }) {
   return (
     <button
@@ -42,7 +43,9 @@ function PaymentMethodOption({
       aria-pressed={selected}
       aria-label={ariaLabel}
     >
-      <div className="flex min-h-11 min-w-[3.75rem] shrink-0 items-center justify-start text-gray-900">
+      <div
+        className={`flex min-h-11 min-w-[3.75rem] shrink-0 items-center justify-start text-gray-900 ${iconClassName ?? ''}`}
+      >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -67,7 +70,8 @@ export function PaymentMethodPicker({
         selected={value === 'card'}
         onSelect={() => onChange('card')}
         label="Credit or debit card"
-        icon={<CreditCard className="h-5 w-5" strokeWidth={1.75} />}
+        icon={<CardBrandLogosRow size="list" />}
+        iconClassName="min-w-[4.75rem]"
         ariaLabel="Pay with credit or debit card"
       />
       <PaymentMethodOption
@@ -75,6 +79,7 @@ export function PaymentMethodPicker({
         onSelect={() => onChange('google_pay')}
         label="Google Pay"
         icon={<GooglePayMark size="list" />}
+        iconClassName="min-w-[4.75rem]"
         ariaLabel="Pay with Google Pay"
       />
       <PaymentMethodOption
