@@ -291,6 +291,18 @@ function BookingSummaryPageContent() {
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`
   }
 
+  const formatDateRange = (from: string, to: string) => {
+    if (!from || !to) return 'No dates selected'
+    const a = new Date(from + 'T00:00:00')
+    const b = new Date(to + 'T00:00:00')
+    const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
+    if (sameMonth) {
+      const month = a.toLocaleDateString('en-GB', { month: 'long' })
+      return `${a.getDate()}–${b.getDate()} ${month} ${a.getFullYear()}`
+    }
+    return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'long' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
+  }
+
   const handleSubmit = async () => {
     if (!gym || !package_) return
     if (!isValidDuration) {
@@ -441,7 +453,7 @@ function BookingSummaryPageContent() {
 
           {/* Compact gym summary — same card as Step 1 review modal */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-4 pt-4 pb-4">
+            <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex gap-3 items-start">
                 {mainImage ? (
                   <img src={mainImage} alt={gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
@@ -462,6 +474,31 @@ function BookingSummaryPageContent() {
                       <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-100 px-4">
+              <div className="py-3">
+                <div className="text-sm font-semibold text-gray-900 mb-0.5">Dates</div>
+                <div className="text-sm text-gray-600">{formatDateRange(checkin, checkout)}</div>
+                {isValidDuration && (isTraining ? pricingDuration : duration) > 0 && (
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {isTraining
+                      ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                      : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
+                  </div>
+                )}
+              </div>
+              <div className="py-3">
+                <div className="text-sm font-semibold text-gray-900">
+                  Total:{' '}
+                  <span className="font-semibold">
+                    {priceInfo
+                      ? formatPrice(convertPrice(finalTotal, gym.currency))
+                      : checkin && checkout
+                        ? 'Calculating…'
+                        : '—'}
+                  </span>
                 </div>
               </div>
             </div>

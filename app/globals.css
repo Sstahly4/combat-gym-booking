@@ -72,6 +72,16 @@
   }
 
   /*
+   * Touch devices: no native tap flash, and no lingering :hover paint after tap.
+   * Pair with `can-hover:` Tailwind variants for background hovers on buttons.
+   */
+  button,
+  a,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
    * Suppress browser-native password reveal/clear buttons so they don't
    * overlap our custom PasswordInput toggle eye. Edge renders ::-ms-reveal
    * at the exact same position as our button; Chrome/-webkit can do similar.

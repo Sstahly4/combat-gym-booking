@@ -526,7 +526,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                                     setActivePackage(pkg)
                                     setVariantsModalOpen(true)
                                   }}
-                                  className="text-gray-600 font-medium text-xs md:text-sm mt-1 hover:underline"
+                                  className="text-gray-600 font-medium text-xs md:text-sm mt-1 can-hover:hover:underline"
                                 >
                                   See more
                                 </button>
@@ -538,7 +538,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                                       e.stopPropagation()
                                       setExpandedDescriptions(prev => ({ ...prev, [pkg.id]: false }))
                                     }}
-                                    className="text-gray-600 font-medium text-xs md:text-sm mt-1 hover:underline"
+                                    className="text-gray-600 font-medium text-xs md:text-sm mt-1 can-hover:hover:underline"
                                   >
                                     See less
                                   </button>
@@ -548,7 +548,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                                       e.stopPropagation()
                                       setExpandedDescriptions(prev => ({ ...prev, [pkg.id]: true }))
                                     }}
-                                    className="text-gray-600 font-medium text-xs md:text-sm mt-1 hover:underline"
+                                    className="text-gray-600 font-medium text-xs md:text-sm mt-1 can-hover:hover:underline"
                                   >
                                     See more
                                   </button>
@@ -823,7 +823,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         </div>
                         {needsTruncation && (
                           <button
-                            className="text-[#003580] font-medium text-sm mt-2 hover:underline"
+                            className="text-[#003580] font-medium text-sm mt-2 can-hover:hover:underline"
                             onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: !isExpanded }))}
                           >
                             {isExpanded ? 'Show less' : 'Show more'}
@@ -1167,7 +1167,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       ))}
                       {needsTruncation && (
                         <button
-                          className="text-[#003580] font-medium text-sm mt-2 hover:underline"
+                          className="text-[#003580] font-medium text-sm mt-2 can-hover:hover:underline"
                           onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: !isExpanded }))}
                         >
                           {isExpanded ? 'Show less' : 'Show more'}
@@ -1246,9 +1246,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       </span>
                       {activePackage.description.length > 150 && (
                         !expandedDescriptions[activePackage.id] ? (
-                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: true }))} className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1">See more</button>
+                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: true }))} className="text-gray-600 font-medium text-sm mt-1 can-hover:hover:underline ml-1">See more</button>
                         ) : (
-                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: false }))} className="text-gray-600 font-medium text-sm mt-1 hover:underline ml-1">See less</button>
+                          <button onClick={() => setExpandedDescriptions(prev => ({ ...prev, [activePackage.id]: false }))} className="text-gray-600 font-medium text-sm mt-1 can-hover:hover:underline ml-1">See less</button>
                         )
                       )}
                     </div>

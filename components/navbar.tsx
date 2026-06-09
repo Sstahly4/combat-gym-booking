@@ -23,7 +23,7 @@ import { NotificationBell } from '@/components/manage/notification-bell'
 import { AdminNotificationBell } from '@/components/admin/admin-notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
-import { getFlagUrl } from '@/lib/utils/flag-url'
+import { getFlagUrl, getFlagSrcSet, FLAG_MENU_DISPLAY_PX } from '@/lib/utils/flag-url'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
@@ -108,6 +108,7 @@ export function Navbar() {
     : 'English (United Kingdom)'
 
   const flagUrl = getFlagUrl(selectedLanguage)
+  const flagSrcSet = getFlagSrcSet(selectedLanguage)
 
   const handleSignOut = async () => {
     await signOut()
@@ -498,10 +499,11 @@ export function Navbar() {
                         {flagUrl ? (
                           <img
                             src={flagUrl}
+                            srcSet={flagSrcSet ?? undefined}
                             alt={selectedLanguage}
-                            width={20}
-                            height={15}
-                            className="w-full h-full object-cover"
+                            width={FLAG_MENU_DISPLAY_PX}
+                            height={FLAG_MENU_DISPLAY_PX / 2}
+                            className="max-h-full max-w-full object-contain"
                           />
                         ) : (
                           <Globe className="w-5 h-5 text-[#003580]" />

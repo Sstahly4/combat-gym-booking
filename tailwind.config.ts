@@ -82,7 +82,14 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addVariant }: { addVariant: (name: string, definition: string) => void }) {
+      // Hover backgrounds only on devices with a real pointer — prevents sticky
+      // blue/gray tap highlights on iOS Safari after a touch ends.
+      addVariant("can-hover", "@media (hover: hover) and (pointer: fine)")
+    },
+  ],
 } satisfies Config
 
 export default config

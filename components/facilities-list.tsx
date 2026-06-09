@@ -39,7 +39,6 @@ import {
   Link2,
   CircleDot,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { labelGymAmenity } from '@/lib/constants/gym-amenities'
 
 interface FacilitiesListProps {
@@ -160,10 +159,10 @@ export function FacilitiesList({ amenities, disciplines }: FacilitiesListProps) 
       </div>
       {hasMore && (
         <div className="mt-4">
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => setShowAll(!showAll)}
-            className="text-[#003580] hover:text-[#003580] hover:bg-[#003580]/10 p-0 h-auto font-normal"
+            className="inline-flex items-center text-sm font-normal text-[#003580] can-hover:hover:underline"
           >
             {showAll ? (
               <>
@@ -176,7 +175,7 @@ export function FacilitiesList({ amenities, disciplines }: FacilitiesListProps) 
                 See more facilities ({allFacilities.length - initialCount} more)
               </>
             )}
-          </Button>
+          </button>
         </div>
       )}
     </div>

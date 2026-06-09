@@ -130,7 +130,7 @@ export function ReviewCard({ review, compact = false }: ReviewCardProps & { comp
             {shouldTruncate && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="text-gray-600 font-medium text-sm mt-1 hover:underline"
+                className="text-gray-600 font-medium text-sm mt-1 can-hover:hover:underline"
               >
                 {isExpanded ? 'See less' : 'See more'}
               </button>

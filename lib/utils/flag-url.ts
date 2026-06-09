@@ -30,7 +30,20 @@ function getFlagCountryCode(lang: string): string | null {
   return null
 }
 
+/** Matches the sandwich-menu flag circle (`w-10` = 40px). */
+export const FLAG_MENU_DISPLAY_PX = 40
+
 export function getFlagUrl(lang: string): string | null {
   const code = getFlagCountryCode(lang)
-  return code ? `https://flagcdn.com/w40/${code}.webp` : null
+  if (!code) return null
+  // flagcdn `w` sets width; height is half (2:1) — never stretch into the square circle.
+  // Serve 2× width for retina so a 40px circle stays sharp on mobile.
+  return `https://flagcdn.com/w${FLAG_MENU_DISPLAY_PX * 2}/${code}.webp`
+}
+
+export function getFlagSrcSet(lang: string): string | null {
+  const code = getFlagCountryCode(lang)
+  if (!code) return null
+  const w = FLAG_MENU_DISPLAY_PX
+  return `https://flagcdn.com/w${w}/${code}.webp 1x, https://flagcdn.com/w${w * 2}/${code}.webp 2x`
 }

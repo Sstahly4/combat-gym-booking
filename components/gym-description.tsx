@@ -60,7 +60,7 @@ export function GymDescription({ gymName, description, landmarksText, amenities,
             {(needsTruncation || isExpanded) && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="text-[#003580] font-medium text-sm mt-2 hover:underline"
+                className="text-[#003580] font-medium text-sm mt-2 can-hover:hover:underline"
               >
                 {isExpanded ? 'See less' : 'See more'}
               </button>
