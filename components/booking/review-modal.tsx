@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Star, X, ChevronRight } from 'lucide-react'
-import { calculatePackagePrice, type PriceLine } from '@/lib/utils'
+import { calculatePackagePrice } from '@/lib/utils'
+import {
+  CheckoutSummaryRow,
+  formatCheckoutAmountOnly,
+  formatCheckoutDateRange,
+  formatCheckoutPriceWithCode,
+} from '@/components/booking/checkout-ui'
+import { PriceDetailsSheet } from '@/components/booking/price-details-sheet'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
@@ -26,264 +33,6 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
           style={{ backgroundColor: s <= step ? '#003580' : '#e5e7eb' }}
         />
       ))}
-    </div>
-  )
-}
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  AUD: 'A$',
-  THB: '฿',
-  IDR: 'Rp',
-  JPY: '¥',
-  CNY: '¥',
-  SGD: 'S$',
-  MYR: 'RM',
-  NZD: 'NZ$',
-  CAD: 'C$',
-  HKD: 'HK$',
-  INR: '₹',
-  KRW: '₩',
-  PHP: '₱',
-  VND: '₫',
-}
-
-function formatPriceWithCode(amount: number, currency: string): string {
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
-  return symbol ? `${symbol}${formatted} ${currency}` : `${currency} ${formatted}`
-}
-
-function formatAmountOnly(amount: number, currency: string): string {
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
-  return symbol ? `${symbol}${formatted}` : formatted
-}
-
-function lineUnitLabel(line: PriceLine): string {
-  if (line.label.toLowerCase().includes('session')) {
-    return line.qty === 1 ? 'session' : 'sessions'
-  }
-  if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
-  if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
-  return line.qty === 1 ? 'night' : 'nights'
-}
-
-function formatBreakdownDateRange(from: string, to: string): string {
-  const a = new Date(from + 'T00:00:00')
-  const b = new Date(to + 'T00:00:00')
-  const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
-  if (sameMonth) {
-    const month = a.toLocaleDateString('en-GB', { month: 'long' })
-    return `${a.getDate()}–${b.getDate()} ${month}`
-  }
-  return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'short' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'short' })}`
-}
-
-function stayUnitLabel(count: number, isTraining: boolean): string {
-  if (isTraining) return count === 1 ? 'day' : 'days'
-  return count === 1 ? 'night' : 'nights'
-}
-
-// ─── Price breakdown (nested above price details) ─────────────────────────────
-function PriceBreakdownSheet({
-  summaryLabel,
-  savedVsNightly,
-  total,
-  gymCurrency,
-  displayCurrency,
-  convertPrice,
-  onClose,
-}: {
-  summaryLabel: string
-  savedVsNightly: number
-  total: number
-  gymCurrency: string
-  displayCurrency: string
-  convertPrice: (amount: number, fromCurrency: string) => number
-  onClose: () => void
-}) {
-  const formatDisplay = (amount: number) =>
-    formatPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
-
-  const preDiscountTotal = total + savedVsNightly
-
-  return (
-    <div className="fixed inset-0 z-[310]">
-      <div className="fixed inset-0 bg-black/50 z-[311]" onClick={onClose} />
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[312] flex flex-col max-h-[85dvh]"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
-      >
-        <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">
-          <h3 className="text-base font-semibold text-gray-900">Price breakdown</h3>
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Close price breakdown"
-          >
-            <X className="w-4 h-4 text-gray-800" />
-          </button>
-        </div>
-
-        <div className="px-6 pb-2 flex-1 overflow-y-auto">
-          <div className="space-y-5">
-            <div className="flex items-start justify-between gap-6">
-              <span className="text-[15px] leading-snug text-gray-900">{summaryLabel}</span>
-              <span className="text-[15px] leading-snug text-gray-900 shrink-0 text-right">
-                {formatDisplay(preDiscountTotal)}
-              </span>
-            </div>
-
-            {savedVsNightly > 0 && (
-              <div>
-                <div className="flex items-start justify-between gap-6">
-                  <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
-                  <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
-                    -{formatDisplay(savedVsNightly)}
-                  </span>
-                </div>
-                <p className="mt-1.5 text-xs leading-relaxed text-gray-500 pr-6">
-                  Bundle pricing applied for your selected dates. Weekly and monthly rates can
-                  reduce your total compared with paying the nightly rate.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-200 mt-6 pt-5 flex items-baseline justify-between gap-6">
-            <span className="text-[15px] font-semibold text-gray-900">
-              Total <span className="font-semibold underline">{displayCurrency}</span>
-            </span>
-            <span className="text-[15px] font-semibold text-gray-900 shrink-0 text-right">
-              {formatDisplay(total)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Price details bottom sheet ────────────────────────────────────────────────
-function PriceDetailsSheet({
-  lines,
-  savedVsNightly,
-  total,
-  gymCurrency,
-  displayCurrency,
-  convertPrice,
-  checkin,
-  checkout,
-  pricingDuration,
-  isTraining,
-  onClose,
-}: {
-  lines: PriceLine[]
-  savedVsNightly: number
-  total: number
-  gymCurrency: string
-  displayCurrency: string
-  convertPrice: (amount: number, fromCurrency: string) => number
-  checkin: string
-  checkout: string
-  pricingDuration: number
-  isTraining: boolean
-  onClose: () => void
-}) {
-  const [breakdownOpen, setBreakdownOpen] = useState(false)
-
-  const formatDisplay = (amount: number) =>
-    formatPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
-
-  const breakdownSummaryLabel =
-    checkin && checkout && pricingDuration > 0
-      ? `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} · ${formatBreakdownDateRange(checkin, checkout)}`
-      : `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
-
-  return (
-    <div className="fixed inset-0 z-[300]">
-      <div
-        className="fixed inset-0 bg-black/50 z-[301]"
-        onClick={() => {
-          if (!breakdownOpen) onClose()
-        }}
-      />
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
-      >
-        <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">
-          <h3 className="text-base font-semibold text-gray-900">Price details</h3>
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4 text-gray-800" />
-          </button>
-        </div>
-
-        <div className="px-6 pb-2 flex-1 overflow-y-auto">
-          <div className="space-y-5">
-            {lines.map((line, i) => (
-              <div key={i} className="flex items-start justify-between gap-6">
-                <span className="text-[15px] leading-snug text-gray-900">
-                  {line.qty} {lineUnitLabel(line)} x {formatDisplay(line.unitPrice)}
-                </span>
-                <span className="text-[15px] leading-snug text-gray-900 shrink-0 text-right">
-                  {formatDisplay(line.subtotal)}
-                </span>
-              </div>
-            ))}
-            {savedVsNightly > 0 && (
-              <div className="flex items-start justify-between gap-6">
-                <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
-                <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
-                  -{formatDisplay(savedVsNightly)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-200 mt-6 pt-5 flex items-baseline justify-between gap-6">
-            <span className="text-[15px] font-semibold text-gray-900">
-              Total <span className="font-semibold underline">{displayCurrency}</span>
-            </span>
-            <span className="text-[15px] font-semibold text-gray-900 shrink-0 text-right">
-              {formatDisplay(total)}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setBreakdownOpen(true)}
-            className="mt-4 text-[15px] text-gray-900 underline text-left hover:text-gray-700 transition-colors"
-          >
-            Price breakdown
-          </button>
-        </div>
-      </div>
-
-      {breakdownOpen && (
-        <PriceBreakdownSheet
-          summaryLabel={breakdownSummaryLabel}
-          savedVsNightly={savedVsNightly}
-          total={total}
-          gymCurrency={gymCurrency}
-          displayCurrency={displayCurrency}
-          convertPrice={convertPrice}
-          onClose={() => setBreakdownOpen(false)}
-        />
-      )}
     </div>
   )
 }
@@ -346,40 +95,6 @@ function GuestSheet({
           </Button>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ─── Row ──────────────────────────────────────────────────────────────────────
-function Row({
-  label,
-  value,
-  sub,
-  onEdit,
-  editLabel = 'Change',
-}: {
-  label: string
-  value: ReactNode
-  sub?: string
-  onEdit?: () => void
-  editLabel?: string
-}) {
-  return (
-    <div className="flex items-start justify-between py-4">
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-gray-900 mb-0.5">{label}</div>
-        <div className="text-sm text-gray-700">{value}</div>
-        {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-      </div>
-      {onEdit && (
-        <button
-          type="button"
-          onClick={onEdit}
-          className="ml-4 inline-flex shrink-0 items-center justify-center rounded-lg bg-gray-100 px-3.5 py-1.5 text-sm font-medium text-gray-900 can-hover:hover:bg-gray-200 active:bg-gray-200 transition-colors touch-manipulation"
-        >
-          {editLabel}
-        </button>
-      )}
     </div>
   )
 }
@@ -491,18 +206,6 @@ export function ReviewModal({
 
   const totalPrice = priceInfo ? convertPrice(priceInfo.price, gym?.currency ?? 'USD') : null
 
-  const formatDateRange = (from: string, to: string) => {
-    if (!from || !to) return 'No dates selected'
-    const a = new Date(from + 'T00:00:00')
-    const b = new Date(to + 'T00:00:00')
-    const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
-    if (sameMonth) {
-      const month = a.toLocaleDateString('en-GB', { month: 'long' })
-      return `${a.getDate()}–${b.getDate()} ${month} ${a.getFullYear()}`
-    }
-    return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'long' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
-  }
-
   const mainImage =
     gym?.images && gym.images.length > 0
       ? [...gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
@@ -602,22 +305,22 @@ export function ReviewModal({
 
               {/* ── Summary rows ──────────────────────────────────────── */}
               <div className="divide-y divide-gray-100 px-4">
-                <Row
+                <CheckoutSummaryRow
                   label="Dates"
-                  value={formatDateRange(checkin, checkout)}
+                  value={formatCheckoutDateRange(checkin, checkout)}
                   onEdit={() => setDatePickerOpen(true)}
                 />
-                <Row
+                <CheckoutSummaryRow
                   label="Guests"
                   value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
                   onEdit={() => setGuestSheetOpen(true)}
                 />
-                <Row
+                <CheckoutSummaryRow
                   label="Total price"
                   value={
                     totalPrice != null ? (
                       <span className="inline-flex items-baseline gap-1">
-                        <span>{formatAmountOnly(totalPrice, selectedCurrency)}</span>
+                        <span>{formatCheckoutAmountOnly(totalPrice, selectedCurrency)}</span>
                         <button
                           type="button"
                           onClick={() => setCurrencyModalOpen(true)}
@@ -650,7 +353,7 @@ export function ReviewModal({
                 <label className="flex items-center justify-between gap-4 px-4 py-4 cursor-default">
                   <span className="text-[15px] font-semibold text-gray-900">
                     {totalPrice != null ? (
-                      <>Pay {formatPriceWithCode(totalPrice, selectedCurrency)} now</>
+                      <>Pay {formatCheckoutPriceWithCode(totalPrice, selectedCurrency)} now</>
                     ) : checkin && checkout ? (
                       'Pay now'
                     ) : (

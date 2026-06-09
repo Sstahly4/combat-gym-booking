@@ -137,7 +137,7 @@ export function CurrencyModal({
     <div
       className={`flex flex-row items-center flex-shrink-0 bg-white border-t border-gray-100 ${
         checkoutSheet
-          ? 'justify-end gap-4 px-4 py-2.5'
+          ? 'justify-between px-4 py-2.5'
           : 'gap-3 px-4 py-3'
       }`}
       style={{ paddingBottom: checkoutSheet ? 'max(0.75rem, env(safe-area-inset-bottom))' : 'max(1rem, env(safe-area-inset-bottom))' }}
@@ -147,7 +147,7 @@ export function CurrencyModal({
           <button
             type="button"
             onClick={handleCancel}
-            className="text-sm font-semibold text-gray-900 px-1 py-1.5 hover:text-gray-600 transition-colors"
+            className="text-sm font-semibold text-gray-900 py-1.5 hover:text-gray-600 transition-colors"
           >
             Cancel
           </button>

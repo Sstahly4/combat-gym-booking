@@ -9,7 +9,22 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/types/database'
-import { MapPin, Dumbbell, ArrowLeft, ArrowRight, CreditCard, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Car,
+  CreditCard,
+  Check,
+  Dumbbell,
+  Droplets,
+  MapPin,
+  Star,
+  UtensilsCrossed,
+  Wifi,
+  X,
+} from 'lucide-react'
+import Link from 'next/link'
 import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
@@ -23,14 +38,63 @@ import {
   readPaymentIntentCache,
   clearPaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
-import Link from 'next/link'
 import { clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
+import {
+  CheckoutSummaryRow,
+  StepProgressBar,
+  formatCheckoutAmountOnly,
+  formatCheckoutDateRange,
+} from '@/components/booking/checkout-ui'
+import { PriceDetailsSheet } from '@/components/booking/price-details-sheet'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null
 
-function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
+const PAYMENT_FORM_ID = 'payment-checkout-form'
+
+function PaymentCheckoutTopBar({
+  onBack,
+  onExit,
+}: {
+  onBack: () => void
+  onExit: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back to your details"
+        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4 text-gray-900" />
+      </button>
+      <button
+        type="button"
+        onClick={onExit}
+        aria-label="Return to gym listing"
+        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+      >
+        <X className="w-4 h-4 text-gray-900" />
+      </button>
+    </div>
+  )
+}
+
+function CheckoutForm({
+  booking,
+  formId = PAYMENT_FORM_ID,
+  onLoadingChange,
+  onErrorChange,
+  hideMobileSubmit = false,
+}: {
+  booking: Booking & { gym: Gym }
+  formId?: string
+  onLoadingChange?: (loading: boolean) => void
+  onErrorChange?: (error: string | null) => void
+  hideMobileSubmit?: boolean
+}) {
   const router = useRouter()
   const params = useParams()
   const bookingId = params.id as string
@@ -45,12 +109,17 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
     if (!stripe || !elements) return
 
     setLoading(true)
+    onLoadingChange?.(true)
     setError(null)
+    onErrorChange?.(null)
 
     const { error: submitError } = await elements.submit()
     if (submitError) {
-      setError(submitError.message || 'Payment form error')
+      const msg = submitError.message || 'Payment form error'
+      setError(msg)
+      onErrorChange?.(msg)
       setLoading(false)
+      onLoadingChange?.(false)
       return
     }
 
@@ -66,8 +135,11 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
     })
 
     if (confirmError) {
-      setError(confirmError.message || 'Payment failed')
+      const msg = confirmError.message || 'Payment failed'
+      setError(msg)
+      onErrorChange?.(msg)
       setLoading(false)
+      onLoadingChange?.(false)
       return
     }
 
@@ -82,8 +154,11 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
         })
         const confirmData = await confirmRes.json()
         if (!confirmRes.ok) {
-          setError(confirmData?.error || 'Failed to finalize booking. Please contact support.')
+          const msg = confirmData?.error || 'Failed to finalize booking. Please contact support.'
+          setError(msg)
+          onErrorChange?.(msg)
           setLoading(false)
+          onLoadingChange?.(false)
           return
         }
 
@@ -91,8 +166,11 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
         router.replace(`/bookings/${bookingId}/success?payment_intent=${encodeURIComponent(paymentIntent.id)}&redirect_status=${encodeURIComponent(paymentIntent.status)}`)
         return
       } catch (err: any) {
-        setError(err?.message || 'Failed to finalize booking. Please contact support.')
+        const msg = err?.message || 'Failed to finalize booking. Please contact support.'
+        setError(msg)
+        onErrorChange?.(msg)
         setLoading(false)
+        onLoadingChange?.(false)
         return
       }
     }
@@ -100,12 +178,13 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
     // If Stripe performed a redirect, we won't reach here.
     // If we did reach here without a PI, stop loading.
     setLoading(false)
+    onLoadingChange?.(false)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
       <div className="space-y-3 md:space-y-4">
-        {(booking as any).package && booking.start_date && (
+        {!hideMobileSubmit && (booking as any).package && booking.start_date && (
           <BookingTrustLine
             pkg={(booking as any).package}
             gym={booking.gym}
@@ -120,28 +199,16 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
         <PaymentElement />
       </div>
       
-      {error && (
-        <div className="p-3 bg-red-50 text-red-800 rounded-md text-sm">
+      {error && !hideMobileSubmit && (
+        <div className="p-3 bg-red-50 text-red-800 rounded-md text-sm md:hidden">
           {error}
         </div>
       )}
-      
-      {/* Mobile: Fixed button at bottom */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-        <Button 
-          type="submit" 
-          className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90" 
-          disabled={!stripe || loading}
-        >
-          {loading ? 'Processing...' : (
-            <>
-              Confirm Booking
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </>
-          )}
-        </Button>
-        <PaymentHoldExplainer />
-      </div>
+      {error && (
+        <div className="hidden md:block p-3 bg-red-50 text-red-800 rounded-md text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Desktop: Inline button */}
       <div className="hidden md:block">
@@ -172,7 +239,7 @@ type BookingWithExtras = Booking & {
 export default function PaymentPage() {
   const params = useParams()
   const router = useRouter()
-  const { convertPrice, formatPrice } = useCurrency()
+  const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
   const bookingId = params.id as string
   const [clientSecret, setClientSecret] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
@@ -213,6 +280,9 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [addressCopied, setAddressCopied] = useState(false)
+  const [priceSheetOpen, setPriceSheetOpen] = useState(false)
+  const [payLoading, setPayLoading] = useState(false)
+  const [payError, setPayError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchBookingAndPaymentIntent()
@@ -364,55 +434,84 @@ export default function PaymentPage() {
     ? { clientSecret, appearance: { theme: 'stripe' as const } }
     : undefined
 
-  const mainImage = booking?.gym?.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
+  const mainImage =
+    booking?.gym?.images && booking.gym.images.length > 0
+      ? [...booking.gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
+      : null
+
+  const prefill =
+    booking?.gym_id && booking.package_id
+      ? readBookingPrefill(booking.gym_id, booking.package_id)
+      : null
+  const guestCount = prefill?.guestCount ?? 1
+  const gymCurrency = booking?.gym?.currency ?? 'USD'
+
+  const priceInfo =
+    booking?.package && displayDuration > 0
+      ? calculatePackagePrice(displayDuration, booking.package.type, {
+          daily: booking.variant?.price_per_day ?? booking.package.price_per_day,
+          weekly: booking.variant?.price_per_week ?? booking.package.price_per_week,
+          monthly: booking.variant?.price_per_month ?? booking.package.price_per_month,
+        })
+      : null
+
   // Prefer the server-confirmed total; fall back to a local recalculation from
   // prefill data so the price display is never "0" while loading.
   const serverTotal = booking?.total_price ?? 0
-  const localTotal = (() => {
-    if (serverTotal > 0) return serverTotal
-    if (!booking?.package || !booking.start_date || !booking.end_date) return 0
-    const d = Math.floor(
-      (new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24)
-    )
-    const isTrainingPkg = booking.package.type === 'training'
-    const pricingD = isTrainingPkg ? Math.max(1, d + 1) : d
-    const info = pricingD > 0 ? calculatePackagePrice(pricingD, booking.package.type, {
-      daily: booking.package.price_per_day,
-      weekly: booking.package.price_per_week,
-      monthly: booking.package.price_per_month,
-    }) : null
-    return info ? convertPrice(info.price, (booking.gym as any)?.currency ?? 'USD') : 0
-  })()
-  const totalPrice = localTotal
-  const finalTotal = totalPrice
+  const rawTotal = serverTotal > 0 ? serverTotal : (priceInfo?.price ?? 0)
+  const displayTotalPrice = rawTotal > 0 ? convertPrice(rawTotal, gymCurrency) : null
 
-  // Reconstruct Step 2 URL so back-nav works even after a page refresh
   const step2Url = booking
-    ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}`
+    ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}&guests=${guestCount}`
     : '#'
   const gymListingHref = booking ? `/gyms/${booking.gym.slug || booking.gym.id}` : '#'
+
+  const handleExitToGym = () => {
+    if (booking?.gym_id) clearGuestCheckoutSession(booking.gym_id)
+    try { sessionStorage.removeItem('review_modal_restore') } catch {}
+    try { sessionStorage.removeItem('booking_prefill') } catch {}
+    router.replace(gymListingHref)
+  }
 
   // During loading or while booking is null the overlay covers the page.
   // We still render the shell so the page isn't blank underneath the blur.
   if (!booking) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white flex flex-col overflow-hidden">
         <LoadingOverlay show={true} />
-        <BookingProgressBar currentStep={3} />
+        <div className="hidden md:block">
+          <BookingProgressBar currentStep={3} />
+        </div>
+        <PaymentCheckoutTopBar onBack={() => router.back()} onExit={() => router.back()} />
+        <div
+          className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 z-50"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <StepProgressBar step={3} />
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Overlay — covers while booking + PaymentIntent are loading.
-          Content (gym info, dates, price) is painted underneath from prefill. */}
-      <LoadingOverlay show={loading || !clientSecret} />
-      {/* Progress Bar */}
-      <BookingProgressBar currentStep={3} />
+  const reviewCount = booking.gym.reviewCount ?? 0
+  const averageRating = booking.gym.averageRating ?? 0
 
-      {/* Checkout nav: ← Back to details | × Exit to listing */}
-      <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
+  return (
+    <div className="min-h-screen bg-white flex flex-col overflow-hidden">
+      <LoadingOverlay show={loading || !clientSecret} />
+
+      <div className="hidden md:block">
+        <BookingProgressBar currentStep={3} />
+      </div>
+
+      <div className="md:hidden flex-shrink-0">
+        <PaymentCheckoutTopBar
+          onBack={() => router.replace(step2Url)}
+          onExit={handleExitToGym}
+        />
+      </div>
+
+      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-between">
         <button
           type="button"
           onClick={() => router.replace(step2Url)}
@@ -424,7 +523,7 @@ export default function PaymentPage() {
         <Link
           href={gymListingHref}
           onClick={() => {
-            if (booking?.gym_id) clearGuestCheckoutSession(booking.gym_id)
+            if (booking.gym_id) clearGuestCheckoutSession(booking.gym_id)
             try { sessionStorage.removeItem('review_modal_restore') } catch {}
             try { sessionStorage.removeItem('booking_prefill') } catch {}
           }}
@@ -435,242 +534,102 @@ export default function PaymentPage() {
         </Link>
       </div>
 
-      {/* Mobile Layout */}
-      <div className="md:hidden space-y-6 pb-24">
-        {/* Property Details - No Card Container */}
-        <div className="px-4 pt-4 space-y-3">
-          {/* Star Rating & Reviews */}
-          {booking.gym.reviewCount && booking.gym.reviewCount > 0 && booking.gym.averageRating && booking.gym.averageRating > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-4 h-4 ${
-                      star <= Math.round(booking.gym.averageRating || 0)
-                        ? 'fill-[#febb02] text-[#febb02]'
-                        : 'fill-gray-200 text-gray-200'
-                    }`}
+      <div className="flex-1 overflow-y-auto pb-36 md:pb-0">
+        {/* Mobile Layout */}
+        <div className="md:hidden px-4 py-6 space-y-6">
+          <h1 className="text-2xl font-bold text-gray-900">Confirm and pay</h1>
+
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+              <div className="flex gap-3 items-start">
+                {mainImage ? (
+                  <img src={mainImage} alt={booking.gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
+                )}
+                <div className="pt-0.5 min-w-0 flex-1">
+                  <p className="font-bold text-base text-gray-900 leading-snug line-clamp-2">{booking.gym.name}</p>
+                  <div className="flex items-center gap-4 mt-1">
+                    {reviewCount > 0 && averageRating > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-gray-900 text-gray-900" />
+                        <span className="text-xs font-medium text-gray-800">{averageRating.toFixed(1)}</span>
+                        <span className="text-xs text-gray-500">({reviewCount})</span>
+                      </div>
+                    )}
+                    {booking.package && (
+                      <span className="text-xs text-gray-600 font-medium">{booking.package.name}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-100 px-4">
+              <CheckoutSummaryRow
+                label="Dates"
+                value={formatCheckoutDateRange(booking.start_date, booking.end_date)}
+                onEdit={() => router.replace(step2Url)}
+              />
+              <CheckoutSummaryRow
+                label="Guests"
+                value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
+                onEdit={() => router.replace(step2Url)}
+              />
+              <CheckoutSummaryRow
+                label="Total price"
+                value={
+                  displayTotalPrice != null ? (
+                    <span className="inline-flex items-baseline gap-1">
+                      <span>{formatCheckoutAmountOnly(displayTotalPrice, selectedCurrency)}</span>
+                      <span className="font-semibold text-gray-900 underline">{selectedCurrency}</span>
+                    </span>
+                  ) : (
+                    'Calculating…'
+                  )
+                }
+                onEdit={priceInfo && rawTotal > 0 ? () => setPriceSheetOpen(true) : undefined}
+                editLabel="Details"
+              />
+              {booking.package && booking.start_date && (
+                <div className="py-3">
+                  <BookingTrustLine
+                    pkg={booking.package as any}
+                    gym={booking.gym}
+                    checkin={booking.start_date}
+                    variant="featured"
                   />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">
-                {booking.gym.averageRating.toFixed(1)} · {booking.gym.reviewCount} {booking.gym.reviewCount === 1 ? 'review' : 'reviews'}
-              </span>
-            </div>
-          )}
-          
-          <h2 className="font-bold text-xl text-gray-900">{booking.gym.name}</h2>
-          
-          {booking.gym.address && (
-            <div className="text-sm text-gray-700">
-              {booking.gym.address}
-            </div>
-          )}
-          {!booking.gym.address && (
-            <div className="text-sm text-gray-700">
-              {booking.gym.city}, {booking.gym.country}
-            </div>
-          )}
-          
-          {/* Amenities */}
-          {booking.gym.amenities && (
-            <div className="flex flex-wrap gap-3 pt-1">
-              {booking.gym.amenities.wifi && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Wifi className="w-4 h-4" />
-                  <span>Free WiFi</span>
                 </div>
               )}
-              {booking.gym.amenities.parking && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Car className="w-4 h-4" />
-                  <span>Parking</span>
-                </div>
-              )}
-              {booking.gym.amenities.meals && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <UtensilsCrossed className="w-4 h-4" />
-                  <span>Restaurant</span>
-                </div>
-              )}
-              {booking.gym.amenities.showers && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Droplets className="w-4 h-4" />
-                  <span>Showers</span>
-                </div>
-              )}
-              {booking.gym.amenities.accommodation && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Building2 className="w-4 h-4" />
-                  <span>Accommodation</span>
-                </div>
-              )}
-            </div>
-          )}
-          {/* Divider below hero section */}
-          <div className="pt-4 border-b border-gray-200"></div>
-        </div>
-
-        {/* Booking Dates */}
-        <div className="px-4 space-y-2 pb-4 border-b border-gray-200">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">Check-in</div>
-              <div className="font-semibold text-sm">{formatDate(booking.start_date)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">Check-out</div>
-              <div className="font-semibold text-sm">{formatDate(booking.end_date)}</div>
             </div>
           </div>
-        </div>
 
-        {/* You Selected */}
-        <div className="px-4 pb-4 border-b border-gray-200">
-          <div className="text-xs text-gray-500 mb-1">You selected</div>
-          <div className="font-semibold text-sm">
-            {isTraining
-              ? `${displayDuration} ${displayDuration === 1 ? 'day' : 'days'}`
-              : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-          </div>
-          {booking.package && (
-            <div className="font-semibold text-sm mt-1">
-              {booking.package.type === 'training' && `1 x ${booking.package.name}`}
-              {booking.package.type === 'accommodation' && booking.variant && `1 x ${booking.variant.name}`}
-              {booking.package.type === 'accommodation' && !booking.variant && '1 x Training + Accommodation'}
-              {booking.package.type === 'all_inclusive' && booking.variant && `1 x ${booking.variant.name}`}
-              {booking.package.type === 'all_inclusive' && !booking.variant && '1 x All Inclusive'}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Pay online</h2>
+            <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
+            <div className="flex items-center gap-3 p-4 border-2 border-[#003580] rounded-xl bg-blue-50/10">
+              <div className="w-10 h-10 rounded-full bg-[#003580] flex items-center justify-center flex-shrink-0">
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-sm">New card</div>
+                <div className="text-xs text-gray-600">Credit or debit card</div>
+              </div>
+              <div className="text-[#003580] text-lg">✓</div>
             </div>
-          )}
-        </div>
 
-        {/* Price Summary - In Container */}
-        <div className="px-4">
-          <Card className="border border-gray-300 rounded-lg shadow-sm">
-            <CardHeader className="bg-gray-50 border-b border-gray-300 pb-3">
-              <CardTitle className="text-lg font-semibold">Your price summary</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-3">
-              <div className="space-y-3 text-sm">
-                {booking.package?.type === 'training' && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">
-                      Training package ({displayDuration} {displayDuration === 1 ? 'day' : 'days'})
-                    </span>
-                    <span className="font-medium text-gray-900">
-                      {formatPrice(convertPrice(totalPrice, booking.gym.currency))}
-                    </span>
-                  </div>
-                )}
-                {(booking.package?.type === 'accommodation' || booking.package?.type === 'all_inclusive') && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">
-                        Training package ({duration + 1} {duration + 1 === 1 ? 'day' : 'days'})
-                      </span>
-                      <span className="font-medium text-gray-900">
-                        {formatPrice(convertPrice(Math.round(totalPrice * 0.6), booking.gym.currency))}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">
-                        Accommodation ({duration} {duration === 1 ? 'night' : 'nights'})
-                      </span>
-                      <span className="font-medium text-gray-900">
-                        {formatPrice(convertPrice(Math.round(totalPrice * 0.4), booking.gym.currency))}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {(booking.package?.includes_meals || booking.package?.type === 'all_inclusive') && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      Meals
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-700 flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    Booking Guarantee
-                  </span>
-                </div>
-              </div>
-              <div className="pt-4 border-t border-gray-300">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-lg text-gray-900">Total</span>
-                  <span className="font-bold text-xl text-gray-900">
-                    {formatPrice(convertPrice(finalTotal, booking.gym.currency))}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {booking.package && (
-          <div className="px-4 space-y-6">
-            <GoodToKnowCard
-              package_={booking.package}
-              variant={booking.variant ?? null}
-              checkin={booking.start_date}
-              checkout={booking.end_date}
-              gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
-              checkoutStep="payment"
-            />
-            <BookingWhatsIncluded
-              package_={booking.package}
-              duration={duration}
-              pricingDuration={displayDuration}
-              gym={booking.gym}
-              className="space-y-4"
-            />
-            <BookingSafetyPolicies
-              package_={booking.package}
-              checkin={booking.start_date}
-              gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
-              gym={booking.gym}
-              className="space-y-3"
-            />
+            {clientSecret && stripePromise ? (
+              <Elements stripe={stripePromise} options={options}>
+                <CheckoutForm
+                  booking={booking}
+                  onLoadingChange={setPayLoading}
+                  onErrorChange={setPayError}
+                  hideMobileSubmit
+                />
+              </Elements>
+            ) : null}
           </div>
-        )}
-
-        {/* Payment Section - In Container */}
-        <div className="px-4 pb-4">
-          <Card className="border border-gray-300 rounded-lg shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">Pay online</CardTitle>
-              <CardDescription className="text-sm text-gray-600 mt-1">
-                You'll pay when you complete this booking.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="text-base font-semibold text-gray-900">How would you like to pay?</div>
-                <div className="flex items-center gap-3 p-4 border-2 border-[#003580] rounded-lg bg-blue-50/10">
-                  <div className="w-10 h-10 rounded-full bg-[#003580] flex items-center justify-center flex-shrink-0">
-                    <CreditCard className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm">New card</div>
-                    <div className="text-xs text-gray-600">Credit or debit card</div>
-                  </div>
-                  <div className="text-[#003580] text-lg">✓</div>
-                </div>
-
-                {clientSecret && stripePromise ? (
-                  <Elements stripe={stripePromise} options={options}>
-                    <CheckoutForm booking={booking} />
-                  </Elements>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
         </div>
-      </div>
 
       {/* Desktop Layout */}
       <div className="hidden md:block max-w-7xl mx-auto px-4 py-6">
@@ -840,7 +799,7 @@ export default function PaymentPage() {
                         Training package ({displayDuration} {displayDuration === 1 ? 'day' : 'days'})
                     </span>
                       <span className="font-medium text-gray-900">
-                      {formatPrice(convertPrice(totalPrice, booking.gym.currency))}
+                      {formatPrice(convertPrice(rawTotal, booking.gym.currency))}
                     </span>
                   </div>
                   )}
@@ -853,7 +812,7 @@ export default function PaymentPage() {
                           Training package ({duration + 1} {duration + 1 === 1 ? 'day' : 'days'})
                         </span>
                         <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(Math.round(totalPrice * 0.6), booking.gym.currency))}
+                          {formatPrice(convertPrice(Math.round(rawTotal * 0.6), booking.gym.currency))}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -861,7 +820,7 @@ export default function PaymentPage() {
                           Accommodation ({duration} {duration === 1 ? 'night' : 'nights'})
                         </span>
                         <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(Math.round(totalPrice * 0.4), booking.gym.currency))}
+                          {formatPrice(convertPrice(Math.round(rawTotal * 0.4), booking.gym.currency))}
                         </span>
                       </div>
                     </>
@@ -890,7 +849,7 @@ export default function PaymentPage() {
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-lg text-gray-900">Total</span>
                     <span className="font-bold text-xl text-gray-900">
-                      {formatPrice(convertPrice(finalTotal, booking.gym.currency))}
+                      {formatPrice(convertPrice(rawTotal, booking.gym.currency))}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
@@ -962,6 +921,51 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+      </div>
+
+      {!priceSheetOpen && (
+        <div
+          className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <StepProgressBar step={3} />
+          {payError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              {payError}
+            </div>
+          )}
+          <Button
+            type="submit"
+            form={PAYMENT_FORM_ID}
+            disabled={!clientSecret || payLoading || loading}
+            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
+          >
+            {payLoading ? 'Processing...' : (
+              <>
+                Confirm Booking
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </>
+            )}
+          </Button>
+          <PaymentHoldExplainer />
+        </div>
+      )}
+
+      {priceSheetOpen && priceInfo && rawTotal > 0 && (
+        <PriceDetailsSheet
+          lines={priceInfo.lines}
+          savedVsNightly={priceInfo.savedVsNightly}
+          total={rawTotal}
+          gymCurrency={gymCurrency}
+          displayCurrency={selectedCurrency}
+          convertPrice={convertPrice}
+          checkin={booking.start_date}
+          checkout={booking.end_date}
+          pricingDuration={displayDuration}
+          isTraining={!!isTraining}
+          onClose={() => setPriceSheetOpen(false)}
+        />
+      )}
     </div>
   )
 }
