@@ -130,7 +130,14 @@ export function ReviewModalProvider({
   // shared-link load. Priority: URL params (shared link) → sessionStorage (back-nav).
   const [params, setParams] = useState<ReviewModalParams | null>(() => {
     if (typeof window === 'undefined') return null
-    return readUrlParams(gymId) ?? readRestoreParams()
+    const fromUrl = readUrlParams(gymId)
+    if (fromUrl) return fromUrl
+    // Only restore from sessionStorage if the stored params are for THIS gym.
+    // Without this check, stale params from a previous gym bleed into every
+    // subsequent gym page and cause the cover div to block all interactions.
+    const stored = readRestoreParams()
+    if (stored?.gymId === gymId) return stored
+    return null
   })
 
   // Tracks whether the client has hydrated. Starts false on both server and
@@ -171,7 +178,7 @@ export function ReviewModalProvider({
           modal component lazy-loads. In SSR, hasReviewIntent puts this in
           the initial HTML so there is zero flash even on a fresh page load. */}
       {showCover && (
-        <div className="fixed inset-0 z-[199] bg-white" aria-hidden="true" />
+        <div className="fixed inset-0 z-[199] bg-white pointer-events-none" aria-hidden="true" />
       )}
       {params && (
         <ReviewModal params={params} gymSlugOrId={gymSlugOrId} onClose={close} />
