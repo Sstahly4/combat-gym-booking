@@ -62,6 +62,12 @@ import {
   type PaymentMethodChoice,
 } from '@/components/booking/payment-method-picker'
 import { PaymentMethodSummaryIcon } from '@/components/booking/payment-brand-logos'
+import {
+  PayWhenOptions,
+  formatPayWhenSummaryLine,
+  type PayWhenChoice,
+} from '@/components/booking/choose-when-to-pay'
+import { KlarnaInfoSheet } from '@/components/booking/klarna-info-sheet'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -128,9 +134,9 @@ function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions
   }
 }
 
-/** Keep off-screen Stripe iframes at real size — squishing to 1px causes bleed/blur over our logos */
+/** Off-screen Stripe mount — display:none prevents iOS iframe compositor bleed over picker logos */
 const CARD_ELEMENT_OFFSCREEN_CLASS =
-  'fixed top-0 -left-[10000px] z-0 w-[min(100%,28rem)] max-w-md invisible pointer-events-none overflow-hidden'
+  'fixed top-0 left-0 -z-50 w-[min(100%,28rem)] max-w-md pointer-events-none overflow-hidden [clip-path:inset(50%)]'
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
   card: 'Credit or debit card',
@@ -152,7 +158,7 @@ function PaymentMethodSheet({
   onClose: () => void
   onCancel: () => void
   title: string
-  primaryLabel: 'Next' | 'Done'
+  primaryLabel: 'Next' | 'Done' | 'Save'
   onPrimary: () => void
   children: ReactNode
   /** Nested sheet stacks above the Pay with picker (e.g. Add card details) */
@@ -517,6 +523,9 @@ function CheckoutForm({
     onCloseMobilePaymentModal?.()
   }
 
+  const payWithPickerOpen =
+    mobilePaymentModalOpen && paymentModalStep === 'pick'
+
   const showCardElementInModal =
     paymentFieldsMounted &&
     selectedPaymentMethod === 'card' &&
@@ -538,7 +547,7 @@ function CheckoutForm({
               <PaymentElement options={CARD_ELEMENT_OPTIONS} />
             </div>
           )}
-          {paymentFieldsMounted && mobilePaymentModalOpen && (
+          {paymentFieldsMounted && payWithPickerOpen && (
             <PaymentMethodSheet
               onClose={handlePickDismiss}
               onCancel={handlePickDismiss}
@@ -546,7 +555,7 @@ function CheckoutForm({
               primaryLabel={draftPaymentMethod === 'card' ? 'Next' : 'Done'}
               onPrimary={handlePickPrimary}
             >
-              <div className="relative z-10 flex-shrink-0 isolate">
+              <div className="relative z-10 flex-shrink-0 isolate [transform:translateZ(0)]">
                 <PaymentMethodPicker
                   value={draftPaymentMethod}
                   onChange={(method) => onDraftPaymentMethodChange?.(method)}
@@ -742,6 +751,29 @@ export default function PaymentPage() {
   const [cardDetailsComplete, setCardDetailsComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethodChoice>('card')
+  const [payWhen, setPayWhen] = useState<PayWhenChoice>('now')
+  const [payWhenSheetOpen, setPayWhenSheetOpen] = useState(false)
+  const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>('now')
+  const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
+
+  const openPayWhenSheet = () => {
+    setDraftPayWhen(payWhen)
+    setPayWhenSheetOpen(true)
+  }
+
+  const closePayWhenSheet = () => {
+    setPayWhenSheetOpen(false)
+  }
+
+  const handlePayWhenSave = () => {
+    setPayWhen(draftPayWhen)
+    closePayWhenSheet()
+  }
+
+  const handlePayWhenDismiss = () => {
+    setDraftPayWhen(payWhen)
+    closePayWhenSheet()
+  }
 
   const openPaymentMethodModal = () => {
     setStripeCheckoutMounted(true)
@@ -756,7 +788,7 @@ export default function PaymentPage() {
   }
 
   useEffect(() => {
-    if (!paymentMethodOpen && !priceSheetOpen) return
+    if (!paymentMethodOpen && !priceSheetOpen && !payWhenSheetOpen) return
     const prevBody = document.body.style.overflow
     const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -765,7 +797,23 @@ export default function PaymentPage() {
       document.body.style.overflow = prevBody
       document.documentElement.style.overflow = prevHtml
     }
-  }, [paymentMethodOpen, priceSheetOpen])
+  }, [paymentMethodOpen, priceSheetOpen, payWhenSheetOpen])
+
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      const fromUrl = sp.get('payTiming')
+      const prefill =
+        booking?.gym_id && booking.package_id
+          ? readBookingPrefill(booking.gym_id, booking.package_id)
+          : null
+      const timing = prefill?.payTiming ?? (fromUrl === 'klarna' ? 'klarna' : 'now')
+      if (timing === 'klarna') {
+        setPayWhen('klarna')
+        setDraftPayWhen('klarna')
+      }
+    } catch {}
+  }, [booking?.gym_id, booking?.package_id])
 
   useEffect(() => {
     fetchBookingAndPaymentIntent()
@@ -1123,21 +1171,71 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={openPaymentMethodModal}
-            disabled={!clientSecret}
-            className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
-          >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
-              <div className="flex items-center gap-2.5 text-sm text-gray-600">
-                <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
-                <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={openPayWhenSheet}
+              disabled={displayTotalPrice == null}
+              className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900 mb-2">When you&apos;ll pay</div>
+                <div className="text-sm text-gray-600">
+                  {displayTotalPrice != null
+                    ? formatPayWhenSummaryLine(payWhen, displayTotalPrice, selectedCurrency)
+                    : 'Calculating…'}
+                </div>
               </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
-          </button>
+              <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={openPaymentMethodModal}
+              disabled={!clientSecret}
+              className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
+                <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                  <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
+                  <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
+            </button>
+          </div>
+
+          {payWhenSheetOpen && displayTotalPrice != null && (
+            <PaymentMethodSheet
+              onClose={handlePayWhenDismiss}
+              onCancel={handlePayWhenDismiss}
+              title="Choose when to pay"
+              primaryLabel="Save"
+              onPrimary={handlePayWhenSave}
+            >
+              <div className="relative z-10 flex-shrink-0">
+                <PayWhenOptions
+                  value={draftPayWhen}
+                  onChange={setDraftPayWhen}
+                  totalPrice={displayTotalPrice}
+                  selectedCurrency={selectedCurrency}
+                  hasDates={!!(booking.start_date && booking.end_date)}
+                  onOpenKlarnaInfo={() => setKlarnaInfoOpen(true)}
+                />
+              </div>
+              <div className="flex-1 min-h-0" aria-hidden />
+            </PaymentMethodSheet>
+          )}
+
+          {displayTotalPrice != null && (
+            <KlarnaInfoSheet
+              open={klarnaInfoOpen}
+              onClose={() => setKlarnaInfoOpen(false)}
+              totalPrice={displayTotalPrice}
+              currency={selectedCurrency}
+            />
+          )}
 
           {clientSecret && stripePromise ? (
             <Elements stripe={stripePromise} options={options}>

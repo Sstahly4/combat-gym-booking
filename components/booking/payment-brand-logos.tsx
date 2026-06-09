@@ -11,17 +11,19 @@ export const PAYMENT_BRAND_ASSETS = {
 } as const
 
 /**
- * Picker + summary wallet marks share one left-aligned slot system so Apple Pay and
- * Google Pay sit on the same vertical edge at matched visual height.
+ * Wallet marks in the Pay with picker — 24px tall per Apple/Google checkout guidance.
+ * Google mark is wider (~2.26:1 cropped asset); same height as Apple, never larger.
+ * @see https://developer.apple.com/apple-pay/marketing/
+ * @see https://developers.google.com/pay/api/web/guides/brand-guidelines
  */
 const WALLET_MARK_SLOTS = {
   list: {
-    apple: 'h-7 w-[2.875rem]',
-    google: 'h-7 w-[4.75rem]',
+    apple: 'h-5 w-[2.25rem]',
+    google: 'h-5 w-[2.75rem]',
   },
   compact: {
     apple: 'h-5 w-[2.25rem]',
-    google: 'h-5 w-[3.5rem]',
+    google: 'h-5 w-[2.875rem] p-0.5 box-content',
   },
 } as const
 
@@ -154,29 +156,20 @@ export function ApplePayMark({
 }
 
 const CARD_BRAND_LOGO_SIZES = {
+  /** Below the card label in the Pay with picker — small, no fixed-width stretch */
+  subtext: {
+    visa: 'h-2.5 w-auto',
+    mastercard: 'h-3 w-auto',
+    amex: 'h-2.5 w-auto',
+    gap: 'gap-1.5',
+  },
   compact: {
-    visa: 'h-3 w-[2.25rem]',
-    mastercard: 'h-3.5 w-[1.375rem]',
-    amex: 'h-3 w-[2.25rem]',
+    visa: 'h-3 w-auto',
+    mastercard: 'h-3.5 w-auto',
+    amex: 'h-3 w-auto',
     gap: 'gap-2',
   },
-  list: {
-    visa: 'h-4 w-12',
-    mastercard: 'h-4 w-8',
-    amex: 'h-4 w-12',
-    gap: 'gap-1',
-  },
 } as const
-
-function CardBrandLogoSlot({ children, className }: { children: ReactNode; className: string }) {
-  return (
-    <span
-      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden isolate ${className}`}
-    >
-      {children}
-    </span>
-  )
-}
 
 export function CardBrandLogosRow({
   className,
@@ -188,18 +181,12 @@ export function CardBrandLogosRow({
   const s = CARD_BRAND_LOGO_SIZES[size]
   return (
     <div
-      className={`inline-flex items-center ${s.gap} ${className ?? ''}`}
+      className={`relative z-[1] inline-flex items-center ${s.gap} ${className ?? ''}`}
       aria-hidden
     >
-      <CardBrandLogoSlot className={s.visa}>
-        <VisaLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
-      </CardBrandLogoSlot>
-      <CardBrandLogoSlot className={s.mastercard}>
-        <MastercardLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
-      </CardBrandLogoSlot>
-      <CardBrandLogoSlot className={s.amex}>
-        <AmexLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
-      </CardBrandLogoSlot>
+      <VisaLogo className={`block shrink-0 ${s.visa}`} />
+      <MastercardLogo className={`block shrink-0 ${s.mastercard}`} />
+      <AmexLogo className={`block shrink-0 ${s.amex}`} />
     </div>
   )
 }

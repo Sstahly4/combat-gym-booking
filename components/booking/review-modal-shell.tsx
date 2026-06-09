@@ -9,6 +9,7 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 import type { Gym, Package } from '@/lib/types/database'
+import { ChooseWhenToPaySection } from '@/components/booking/choose-when-to-pay'
 
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
   return (
@@ -51,15 +52,6 @@ function formatAmountOnly(amount: number, currency: string): string {
   })
   const symbol = CURRENCY_SYMBOLS[currency] ?? ''
   return symbol ? `${symbol}${formatted}` : formatted
-}
-
-function formatPriceWithCode(amount: number, currency: string): string {
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
-  return symbol ? `${symbol}${formatted} ${currency}` : `${currency} ${formatted}`
 }
 
 function formatDateRange(from: string, to: string) {
@@ -180,26 +172,14 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
           </div>
         </div>
 
-        <div className="mt-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Choose when to pay</h2>
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between gap-4 px-4 py-4">
-              <span className="text-[15px] font-semibold text-gray-900">
-                {totalPrice != null ? (
-                  <>Pay {formatPriceWithCode(totalPrice, selectedCurrency)} now</>
-                ) : (
-                  'Pay now'
-                )}
-              </span>
-              <span
-                className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-900 bg-white"
-                aria-hidden
-              >
-                <span className="h-3.5 w-3.5 rounded-full bg-gray-900" />
-              </span>
-            </div>
-          </div>
-        </div>
+        <ChooseWhenToPaySection
+          value="now"
+          onChange={() => {}}
+          totalPrice={totalPrice}
+          selectedCurrency={selectedCurrency}
+          hasDates={!!(checkin && checkout)}
+          onOpenKlarnaInfo={() => {}}
+        />
         </div>
       </div>
 

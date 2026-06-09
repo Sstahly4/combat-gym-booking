@@ -27,6 +27,8 @@ export interface BookingPrefillData {
   guestCount: number
   reviewCount: number
   reviewAverage: number
+  /** Step 1 pay timing — full charge now vs Klarna Pay in 4 */
+  payTiming?: 'now' | 'klarna'
   writtenAt: number
 }
 

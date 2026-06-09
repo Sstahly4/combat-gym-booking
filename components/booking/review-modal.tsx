@@ -10,9 +10,13 @@ import {
   CheckoutSummaryRow,
   formatCheckoutAmountOnly,
   formatCheckoutDateRange,
-  formatCheckoutPriceWithCode,
 } from '@/components/booking/checkout-ui'
 import { PriceDetailsSheet } from '@/components/booking/price-details-sheet'
+import {
+  ChooseWhenToPaySection,
+  type PayWhenChoice,
+} from '@/components/booking/choose-when-to-pay'
+import { KlarnaInfoSheet } from '@/components/booking/klarna-info-sheet'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
@@ -141,6 +145,10 @@ export function ReviewModal({
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
+  const [payWhen, setPayWhen] = useState<PayWhenChoice>(
+    cachedPrefill?.payTiming === 'klarna' ? 'klarna' : 'now'
+  )
+  const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -219,6 +227,7 @@ export function ReviewModal({
     if (checkin) p.set('checkin', checkin)
     if (checkout) p.set('checkout', checkout)
     p.set('guests', String(guestCount))
+    if (payWhen === 'klarna') p.set('payTiming', 'klarna')
     return `/bookings/summary?${p.toString()}`
   }
 
@@ -243,6 +252,7 @@ export function ReviewModal({
         guestCount,
         reviewCount,
         reviewAverage: averageRating,
+        payTiming: payWhen,
       })
     }
     router.push(buildContinueUrl())
@@ -346,42 +356,19 @@ export function ReviewModal({
               </div>
             </div>
 
-            <div className="mt-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Choose when to pay</h2>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <label className="flex items-center justify-between gap-4 px-4 py-4 cursor-default">
-                  <span className="text-[15px] font-semibold text-gray-900">
-                    {totalPrice != null ? (
-                      <>Pay {formatCheckoutPriceWithCode(totalPrice, selectedCurrency)} now</>
-                    ) : checkin && checkout ? (
-                      'Pay now'
-                    ) : (
-                      'Select dates to see price'
-                    )}
-                  </span>
-                  <span
-                    className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-900 bg-white"
-                    aria-hidden
-                  >
-                    <span className="h-3.5 w-3.5 rounded-full bg-gray-900" />
-                  </span>
-                  <input
-                    type="radio"
-                    name="pay-when"
-                    value="now"
-                    checked
-                    readOnly
-                    className="sr-only"
-                    aria-label="Pay now"
-                  />
-                </label>
-              </div>
-            </div>
+            <ChooseWhenToPaySection
+              value={payWhen}
+              onChange={setPayWhen}
+              totalPrice={totalPrice}
+              selectedCurrency={selectedCurrency}
+              hasDates={!!(checkin && checkout)}
+              onOpenKlarnaInfo={() => setKlarnaInfoOpen(true)}
+            />
             </div>
           </div>
 
           {/* ── Fixed bottom: progress + CTA (hidden under nested sheets) ─ */}
-          {!currencyModalOpen && (
+          {!currencyModalOpen && !klarnaInfoOpen && (
             <div
               className="fixed bottom-0 left-0 right-0 z-[210] border-t border-gray-100 bg-white px-4 pt-2 space-y-2"
               style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
@@ -447,6 +434,15 @@ export function ReviewModal({
             confirmSelection
             checkoutSheet
           />
+
+          {totalPrice != null && (
+            <KlarnaInfoSheet
+              open={klarnaInfoOpen}
+              onClose={() => setKlarnaInfoOpen(false)}
+              totalPrice={totalPrice}
+              currency={selectedCurrency}
+            />
+          )}
         </>
       ) : null}
     </div>
