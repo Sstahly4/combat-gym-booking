@@ -1,7 +1,28 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { FacilitiesList } from './facilities-list'
+
+const MAX_PREVIEW_CHARS = 300
+
+function getPreview(text: string): string {
+  if (text.length <= MAX_PREVIEW_CHARS) return text
+  const slice = text.slice(0, MAX_PREVIEW_CHARS)
+  // Prefer ending after a complete sentence (handles both ". " and ".\n" formats)
+  const lastSentence = Math.max(
+    slice.lastIndexOf('. '),
+    slice.lastIndexOf('.\n'),
+    slice.lastIndexOf('! '),
+    slice.lastIndexOf('!\n'),
+    slice.lastIndexOf('? '),
+    slice.lastIndexOf('?\n'),
+  )
+  if (lastSentence > MAX_PREVIEW_CHARS / 2) {
+    return slice.slice(0, lastSentence + 1).trimEnd()
+  }
+  // Fall back to the last word boundary
+  return slice.replace(/\s\S*$/, '') + '\u2026'
+}
 
 interface GymDescriptionProps {
   gymName: string
@@ -13,16 +34,9 @@ interface GymDescriptionProps {
 
 export function GymDescription({ gymName, description, landmarksText, amenities, disciplines }: GymDescriptionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [isClamped, setIsClamped] = useState(false)
-  const descRef = useRef<HTMLDivElement>(null)
 
-  // After mount, check if the content is actually taller than the collapsed height
-  // so we only show the button when there's genuinely overflow.
-  useEffect(() => {
-    const el = descRef.current
-    if (!el) return
-    setIsClamped(el.scrollHeight > el.clientHeight + 2)
-  }, [description])
+  const previewText = useMemo(() => (description ? getPreview(description) : ''), [description])
+  const needsTruncation = !!description && description.length > MAX_PREVIEW_CHARS
 
   return (
     <div className="pt-2">
@@ -32,17 +46,18 @@ export function GymDescription({ gymName, description, landmarksText, amenities,
           <div>
             {/*
               Full text is ALWAYS in the DOM so Googlebot can read it.
-              CSS overflow:hidden + maxHeight creates the visual truncation;
-              overflow:hidden content is indexed normally by crawlers.
+              The hidden span uses overflow:hidden (not display:none) so crawlers
+              index the full content while only the preview is visible when collapsed.
             */}
-            <div
-              ref={descRef}
-              className="overflow-hidden transition-[max-height] duration-300"
-              style={isExpanded ? { maxHeight: 'none' } : { maxHeight: '7.5rem' }}
-            >
-              <p className="whitespace-pre-wrap">{description}</p>
-            </div>
-            {(isClamped || isExpanded) && (
+            {needsTruncation && !isExpanded && (
+              <span className="overflow-hidden absolute h-0 w-0 block" aria-hidden="true">
+                {description}
+              </span>
+            )}
+            <p className="whitespace-pre-wrap">
+              {isExpanded ? description : previewText}
+            </p>
+            {(needsTruncation || isExpanded) && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="text-[#003580] font-medium text-sm mt-2 hover:underline"

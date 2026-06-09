@@ -359,18 +359,7 @@ function BookingSummaryPageContent() {
       {/* Checkout nav: ← Back | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
         <button
-          onClick={() => {
-            // Build the gym URL with review params so the modal auto-reopens on mobile
-            const p = new URLSearchParams()
-            p.set('reviewOpen', '1')
-            p.set('gymId', gym.id)
-            p.set('packageId', searchParams.get('packageId') || '')
-            if (searchParams.get('variantId')) p.set('variantId', searchParams.get('variantId')!)
-            if (checkin) p.set('checkin', checkin)
-            if (checkout) p.set('checkout', checkout)
-            p.set('guests', String(guestCount))
-            router.push(`/gyms/${gym.slug || gym.id}?${p.toString()}`)
-          }}
+          onClick={() => router.back()}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

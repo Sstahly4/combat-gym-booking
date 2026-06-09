@@ -1,7 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 
 export interface ReviewModalParams {
@@ -33,42 +32,28 @@ const ReviewModal = dynamic(
   { ssr: false }
 )
 
-// ─── Auto-opener: reads ?reviewOpen=1 URL params and triggers the modal ──────
-// Wrapped in its own component so useSearchParams can be Suspense-isolated.
-function ReviewModalAutoOpener({ open }: { open: (p: ReviewModalParams) => void }) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+const STORAGE_KEY = 'review_modal_restore'
 
-  useEffect(() => {
-    if (searchParams.get('reviewOpen') !== '1') return
-    const gymId = searchParams.get('gymId')
-    const packageId = searchParams.get('packageId')
-    if (!gymId || !packageId) return
+// Serialise only the lightweight params (not bulky gymData/packageData) so
+// sessionStorage stays small.
+function saveRestoreParams(p: ReviewModalParams) {
+  try {
+    const { gymData: _g, packageData: _p, ...lite } = p
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(lite))
+  } catch {}
+}
 
-    open({
-      gymId,
-      packageId,
-      variantId: searchParams.get('variantId') ?? undefined,
-      checkin: searchParams.get('checkin') ?? '',
-      checkout: searchParams.get('checkout') ?? '',
-      guestCount: parseInt(searchParams.get('guests') ?? '1', 10),
-    })
+function clearRestoreParams() {
+  try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
+}
 
-    // Clean the review params from the URL so refreshing doesn't re-open the modal
-    const clean = new URLSearchParams(searchParams.toString())
-    clean.delete('reviewOpen')
-    clean.delete('gymId')
-    clean.delete('packageId')
-    clean.delete('variantId')
-    clean.delete('checkin')
-    clean.delete('checkout')
-    clean.delete('guests')
-    const qs = clean.toString()
-    router.replace(window.location.pathname + (qs ? `?${qs}` : ''), { scroll: false })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  return null
+function readRestoreParams(): ReviewModalParams | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
 }
 
 export function ReviewModalProvider({
@@ -78,10 +63,22 @@ export function ReviewModalProvider({
   children: ReactNode
   gymSlugOrId: string
 }) {
-  const [params, setParams] = useState<ReviewModalParams | null>(null)
+  // Initialise synchronously from sessionStorage so the modal renders on the
+  // very first paint when the user navigates back — no useEffect delay, no flash.
+  const [params, setParams] = useState<ReviewModalParams | null>(() => {
+    if (typeof window === 'undefined') return null
+    return readRestoreParams()
+  })
 
-  const openReviewModal = (p: ReviewModalParams) => setParams(p)
-  const close = () => setParams(null)
+  const openReviewModal = (p: ReviewModalParams) => {
+    saveRestoreParams(p)
+    setParams(p)
+  }
+
+  const close = () => {
+    clearRestoreParams()
+    setParams(null)
+  }
 
   useEffect(() => {
     if (params) {
@@ -95,9 +92,6 @@ export function ReviewModalProvider({
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
       {children}
-      <Suspense fallback={null}>
-        <ReviewModalAutoOpener open={openReviewModal} />
-      </Suspense>
       {params && (
         <ReviewModal params={params} gymSlugOrId={gymSlugOrId} onClose={close} />
       )}

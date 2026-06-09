@@ -95,7 +95,7 @@ function Row({
   onEdit?: () => void
 }) {
   return (
-    <div className="flex items-start justify-between py-4 border-b border-gray-100 last:border-0">
+    <div className="flex items-start justify-between py-4">
       <div>
         <div className="text-sm font-semibold text-gray-900 mb-0.5">{label}</div>
         <div className="text-sm text-gray-600">{value}</div>
@@ -394,7 +394,7 @@ function ReviewPageContent() {
       </div>
 
       {/* ── Fixed bottom: progress + CTA ────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 pb-8 space-y-3 z-40" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 pb-5 space-y-3 z-40" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
         <StepProgressBar step={1} />
         <Button
           onClick={() => router.push(buildContinueUrl())}
