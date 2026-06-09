@@ -25,6 +25,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 
+// Thin 3-segment progress bar — matches review modal
+function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <div className="flex gap-1.5">
+      {([1, 2, 3] as const).map((s) => (
+        <div
+          key={s}
+          className="h-1 flex-1 rounded-full transition-colors"
+          style={{ backgroundColor: s <= step ? '#003580' : '#e5e7eb' }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -290,8 +305,8 @@ function BookingSummaryPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <BookingProgressBar currentStep={2} loading />
+      <div className="min-h-screen bg-white">
+        <div className="hidden md:block"><BookingProgressBar currentStep={2} loading /></div>
         {/* Nav row: back + exit — shown during load so the page never feels trapped */}
         <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
           <button
@@ -302,6 +317,14 @@ function BookingSummaryPageContent() {
             <span>Back</span>
           </button>
           <div className="w-7 h-7" aria-hidden="true" />
+        </div>
+        {/* Mobile fixed bottom skeleton */}
+        <div
+          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-50 md:hidden"
+          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        >
+          <StepProgressBar step={2} />
+          <div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse" />
         </div>
         <div className="max-w-7xl mx-auto px-4 pb-6">
           <div className="grid lg:grid-cols-3 gap-6">
@@ -352,9 +375,11 @@ function BookingSummaryPageContent() {
   const mainImage = gym.images && gym.images.length > 0 ? gym.images[0].url : null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Progress Bar */}
-      <BookingProgressBar currentStep={2} />
+    <div className="min-h-screen bg-white">
+      {/* Progress bar — desktop only; mobile uses the thin bar in the fixed bottom */}
+      <div className="hidden md:block">
+        <BookingProgressBar currentStep={2} />
+      </div>
 
       {/* Checkout nav: ← Back | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
@@ -375,9 +400,10 @@ function BookingSummaryPageContent() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Mobile Layout - Single Page, Information Dense */}
-        <div className="md:hidden space-y-6 pb-20">
-          {/* Property Details - No Card Container */}
+        {/* Mobile Layout */}
+        <div className="md:hidden space-y-6 pb-36">
+          <h1 className="text-2xl font-bold text-gray-900">Your details</h1>
+          {/* Property Details */}
           <div className="space-y-3">
             {/* Star Rating & Reviews */}
             {reviewCount > 0 && averageRating > 0 && (
@@ -882,19 +908,18 @@ function BookingSummaryPageContent() {
             </Card>
           </div>
 
-            {/* Mobile Submit Button - Fixed at bottom */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden">
+            {/* Mobile Submit — fixed bottom, matching review modal style */}
+            <div
+              className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-50 md:hidden"
+              style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            >
+              <StepProgressBar step={2} />
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || !firstName || !lastName || !email || !phone}
-                className="w-full h-12 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base"
+                className="w-full h-12 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
               >
-                {submitting ? 'Submitting...' : (
-                  <>
-                    Final Steps
-                    <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
-                  </>
-                )}
+                {submitting ? 'Submitting…' : 'Final Steps'}
               </Button>
               <PaymentHoldExplainer />
             </div>
