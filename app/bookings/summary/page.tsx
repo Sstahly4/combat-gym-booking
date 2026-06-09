@@ -420,6 +420,12 @@ function BookingSummaryPageContent() {
         {gym && (
           <Link
             href={`/gyms/${gym.slug || gym.id}`}
+            onClick={() => {
+              // Clear modal restore + booking prefill so the gym page doesn't
+              // re-open the review modal when the user explicitly exits the flow
+              try { sessionStorage.removeItem('review_modal_restore') } catch {}
+              try { sessionStorage.removeItem('booking_prefill') } catch {}
+            }}
             className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Return to gym listing"
           >
@@ -432,79 +438,33 @@ function BookingSummaryPageContent() {
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6 pb-36">
           <h1 className="text-2xl font-bold text-gray-900">Your details</h1>
-          {/* Property Details */}
-          <div className="space-y-3">
-            {/* Star Rating & Reviews */}
-            {reviewCount > 0 && averageRating > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-4 h-4 ${
-                        star <= Math.round(averageRating)
-                          ? 'fill-[#febb02] text-[#febb02]'
-                          : 'fill-gray-200 text-gray-200'
-                      }`}
-                    />
-                  ))}
+
+          {/* Compact gym summary — same card as Step 1 review modal */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 pt-4 pb-4">
+              <div className="flex gap-3 items-start">
+                {mainImage ? (
+                  <img src={mainImage} alt={gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
+                )}
+                <div className="pt-0.5 min-w-0 flex-1">
+                  <p className="font-bold text-base text-gray-900 leading-snug line-clamp-2">{gym.name}</p>
+                  <div className="flex items-center gap-4 mt-1">
+                    {reviewCount > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-gray-900 text-gray-900" />
+                        <span className="text-xs font-medium text-gray-800">{averageRating.toFixed(1)}</span>
+                        <span className="text-xs text-gray-500">({reviewCount})</span>
+                      </div>
+                    )}
+                    {package_ && (
+                      <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-sm text-gray-600">
-                  {averageRating.toFixed(1)} · {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}
-                </span>
               </div>
-            )}
-            
-            <h2 className="font-bold text-xl text-gray-900">{gym.name}</h2>
-            
-            {gym.address && (
-              <div className="text-sm text-gray-700">
-                {gym.address}
-              </div>
-            )}
-            {!gym.address && (
-              <div className="text-sm text-gray-700">
-                {gym.city}, {gym.country}
-              </div>
-            )}
-            
-            {/* Amenities */}
-            {gym.amenities && (
-              <div className="flex flex-wrap gap-3 pt-1">
-                {gym.amenities.wifi && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                    <Wifi className="w-4 h-4" />
-                    <span>Free WiFi</span>
-                  </div>
-                )}
-                {gym.amenities.parking && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                    <Car className="w-4 h-4" />
-                    <span>Parking</span>
-                  </div>
-                )}
-                {gym.amenities.meals && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                    <UtensilsCrossed className="w-4 h-4" />
-                    <span>Restaurant</span>
-                  </div>
-                )}
-                {gym.amenities.showers && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                    <Droplets className="w-4 h-4" />
-                    <span>Showers</span>
-                  </div>
-                )}
-                {gym.amenities.accommodation && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                    <Building2 className="w-4 h-4" />
-                    <span>Accommodation</span>
-                  </div>
-                )}
-              </div>
-            )}
-            {/* Divider below hero section */}
-            <div className="pt-4 border-b border-gray-200"></div>
+            </div>
           </div>
 
           {/* Booking Dates - Match reference image */}
@@ -946,7 +906,7 @@ function BookingSummaryPageContent() {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || !firstName || !lastName || !email || !phone}
-                className="w-full h-12 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
+                className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
               >
                 {submitting ? 'Submitting…' : 'Final Steps'}
               </Button>

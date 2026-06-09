@@ -122,7 +122,7 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
         <Button 
           type="submit" 
-          className="w-full h-12 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90" 
+          className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90" 
           disabled={!stripe || loading}
         >
           {loading ? 'Processing...' : (
@@ -398,6 +398,10 @@ export default function PaymentPage() {
         </Link>
         <Link
           href={gymListingHref}
+          onClick={() => {
+            try { sessionStorage.removeItem('review_modal_restore') } catch {}
+            try { sessionStorage.removeItem('booking_prefill') } catch {}
+          }}
           className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           aria-label="Return to gym listing"
         >

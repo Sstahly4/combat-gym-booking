@@ -80,7 +80,7 @@ function GuestSheet({
         {/* CTA */}
         <div className="px-5 pb-8 flex-shrink-0" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
           <Button
-            className="w-full h-12 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base"
+            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base"
             onClick={onClose}
           >
             Done
@@ -369,14 +369,14 @@ export function ReviewModal({
 
           {/* ── Fixed bottom: progress + CTA ──────────────────────── */}
           <div
-            className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-[210]"
-            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-[210]"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           >
             <StepProgressBar step={1} />
             <Button
               onClick={handleContinue}
               disabled={navigating}
-              className="w-full h-12 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl disabled:opacity-80"
+              className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl disabled:opacity-80"
             >
               {navigating ? (
                 <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
