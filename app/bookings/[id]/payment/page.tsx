@@ -392,13 +392,14 @@ export default function PaymentPage() {
 
       {/* Checkout nav: ← Back to details | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-        <Link
-          href={step2Url}
+        <button
+          type="button"
+          onClick={() => router.replace(step2Url)}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
-        </Link>
+        </button>
         <Link
           href={gymListingHref}
           onClick={() => {

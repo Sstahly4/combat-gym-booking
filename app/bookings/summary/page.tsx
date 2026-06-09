@@ -16,7 +16,6 @@ import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCros
 import Link from 'next/link'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
-import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { readBookingPrefill } from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
@@ -24,6 +23,22 @@ import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
+
+/** Step 2 → Step 1: reopen the review modal on the gym listing. */
+function buildReviewBackHref(
+  gymSlugOrId: string,
+  packageId: string,
+  opts: { variantId?: string; checkin?: string; checkout?: string; guests?: number }
+): string {
+  const p = new URLSearchParams()
+  p.set('review', '1')
+  p.set('pkg', packageId)
+  if (opts.variantId) p.set('variant', opts.variantId)
+  if (opts.checkin) p.set('checkin', opts.checkin)
+  if (opts.checkout) p.set('checkout', opts.checkout)
+  p.set('guests', String(opts.guests ?? 1))
+  return `/gyms/${gymSlugOrId}?${p.toString()}`
+}
 
 // Thin 3-segment progress bar — matches review modal
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -86,6 +101,27 @@ function BookingSummaryPageContent() {
     } catch (err) {
       console.error('Failed to copy address:', err)
     }
+  }
+
+  const navigateBackToReview = () => {
+    if (navigatingBack) return
+    setNavigatingBack(true)
+    const gymId = searchParams.get('gymId')
+    const packageId = searchParams.get('packageId')
+    const slugOrId = gym?.slug || gym?.id || gymId
+    const pkgId = package_?.id || packageId
+    if (slugOrId && pkgId) {
+      router.replace(
+        buildReviewBackHref(slugOrId, pkgId, {
+          variantId: variant?.id || searchParams.get('variantId') || undefined,
+          checkin: checkin || searchParams.get('checkin') || undefined,
+          checkout: checkout || searchParams.get('checkout') || undefined,
+          guests: guestCount,
+        })
+      )
+      return
+    }
+    router.back()
   }
 
   useEffect(() => {
@@ -388,7 +424,7 @@ function BookingSummaryPageContent() {
         <div className="hidden md:block"><BookingProgressBar currentStep={2} /></div>
         <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={navigateBackToReview}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -417,11 +453,7 @@ function BookingSummaryPageContent() {
       {/* Checkout nav: ← Back | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
         <button
-          onClick={() => {
-            if (navigatingBack) return
-            setNavigatingBack(true)
-            router.back()
-          }}
+          onClick={navigateBackToReview}
           disabled={navigatingBack}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
         >
@@ -454,7 +486,7 @@ function BookingSummaryPageContent() {
         <div className="md:hidden space-y-6 pb-36">
           <h1 className="text-2xl font-bold text-gray-900">Your details</h1>
 
-          {/* Compact gym summary — same card as Step 1 review modal */}
+          {/* Compact gym summary + guest details — single card */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex gap-3 items-start">
@@ -481,25 +513,16 @@ function BookingSummaryPageContent() {
               </div>
             </div>
             <div className="divide-y divide-gray-100 px-4">
-              <div className="py-3 flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 mb-0.5">Dates</div>
-                  <div className="text-sm text-gray-600">{formatDateRange(checkin, checkout)}</div>
-                  {isValidDuration && (isTraining ? pricingDuration : duration) > 0 && (
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {isTraining
-                        ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
-                        : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDatePickerOpen(true)}
-                  className="shrink-0 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-                >
-                  Change
-                </button>
+              <div className="py-3">
+                <div className="text-sm font-semibold text-gray-900 mb-0.5">Dates</div>
+                <div className="text-sm text-gray-600">{formatDateRange(checkin, checkout)}</div>
+                {isValidDuration && (isTraining ? pricingDuration : duration) > 0 && (
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {isTraining
+                      ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                      : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
+                  </div>
+                )}
               </div>
               <div className="py-3">
                 <div className="text-sm font-semibold text-gray-900">
@@ -514,24 +537,9 @@ function BookingSummaryPageContent() {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Guest Details Form - In Container */}
-          <div className="px-4 pb-0">
-            <Card className="border border-gray-300 rounded-lg shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold">Enter your details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* Trust signal */}
-                {package_ && checkin && (
-                  <BookingTrustLine pkg={package_} gym={gym} checkin={checkin} />
-                )}
-                {/* Blue Info Box */}
-                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">
-                  <AlertCircle className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-blue-900">Almost done! Just fill in the <span className="text-red-600">*</span> required info</span>
-                </div>
+            <div className="border-t border-gray-100 px-4 pt-5 pb-4 space-y-5">
+              <h2 className="text-lg font-semibold text-gray-900">Enter your details</h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -684,10 +692,7 @@ function BookingSummaryPageContent() {
             <p className="text-xs text-gray-500 pt-1">
               A confirmation email will be sent to the address above.
             </p>
-
-
-              </CardContent>
-            </Card>
+            </div>
           </div>
 
             {/* Mobile Submit — fixed bottom, matching review modal style */}
@@ -912,15 +917,6 @@ function BookingSummaryPageContent() {
                 <CardTitle className="text-lg font-semibold">Enter your details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
-                {/* Trust signal */}
-                {package_ && checkin && (
-                  <BookingTrustLine pkg={package_} gym={gym} checkin={checkin} />
-                )}
-                {/* Blue Info Box - Separate floating box */}
-                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-300 rounded-md">
-                  <AlertCircle className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-blue-900">Almost done! Just fill in the * required info</span>
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-sm font-medium">First name *</Label>
