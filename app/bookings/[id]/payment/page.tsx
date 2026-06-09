@@ -58,10 +58,7 @@ import {
   PaymentMethodPicker,
   type PaymentMethodChoice,
 } from '@/components/booking/payment-method-picker'
-import {
-  CardBrandLogosRow,
-  PaymentMethodMark,
-} from '@/components/booking/payment-brand-logos'
+import { PaymentMethodSummaryIcon } from '@/components/booking/payment-brand-logos'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -252,6 +249,7 @@ function CheckoutForm({
   onPaymentModalStepChange,
   onCardFieldsMounted,
   cardFieldsMounted = false,
+  onWalletReadyChange,
 }: {
   booking: Booking & { gym: Gym }
   formId?: string
@@ -270,6 +268,7 @@ function CheckoutForm({
   onPaymentModalStepChange?: (step: PaymentModalStep) => void
   onCardFieldsMounted?: () => void
   cardFieldsMounted?: boolean
+  onWalletReadyChange?: (ready: 'idle' | 'available' | 'unavailable') => void
 }) {
   const router = useRouter()
   const params = useParams()
@@ -278,11 +277,17 @@ function CheckoutForm({
   const elements = useElements()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [walletAvailable, setWalletAvailable] = useState<boolean | null>(null)
+  const [walletReady, setWalletReady] = useState<'idle' | 'available' | 'unavailable'>('idle')
 
   useEffect(() => {
-    setWalletAvailable(null)
-  }, [selectedPaymentMethod])
+    setWalletReady('idle')
+    onWalletReadyChange?.('idle')
+  }, [selectedPaymentMethod, onWalletReadyChange])
+
+  const updateWalletReady = (ready: 'idle' | 'available' | 'unavailable') => {
+    setWalletReady(ready)
+    onWalletReadyChange?.(ready)
+  }
 
   const completePayment = async (paymentIntent: { id: string; status: string }) => {
     try {
@@ -490,28 +495,31 @@ function CheckoutForm({
           !mobilePaymentModalOpen &&
           selectedPaymentMethod !== 'card' && (
             <div className="mt-2 space-y-2">
-              <ExpressCheckoutElement
-                key={selectedPaymentMethod}
-                onConfirm={handleWalletConfirm}
-                onReady={(event) => {
-                  const available =
-                    selectedPaymentMethod === 'apple_pay'
-                      ? event.availablePaymentMethods?.applePay
-                      : event.availablePaymentMethods?.googlePay
-                  setWalletAvailable(available ?? false)
-                }}
-                options={
-                  walletExpressOptions(selectedPaymentMethod) as unknown as NonNullable<
-                    ComponentProps<typeof ExpressCheckoutElement>['options']
-                  >
-                }
-              />
-              {walletAvailable === false && (
+              {walletReady === 'unavailable' ? (
                 <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   {selectedPaymentMethod === 'apple_pay'
                     ? 'Apple Pay is not available in this browser. Use Safari on an iPhone, iPad, or Mac, or choose another payment method.'
                     : 'Google Pay is not available on this device. Choose another payment method.'}
                 </p>
+              ) : (
+                <div className={walletReady === 'idle' ? 'invisible h-0 overflow-hidden' : ''}>
+                  <ExpressCheckoutElement
+                    key={selectedPaymentMethod}
+                    onConfirm={handleWalletConfirm}
+                    onReady={(event) => {
+                      const available =
+                        selectedPaymentMethod === 'apple_pay'
+                          ? event.availablePaymentMethods?.applePay
+                          : event.availablePaymentMethods?.googlePay
+                      updateWalletReady(available ? 'available' : 'unavailable')
+                    }}
+                    options={
+                      walletExpressOptions(selectedPaymentMethod) as unknown as NonNullable<
+                        ComponentProps<typeof ExpressCheckoutElement>['options']
+                      >
+                    }
+                  />
+                </div>
               )}
             </div>
           )}
@@ -614,6 +622,7 @@ export default function PaymentPage() {
   const [addressCopied, setAddressCopied] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
+  const [stripeCheckoutMounted, setStripeCheckoutMounted] = useState(false)
   const [paymentModalStep, setPaymentModalStep] = useState<PaymentModalStep>('pick')
   const [draftPaymentMethod, setDraftPaymentMethod] = useState<PaymentMethodChoice>('card')
   const [cardFieldsMounted, setCardFieldsMounted] = useState(false)
@@ -621,6 +630,7 @@ export default function PaymentPage() {
     useState<PaymentMethodChoice>('card')
 
   const openPaymentMethodModal = () => {
+    setStripeCheckoutMounted(true)
     setDraftPaymentMethod(selectedPaymentMethod)
     setPaymentModalStep('pick')
     setPaymentMethodOpen(true)
@@ -632,6 +642,7 @@ export default function PaymentPage() {
   }
   const [payLoading, setPayLoading] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
+  const [walletReady, setWalletReady] = useState<'idle' | 'available' | 'unavailable'>('idle')
 
   useEffect(() => {
     fetchBookingAndPaymentIntent()
@@ -996,14 +1007,9 @@ export default function PaymentPage() {
           >
             <div className="min-w-0">
               <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
-              <div className="flex items-start gap-2.5 text-sm text-gray-600">
-                <PaymentMethodMark method={selectedPaymentMethod} className="shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <div>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</div>
-                  {selectedPaymentMethod === 'card' && (
-                    <CardBrandLogosRow className="mt-1.5" />
-                  )}
-                </div>
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
+                <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
@@ -1018,7 +1024,7 @@ export default function PaymentPage() {
                 hideMobileSubmit
                 mobilePaymentModalOpen={paymentMethodOpen}
                 onCloseMobilePaymentModal={closePaymentMethodModal}
-                paymentFieldsMounted
+                paymentFieldsMounted={stripeCheckoutMounted}
                 selectedPaymentMethod={selectedPaymentMethod}
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 paymentModalStep={paymentModalStep}
@@ -1027,6 +1033,7 @@ export default function PaymentPage() {
                 onPaymentModalStepChange={setPaymentModalStep}
                 onCardFieldsMounted={() => setCardFieldsMounted(true)}
                 cardFieldsMounted={cardFieldsMounted}
+                onWalletReadyChange={setWalletReady}
               />
             </Elements>
           ) : null}
@@ -1349,9 +1356,13 @@ export default function PaymentPage() {
                 </>
               )}
             </Button>
-          ) : (
+          ) : walletReady === 'available' ? (
             <p className="text-center text-sm text-gray-600 pb-1">
               Use {PAYMENT_METHOD_LABELS[selectedPaymentMethod]} above to complete payment.
+            </p>
+          ) : (
+            <p className="text-center text-sm text-gray-600 pb-1">
+              Change payment method to continue.
             </p>
           )}
           <PaymentHoldExplainer />

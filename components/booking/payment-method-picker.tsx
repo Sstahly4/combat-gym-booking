@@ -74,14 +74,14 @@ export function PaymentMethodPicker({
         selected={value === 'google_pay'}
         onSelect={() => onChange('google_pay')}
         label="Google Pay"
-        icon={<GooglePayMark />}
+        icon={<GooglePayMark size="list" />}
         ariaLabel="Pay with Google Pay"
       />
       <PaymentMethodOption
         selected={value === 'apple_pay'}
         onSelect={() => onChange('apple_pay')}
         label="Apple Pay"
-        icon={<ApplePayMark />}
+        icon={<ApplePayMark size="list" />}
         ariaLabel="Pay with Apple Pay"
       />
     </div>

@@ -11,24 +11,27 @@ export const PAYMENT_BRAND_ASSETS = {
 } as const
 
 /**
- * Wallet acceptance marks shown alongside other payment options.
- * Apple: min clear space = 1/4 mark height; same size as peer marks; preserve aspect ratio.
- * Google: min clear space ≈ 1/2 mark height; match height of other payment identities.
- * @see https://developer.apple.com/apple-pay/marketing/
- * @see https://developers.google.com/pay/api/web/guides/brand-guidelines
+ * Industry-standard display sizes (Airbnb/Stripe checkout patterns):
+ * - list: ~24–28px tall in the payment-method picker rows
+ * - compact: ~20px icon in collapsed summary rows (or text-only for wallets)
  */
-const WALLET_MARK_HEIGHT_CLASS = 'h-7' // 28px on screen — legible, not smaller than card icon row
+const WALLET_MARK_SIZES = {
+  list: 'h-6 w-auto max-w-[2.75rem] object-contain',
+  compact: 'h-5 w-auto max-w-[2.25rem] object-contain',
+} as const
+
+type WalletMarkSize = keyof typeof WALLET_MARK_SIZES
 
 function WalletMarkFrame({
   children,
-  clearSpaceClassName = 'p-[7px]',
+  size,
 }: {
   children: ReactNode
-  /** ~25% of 28px mark height (Apple); ~50% for Google mark — use generous shared padding */
-  clearSpaceClassName?: string
+  size: WalletMarkSize
 }) {
+  const pad = size === 'list' ? 'p-1' : 'p-0.5'
   return (
-    <span className={`inline-flex shrink-0 items-center justify-center box-content ${clearSpaceClassName}`}>
+    <span className={`inline-flex shrink-0 items-center justify-center box-content ${pad}`}>
       {children}
     </span>
   )
@@ -39,7 +42,7 @@ type LogoProps = SVGProps<SVGSVGElement> & { className?: string }
 type BrandImageProps = {
   src: string
   alt: string
-  className?: string
+  className: string
 }
 
 function PaymentBrandImage({ src, alt, className }: BrandImageProps) {
@@ -63,7 +66,7 @@ export function VisaLogo({ className, ...props }: LogoProps) {
     >
       <path
         fill="#1A1F71"
-        d="M19.5 15.5h-3.2L17.6 5.2h3.2l-1.3 10.3zm11.8 0h-3l-1.9-10.3h2.8l.4 2.5.6 3.8c.1-.9.3-1.8.5-2.5l1.3-3.8h2.6l-3.3 10.3zm9.2-7.1c0-2.4-3.3-2.5-3.3-3.6 0-.3.3-.7.9-.8.3-.1 1.1-.1 2 .4l.4-2.4c-.5-.2-1.2-.4-2.1-.4-2.2 0-3.8 1.2-3.8 2.9 0 1.3 1.1 2 2 2.4.9.5 1.2.8 1.2 1.2 0 .7-.7 1-1.4 1-1.2 0-1.8-.3-2.4-.6l-.4 2.5c.6.3 1.6.5 2.7.5 2.4 0 4-1.2 4-3.1zm8.5 7.1h2.6l-2.5-10.3h-2.4c-.7 0-1.3.4-1.6 1l-4.5 9.3h3.2l.6-1.7h3.9l.4 1.7zm-3.4-4.1 1.6-4.4.9 4.4h-2.5zM15.1 5.2 12.5 12l-.3-1.6c-.6-2-2.5-3.3-4.6-3.3H2.5l-.1.4c1.9.4 3.3 1.5 3.9 3.1L7.8 15.5h3.2l4.1-10.3z"
+        d="M19.5 15.5h-3.2L17.6 5.2h3.2l-1.3 10.3zm11.8 0h-3l-1.9-10.3h2.8l.4 2.5.6 3.8c.1-.9.3-1.8.5-2.5l1.3-3.8h2.6l-3.3 10.3zm9.2-7.1c0-2.4-3.3-2.5-3.3-3.6 0-.3.3-.7.9-.8.3-.1 1.1-.1 2 .4l.4-2.4c-.5-.2-1.2-.4-2.1-.4-2.2 0-3.8 1.2-3.8 2.9 0 1.3 1.1 2 2 2.4.9.5 1.2.8 1.2 1.2 0 .7-.7 1-1.4 1-1.2 0-1.8-.3-2.4-.6l-.4 2.5c.6.3 1.6.5 2.7.5 2.4 0 4-1.2 4-3.1zm8.5 7.1h2.6l-2.5-10.3h-2.4c-0.7 0-1.3.4-1.6 1l-4.5 9.3h3.2l.6-1.7h3.9l.4 1.7zm-3.4-4.1 1.6-4.4.9 4.4h-2.5zM15.1 5.2 12.5 12l-.3-1.6c-.6-2-2.5-3.3-4.6-3.3H2.5l-.1.4c1.9.4 3.3 1.5 3.9 3.1L7.8 15.5h3.2l4.1-10.3z"
       />
     </svg>
   )
@@ -113,20 +116,32 @@ export function AmexLogo({ className, ...props }: LogoProps) {
 }
 
 /** Google Pay acceptance mark — Google Pay API brand assets */
-export function GooglePayMark({ className }: { className?: string }) {
-  const markClass = className ?? `${WALLET_MARK_HEIGHT_CLASS} w-auto`
+export function GooglePayMark({
+  size = 'list',
+  className,
+}: {
+  size?: WalletMarkSize
+  className?: string
+}) {
+  const markClass = [WALLET_MARK_SIZES[size], className].filter(Boolean).join(' ')
   return (
-    <WalletMarkFrame clearSpaceClassName="p-[7px]">
+    <WalletMarkFrame size={size}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.googlePay} alt="Google Pay" className={markClass} />
     </WalletMarkFrame>
   )
 }
 
 /** Apple Pay acceptance mark — Apple Pay Marketing Guidelines */
-export function ApplePayMark({ className }: { className?: string }) {
-  const markClass = className ?? `${WALLET_MARK_HEIGHT_CLASS} w-auto`
+export function ApplePayMark({
+  size = 'list',
+  className,
+}: {
+  size?: WalletMarkSize
+  className?: string
+}) {
+  const markClass = [WALLET_MARK_SIZES[size], className].filter(Boolean).join(' ')
   return (
-    <WalletMarkFrame clearSpaceClassName="p-[7px]">
+    <WalletMarkFrame size={size}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.applePay} alt="Apple Pay" className={markClass} />
     </WalletMarkFrame>
   )
@@ -142,18 +157,15 @@ export function CardBrandLogosRow({ className }: { className?: string }) {
   )
 }
 
-export function PaymentMethodMark({
+/**
+ * Collapsed checkout row: card icon only. Wallets use text label (standard for summary rows).
+ * Full acceptance marks belong in the picker list, not the summary button.
+ */
+export function PaymentMethodSummaryIcon({
   method,
-  className,
 }: {
   method: PaymentMethodChoice
-  className?: string
 }) {
-  if (method === 'card') {
-    return <CreditCard className={className ?? 'h-5 w-5 text-gray-900'} strokeWidth={1.75} />
-  }
-  if (method === 'google_pay') {
-    return <GooglePayMark className={className} />
-  }
-  return <ApplePayMark className={className} />
+  if (method !== 'card') return null
+  return <CreditCard className="h-5 w-5 shrink-0 text-gray-900" strokeWidth={1.75} />
 }
