@@ -332,7 +332,8 @@ function BookingSummaryPageContent() {
           package_variant_id: variant?.id || null,
           start_date: checkin,
           end_date: checkout,
-          discipline: discipline || null,
+          discipline: discipline || gym.disciplines?.[0] || null,
+          experience_level: 'beginner',
           notes: notes || null,
           total_price: totalPrice,
           // Guest booking details
@@ -342,10 +343,14 @@ function BookingSummaryPageContent() {
         }),
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create booking')
+      }
+
+      if (!data.booking_id) {
+        throw new Error('Booking was created but no booking ID was returned')
       }
 
       // Clear saved session — booking is now in progress
@@ -478,16 +483,25 @@ function BookingSummaryPageContent() {
               </div>
             </div>
             <div className="divide-y divide-gray-100 px-4">
-              <div className="py-3">
-                <div className="text-sm font-semibold text-gray-900 mb-0.5">Dates</div>
-                <div className="text-sm text-gray-600">{formatDateRange(checkin, checkout)}</div>
-                {isValidDuration && (isTraining ? pricingDuration : duration) > 0 && (
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {isTraining
-                      ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
-                      : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-                  </div>
-                )}
+              <div className="py-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900 mb-0.5">Dates</div>
+                  <div className="text-sm text-gray-600">{formatDateRange(checkin, checkout)}</div>
+                  {isValidDuration && (isTraining ? pricingDuration : duration) > 0 && (
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {isTraining
+                        ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
+                        : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDatePickerOpen(true)}
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                >
+                  Change
+                </button>
               </div>
               <div className="py-3">
                 <div className="text-sm font-semibold text-gray-900">
@@ -502,43 +516,6 @@ function BookingSummaryPageContent() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Booking Dates - Match reference image */}
-          <div className="space-y-2 pb-4 border-b border-gray-200">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-gray-500 mb-0.5">Check-in</div>
-                <div className="font-semibold text-sm">{formatDate(checkin)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 mb-0.5">Check-out</div>
-                <div className="font-semibold text-sm">{formatDate(checkout)}</div>
-              </div>
-            </div>
-            <button
-              onClick={() => setDatePickerOpen(true)}
-              className="text-sm text-[#003580] hover:underline font-medium pt-1"
-            >
-              Change dates
-            </button>
-          </div>
-
-          {/* You Selected - Match reference image format */}
-          <div className="pb-4 border-b border-gray-200">
-            <div className="text-xs text-gray-500 mb-1">You selected</div>
-            <div className="font-semibold text-sm">
-              {isTraining
-                ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
-                : `${duration} ${duration === 1 ? 'night' : 'nights'}`},{' '}
-              {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
-            </div>
-            {package_ && (
-              <div className="font-semibold text-sm mt-1 space-y-0.5">
-                <div>1 x {package_.name}</div>
-                {variant && <div>1 x {variant.name}</div>}
-              </div>
-            )}
           </div>
 
           {/* Price Summary - In Container */}
@@ -940,9 +917,22 @@ function BookingSummaryPageContent() {
               style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
             >
               <StepProgressBar step={2} />
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  {error}
+                </div>
+              )}
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !firstName || !lastName || !email || !phone}
+                disabled={
+                  submitting ||
+                  !isValidDuration ||
+                  !meetsMinimumStay ||
+                  !firstName ||
+                  !lastName ||
+                  !email ||
+                  !phone
+                }
                 className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
               >
                 {submitting ? 'Submitting…' : 'Final Steps'}

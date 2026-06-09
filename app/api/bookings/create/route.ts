@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       start_date, 
       end_date, 
       discipline, 
+      experience_level,
       notes, 
       total_price, 
       guest_email,
@@ -41,8 +42,15 @@ export async function POST(request: NextRequest) {
       guest_name
     } = body
 
-    // Validate required fields
-    if (!gym_id || !start_date || !end_date || !total_price) {
+    // Validate required fields (total_price may be 0 for edge-case packages)
+    if (
+      !gym_id ||
+      !start_date ||
+      !end_date ||
+      total_price === undefined ||
+      total_price === null ||
+      total_price === ''
+    ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -58,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Verify gym exists and is verified (not draft)
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
-      .select('id, name, owner_id, verification_status, status')
+      .select('id, name, owner_id, verification_status, status, disciplines')
       .eq('id', gym_id)
       .single()
 
@@ -143,6 +151,16 @@ export async function POST(request: NextRequest) {
     const initialStatus = 'pending'
     const requestSubmittedAt = new Date().toISOString()
 
+    const disciplineTrimmed = (discipline || '').toString().trim()
+    const gymDisciplines = Array.isArray(gym.disciplines) ? gym.disciplines : []
+    const resolvedDiscipline =
+      disciplineTrimmed || (gymDisciplines[0] ? String(gymDisciplines[0]) : 'General')
+
+    const allowedExperience = new Set(['beginner', 'intermediate', 'advanced'])
+    const resolvedExperienceLevel = allowedExperience.has(experience_level)
+      ? experience_level
+      : 'beginner'
+
     // Create booking (guest or authenticated)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -153,7 +171,8 @@ export async function POST(request: NextRequest) {
         package_variant_id: package_variant_id || null,
         start_date,
         end_date,
-        discipline,
+        discipline: resolvedDiscipline,
+        experience_level: resolvedExperienceLevel,
         notes: notes || null,
         total_price,
         platform_fee,
