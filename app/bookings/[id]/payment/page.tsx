@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
 import {
@@ -76,6 +76,50 @@ const CARD_ELEMENT_OPTIONS: PaymentElementProps['options'] = {
   },
 }
 
+/** Stripe.js runtime supports paymentMethods; @stripe/stripe-js 2.x types are narrower */
+type WalletExpressOptions = {
+  paymentMethods: {
+    applePay: 'always' | 'never' | 'auto'
+    googlePay: 'always' | 'never' | 'auto'
+    link: 'never'
+    paypal: 'never'
+  }
+  paymentMethodOrder: string[]
+  wallets: {
+    applePay: 'always' | 'never' | 'auto'
+    googlePay: 'always' | 'never' | 'auto'
+  }
+}
+
+function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions {
+  if (method === 'apple_pay') {
+    return {
+      paymentMethods: {
+        applePay: 'always',
+        googlePay: 'never',
+        link: 'never',
+        paypal: 'never',
+      },
+      paymentMethodOrder: ['apple_pay'],
+      wallets: { applePay: 'always', googlePay: 'never' },
+    }
+  }
+  return {
+    paymentMethods: {
+      applePay: 'never',
+      googlePay: 'always',
+      link: 'never',
+      paypal: 'never',
+    },
+    paymentMethodOrder: ['google_pay'],
+    wallets: { applePay: 'never', googlePay: 'always' },
+  }
+}
+
+/** Keep off-screen Stripe iframes at real size — squishing to 1px causes bleed/blur over our logos */
+const CARD_ELEMENT_OFFSCREEN_CLASS =
+  'fixed top-0 -left-[10000px] z-0 w-[min(100%,28rem)] max-w-md opacity-0 pointer-events-none overflow-hidden'
+
 const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
   card: 'Credit or debit card',
   apple_pay: 'Apple Pay',
@@ -116,7 +160,7 @@ function PaymentMethodSheet({
         onClick={onClose}
       />
       <div
-        className={`fixed inset-x-0 bottom-0 z-[302] flex h-[85dvh] max-h-[85dvh] flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-200 ${
+        className={`fixed inset-x-0 top-[4%] bottom-0 z-[302] flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-200 ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
@@ -234,6 +278,11 @@ function CheckoutForm({
   const elements = useElements()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [walletAvailable, setWalletAvailable] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setWalletAvailable(null)
+  }, [selectedPaymentMethod])
 
   const completePayment = async (paymentIntent: { id: string; status: string }) => {
     try {
@@ -380,23 +429,28 @@ function CheckoutForm({
     onCloseMobilePaymentModal?.()
   }
 
-  const walletExpressOptions =
-    selectedPaymentMethod === 'apple_pay'
-      ? { wallets: { applePay: 'always' as const, googlePay: 'never' as const } }
-      : { wallets: { applePay: 'never' as const, googlePay: 'always' as const } }
+  const showCardElementInModal =
+    paymentFieldsMounted &&
+    cardFieldsMounted &&
+    selectedPaymentMethod === 'card' &&
+    mobilePaymentModalOpen &&
+    paymentModalStep === 'card-details'
+
+  const showCardElementOffscreen =
+    paymentFieldsMounted &&
+    cardFieldsMounted &&
+    selectedPaymentMethod === 'card' &&
+    !mobilePaymentModalOpen
 
   if (hideMobileSubmit) {
     return (
       <>
         <form id={formId} onSubmit={handleSubmit}>
-          {paymentFieldsMounted &&
-            cardFieldsMounted &&
-            selectedPaymentMethod === 'card' &&
-            !(mobilePaymentModalOpen && paymentModalStep === 'card-details') && (
-              <div className="sr-only absolute h-px w-px overflow-hidden" aria-hidden>
-                <PaymentElement options={CARD_ELEMENT_OPTIONS} />
-              </div>
-            )}
+          {showCardElementOffscreen && (
+            <div className={CARD_ELEMENT_OFFSCREEN_CLASS} aria-hidden>
+              <PaymentElement options={CARD_ELEMENT_OPTIONS} />
+            </div>
+          )}
           {paymentFieldsMounted && (
             <PaymentMethodSheet
               open={mobilePaymentModalOpen}
@@ -408,7 +462,7 @@ function CheckoutForm({
             >
               {paymentModalStep === 'pick' ? (
                 <>
-                  <div className="flex-shrink-0">
+                  <div className="relative z-10 flex-shrink-0">
                     <PaymentMethodPicker
                       value={draftPaymentMethod}
                       onChange={(method) => onDraftPaymentMethodChange?.(method)}
@@ -417,11 +471,13 @@ function CheckoutForm({
                   <div className="flex-1 min-h-0" aria-hidden />
                 </>
               ) : (
-                <div className="flex-shrink-0 overflow-y-auto space-y-3 pb-4">
+                <div className="relative z-10 flex-shrink-0 overflow-y-auto space-y-3 pb-4">
                   <p className="text-sm text-gray-600">
                     You&apos;ll pay when you complete this booking.
                   </p>
-                  <PaymentElement options={CARD_ELEMENT_OPTIONS} />
+                  {showCardElementInModal && (
+                    <PaymentElement options={CARD_ELEMENT_OPTIONS} />
+                  )}
                 </div>
               )}
               {error && (
@@ -433,11 +489,30 @@ function CheckoutForm({
         {paymentFieldsMounted &&
           !mobilePaymentModalOpen &&
           selectedPaymentMethod !== 'card' && (
-            <div className="mt-2">
+            <div className="mt-2 space-y-2">
               <ExpressCheckoutElement
+                key={selectedPaymentMethod}
                 onConfirm={handleWalletConfirm}
-                options={walletExpressOptions}
+                onReady={(event) => {
+                  const available =
+                    selectedPaymentMethod === 'apple_pay'
+                      ? event.availablePaymentMethods?.applePay
+                      : event.availablePaymentMethods?.googlePay
+                  setWalletAvailable(available ?? false)
+                }}
+                options={
+                  walletExpressOptions(selectedPaymentMethod) as unknown as NonNullable<
+                    ComponentProps<typeof ExpressCheckoutElement>['options']
+                  >
+                }
               />
+              {walletAvailable === false && (
+                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  {selectedPaymentMethod === 'apple_pay'
+                    ? 'Apple Pay is not available in this browser. Use Safari on an iPhone, iPad, or Mac, or choose another payment method.'
+                    : 'Google Pay is not available on this device. Choose another payment method.'}
+                </p>
+              )}
             </div>
           )}
       </>

@@ -82,7 +82,9 @@ export async function POST(
     if (booking.stripe_payment_intent_id) {
       try {
         const existing = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id)
-        if (existing.client_secret && existing.status !== 'canceled') {
+        const supportsWalletPayments = existing.automatic_payment_methods?.enabled === true
+
+        if (existing.client_secret && existing.status !== 'canceled' && supportsWalletPayments) {
           await stripe.paymentIntents.update(booking.stripe_payment_intent_id, {
             metadata: {
               ...existing.metadata,
@@ -99,6 +101,14 @@ export async function POST(
             .eq('id', bookingId)
 
           return NextResponse.json({ client_secret: existing.client_secret })
+        }
+
+        if (existing.status !== 'canceled' && !supportsWalletPayments) {
+          try {
+            await stripe.paymentIntents.cancel(booking.stripe_payment_intent_id)
+          } catch (cancelError) {
+            console.warn('Could not cancel legacy card-only payment intent:', cancelError)
+          }
         }
       } catch (e) {
         console.warn('Failed to retrieve existing payment intent, will create a new one:', e)
