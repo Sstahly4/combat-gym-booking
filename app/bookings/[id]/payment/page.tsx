@@ -58,6 +58,10 @@ import {
   PaymentMethodPicker,
   type PaymentMethodChoice,
 } from '@/components/booking/payment-method-picker'
+import {
+  CardBrandLogosRow,
+  PaymentMethodMark,
+} from '@/components/booking/payment-brand-logos'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -112,11 +116,14 @@ function PaymentMethodSheet({
         onClick={onClose}
       />
       <div
-        className={`fixed inset-x-0 bottom-0 z-[302] flex max-h-[92dvh] flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 ${
+        className={`fixed inset-x-0 bottom-0 z-[302] flex h-[85dvh] max-h-[85dvh] flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-200 ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-5 flex-shrink-0">
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="flex items-start justify-between gap-4 px-6 pt-2 pb-5 flex-shrink-0">
           <h2 className="text-[22px] font-semibold leading-tight text-gray-900">{title}</h2>
           <button
             type="button"
@@ -128,7 +135,7 @@ function PaymentMethodSheet({
             <X className="w-4 h-4 text-gray-800" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-4">{children}</div>
+        <div className="flex-1 flex flex-col min-h-0 px-6">{children}</div>
         <div
           className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-100 flex-shrink-0"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
@@ -400,12 +407,17 @@ function CheckoutForm({
               onPrimary={handleModalPrimary}
             >
               {paymentModalStep === 'pick' ? (
-                <PaymentMethodPicker
-                  value={draftPaymentMethod}
-                  onChange={(method) => onDraftPaymentMethodChange?.(method)}
-                />
+                <>
+                  <div className="flex-shrink-0">
+                    <PaymentMethodPicker
+                      value={draftPaymentMethod}
+                      onChange={(method) => onDraftPaymentMethodChange?.(method)}
+                    />
+                  </div>
+                  <div className="flex-1 min-h-0" aria-hidden />
+                </>
               ) : (
-                <div className="space-y-3">
+                <div className="flex-shrink-0 overflow-y-auto space-y-3 pb-4">
                   <p className="text-sm text-gray-600">
                     You&apos;ll pay when you complete this booking.
                   </p>
@@ -909,9 +921,14 @@ export default function PaymentPage() {
           >
             <div className="min-w-0">
               <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <CreditCard className="w-5 h-5 shrink-0 text-gray-800" />
-                <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
+              <div className="flex items-start gap-2.5 text-sm text-gray-600">
+                <PaymentMethodMark method={selectedPaymentMethod} className="shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</div>
+                  {selectedPaymentMethod === 'card' && (
+                    <CardBrandLogosRow className="mt-1.5" />
+                  )}
+                </div>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
