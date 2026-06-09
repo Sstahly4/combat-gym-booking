@@ -189,7 +189,7 @@ export function BookingTrustLine({
     const { mainText, subText } = signal
     return (
       <div className={className}>
-        <p className="text-sm font-medium text-gray-900">{mainText}</p>
+        <p className="text-sm font-semibold text-gray-900">{mainText}</p>
         <p className="mt-0.5 text-sm text-gray-700">{subText}</p>
       </div>
     )

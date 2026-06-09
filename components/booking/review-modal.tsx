@@ -559,7 +559,7 @@ export function ReviewModal({
       ) : ready ? (
         <>
           {/* ── Top nav ─────────────────────────────────────────────── */}
-          <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
+          <div className="flex items-center justify-end px-5 pt-4 pb-2 flex-shrink-0">
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
@@ -603,15 +603,6 @@ export function ReviewModal({
                 <Row
                   label="Dates"
                   value={formatDateRange(checkin, checkout)}
-                  sub={
-                    duration > 0
-                      ? `${isTraining ? pricingDuration : duration} ${
-                          isTraining
-                            ? pricingDuration === 1 ? 'day' : 'days'
-                            : duration === 1 ? 'night' : 'nights'
-                        }`
-                      : undefined
-                  }
                   onEdit={() => setDatePickerOpen(true)}
                 />
                 <Row

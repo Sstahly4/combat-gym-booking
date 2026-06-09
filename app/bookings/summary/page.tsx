@@ -15,7 +15,12 @@ import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
 import { LoadingOverlay } from '@/components/loading-overlay'
-import { readBookingPrefill, readSummaryPrefillFromUrl, writeBookingPrefill } from '@/lib/utils/booking-prefill'
+import {
+  readBookingPrefill,
+  readSummaryPrefillFromUrl,
+  writeBookingPrefill,
+  writePaymentIntentCache,
+} from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -65,7 +70,7 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
       className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
       aria-label="Return to gym listing"
     >
-      <X className="w-4 h-4 text-gray-700" />
+      <X className="w-4 h-4 text-gray-900" />
     </Link>
   )
 }
@@ -78,14 +83,14 @@ function CheckoutTopBar({
   onBack: () => void
 }) {
   return (
-    <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+    <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        aria-label="Back to review"
+        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back</span>
+        <ArrowLeft className="w-4 h-4 text-gray-900" />
       </button>
       <CheckoutExitButton gym={gym} />
     </div>
@@ -108,7 +113,7 @@ function CheckoutBottomBar({
       className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
-      <StepProgressBar step={2} />
+      <StepProgressBar step={submitting ? 3 : 2} />
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
@@ -119,7 +124,7 @@ function CheckoutBottomBar({
         disabled={disabled || submitting}
         className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
       >
-        {submitting ? 'Submitting…' : 'Final Steps'}
+        Final Steps
       </Button>
     </div>
   )
@@ -482,8 +487,17 @@ function BookingSummaryPageContent() {
       // Clear saved session — booking is now in progress
       try { sessionStorage.removeItem(`booking_session_${gym.id}`) } catch {}
 
-      // Redirect to payment
-      router.push(`/bookings/${data.booking_id}/payment`)
+      const bookingId = data.booking_id as string
+
+      // Warm payment intent while navigating so step 3 overlay clears faster
+      void fetch(`/api/bookings/${bookingId}/payment-intent`, { method: 'POST' })
+        .then((res) => res.json())
+        .then((intent) => {
+          if (intent.client_secret) writePaymentIntentCache(bookingId, intent.client_secret)
+        })
+        .catch(() => {})
+
+      router.replace(`/bookings/${bookingId}/payment`)
     } catch (err: any) {
       setError(err.message)
       setSubmitting(false)
@@ -536,6 +550,7 @@ function BookingSummaryPageContent() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
+      <LoadingOverlay show={submitting} zClass="z-[60]" />
       <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
 
       <div className="flex-1 overflow-y-auto pb-36">

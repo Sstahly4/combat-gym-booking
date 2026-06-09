@@ -18,7 +18,11 @@ import { BookingWhatsIncluded } from '@/components/booking/booking-whats-include
 import { BookingSafetyPolicies } from '@/components/booking/booking-safety-policies'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { LoadingOverlay } from '@/components/loading-overlay'
-import { readBookingPrefill } from '@/lib/utils/booking-prefill'
+import {
+  readBookingPrefill,
+  readPaymentIntentCache,
+  clearPaymentIntentCache,
+} from '@/lib/utils/booking-prefill'
 import Link from 'next/link'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -169,7 +173,10 @@ export default function PaymentPage() {
   const router = useRouter()
   const { convertPrice, formatPrice } = useCurrency()
   const bookingId = params.id as string
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return readPaymentIntentCache(bookingId)
+  })
   const [booking, setBooking] = useState<BookingWithExtras | null>(() => {
     // Synchronously seed from prefill so the page has real content under the
     // overlay while the PaymentIntent fetch runs. The real booking from the
@@ -212,28 +219,41 @@ export default function PaymentPage() {
 
   const fetchBookingAndPaymentIntent = async () => {
     try {
-      // Get payment intent first (this will fetch booking server-side and handle RLS)
-      const response = await fetch(`/api/bookings/${bookingId}/payment-intent`, {
-        method: 'POST',
-      })
+      let resolvedSecret = clientSecret
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error('Error creating payment intent:', data.error, data.details)
-        // Show user-friendly error message
-        let errorMessage = 'Failed to load payment details'
-        if (data.error?.includes('not configured') || data.error?.includes('API key')) {
-          errorMessage = 'Payment system is not configured. Please contact support to complete your booking.'
-        } else if (data.error) {
-          errorMessage = data.error
+      if (!resolvedSecret) {
+        const cached = readPaymentIntentCache(bookingId)
+        if (cached) {
+          resolvedSecret = cached
+          setClientSecret(cached)
         }
-        setError(errorMessage)
-        setLoading(false)
-        return
       }
 
-      setClientSecret(data.client_secret)
+      if (!resolvedSecret) {
+        const response = await fetch(`/api/bookings/${bookingId}/payment-intent`, {
+          method: 'POST',
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          console.error('Error creating payment intent:', data.error, data.details)
+          let errorMessage = 'Failed to load payment details'
+          if (data.error?.includes('not configured') || data.error?.includes('API key')) {
+            errorMessage = 'Payment system is not configured. Please contact support to complete your booking.'
+          } else if (data.error) {
+            errorMessage = data.error
+          }
+          setError(errorMessage)
+          setLoading(false)
+          return
+        }
+
+        resolvedSecret = data.client_secret
+        setClientSecret(data.client_secret)
+      }
+
+      if (resolvedSecret) clearPaymentIntentCache(bookingId)
 
       // Fetch booking details via API (handles RLS properly)
       const bookingResponse = await fetch(`/api/bookings/${bookingId}`)

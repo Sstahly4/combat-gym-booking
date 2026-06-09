@@ -63,6 +63,29 @@ export function clearBookingPrefill(): void {
   } catch {}
 }
 
+const PAYMENT_INTENT_PREFIX = 'payment_intent_'
+
+/** Cache Stripe client_secret so step 3 can render Elements without waiting on navigation. */
+export function writePaymentIntentCache(bookingId: string, clientSecret: string): void {
+  try {
+    sessionStorage.setItem(`${PAYMENT_INTENT_PREFIX}${bookingId}`, clientSecret)
+  } catch {}
+}
+
+export function readPaymentIntentCache(bookingId: string): string | null {
+  try {
+    return sessionStorage.getItem(`${PAYMENT_INTENT_PREFIX}${bookingId}`)
+  } catch {
+    return null
+  }
+}
+
+export function clearPaymentIntentCache(bookingId: string): void {
+  try {
+    sessionStorage.removeItem(`${PAYMENT_INTENT_PREFIX}${bookingId}`)
+  } catch {}
+}
+
 /** Read prefill for the current /bookings/summary URL (sync, first paint). */
 export function readSummaryPrefillFromUrl(): BookingPrefillData | null {
   if (typeof window === 'undefined') return null
