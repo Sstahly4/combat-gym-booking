@@ -28,6 +28,7 @@ import {
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
+import { CHECKOUT_PAY_BUTTON_CLASS, CheckoutStepTitle } from '@/components/booking/checkout-ui'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -146,7 +147,7 @@ function CheckoutBottomBar({
       <Button
         onClick={onSubmit}
         disabled={disabled || submitting}
-        className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
+        className={CHECKOUT_PAY_BUTTON_CLASS}
       >
         Final Steps
       </Button>
@@ -631,7 +632,7 @@ function BookingSummaryPageContent() {
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6">
-          <h1 className="text-2xl font-bold text-gray-900">Your details</h1>
+          <CheckoutStepTitle>Your details</CheckoutStepTitle>
 
           {/* Compact gym summary + guest details — single card */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -991,7 +992,7 @@ function BookingSummaryPageContent() {
           {/* Center Column - User Details Form */}
           <div className="lg:col-span-2 space-y-4">
             <div>
-              <h1 className="text-2xl font-bold mb-3 text-gray-900">Enter your details</h1>
+              <CheckoutStepTitle className="mb-3">Enter your details</CheckoutStepTitle>
               
               {/* Sign-in/Register Prompt */}
               <div className="mb-3 p-3 bg-gray-50 rounded-md border border-gray-300">

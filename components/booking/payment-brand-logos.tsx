@@ -158,14 +158,22 @@ export function CardBrandLogosRow({ className }: { className?: string }) {
 }
 
 /**
- * Collapsed checkout row: card icon only. Wallets use text label (standard for summary rows).
- * Full acceptance marks belong in the picker list, not the summary button.
+ * Collapsed payment-method row on Confirm and pay — compact icon/mark beside the label.
+ * Picker list uses larger `list` marks; summary uses `compact` (~20px) so marks stay inline with text.
  */
 export function PaymentMethodSummaryIcon({
   method,
 }: {
   method: PaymentMethodChoice
 }) {
-  if (method !== 'card') return null
-  return <CreditCard className="h-5 w-5 shrink-0 text-gray-900" strokeWidth={1.75} />
+  if (method === 'card') {
+    return <CreditCard className="h-5 w-5 shrink-0 text-gray-900" strokeWidth={1.75} />
+  }
+  if (method === 'apple_pay') {
+    return <ApplePayMark size="compact" />
+  }
+  if (method === 'google_pay') {
+    return <GooglePayMark size="compact" />
+  }
+  return null
 }

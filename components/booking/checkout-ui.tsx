@@ -1,4 +1,27 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+
+/** Primary checkout CTA — card confirm, step 2 continue, etc. */
+export const CHECKOUT_PAY_BUTTON_CLASS =
+  'w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl'
+
+/** Match Stripe Express Checkout buttonHeight to CHECKOUT_PAY_BUTTON_CLASS (h-11 = 44px) */
+export const CHECKOUT_WALLET_BUTTON_HEIGHT = 44
+
+/** Mobile + desktop checkout step titles (steps 2–3: Your details, Confirm and pay) */
+export function CheckoutStepTitle({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <h1 className={cn('text-2xl font-bold leading-tight text-gray-900', className)}>
+      {children}
+    </h1>
+  )
+}
 
 export function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
   return (

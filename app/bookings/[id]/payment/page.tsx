@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode, type TouchEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
 import {
@@ -48,8 +49,10 @@ import {
 } from '@/lib/utils/booking-prefill'
 import { clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
 import {
+  CHECKOUT_PAY_BUTTON_CLASS,
+  CHECKOUT_WALLET_BUTTON_HEIGHT,
+  CheckoutStepTitle,
   CheckoutSummaryRow,
-  StepProgressBar,
   formatCheckoutAmountOnly,
   formatCheckoutDateRange,
 } from '@/components/booking/checkout-ui'
@@ -73,43 +76,53 @@ const CARD_ELEMENT_OPTIONS: PaymentElementProps['options'] = {
   },
 }
 
-/** Stripe.js runtime supports paymentMethods; @stripe/stripe-js 2.x types are narrower */
+/** Stripe.js runtime supports paymentMethods + layout; @stripe/stripe-js 2.x types are narrower */
 type WalletExpressOptions = {
   paymentMethods: {
     applePay: 'always' | 'never' | 'auto'
     googlePay: 'always' | 'never' | 'auto'
     link: 'never'
     paypal: 'never'
+    amazonPay: 'never'
+    klarna: 'never'
   }
   paymentMethodOrder: string[]
-  wallets: {
-    applePay: 'always' | 'never' | 'auto'
-    googlePay: 'always' | 'never' | 'auto'
+  layout: {
+    maxColumns: 1
+    overflow: 'never'
+  }
+  buttonHeight: number
+  buttonType: {
+    applePay: 'plain'
+    googlePay: 'pay'
   }
 }
 
 function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions {
+  const disabledWallets = {
+    link: 'never' as const,
+    paypal: 'never' as const,
+    amazonPay: 'never' as const,
+    klarna: 'never' as const,
+  }
+  const layout = { maxColumns: 1 as const, overflow: 'never' as const }
+  const buttonType = { applePay: 'plain' as const, googlePay: 'pay' as const }
+
   if (method === 'apple_pay') {
     return {
-      paymentMethods: {
-        applePay: 'always',
-        googlePay: 'never',
-        link: 'never',
-        paypal: 'never',
-      },
+      paymentMethods: { ...disabledWallets, applePay: 'always', googlePay: 'never' },
       paymentMethodOrder: ['apple_pay'],
-      wallets: { applePay: 'always', googlePay: 'never' },
+      layout,
+      buttonHeight: CHECKOUT_WALLET_BUTTON_HEIGHT,
+      buttonType,
     }
   }
   return {
-    paymentMethods: {
-      applePay: 'never',
-      googlePay: 'always',
-      link: 'never',
-      paypal: 'never',
-    },
+    paymentMethods: { ...disabledWallets, applePay: 'never', googlePay: 'always' },
     paymentMethodOrder: ['google_pay'],
-    wallets: { applePay: 'never', googlePay: 'always' },
+    layout,
+    buttonHeight: CHECKOUT_WALLET_BUTTON_HEIGHT,
+    buttonType,
   }
 }
 
@@ -126,7 +139,6 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
 type PaymentModalStep = 'pick' | 'card-details'
 
 function PaymentMethodSheet({
-  open,
   onClose,
   onCancel,
   title,
@@ -134,7 +146,6 @@ function PaymentMethodSheet({
   onPrimary,
   children,
 }: {
-  open: boolean
   onClose: () => void
   onCancel: () => void
   title: string
@@ -142,35 +153,64 @@ function PaymentMethodSheet({
   onPrimary: () => void
   children: ReactNode
 }) {
-  return (
-    <div
-      className={`md:hidden fixed inset-0 z-[300] transition-opacity duration-200 ${
-        open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-      aria-hidden={!open}
-    >
+  const [sheetTranslateY, setSheetTranslateY] = useState(0)
+  const sheetStartY = useRef(0)
+  const sheetIsDragging = useRef(false)
+
+  const handleSheetTouchStart = (e: TouchEvent) => {
+    sheetStartY.current = e.touches[0].clientY
+    sheetIsDragging.current = true
+  }
+
+  const handleSheetTouchMove = (e: TouchEvent) => {
+    if (!sheetIsDragging.current) return
+    const diffY = e.touches[0].clientY - sheetStartY.current
+    if (diffY > 0) setSheetTranslateY(diffY)
+  }
+
+  const handleSheetTouchEnd = () => {
+    if (!sheetIsDragging.current) return
+    sheetIsDragging.current = false
+    if (sheetTranslateY > 100) onClose()
+    setSheetTranslateY(0)
+  }
+
+  const sheet = (
+    <div className="md:hidden">
       <button
         type="button"
         aria-label="Close"
-        tabIndex={open ? 0 : -1}
         className="fixed inset-0 bg-black/50 z-[301]"
-        onClick={onClose}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onClose()
+        }}
       />
       <div
-        className={`fixed inset-x-0 top-[4%] bottom-0 z-[302] flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-200 ${
-          open ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        className="fixed inset-x-0 top-[4%] bottom-0 z-[302] flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform"
+        style={{ transform: `translateY(${sheetTranslateY}px)` }}
       >
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        <div
+          className="flex-shrink-0 touch-none"
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+        >
+          <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+            <div className="w-10 h-1 rounded-full bg-gray-300" />
+          </div>
         </div>
         <div className="flex items-start justify-between gap-4 px-6 pt-2 pb-5 flex-shrink-0">
           <h2 className="text-[22px] font-semibold leading-tight text-gray-900">{title}</h2>
           <button
             type="button"
-            onClick={onClose}
-            tabIndex={open ? 0 : -1}
-            className="w-8 h-8 -mr-1 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
+            className="w-8 h-8 -mr-1 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0 touch-manipulation"
             aria-label="Close"
           >
             <X className="w-4 h-4 text-gray-800" />
@@ -184,7 +224,6 @@ function PaymentMethodSheet({
           <button
             type="button"
             onClick={onCancel}
-            tabIndex={open ? 0 : -1}
             className="text-sm font-semibold text-gray-900 py-1.5 hover:text-gray-600 transition-colors"
           >
             Cancel
@@ -192,7 +231,6 @@ function PaymentMethodSheet({
           <button
             type="button"
             onClick={onPrimary}
-            tabIndex={open ? 0 : -1}
             className="h-11 px-6 text-sm font-semibold rounded-xl bg-gray-900 hover:bg-gray-800 text-white transition-colors"
           >
             {primaryLabel}
@@ -201,6 +239,9 @@ function PaymentMethodSheet({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return sheet
+  return createPortal(sheet, document.body)
 }
 
 function PaymentCheckoutTopBar({
@@ -250,6 +291,7 @@ function CheckoutForm({
   onCardFieldsMounted,
   cardFieldsMounted = false,
   onWalletReadyChange,
+  mobileCheckoutDisabled = false,
 }: {
   booking: Booking & { gym: Gym }
   formId?: string
@@ -269,6 +311,8 @@ function CheckoutForm({
   onCardFieldsMounted?: () => void
   cardFieldsMounted?: boolean
   onWalletReadyChange?: (ready: 'idle' | 'available' | 'unavailable') => void
+  /** Page-level gate (e.g. client secret still loading) */
+  mobileCheckoutDisabled?: boolean
 }) {
   const router = useRouter()
   const params = useParams()
@@ -456,9 +500,8 @@ function CheckoutForm({
               <PaymentElement options={CARD_ELEMENT_OPTIONS} />
             </div>
           )}
-          {paymentFieldsMounted && (
+          {paymentFieldsMounted && mobilePaymentModalOpen && (
             <PaymentMethodSheet
-              open={mobilePaymentModalOpen}
               onClose={handleModalCancel}
               onCancel={handleModalCancel}
               title={paymentModalStep === 'card-details' ? 'Add card details' : 'Pay with'}
@@ -491,18 +534,41 @@ function CheckoutForm({
             </PaymentMethodSheet>
           )}
         </form>
-        {paymentFieldsMounted &&
-          !mobilePaymentModalOpen &&
-          selectedPaymentMethod !== 'card' && (
-            <div className="mt-2 space-y-2">
-              {walletReady === 'unavailable' ? (
-                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        {!mobilePaymentModalOpen && (
+          <div className="space-y-2">
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            {selectedPaymentMethod === 'card' ? (
+              <Button
+                type="submit"
+                form={formId}
+                disabled={mobileCheckoutDisabled || loading || !cardFieldsMounted || !stripe}
+                className={CHECKOUT_PAY_BUTTON_CLASS}
+              >
+                {loading ? 'Processing...' : (
+                  <>
+                    Confirm Booking
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            ) : paymentFieldsMounted ? (
+              walletReady === 'unavailable' ? (
+                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                   {selectedPaymentMethod === 'apple_pay'
                     ? 'Apple Pay is not available in this browser. Use Safari on an iPhone, iPad, or Mac, or choose another payment method.'
                     : 'Google Pay is not available on this device. Choose another payment method.'}
                 </p>
               ) : (
-                <div className={walletReady === 'idle' ? 'invisible h-0 overflow-hidden' : ''}>
+                <div
+                  className={`w-full min-w-0 ${
+                    walletReady === 'idle' ? 'invisible overflow-hidden' : ''
+                  }`}
+                  style={{ minHeight: CHECKOUT_WALLET_BUTTON_HEIGHT }}
+                >
                   <ExpressCheckoutElement
                     key={selectedPaymentMethod}
                     onConfirm={handleWalletConfirm}
@@ -520,9 +586,11 @@ function CheckoutForm({
                     }
                   />
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : null}
+            <PaymentHoldExplainer />
+          </div>
+        )}
       </>
     )
   }
@@ -552,9 +620,9 @@ function CheckoutForm({
 
       {/* Desktop: Inline button */}
       <div className="hidden md:block">
-        <Button 
-          type="submit" 
-          className="w-full h-14 text-lg font-bold bg-[#003580] hover:bg-[#003580]/90" 
+        <Button
+          type="submit"
+          className={CHECKOUT_PAY_BUTTON_CLASS}
           disabled={!stripe || loading}
         >
           {loading ? 'Processing...' : (
@@ -640,10 +708,6 @@ export default function PaymentPage() {
     setPaymentMethodOpen(false)
     setPaymentModalStep('pick')
   }
-  const [payLoading, setPayLoading] = useState(false)
-  const [payError, setPayError] = useState<string | null>(null)
-  const [walletReady, setWalletReady] = useState<'idle' | 'available' | 'unavailable'>('idle')
-
   useEffect(() => {
     fetchBookingAndPaymentIntent()
   }, [bookingId])
@@ -821,7 +885,13 @@ export default function PaymentPage() {
 
 
   const options = clientSecret
-    ? { clientSecret, appearance: { theme: 'stripe' as const } }
+    ? {
+        clientSecret,
+        appearance: {
+          theme: 'stripe' as const,
+          variables: { borderRadius: '12px' },
+        },
+      }
     : undefined
 
   const prefill =
@@ -878,12 +948,6 @@ export default function PaymentPage() {
           <BookingProgressBar currentStep={3} />
         </div>
         <PaymentCheckoutTopBar onBack={() => router.back()} onExit={() => router.back()} />
-        <div
-          className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 z-50"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        >
-          <StepProgressBar step={3} />
-        </div>
       </div>
     )
   }
@@ -929,10 +993,11 @@ export default function PaymentPage() {
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-36 md:pb-0">
+      <div className="flex-1 overflow-y-auto md:pb-0">
+        <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
-        <div className="md:hidden px-4 py-6 space-y-6">
-          <h1 className="text-2xl font-bold text-gray-900">Confirm and pay</h1>
+        <div className="md:hidden space-y-6">
+          <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
 
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
@@ -1019,8 +1084,6 @@ export default function PaymentPage() {
             <Elements stripe={stripePromise} options={options}>
               <CheckoutForm
                 booking={booking}
-                onLoadingChange={setPayLoading}
-                onErrorChange={setPayError}
                 hideMobileSubmit
                 mobilePaymentModalOpen={paymentMethodOpen}
                 onCloseMobilePaymentModal={closePaymentMethodModal}
@@ -1033,15 +1096,14 @@ export default function PaymentPage() {
                 onPaymentModalStepChange={setPaymentModalStep}
                 onCardFieldsMounted={() => setCardFieldsMounted(true)}
                 cardFieldsMounted={cardFieldsMounted}
-                onWalletReadyChange={setWalletReady}
+                mobileCheckoutDisabled={!clientSecret || loading}
               />
             </Elements>
           ) : null}
         </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:block max-w-7xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6">
+      <div className="hidden md:grid lg:grid-cols-3 gap-6">
           {/* Left Sidebar - Booking Summary */}
           <div className="lg:col-span-1 space-y-4">
             {/* Gym Summary Box */}
@@ -1296,7 +1358,7 @@ export default function PaymentPage() {
           {/* Right Column - Payment Form */}
           <div className="lg:col-span-2 space-y-4">
             <div>
-              <h1 className="text-2xl font-bold mb-3 text-gray-900">Pay online</h1>
+              <CheckoutStepTitle className="mb-3">Pay online</CheckoutStepTitle>
               <p className="text-gray-600 mb-1">You&apos;ll pay when you complete this booking.</p>
               <PaymentHoldExplainer className="text-xs text-gray-500 mb-3" />
             </div>
@@ -1328,46 +1390,8 @@ export default function PaymentPage() {
             </Card>
           </div>
         </div>
-      </div>
-      </div>
-
-      {!priceSheetOpen && !paymentMethodOpen && (
-        <div
-          className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        >
-          <StepProgressBar step={3} />
-          {payError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-              {payError}
-            </div>
-          )}
-          {selectedPaymentMethod === 'card' ? (
-            <Button
-              type="submit"
-              form={PAYMENT_FORM_ID}
-              disabled={!clientSecret || payLoading || loading || !cardFieldsMounted}
-              className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
-            >
-              {payLoading ? 'Processing...' : (
-                <>
-                  Confirm Booking
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </>
-              )}
-            </Button>
-          ) : walletReady === 'available' ? (
-            <p className="text-center text-sm text-gray-600 pb-1">
-              Use {PAYMENT_METHOD_LABELS[selectedPaymentMethod]} above to complete payment.
-            </p>
-          ) : (
-            <p className="text-center text-sm text-gray-600 pb-1">
-              Change payment method to continue.
-            </p>
-          )}
-          <PaymentHoldExplainer />
         </div>
-      )}
+      </div>
 
       {priceSheetOpen && priceInfo && rawTotal > 0 && (
         <PriceDetailsSheet
