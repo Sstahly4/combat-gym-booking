@@ -14,15 +14,13 @@ export const PAYMENT_BRAND_ASSETS = {
 } as const
 
 /**
- * Wallet marks in the Pay with picker — 24px tall per Apple/Google checkout guidance.
- * Google mark is wider (~2.26:1 cropped asset); same height as Apple, never larger.
+ * Wallet marks in the Pay with picker — 20px (h-5) row height, aligned with the card icon.
  * @see https://developer.apple.com/apple-pay/marketing/
  * @see https://developers.google.com/pay/api/web/guides/brand-guidelines
  */
 const WALLET_MARK_SLOTS = {
   list: {
-    apple: 'h-5 w-[2.25rem]',
-    /** Slightly shorter than Apple — Google mark has more vertical padding in the asset */
+    apple: 'h-5 w-[2.75rem]',
     google: 'h-5 w-[2.75rem]',
   },
   compact: {
@@ -35,7 +33,7 @@ type WalletMarkSize = keyof typeof WALLET_MARK_SLOTS
 
 function WalletMarkSlot({ children, className }: { children: ReactNode; className: string }) {
   return (
-    <span className={`inline-flex shrink-0 items-center justify-start ${className}`}>
+    <span className={`inline-flex shrink-0 items-center justify-start overflow-visible ${className}`}>
       {children}
     </span>
   )
@@ -63,7 +61,7 @@ export function GooglePayMark({
   className?: string
 }) {
   const slot = WALLET_MARK_SLOTS[size]
-  const markClass = ['block h-4 w-auto max-w-full object-contain object-left', className]
+  const markClass = ['block h-full w-full object-contain object-left', className]
     .filter(Boolean)
     .join(' ')
   return (
@@ -167,7 +165,11 @@ export function PaymentMethodSummaryIcon({
   method: PaymentMethodChoice
 }) {
   if (method === 'card') {
-    return <CreditCard className="h-5 w-5 shrink-0 text-gray-900" strokeWidth={1.75} />
+    return (
+      <span className="inline-flex h-5 w-[2.25rem] items-center justify-start">
+        <CreditCard className="h-5 w-5 shrink-0 text-gray-900" strokeWidth={1.75} />
+      </span>
+    )
   }
   if (method === 'apple_pay') {
     return <ApplePayMark size="compact" />
