@@ -12,16 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
-import { ArrowLeft, MapPin, Calendar, Users, AlertCircle, Dumbbell, Check, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
+import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
-import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { readBookingPrefill } from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
-import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
@@ -518,225 +516,6 @@ function BookingSummaryPageContent() {
             </div>
           </div>
 
-          {/* Price Summary - In Container */}
-          {priceInfo && (
-            <div className="px-4">
-              <Card className="border border-gray-300 rounded-lg shadow-sm">
-                <CardHeader className="bg-gray-50 border-b border-gray-300 pb-3">
-                  <CardTitle className="text-lg font-semibold">Your price summary</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-3">
-                  <div className="space-y-3 text-sm">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">
-                      {variant ? variant.name : package_.name} ·{' '}
-                      {isTraining
-                        ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
-                        : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-                    </div>
-                    {priceInfo.lines.map((line, i) => (
-                      <div key={i} className="flex justify-between">
-                        <span className="text-gray-700">
-                          {line.label}
-                          {line.qty > 1 && line.unitPrice > 0 ? (
-                            <span className="text-gray-400">
-                              {' '}· {formatPrice(convertPrice(line.unitPrice, gym.currency))} each
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(line.subtotal, gym.currency))}
-                        </span>
-                      </div>
-                    ))}
-                    {(package_.includes_meals || package_.type === 'all_inclusive') && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-700 flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          Meals included
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        Booking Guarantee
-                      </span>
-                    </div>
-                  </div>
-                  <div className="pt-4 border-t border-gray-300">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-lg text-gray-900">Total</span>
-                      <span className="font-bold text-xl text-gray-900">
-                        {formatPrice(convertPrice(finalTotal, gym.currency))}
-                      </span>
-                    </div>
-                    {priceInfo.savedVsNightly > 0 ? (
-                      <p className="text-xs font-medium text-emerald-700 mt-1">
-                        You saved {formatPrice(convertPrice(priceInfo.savedVsNightly, gym.currency))} with the bundle rate
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Good to Know Section - Mobile version without card wrapper */}
-          {package_ && (() => {
-            const points: string[] = []
-            
-            // Always add payment info as first point
-            points.push("No payment needed now. You'll pay when the gym confirms your booking.")
-            
-            const { goodToKnowBullet } = getCancellationMarketingLines({
-              startDate: checkin,
-              packageCancellationPolicyDays: package_.cancellation_policy_days,
-              gymPolicyTone: gym?.cancellation_policy_tone ?? null,
-            })
-            if (goodToKnowBullet) {
-              points.push(goodToKnowBullet)
-            }
-            
-            // Third point - Accommodation or meal info
-            if (package_.type === 'accommodation' || package_.type === 'all_inclusive') {
-              if (variant?.room_type === 'private') {
-                points.push("You'll get the entire room to yourself!")
-              } else if (variant?.room_type === 'shared') {
-                points.push("You'll be sharing the room with other guests.")
-              } else if (package_.includes_accommodation) {
-                points.push("Accommodation is included in your booking.")
-              }
-            }
-            
-            // Meal info (for all_inclusive or training packages with meals)
-            if (package_.includes_meals || package_.type === 'all_inclusive') {
-              if (package_.meal_plan_details?.description) {
-                points.push(package_.meal_plan_details.description)
-              } else if (package_.meal_plan_details?.meals_per_day) {
-                points.push(`${package_.meal_plan_details.meals_per_day} meal${package_.meal_plan_details.meals_per_day > 1 ? 's' : ''} per day included.`)
-              } else {
-                points.push("Meals are included in your package.")
-              }
-            } else {
-              points.push("Your booking details will be confirmed by the gym shortly.")
-            }
-            
-            // Ensure we have exactly 3 points
-            const displayPoints = points.slice(0, 3)
-            
-            return (
-              <div className="pb-6 border-b border-gray-200">
-                <h3 className="font-bold text-base mb-4 text-gray-900">Good to know:</h3>
-                <div className="space-y-3">
-                  {displayPoints.map((point, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-600 flex items-center justify-center mt-0.5">
-                        <Check className="w-3.5 h-3.5 text-white" />
-                      </div>
-                      <p className="text-sm text-gray-900 leading-relaxed flex-1">{point}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Additional Peace of Mind Information */}
-          <div className="space-y-4 pb-6 border-b border-gray-200">
-            <h3 className="text-base font-bold text-gray-900">What's included</h3>
-            <div className="space-y-2 text-sm">
-              {package_.type === 'training' && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">
-                    Training sessions for {pricingDuration} {pricingDuration === 1 ? 'day' : 'days'}
-                  </span>
-                </div>
-              )}
-              {(package_.type === 'accommodation' || package_.type === 'all_inclusive') && (
-                <>
-                  <div className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Training sessions included</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Accommodation for {duration} {duration === 1 ? 'night' : 'nights'}</span>
-                  </div>
-                </>
-              )}
-              {package_.includes_meals && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">
-                    {package_.meal_plan_details?.meals_per_day 
-                      ? `${package_.meal_plan_details.meals_per_day} meal${package_.meal_plan_details.meals_per_day > 1 ? 's' : ''} per day`
-                      : 'Meals included'}
-                  </span>
-                </div>
-              )}
-              {gym.amenities?.wifi && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">Free WiFi</span>
-                </div>
-              )}
-              {gym.amenities?.parking && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">Parking available</span>
-                </div>
-              )}
-              {gym.amenities?.security && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">24/7 Security</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Safety & Policies */}
-          <div className="space-y-3 pb-6 border-b border-gray-200">
-            <h3 className="text-base font-bold text-gray-900">Safety & policies</h3>
-            <div className="space-y-2 text-sm text-gray-700">
-              <div className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span>Booking Guarantee</span>
-              </div>
-              {(() => {
-                const { safetyPoliciesLine } = getCancellationMarketingLines({
-                  startDate: checkin,
-                  packageCancellationPolicyDays: package_.cancellation_policy_days,
-                  gymPolicyTone: gym?.cancellation_policy_tone ?? null,
-                })
-                return safetyPoliciesLine ? (
-                  <div className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>{safetyPoliciesLine}</span>
-                  </div>
-                ) : null
-              })()}
-              <div className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span>Secure payment processing</span>
-              </div>
-              {gym.amenities?.fire_safety && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Fire safety compliant</span>
-                </div>
-              )}
-              {gym.amenities?.first_aid && (
-                <div className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>First aid facilities available</span>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Guest Details Form - In Container */}
           <div className="px-4 pb-0">
             <Card className="border border-gray-300 rounded-lg shadow-sm">
@@ -1109,74 +888,6 @@ function BookingSummaryPageContent() {
               </CardContent>
             </Card>
 
-            {/* Price Summary */}
-            <Card className="border border-gray-300 rounded-lg shadow-sm">
-              <CardHeader className="bg-gray-50 border-b border-gray-300 pb-3">
-                <CardTitle className="text-lg font-semibold">Your price summary</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-3">
-                {priceInfo ? (
-                  <>
-                    <div className="space-y-3 text-sm">
-                      <div className="text-xs uppercase tracking-wide text-gray-500">
-                        {variant ? variant.name : package_.name} ·{' '}
-                        {isTraining
-                          ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
-                          : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-                      </div>
-                      {priceInfo.lines.map((line, i) => (
-                        <div key={i} className="flex justify-between">
-                          <span className="text-gray-700">
-                            {line.label}
-                            {line.qty > 1 && line.unitPrice > 0 ? (
-                              <span className="text-gray-400">
-                                {' '}· {formatPrice(convertPrice(line.unitPrice, gym.currency))} each
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            {formatPrice(convertPrice(line.subtotal, gym.currency))}
-                          </span>
-                        </div>
-                      ))}
-                      {(package_.includes_meals || package_.type === 'all_inclusive') && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-700 flex items-center gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            Meals included
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-700 flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          Booking Guarantee
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-300">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-lg text-gray-900">Total</span>
-                        <span className="font-bold text-xl text-gray-900">
-                          {formatPrice(convertPrice(finalTotal, gym.currency))}
-                        </span>
-                      </div>
-                      {priceInfo.savedVsNightly > 0 ? (
-                        <p className="text-xs font-medium text-emerald-700 mt-1">
-                          You saved {formatPrice(convertPrice(priceInfo.savedVsNightly, gym.currency))} with the bundle rate
-                        </p>
-                      ) : null}
-                      <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-4 text-gray-500 text-sm">
-                    Please select dates to see pricing
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
           {/* Center Column - User Details Form */}
@@ -1336,17 +1047,6 @@ function BookingSummaryPageContent() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Good to Know */}
-            {package_ && (
-              <GoodToKnowCard 
-                package_={package_} 
-                variant={variant}
-                checkin={checkin}
-                checkout={checkout}
-                gymPolicyTone={gym?.cancellation_policy_tone ?? null}
-              />
-            )}
 
             {/* Training Details */}
             <Card className="border border-gray-300 rounded-lg shadow-sm">

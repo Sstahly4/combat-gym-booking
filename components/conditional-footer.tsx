@@ -3,16 +3,21 @@
 import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/footer'
 
-/** Omits the global footer on hub dashboards so they aren’t followed by site chrome. */
+/** Omits the global footer on hub dashboards and checkout steps (focused flow, no site chrome). */
 export function ConditionalFooter() {
   const pathname = usePathname() ?? ''
+  const isCheckoutStep =
+    pathname === '/bookings/summary' ||
+    /^\/bookings\/[^/]+\/payment/.test(pathname)
+
   if (
     pathname === '/manage' ||
     pathname.startsWith('/manage/') ||
     pathname === '/admin' ||
     pathname.startsWith('/admin/') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/bookings/review')
+    pathname.startsWith('/bookings/review') ||
+    isCheckoutStep
   ) {
     return null
   }

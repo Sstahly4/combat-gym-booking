@@ -14,6 +14,9 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingTrustLine } from '@/components/booking-trust-line'
+import { BookingWhatsIncluded } from '@/components/booking/booking-whats-included'
+import { BookingSafetyPolicies } from '@/components/booking/booking-safety-policies'
+import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { readBookingPrefill } from '@/lib/utils/booking-prefill'
 import Link from 'next/link'
@@ -585,6 +588,33 @@ export default function PaymentPage() {
           </Card>
         </div>
 
+        {booking.package && (
+          <div className="px-4 space-y-6">
+            <GoodToKnowCard
+              package_={booking.package}
+              variant={booking.variant ?? null}
+              checkin={booking.start_date}
+              checkout={booking.end_date}
+              gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+              checkoutStep="payment"
+            />
+            <BookingWhatsIncluded
+              package_={booking.package}
+              duration={duration}
+              pricingDuration={displayDuration}
+              gym={booking.gym}
+              className="space-y-4"
+            />
+            <BookingSafetyPolicies
+              package_={booking.package}
+              checkin={booking.start_date}
+              gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+              gym={booking.gym}
+              className="space-y-3"
+            />
+          </div>
+        )}
+
         {/* Payment Section - In Container */}
         <div className="px-4 pb-4">
           <Card className="border border-gray-300 rounded-lg shadow-sm">
@@ -844,6 +874,33 @@ export default function PaymentPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {booking.package && (
+              <>
+                <GoodToKnowCard
+                  package_={booking.package}
+                  variant={booking.variant ?? null}
+                  checkin={booking.start_date}
+                  checkout={booking.end_date}
+                  gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+                  checkoutStep="payment"
+                />
+                <BookingWhatsIncluded
+                  package_={booking.package}
+                  duration={duration}
+                  pricingDuration={displayDuration}
+                  gym={booking.gym}
+                  className="rounded-lg border border-gray-300 bg-white p-5 space-y-4"
+                />
+                <BookingSafetyPolicies
+                  package_={booking.package}
+                  checkin={booking.start_date}
+                  gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+                  gym={booking.gym}
+                  className="rounded-lg border border-gray-300 bg-white p-5 space-y-3"
+                />
+              </>
+            )}
           </div>
 
           {/* Right Column - Payment Form */}

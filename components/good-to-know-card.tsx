@@ -12,6 +12,9 @@ interface GoodToKnowCardProps {
   checkin: string
   checkout: string
   gymPolicyTone?: GymCancellationPolicyTone | null
+  /** `details` = Step 2; `payment` = Step 3 (card hold messaging). */
+  checkoutStep?: 'details' | 'payment'
+  className?: string
 }
 
 export function GoodToKnowCard({
@@ -20,10 +23,16 @@ export function GoodToKnowCard({
   checkin,
   checkout: _checkout,
   gymPolicyTone,
+  checkoutStep = 'details',
+  className = 'border border-gray-300 rounded-lg shadow-sm bg-white',
 }: GoodToKnowCardProps) {
   const points: string[] = []
 
-  points.push("No payment needed now. You'll pay when the gym confirms your booking.")
+  points.push(
+    checkoutStep === 'payment'
+      ? 'Your card is held, not charged until the gym confirms your booking.'
+      : "No payment needed now. You'll pay when the gym confirms your booking.",
+  )
 
   const { goodToKnowBullet } = getCancellationMarketingLines({
     startDate: checkin,
@@ -89,7 +98,7 @@ export function GoodToKnowCard({
   const displayPoints = points.slice(0, 3)
 
   return (
-    <Card className="border border-gray-300 rounded-lg shadow-sm bg-white">
+    <Card className={className}>
       <CardContent className="p-5">
         <h3 className="font-bold text-base mb-4 text-gray-900">Good to know:</h3>
         <div className="space-y-3">
