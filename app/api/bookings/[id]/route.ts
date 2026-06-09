@@ -25,7 +25,7 @@ export async function GET(
       .from('bookings')
       .select(`
         *,
-        gym:gyms(*),
+        gym:gyms(*, images:gym_images(url, variants, order, focus_x, focus_y)),
         package:packages(*),
         variant:package_variants(*)
       `)

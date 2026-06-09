@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Building2,
   Car,
+  ChevronRight,
   CreditCard,
   Check,
   Dumbbell,
@@ -53,6 +54,53 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 const PAYMENT_FORM_ID = 'payment-checkout-form'
 
+function PaymentMethodSheet({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean
+  onClose: () => void
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={`md:hidden fixed inset-0 z-[300] transition-opacity duration-200 ${
+        open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+      aria-hidden={!open}
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={open ? 0 : -1}
+        className="fixed inset-0 bg-black/50 z-[301]"
+        onClick={onClose}
+      />
+      <div
+        className={`fixed inset-x-0 bottom-0 z-[302] flex max-h-[92dvh] flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 ${
+          open ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="relative flex items-center justify-center px-6 pt-6 pb-4 flex-shrink-0 border-b border-gray-100">
+          <h3 className="text-base font-semibold text-gray-900">Payment method</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            tabIndex={open ? 0 : -1}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 text-gray-800" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 function PaymentCheckoutTopBar({
   onBack,
   onExit,
@@ -88,12 +136,19 @@ function CheckoutForm({
   onLoadingChange,
   onErrorChange,
   hideMobileSubmit = false,
+  mobilePaymentModalOpen = false,
+  onCloseMobilePaymentModal,
+  paymentFieldsMounted = false,
 }: {
   booking: Booking & { gym: Gym }
   formId?: string
   onLoadingChange?: (loading: boolean) => void
   onErrorChange?: (error: string | null) => void
   hideMobileSubmit?: boolean
+  mobilePaymentModalOpen?: boolean
+  onCloseMobilePaymentModal?: () => void
+  /** Keep Stripe PaymentElement mounted after the modal is first opened */
+  paymentFieldsMounted?: boolean
 }) {
   const router = useRouter()
   const params = useParams()
@@ -181,10 +236,39 @@ function CheckoutForm({
     onLoadingChange?.(false)
   }
 
+  const paymentFields = paymentFieldsMounted ? (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
+      <div className="flex items-center gap-2 text-xs text-gray-600">
+        <CreditCard className="w-4 h-4" />
+        <span>We accept all major credit cards</span>
+      </div>
+      <PaymentElement />
+    </div>
+  ) : null
+
+  if (hideMobileSubmit) {
+    return (
+      <form id={formId} onSubmit={handleSubmit}>
+        {paymentFieldsMounted && (
+          <PaymentMethodSheet
+            open={mobilePaymentModalOpen}
+            onClose={onCloseMobilePaymentModal ?? (() => {})}
+          >
+            {paymentFields}
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
+            )}
+          </PaymentMethodSheet>
+        )}
+      </form>
+    )
+  }
+
   return (
     <form id={formId} onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
       <div className="space-y-3 md:space-y-4">
-        {!hideMobileSubmit && (booking as any).package && booking.start_date && (
+        {(booking as any).package && booking.start_date && (
           <BookingTrustLine
             pkg={(booking as any).package}
             gym={booking.gym}
@@ -192,22 +276,15 @@ function CheckoutForm({
             className="mb-1"
           />
         )}
-        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
           <CreditCard className="w-4 h-4" />
           <span>We accept all major credit cards</span>
         </div>
         <PaymentElement />
       </div>
-      
-      {error && !hideMobileSubmit && (
-        <div className="p-3 bg-red-50 text-red-800 rounded-md text-sm md:hidden">
-          {error}
-        </div>
-      )}
+
       {error && (
-        <div className="hidden md:block p-3 bg-red-50 text-red-800 rounded-md text-sm">
-          {error}
-        </div>
+        <div className="p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
       )}
 
       {/* Desktop: Inline button */}
@@ -281,6 +358,7 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null)
   const [addressCopied, setAddressCopied] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
+  const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
   const [payLoading, setPayLoading] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
 
@@ -357,7 +435,37 @@ export default function PaymentPage() {
           }
         }
         
-        setBooking(bookingApiData as any)
+        setBooking((prev) => {
+          const prefillData =
+            bookingApiData.gym_id && bookingApiData.package_id
+              ? readBookingPrefill(bookingApiData.gym_id, bookingApiData.package_id)
+              : null
+          const prefillGym = prefillData?.gym as { images?: GymImage[] } | undefined
+          const prevImages = prev?.gym?.images
+          const mergedImages =
+            bookingApiData.gym?.images?.length > 0
+              ? bookingApiData.gym.images
+              : prevImages?.length
+                ? prevImages
+                : prefillGym?.images
+
+          return {
+            ...bookingApiData,
+            gym: {
+              ...bookingApiData.gym,
+              images: mergedImages,
+              averageRating:
+                bookingApiData.gym.averageRating ??
+                prev?.gym?.averageRating ??
+                prefillData?.reviewAverage,
+              reviewCount:
+                bookingApiData.gym.reviewCount ??
+                prev?.gym?.reviewCount ??
+                prefillData?.reviewCount,
+            },
+            package: bookingApiData.package ?? prev?.package,
+          } as BookingWithExtras
+        })
       } else {
         const errorData = await bookingResponse.json()
         console.error('Error fetching booking details:', errorData)
@@ -434,14 +542,19 @@ export default function PaymentPage() {
     ? { clientSecret, appearance: { theme: 'stripe' as const } }
     : undefined
 
-  const mainImage =
-    booking?.gym?.images && booking.gym.images.length > 0
-      ? [...booking.gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
-      : null
-
   const prefill =
     booking?.gym_id && booking.package_id
       ? readBookingPrefill(booking.gym_id, booking.package_id)
+      : null
+
+  const gymImages =
+    booking?.gym?.images?.length
+      ? booking.gym.images
+      : (prefill?.gym as { images?: GymImage[] } | undefined)?.images
+
+  const mainImage =
+    gymImages && gymImages.length > 0
+      ? [...gymImages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
       : null
   const guestCount = prefill?.guestCount ?? 1
   const gymCurrency = booking?.gym?.currency ?? 'USD'
@@ -604,31 +717,35 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Pay online</h2>
-            <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
-            <div className="flex items-center gap-3 p-4 border-2 border-[#003580] rounded-xl bg-blue-50/10">
-              <div className="w-10 h-10 rounded-full bg-[#003580] flex items-center justify-center flex-shrink-0">
-                <CreditCard className="w-5 h-5 text-white" />
+          <button
+            type="button"
+            onClick={() => setPaymentMethodOpen(true)}
+            disabled={!clientSecret}
+            className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <CreditCard className="w-5 h-5 shrink-0 text-gray-800" />
+                <span>Credit or debit card</span>
               </div>
-              <div className="flex-1">
-                <div className="font-semibold text-sm">New card</div>
-                <div className="text-xs text-gray-600">Credit or debit card</div>
-              </div>
-              <div className="text-[#003580] text-lg">✓</div>
             </div>
+            <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
+          </button>
 
-            {clientSecret && stripePromise ? (
-              <Elements stripe={stripePromise} options={options}>
-                <CheckoutForm
-                  booking={booking}
-                  onLoadingChange={setPayLoading}
-                  onErrorChange={setPayError}
-                  hideMobileSubmit
-                />
-              </Elements>
-            ) : null}
-          </div>
+          {clientSecret && stripePromise ? (
+            <Elements stripe={stripePromise} options={options}>
+              <CheckoutForm
+                booking={booking}
+                onLoadingChange={setPayLoading}
+                onErrorChange={setPayError}
+                hideMobileSubmit
+                mobilePaymentModalOpen={paymentMethodOpen}
+                onCloseMobilePaymentModal={() => setPaymentMethodOpen(false)}
+                paymentFieldsMounted
+              />
+            </Elements>
+          ) : null}
         </div>
 
       {/* Desktop Layout */}
@@ -923,7 +1040,7 @@ export default function PaymentPage() {
       </div>
       </div>
 
-      {!priceSheetOpen && (
+      {!priceSheetOpen && !paymentMethodOpen && (
         <div
           className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
