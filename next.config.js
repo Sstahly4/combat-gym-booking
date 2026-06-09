@@ -44,6 +44,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'flagcdn.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'hatscripts.github.io',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -96,7 +100,7 @@ const nextConfig = {
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com",
       // next/image optimised URLs (self + blob), Supabase Storage, all five
       // remotePatterns from next.config.js images section, Google Maps tiles.
-      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com https://flagcdn.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com https://flagcdn.com https://hatscripts.github.io",
       // Tailwind and Radix component inline styles.
       "style-src 'self' 'unsafe-inline'",
       // next/font/google downloads Inter at build time and self-hosts it —

@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import dynamic from 'next/dynamic'
+import { LoadingOverlay } from '@/components/loading-overlay'
+import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
 
 export interface ReviewModalParams {
   gymId: string
@@ -131,9 +133,9 @@ export function ReviewModalProvider({
   const [params, setParams] = useState<ReviewModalParams | null>(() => {
     if (typeof window === 'undefined') return null
     const fromUrl = readUrlParams(gymId)
-    if (fromUrl) return fromUrl
+    if (fromUrl) return hydrateReviewParams(fromUrl)
     const stored = readRestoreParams()
-    if (stored?.gymId === gymId) return stored
+    if (stored?.gymId === gymId) return hydrateReviewParams(stored)
     // Purge stale restore data from a different gym so it never re-triggers
     // a modal/cover on the wrong listing.
     if (stored) clearRestoreParams()
@@ -144,6 +146,11 @@ export function ReviewModalProvider({
   // client so there is no hydration mismatch; flips to true after first paint.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
+  // Warm the modal chunk as soon as the provider mounts so back-nav feels instant.
+  useEffect(() => {
+    import('@/components/booking/review-modal')
+  }, [])
 
   // True once the dynamically-imported modal chunk has loaded.
   const [modalChunkLoaded, setModalChunkLoaded] = useState(false)
@@ -167,9 +174,10 @@ export function ReviewModalProvider({
     (!mounted && hasReviewIntent) || (!!params && !modalChunkLoaded)
 
   const openReviewModal = (p: ReviewModalParams) => {
-    saveRestoreParams(p)
-    pushReviewUrl(p)
-    setParams(p)
+    const hydrated = hydrateReviewParams(p)
+    saveRestoreParams(hydrated)
+    pushReviewUrl(hydrated)
+    setParams(hydrated)
   }
 
   const close = () => {
@@ -193,9 +201,7 @@ export function ReviewModalProvider({
       {/* White cover prevents the gym page from showing through while the
           modal component lazy-loads. In SSR, hasReviewIntent puts this in
           the initial HTML so there is zero flash even on a fresh page load. */}
-      {showCover && (
-        <div className="fixed inset-0 z-[199] bg-white pointer-events-none" aria-hidden="true" />
-      )}
+      <LoadingOverlay show={showCover} zClass="z-[199]" />
       {params && (
         <ReviewModal params={params} gymSlugOrId={gymSlugOrId} onClose={close} />
       )}

@@ -23,7 +23,7 @@ import { NotificationBell } from '@/components/manage/notification-bell'
 import { AdminNotificationBell } from '@/components/admin/admin-notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
-import { getFlagUrl, getFlagSrcSet, FLAG_MENU_DISPLAY_PX } from '@/lib/utils/flag-url'
+import { getFlagUrl, FLAG_MENU_DISPLAY_PX } from '@/lib/utils/flag-url'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
@@ -101,6 +101,24 @@ export function Navbar() {
     return () => document.body.removeAttribute('data-bottom-sheet-open')
   }, [mobileMenuOpen, currencyModalOpen])
 
+  const openCurrencyModal = (tab: 'language' | 'currency' = 'language') => {
+    setMobileMenuOpen(false)
+    setDesktopMenuOpen(false)
+    setCurrencyModalTab(tab)
+    setCurrencyModalOpen(true)
+  }
+
+  const closeMobileMenu = (e?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    setMobileMenuOpen(false)
+  }
+
+  const toggleMobileMenu = () => {
+    setCurrencyModalOpen(false)
+    setMobileMenuOpen((v) => !v)
+  }
+
   const currencyName = CURRENCIES.find(c => c.code === selectedCurrency)?.name || selectedCurrency
   const selectedLanguageItem = LANGUAGES.find(l => l.code === selectedLanguage)
   const languageName = selectedLanguageItem
@@ -108,7 +126,6 @@ export function Navbar() {
     : 'English (United Kingdom)'
 
   const flagUrl = getFlagUrl(selectedLanguage)
-  const flagSrcSet = getFlagSrcSet(selectedLanguage)
 
   const handleSignOut = async () => {
     await signOut()
@@ -262,10 +279,7 @@ export function Navbar() {
             <button
               type="button"
               className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors"
-              onClick={() => {
-                setCurrencyModalTab('language')
-                setCurrencyModalOpen(true)
-              }}
+              onClick={() => openCurrencyModal('language')}
               aria-label="Language and currency"
             >
               <Globe className="w-5 h-5" />
@@ -432,10 +446,7 @@ export function Navbar() {
             <button
               type="button"
               className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors"
-              onClick={() => {
-                setCurrencyModalTab('language')
-                setCurrencyModalOpen(true)
-              }}
+              onClick={() => openCurrencyModal('language')}
               aria-label="Language and currency"
             >
               <Globe className="w-5 h-5" />
@@ -445,7 +456,7 @@ export function Navbar() {
             <button
               type="button"
               className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors touch-manipulation"
-              onClick={() => setMobileMenuOpen((v) => !v)}
+              onClick={toggleMobileMenu}
               onPointerEnter={preloadListYourGymMenuIcon}
               onTouchStart={preloadListYourGymMenuIcon}
             >
@@ -461,21 +472,21 @@ export function Navbar() {
             <button
               type="button"
               aria-label="Close menu"
-              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
-              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/50 z-[100] md:hidden"
+              onClick={closeMobileMenu}
             />
 
             {/* Bottom Sheet - Same size as date picker */}
-            <div className="fixed inset-x-0 bottom-0 z-[70] md:hidden animate-slide-up bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 pointer-events-auto">
-              {/* Header - Same as date picker */}
-              <div className="px-4 pt-4 pb-3 border-b border-gray-200 flex items-center justify-between">
+            <div className="fixed inset-x-0 bottom-0 z-[110] md:hidden animate-slide-up bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 pointer-events-auto">
+              {/* Header - sticky so close never overlaps scroll content */}
+              <div className="relative z-10 flex-shrink-0 bg-white px-4 pt-4 pb-3 border-b border-gray-200 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-semibold text-gray-900">Menu</div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+                  onClick={closeMobileMenu}
+                  className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
                   aria-label="Close"
                 >
                   <X className="w-6 h-6 text-gray-600" />
@@ -484,29 +495,29 @@ export function Navbar() {
 
               {/* Scrollable Content - Same as date picker */}
               <div className="px-4 pb-4 max-h-[72vh] overflow-y-auto">
-                <div className="pt-3 space-y-0">
+                <div className="pt-4 space-y-0">
                   {/* Language + Currency Selector */}
                   <button
-                    onClick={() => {
-                      setCurrencyModalTab('language')
-                      setCurrencyModalOpen(true)
-                      setMobileMenuOpen(false)
-                    }}
+                    type="button"
+                    onClick={() => openCurrencyModal('language')}
                     className="w-full flex items-center justify-between py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <div className="relative h-10 w-10 flex-shrink-0 rounded-full bg-blue-50">
                         {flagUrl ? (
                           <img
                             src={flagUrl}
-                            srcSet={flagSrcSet ?? undefined}
-                            alt={selectedLanguage}
+                            alt=""
+                            aria-hidden
                             width={FLAG_MENU_DISPLAY_PX}
-                            height={FLAG_MENU_DISPLAY_PX / 2}
-                            className="max-h-full max-w-full object-contain"
+                            height={FLAG_MENU_DISPLAY_PX}
+                            className="h-full w-full"
+                            decoding="async"
                           />
                         ) : (
-                          <Globe className="w-5 h-5 text-[#003580]" />
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Globe className="w-5 h-5 text-[#003580]" />
+                          </div>
                         )}
                       </div>
                       <div className="min-w-0">
@@ -866,7 +877,10 @@ export function Navbar() {
     </div>
     <CurrencyModal
       open={currencyModalOpen}
-      onOpenChange={setCurrencyModalOpen}
+      onOpenChange={(open) => {
+        setCurrencyModalOpen(open)
+        if (open) setMobileMenuOpen(false)
+      }}
       initialTab={currencyModalTab}
     />
     </>

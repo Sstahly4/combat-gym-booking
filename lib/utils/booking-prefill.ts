@@ -62,3 +62,37 @@ export function clearBookingPrefill(): void {
     sessionStorage.removeItem(PREFILL_KEY)
   } catch {}
 }
+
+/** Read prefill for the current /bookings/summary URL (sync, first paint). */
+export function readSummaryPrefillFromUrl(): BookingPrefillData | null {
+  if (typeof window === 'undefined') return null
+  const sp = new URLSearchParams(window.location.search)
+  const gymId = sp.get('gymId')
+  const packageId = sp.get('packageId')
+  if (!gymId || !packageId) return null
+  return readBookingPrefill(gymId, packageId)
+}
+
+/**
+ * Attach cached gym/package objects so the review modal can render instantly
+ * after back-navigation from Your details (no Supabase round-trip).
+ */
+export function hydrateReviewParams<T extends {
+  gymId: string
+  packageId: string
+  gymData?: Record<string, unknown>
+  packageData?: Record<string, unknown>
+  initialReviewCount?: number
+  initialReviewAverage?: number
+}>(params: T): T {
+  if (params.gymData && params.packageData) return params
+  const prefill = readBookingPrefill(params.gymId, params.packageId)
+  if (!prefill) return params
+  return {
+    ...params,
+    gymData: prefill.gym,
+    packageData: prefill.package_,
+    initialReviewCount: params.initialReviewCount ?? prefill.reviewCount,
+    initialReviewAverage: params.initialReviewAverage ?? prefill.reviewAverage,
+  }
+}

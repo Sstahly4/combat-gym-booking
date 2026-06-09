@@ -220,15 +220,22 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
     <>
       {/* ─── MOBILE: Slide-up bottom sheet ────────────────────────────────── */}
       <div>
-        <div
-          className="fixed inset-0 bg-black/50 z-[60]"
-          onClick={() => onOpenChange(false)}
+        <button
+          type="button"
+          aria-label="Close"
+          className="fixed inset-0 bg-black/50 z-[120]"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onOpenChange(false)
+          }}
         />
 
         <div
-          className="fixed inset-x-0 bottom-0 z-[70] animate-slide-up bg-white rounded-t-3xl flex flex-col max-h-[88dvh] transition-transform duration-100 ease-out will-change-transform"
+          className="fixed inset-x-0 bottom-0 z-[130] animate-slide-up bg-white rounded-t-3xl flex flex-col max-h-[88dvh] transition-transform duration-100 ease-out will-change-transform"
           style={{ transform: `translateY(${sheetTranslateY}px)` }}
         >
+          {/* Swipe handle only — keep close button outside touch-none so taps register reliably */}
           <div
             className="flex-shrink-0 touch-none"
             onTouchStart={handleSheetTouchStart}
@@ -238,27 +245,31 @@ export function CurrencyModal({ open, onOpenChange, initialTab = 'language' }: C
             <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
             </div>
+          </div>
 
-            <div className="px-4 pt-2 pb-3 border-b border-gray-100 flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-semibold text-gray-900 leading-tight">
-                  {activeTab === 'language' ? 'Language and region' : 'Currency'}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  {activeTab === 'language'
-                    ? 'Choose your preferred language and region.'
-                    : 'Choose how prices are displayed on the site.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="p-2 -mr-1 rounded-full hover:bg-gray-100 active:bg-gray-200 flex-shrink-0"
-                aria-label="Close"
-              >
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
+          <div className="relative z-10 flex-shrink-0 bg-white px-4 pt-1 pb-3 border-b border-gray-100 flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 leading-tight">
+                {activeTab === 'language' ? 'Language and region' : 'Currency'}
+              </h2>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                {activeTab === 'language'
+                  ? 'Choose your preferred language and region.'
+                  : 'Choose how prices are displayed on the site.'}
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onOpenChange(false)
+              }}
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
           </div>
 
           <div className="px-4 pt-3">

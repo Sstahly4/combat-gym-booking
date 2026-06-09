@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
-import { writeBookingPrefill } from '@/lib/utils/booking-prefill'
+import { writeBookingPrefill, readBookingPrefill } from '@/lib/utils/booking-prefill'
 import type { Gym, Package } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 
@@ -227,7 +227,7 @@ function Row({
         <button
           type="button"
           onClick={onEdit}
-          className="shrink-0 ml-4 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+          className="shrink-0 ml-4 px-3 py-1.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-900 hover:bg-gray-200 transition-colors"
         >
           {editLabel}
         </button>
@@ -248,21 +248,27 @@ export function ReviewModal({
 }) {
   const router = useRouter()
   const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
+  const continuingRef = useRef(false)
 
-  // If the caller passed pre-loaded data we use it immediately — no skeleton.
-  const hasPreloaded = !!(initialParams.gymData && initialParams.packageData)
+  // Pre-loaded from gym page, hydrated from booking_prefill on back-nav, or fetched.
+  const cachedPrefill = readBookingPrefill(initialParams.gymId, initialParams.packageId)
+  const resolvedGymData = initialParams.gymData ?? cachedPrefill?.gym
+  const resolvedPackageData = initialParams.packageData ?? cachedPrefill?.package_
+  const hasPreloaded = !!(resolvedGymData && resolvedPackageData)
 
   const [gym, setGym] = useState<(Gym & { images?: { url: string; order?: number }[] }) | null>(
-    hasPreloaded ? (initialParams.gymData as unknown as Gym & { images?: { url: string; order?: number }[] }) : null
+    hasPreloaded ? (resolvedGymData as unknown as Gym & { images?: { url: string; order?: number }[] }) : null
   )
   const [package_, setPackage_] = useState<Package | null>(
-    hasPreloaded ? (initialParams.packageData as unknown as Package) : null
+    hasPreloaded ? (resolvedPackageData as unknown as Package) : null
   )
   const [loading, setLoading] = useState(!hasPreloaded)
-  // Seed from caller-supplied values so stars render on first paint; background
-  // fetch will update them silently if they've changed since the gym page loaded.
-  const [averageRating, setAverageRating] = useState(initialParams.initialReviewAverage ?? 0)
-  const [reviewCount, setReviewCount] = useState(initialParams.initialReviewCount ?? 0)
+  const [averageRating, setAverageRating] = useState(
+    initialParams.initialReviewAverage ?? cachedPrefill?.reviewAverage ?? 0
+  )
+  const [reviewCount, setReviewCount] = useState(
+    initialParams.initialReviewCount ?? cachedPrefill?.reviewCount ?? 0
+  )
 
   const [checkin, setCheckin] = useState(initialParams.checkin)
   const [checkout, setCheckout] = useState(initialParams.checkout)
@@ -271,12 +277,8 @@ export function ReviewModal({
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
-  const [navigating, setNavigating] = useState(false)
 
   useEffect(() => {
-    // Warm up the summary page bundle so Continue navigation feels instant
-    router.prefetch('/bookings/summary')
-
     const supabase = createClient()
 
     if (!hasPreloaded) {
@@ -368,9 +370,15 @@ export function ReviewModal({
     return `/bookings/summary?${p.toString()}`
   }
 
+  useEffect(() => {
+    if (gym && package_) {
+      router.prefetch(buildContinueUrl())
+    }
+  }, [gym, package_, checkin, checkout, guestCount, initialParams.packageId, initialParams.variantId, router])
+
   const handleContinue = () => {
-    if (navigating) return
-    setNavigating(true)
+    if (continuingRef.current) return
+    continuingRef.current = true
     if (gym && package_) {
       writeBookingPrefill({
         gymId: gym.id,
@@ -492,14 +500,9 @@ export function ReviewModal({
             <StepProgressBar step={1} />
             <Button
               onClick={handleContinue}
-              disabled={navigating}
-              className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl disabled:opacity-80"
+              className="w-full h-11 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl"
             >
-              {navigating ? (
-                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>Continue <ChevronRight className="w-4 h-4 ml-1" /></>
-              )}
+              Continue <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
 

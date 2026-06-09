@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { LoadingOverlay } from '@/components/loading-overlay'
-import { readBookingPrefill } from '@/lib/utils/booking-prefill'
+import { readBookingPrefill, readSummaryPrefillFromUrl, writeBookingPrefill } from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -59,15 +59,21 @@ function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
-  
-  const [gym, setGym] = useState<Gym & { images?: { url: string }[] } | null>(null)
-  const [package_, setPackage_] = useState<Package | null>(null)
+
+  const initialPrefill = readSummaryPrefillFromUrl()
+
+  const [gym, setGym] = useState<Gym & { images?: { url: string }[] } | null>(() =>
+    initialPrefill ? (initialPrefill.gym as Gym & { images?: { url: string }[] }) : null
+  )
+  const [package_, setPackage_] = useState<Package | null>(() =>
+    initialPrefill ? (initialPrefill.package_ as Package) : null
+  )
   const [variant, setVariant] = useState<PackageVariant | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !initialPrefill)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [averageRating, setAverageRating] = useState(0)
-  const [reviewCount, setReviewCount] = useState(0)
+  const [averageRating, setAverageRating] = useState(() => initialPrefill?.reviewAverage ?? 0)
+  const [reviewCount, setReviewCount] = useState(() => initialPrefill?.reviewCount ?? 0)
   
   const [checkin, setCheckin] = useState(searchParams.get('checkin') || '')
   const [checkout, setCheckout] = useState(searchParams.get('checkout') || '')
@@ -86,11 +92,9 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const [navigatingBack, setNavigatingBack] = useState(false)
-
   // Tracks when initial data load + session restore is done; prevents the
   // persist effect from overwriting a valid saved session with blank defaults.
-  const sessionLoadedRef = useRef(false)
+  const sessionLoadedRef = useRef(!!initialPrefill)
 
   const copyAddress = async () => {
     if (!gym?.address) return
@@ -104,21 +108,32 @@ function BookingSummaryPageContent() {
   }
 
   const navigateBackToReview = () => {
-    if (navigatingBack) return
-    setNavigatingBack(true)
     const gymId = searchParams.get('gymId')
     const packageId = searchParams.get('packageId')
     const slugOrId = gym?.slug || gym?.id || gymId
     const pkgId = package_?.id || packageId
-    if (slugOrId && pkgId) {
-      router.replace(
-        buildReviewBackHref(slugOrId, pkgId, {
-          variantId: variant?.id || searchParams.get('variantId') || undefined,
-          checkin: checkin || searchParams.get('checkin') || undefined,
-          checkout: checkout || searchParams.get('checkout') || undefined,
-          guests: guestCount,
-        })
-      )
+    if (slugOrId && pkgId && gym && package_) {
+      // Keep booking_prefill fresh so the review modal paints instantly on back-nav.
+      writeBookingPrefill({
+        gymId: gym.id,
+        packageId: pkgId,
+        variantId: variant?.id || searchParams.get('variantId') || undefined,
+        gym: gym as unknown as Record<string, unknown>,
+        package_: package_ as unknown as Record<string, unknown>,
+        checkin: checkin || searchParams.get('checkin') || '',
+        checkout: checkout || searchParams.get('checkout') || '',
+        guestCount,
+        reviewCount,
+        reviewAverage: averageRating,
+      })
+      const backHref = buildReviewBackHref(slugOrId, pkgId, {
+        variantId: variant?.id || searchParams.get('variantId') || undefined,
+        checkin: checkin || searchParams.get('checkin') || undefined,
+        checkout: checkout || searchParams.get('checkout') || undefined,
+        guests: guestCount,
+      })
+      router.prefetch(backHref)
+      router.replace(backHref)
       return
     }
     router.back()
@@ -126,6 +141,12 @@ function BookingSummaryPageContent() {
 
   useEffect(() => {
     fetchBookingData()
+    import('@/components/booking/review-modal')
+    const gymId = searchParams.get('gymId')
+    const slugOrId = gym?.slug || gym?.id || gymId
+    if (slugOrId) {
+      router.prefetch(`/gyms/${slugOrId}`)
+    }
   }, [])
 
   // Persist form state to sessionStorage so it survives back-navigation.
@@ -453,15 +474,11 @@ function BookingSummaryPageContent() {
       {/* Checkout nav: ← Back | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
         <button
+          type="button"
           onClick={navigateBackToReview}
-          disabled={navigatingBack}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
         >
-          {navigatingBack ? (
-            <span className="w-4 h-4 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
-          ) : (
-            <ArrowLeft className="w-4 h-4" />
-          )}
+          <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
         </button>
         {gym && (
@@ -688,10 +705,6 @@ function BookingSummaryPageContent() {
               </label>
             </div>
 
-            {/* Paperless confirmation — plain reassurance, no checkbox needed */}
-            <p className="text-xs text-gray-500 pt-1">
-              A confirmation email will be sent to the address above.
-            </p>
             </div>
           </div>
 
@@ -1006,11 +1019,6 @@ function BookingSummaryPageContent() {
                   <p className="text-xs text-gray-500">To verify your booking, and for the property to connect if needed</p>
                 </div>
 
-                {/* Confirmation email — plain reassurance, no checkbox needed */}
-                <p className="text-xs text-gray-500 pt-1">
-                  A confirmation email will be sent to the address above.
-                </p>
-
                 {/* Divider */}
                 <div className="border-t border-gray-300 pt-5 mt-2">
                   <div className="space-y-2 mb-4">
@@ -1213,9 +1221,17 @@ function BookingSummaryPageContent() {
   )
 }
 
+function SummaryPageSuspenseFallback() {
+  return (
+    <div className="min-h-screen bg-white">
+      <LoadingOverlay show={true} />
+    </div>
+  )
+}
+
 export default function BookingSummaryPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<SummaryPageSuspenseFallback />}>
       <BookingSummaryPageContent />
     </Suspense>
   )
