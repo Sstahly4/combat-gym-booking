@@ -2,8 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { loadStripe, type StripeError } from '@stripe/stripe-js'
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useStripe,
+  useElements,
+  type PaymentElementProps,
+} from '@stripe/react-stripe-js'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,6 +54,10 @@ import {
   formatCheckoutDateRange,
 } from '@/components/booking/checkout-ui'
 import { PriceDetailsSheet } from '@/components/booking/price-details-sheet'
+import {
+  PaymentMethodPicker,
+  type PaymentMethodChoice,
+} from '@/components/booking/payment-method-picker'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -54,13 +65,36 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 const PAYMENT_FORM_ID = 'payment-checkout-form'
 
+const CARD_ELEMENT_OPTIONS: PaymentElementProps['options'] = {
+  wallets: {
+    applePay: 'never',
+    googlePay: 'never',
+  },
+}
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
+  card: 'Credit or debit card',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
+}
+
+type PaymentModalStep = 'pick' | 'card-details'
+
 function PaymentMethodSheet({
   open,
   onClose,
+  onCancel,
+  title,
+  primaryLabel,
+  onPrimary,
   children,
 }: {
   open: boolean
   onClose: () => void
+  onCancel: () => void
+  title: string
+  primaryLabel: 'Next' | 'Done'
+  onPrimary: () => void
   children: ReactNode
 }) {
   return (
@@ -81,21 +115,41 @@ function PaymentMethodSheet({
         className={`fixed inset-x-0 bottom-0 z-[302] flex max-h-[92dvh] flex-col rounded-t-3xl bg-white shadow-2xl transition-transform duration-200 ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="relative flex items-center justify-center px-6 pt-6 pb-4 flex-shrink-0 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-900">Payment method</h3>
+        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-5 flex-shrink-0">
+          <h2 className="text-[22px] font-semibold leading-tight text-gray-900">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             tabIndex={open ? 0 : -1}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            className="w-8 h-8 -mr-1 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0"
             aria-label="Close"
           >
             <X className="w-4 h-4 text-gray-800" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 pb-4">{children}</div>
+        <div
+          className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-100 flex-shrink-0"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            tabIndex={open ? 0 : -1}
+            className="text-sm font-semibold text-gray-900 py-1.5 hover:text-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onPrimary}
+            tabIndex={open ? 0 : -1}
+            className="h-11 px-6 text-sm font-semibold rounded-xl bg-gray-900 hover:bg-gray-800 text-white transition-colors"
+          >
+            {primaryLabel}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -139,6 +193,14 @@ function CheckoutForm({
   mobilePaymentModalOpen = false,
   onCloseMobilePaymentModal,
   paymentFieldsMounted = false,
+  selectedPaymentMethod = 'card',
+  onPaymentMethodChange,
+  paymentModalStep = 'pick',
+  draftPaymentMethod = 'card',
+  onDraftPaymentMethodChange,
+  onPaymentModalStepChange,
+  onCardFieldsMounted,
+  cardFieldsMounted = false,
 }: {
   booking: Booking & { gym: Gym }
   formId?: string
@@ -147,8 +209,16 @@ function CheckoutForm({
   hideMobileSubmit?: boolean
   mobilePaymentModalOpen?: boolean
   onCloseMobilePaymentModal?: () => void
-  /** Keep Stripe PaymentElement mounted after the modal is first opened */
+  /** Keep Stripe elements mounted after the modal is first opened */
   paymentFieldsMounted?: boolean
+  selectedPaymentMethod?: PaymentMethodChoice
+  onPaymentMethodChange?: (method: PaymentMethodChoice) => void
+  paymentModalStep?: PaymentModalStep
+  draftPaymentMethod?: PaymentMethodChoice
+  onDraftPaymentMethodChange?: (method: PaymentMethodChoice) => void
+  onPaymentModalStepChange?: (step: PaymentModalStep) => void
+  onCardFieldsMounted?: () => void
+  cardFieldsMounted?: boolean
 }) {
   const router = useRouter()
   const params = useParams()
@@ -158,10 +228,96 @@ function CheckoutForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const completePayment = async (paymentIntent: { id: string; status: string }) => {
+    try {
+      const confirmRes = await fetch(`/api/bookings/${bookingId}/confirm-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_intent: paymentIntent.id }),
+      })
+      const confirmData = await confirmRes.json()
+      if (!confirmRes.ok) {
+        const msg = confirmData?.error || 'Failed to finalize booking. Please contact support.'
+        setError(msg)
+        onErrorChange?.(msg)
+        setLoading(false)
+        onLoadingChange?.(false)
+        return
+      }
+
+      router.replace(
+        `/bookings/${bookingId}/success?payment_intent=${encodeURIComponent(paymentIntent.id)}&redirect_status=${encodeURIComponent(paymentIntent.status)}`
+      )
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Failed to finalize booking. Please contact support.'
+      setError(msg)
+      onErrorChange?.(msg)
+      setLoading(false)
+      onLoadingChange?.(false)
+    }
+  }
+
+  const handlePaymentResult = async (
+    confirmError: StripeError | null,
+    paymentIntent: { id: string; status: string } | undefined
+  ) => {
+    if (confirmError) {
+      const msg = confirmError.message || 'Payment failed'
+      setError(msg)
+      onErrorChange?.(msg)
+      setLoading(false)
+      onLoadingChange?.(false)
+      return
+    }
+
+    if (
+      paymentIntent &&
+      (paymentIntent.status === 'requires_capture' || paymentIntent.status === 'succeeded')
+    ) {
+      await completePayment(paymentIntent)
+      return
+    }
+
+    setLoading(false)
+    onLoadingChange?.(false)
+  }
+
+  const handleWalletConfirm = async (event: {
+    paymentFailed: (payload?: { reason?: 'fail' | 'invalid_shipping_address' }) => void
+  }) => {
+    if (!stripe || !elements) return
+
+    setLoading(true)
+    onLoadingChange?.(true)
+    setError(null)
+    onErrorChange?.(null)
+
+    const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/bookings/${bookingId}/success`,
+      },
+      redirect: 'if_required',
+    })
+
+    if (confirmError) {
+      event.paymentFailed({ reason: 'fail' })
+    }
+
+    await handlePaymentResult(confirmError ?? null, paymentIntent)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!stripe || !elements) return
+
+    if (hideMobileSubmit && selectedPaymentMethod !== 'card') {
+      return
+    }
 
     setLoading(true)
     onLoadingChange?.(true)
@@ -178,90 +334,101 @@ function CheckoutForm({
       return
     }
 
-    // Confirm payment
     const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/bookings/${bookingId}/success`,
       },
-      // For card payments, avoid the redirect and handle success here.
-      // For redirect-based methods, Stripe will still redirect to return_url.
       redirect: 'if_required',
     })
 
-    if (confirmError) {
-      const msg = confirmError.message || 'Payment failed'
-      setError(msg)
-      onErrorChange?.(msg)
-      setLoading(false)
-      onLoadingChange?.(false)
-      return
-    }
-
-    // If we have a PaymentIntent result, confirm the booking server-side and then navigate.
-    // For manual capture, status is typically `requires_capture` after a successful authorization.
-    if (paymentIntent && (paymentIntent.status === 'requires_capture' || paymentIntent.status === 'succeeded')) {
-      try {
-        const confirmRes = await fetch(`/api/bookings/${bookingId}/confirm-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_intent: paymentIntent.id }),
-        })
-        const confirmData = await confirmRes.json()
-        if (!confirmRes.ok) {
-          const msg = confirmData?.error || 'Failed to finalize booking. Please contact support.'
-          setError(msg)
-          onErrorChange?.(msg)
-          setLoading(false)
-          onLoadingChange?.(false)
-          return
-        }
-
-        // Show the success page (with payment_intent in the URL for transparency)
-        router.replace(`/bookings/${bookingId}/success?payment_intent=${encodeURIComponent(paymentIntent.id)}&redirect_status=${encodeURIComponent(paymentIntent.status)}`)
-        return
-      } catch (err: any) {
-        const msg = err?.message || 'Failed to finalize booking. Please contact support.'
-        setError(msg)
-        onErrorChange?.(msg)
-        setLoading(false)
-        onLoadingChange?.(false)
-        return
-      }
-    }
-
-    // If Stripe performed a redirect, we won't reach here.
-    // If we did reach here without a PI, stop loading.
-    setLoading(false)
-    onLoadingChange?.(false)
+    await handlePaymentResult(confirmError ?? null, paymentIntent)
   }
 
-  const paymentFields = paymentFieldsMounted ? (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
-      <div className="flex items-center gap-2 text-xs text-gray-600">
-        <CreditCard className="w-4 h-4" />
-        <span>We accept all major credit cards</span>
-      </div>
-      <PaymentElement />
-    </div>
-  ) : null
+  const modalPrimaryLabel: 'Next' | 'Done' =
+    paymentModalStep === 'card-details'
+      ? 'Done'
+      : draftPaymentMethod === 'card'
+        ? 'Next'
+        : 'Done'
+
+  const handleModalPrimary = () => {
+    if (paymentModalStep === 'pick') {
+      if (draftPaymentMethod === 'card') {
+        onPaymentMethodChange?.('card')
+        onCardFieldsMounted?.()
+        onPaymentModalStepChange?.('card-details')
+        return
+      }
+      onPaymentMethodChange?.(draftPaymentMethod)
+      onCloseMobilePaymentModal?.()
+      return
+    }
+    onCloseMobilePaymentModal?.()
+  }
+
+  const handleModalCancel = () => {
+    onDraftPaymentMethodChange?.(selectedPaymentMethod)
+    onPaymentModalStepChange?.('pick')
+    onCloseMobilePaymentModal?.()
+  }
+
+  const walletExpressOptions =
+    selectedPaymentMethod === 'apple_pay'
+      ? { wallets: { applePay: 'always' as const, googlePay: 'never' as const } }
+      : { wallets: { applePay: 'never' as const, googlePay: 'always' as const } }
 
   if (hideMobileSubmit) {
     return (
-      <form id={formId} onSubmit={handleSubmit}>
-        {paymentFieldsMounted && (
-          <PaymentMethodSheet
-            open={mobilePaymentModalOpen}
-            onClose={onCloseMobilePaymentModal ?? (() => {})}
-          >
-            {paymentFields}
-            {error && (
-              <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
+      <>
+        <form id={formId} onSubmit={handleSubmit}>
+          {paymentFieldsMounted &&
+            cardFieldsMounted &&
+            selectedPaymentMethod === 'card' &&
+            !(mobilePaymentModalOpen && paymentModalStep === 'card-details') && (
+              <div className="sr-only absolute h-px w-px overflow-hidden" aria-hidden>
+                <PaymentElement options={CARD_ELEMENT_OPTIONS} />
+              </div>
             )}
-          </PaymentMethodSheet>
-        )}
-      </form>
+          {paymentFieldsMounted && (
+            <PaymentMethodSheet
+              open={mobilePaymentModalOpen}
+              onClose={handleModalCancel}
+              onCancel={handleModalCancel}
+              title={paymentModalStep === 'card-details' ? 'Add card details' : 'Pay with'}
+              primaryLabel={modalPrimaryLabel}
+              onPrimary={handleModalPrimary}
+            >
+              {paymentModalStep === 'pick' ? (
+                <PaymentMethodPicker
+                  value={draftPaymentMethod}
+                  onChange={(method) => onDraftPaymentMethodChange?.(method)}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    You&apos;ll pay when you complete this booking.
+                  </p>
+                  <PaymentElement options={CARD_ELEMENT_OPTIONS} />
+                </div>
+              )}
+              {error && (
+                <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
+              )}
+            </PaymentMethodSheet>
+          )}
+        </form>
+        {paymentFieldsMounted &&
+          !mobilePaymentModalOpen &&
+          selectedPaymentMethod !== 'card' && (
+            <div className="mt-2">
+              <ExpressCheckoutElement
+                onConfirm={handleWalletConfirm}
+                options={walletExpressOptions}
+              />
+            </div>
+          )}
+      </>
     )
   }
 
@@ -276,11 +443,12 @@ function CheckoutForm({
             className="mb-1"
           />
         )}
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <CreditCard className="w-4 h-4" />
-          <span>We accept all major credit cards</span>
-        </div>
-        <PaymentElement />
+        <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
+        <PaymentElement
+          options={{
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          }}
+        />
       </div>
 
       {error && (
@@ -359,6 +527,22 @@ export default function PaymentPage() {
   const [addressCopied, setAddressCopied] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
+  const [paymentModalStep, setPaymentModalStep] = useState<PaymentModalStep>('pick')
+  const [draftPaymentMethod, setDraftPaymentMethod] = useState<PaymentMethodChoice>('card')
+  const [cardFieldsMounted, setCardFieldsMounted] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethodChoice>('card')
+
+  const openPaymentMethodModal = () => {
+    setDraftPaymentMethod(selectedPaymentMethod)
+    setPaymentModalStep('pick')
+    setPaymentMethodOpen(true)
+  }
+
+  const closePaymentMethodModal = () => {
+    setPaymentMethodOpen(false)
+    setPaymentModalStep('pick')
+  }
   const [payLoading, setPayLoading] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
 
@@ -719,7 +903,7 @@ export default function PaymentPage() {
 
           <button
             type="button"
-            onClick={() => setPaymentMethodOpen(true)}
+            onClick={openPaymentMethodModal}
             disabled={!clientSecret}
             className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
           >
@@ -727,7 +911,7 @@ export default function PaymentPage() {
               <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <CreditCard className="w-5 h-5 shrink-0 text-gray-800" />
-                <span>Credit or debit card</span>
+                <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
@@ -741,8 +925,16 @@ export default function PaymentPage() {
                 onErrorChange={setPayError}
                 hideMobileSubmit
                 mobilePaymentModalOpen={paymentMethodOpen}
-                onCloseMobilePaymentModal={() => setPaymentMethodOpen(false)}
+                onCloseMobilePaymentModal={closePaymentMethodModal}
                 paymentFieldsMounted
+                selectedPaymentMethod={selectedPaymentMethod}
+                onPaymentMethodChange={setSelectedPaymentMethod}
+                paymentModalStep={paymentModalStep}
+                draftPaymentMethod={draftPaymentMethod}
+                onDraftPaymentMethodChange={setDraftPaymentMethod}
+                onPaymentModalStepChange={setPaymentModalStep}
+                onCardFieldsMounted={() => setCardFieldsMounted(true)}
+                cardFieldsMounted={cardFieldsMounted}
               />
             </Elements>
           ) : null}
@@ -1051,19 +1243,25 @@ export default function PaymentPage() {
               {payError}
             </div>
           )}
-          <Button
-            type="submit"
-            form={PAYMENT_FORM_ID}
-            disabled={!clientSecret || payLoading || loading}
-            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
-          >
-            {payLoading ? 'Processing...' : (
-              <>
-                Confirm Booking
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </>
-            )}
-          </Button>
+          {selectedPaymentMethod === 'card' ? (
+            <Button
+              type="submit"
+              form={PAYMENT_FORM_ID}
+              disabled={!clientSecret || payLoading || loading || !cardFieldsMounted}
+              className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
+            >
+              {payLoading ? 'Processing...' : (
+                <>
+                  Confirm Booking
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <p className="text-center text-sm text-gray-600 pb-1">
+              Use {PAYMENT_METHOD_LABELS[selectedPaymentMethod]} above to complete payment.
+            </p>
+          )}
           <PaymentHoldExplainer />
         </div>
       )}

@@ -109,7 +109,7 @@ export async function POST(
       amount: Math.round(booking.total_price * 100),
       currency: gym.currency.toLowerCase(),
       capture_method: 'manual',
-      payment_method_types: ['card'],
+      automatic_payment_methods: { enabled: true },
       metadata: {
         booking_id: bookingId,
         gym_id: booking.gym_id,
