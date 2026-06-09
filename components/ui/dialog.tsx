@@ -16,11 +16,11 @@ const Dialog = ({ open, onOpenChange, children, stackClassName = 'z-[100]' }: Di
   const content = (
     <div className={cn('fixed inset-0 flex items-center justify-center p-4', stackClassName)}>
       <div
-        className={cn('fixed inset-0 bg-black/50', stackClassName)}
+        className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange?.(false)}
         aria-hidden
       />
-      <div className={cn('relative', stackClassName)}>{children}</div>
+      <div className="relative z-10">{children}</div>
     </div>
   )
 

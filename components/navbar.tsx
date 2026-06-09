@@ -24,7 +24,7 @@ import { AdminNotificationBell } from '@/components/admin/admin-notification-bel
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
 import { getFlagUrl, FLAG_MENU_DISPLAY_PX } from '@/lib/utils/flag-url'
-import { isReviewCheckoutChromeHidden } from '@/lib/utils/review-checkout-chrome'
+import { useIsReviewCheckoutChromeHidden } from '@/lib/contexts/review-checkout-chrome-context'
 
 /** Anchor for the “Needs your response” block on the owner bookings page. */
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
@@ -51,6 +51,7 @@ export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { selectedCurrency, selectedLanguage } = useCurrency()
+  const reviewChromeHidden = useIsReviewCheckoutChromeHidden()
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
   const [currencyModalTab, setCurrencyModalTab] = useState<'language' | 'currency'>('language')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -223,7 +224,7 @@ export function Navbar() {
     pathname.startsWith('/bookings/review') ||
     /^\/bookings\/[^/]+\/payment/.test(pathname ?? '')
 
-  if (isCheckoutStep || isReviewCheckoutChromeHidden()) {
+  if (isCheckoutStep || reviewChromeHidden) {
     return null
   }
 

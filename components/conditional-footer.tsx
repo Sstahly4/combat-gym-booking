@@ -2,11 +2,12 @@
 
 import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/footer'
-import { isReviewCheckoutChromeHidden } from '@/lib/utils/review-checkout-chrome'
+import { useIsReviewCheckoutChromeHidden } from '@/lib/contexts/review-checkout-chrome-context'
 
 /** Omits the global footer on hub dashboards and checkout steps (focused flow, no site chrome). */
 export function ConditionalFooter() {
   const pathname = usePathname() ?? ''
+  const reviewChromeHidden = useIsReviewCheckoutChromeHidden()
 
   const isCheckoutStep =
     pathname === '/bookings/summary' ||
@@ -20,7 +21,7 @@ export function ConditionalFooter() {
     pathname.startsWith('/auth') ||
     pathname.startsWith('/bookings/review') ||
     isCheckoutStep ||
-    isReviewCheckoutChromeHidden()
+    reviewChromeHidden
   ) {
     return null
   }

@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { X, Languages } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -16,17 +17,18 @@ interface CurrencyModalProps {
   currencyOnly?: boolean
   /** Stack above nested overlays (e.g. checkout review modal) */
   stackClassName?: string
+  /** Review checkout: portal sheet, shade content only, keep bottom Continue bar visible */
+  checkoutSheet?: boolean
 }
+
+/** Height of the review modal fixed footer (progress + Continue). */
+const CHECKOUT_FOOTER_OFFSET =
+  'max(6.25rem, calc(5.25rem + env(safe-area-inset-bottom)))'
 
 type ModalTab = 'language' | 'currency'
 
 const suggestedCurrencies = ['EUR', 'GBP', 'USD', 'AUD', 'THB', 'SGD']
 const suggestedLanguages = ['en-AU', 'en-GB', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'zh-CN', 'ja-JP', 'ko-KR', 'pt-BR']
-
-function sheetZFromBackdrop(backdrop: string): string {
-  const match = backdrop.match(/z-\[(\d+)\]/)
-  return match ? `z-[${Number(match[1]) + 1}]` : 'z-[130]'
-}
 
 export function CurrencyModal({
   open,
@@ -35,6 +37,7 @@ export function CurrencyModal({
   confirmSelection = false,
   currencyOnly = false,
   stackClassName,
+  checkoutSheet = false,
 }: CurrencyModalProps) {
   const { selectedCurrency, setSelectedCurrency, selectedLanguage, setSelectedLanguage } = useCurrency()
   const [activeTab, setActiveTab] = useState<ModalTab>('language')
@@ -42,9 +45,9 @@ export function CurrencyModal({
   const [draftLanguage, setDraftLanguage] = useState(selectedLanguage)
   const [isDesktop, setIsDesktop] = useState(false)
 
-  const mobileBackdropZ = stackClassName ?? 'z-[120]'
-  const mobileSheetZ = stackClassName ? sheetZFromBackdrop(stackClassName) : 'z-[130]'
-  const desktopStack = stackClassName ?? 'z-[100]'
+  const mobileBackdropZ = checkoutSheet ? 'z-[330]' : (stackClassName ?? 'z-[120]')
+  const mobileSheetZ = checkoutSheet ? 'z-[331]' : (stackClassName ? 'z-[331]' : 'z-[130]')
+  const desktopStack = checkoutSheet ? 'z-[330]' : (stackClassName ?? 'z-[100]')
 
   // Swipe logic for mobile bottom sheet
   const [sheetTranslateY, setSheetTranslateY] = useState(0)
@@ -136,20 +139,20 @@ export function CurrencyModal({
 
   const confirmFooter = confirmSelection ? (
     <div
-      className="flex gap-3 px-4 py-4 border-t border-gray-100 flex-shrink-0 bg-white"
-      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      className="flex flex-row items-center gap-3 px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-white"
+      style={checkoutSheet ? undefined : { paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
       <Button
         type="button"
         variant="outline"
-        className="flex-1 h-11 font-semibold"
+        className="flex-1 h-11 font-semibold rounded-xl"
         onClick={handleCancel}
       >
         Cancel
       </Button>
       <Button
         type="button"
-        className="flex-1 h-11 font-semibold bg-[#003580] hover:bg-[#003580]/90"
+        className="flex-1 h-11 font-semibold rounded-xl bg-[#003580] hover:bg-[#003580]/90"
         onClick={handleConfirm}
       >
         Done
@@ -234,14 +237,16 @@ export function CurrencyModal({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
+          {!checkoutSheet && (
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0 px-6 py-6 space-y-8">
@@ -295,24 +300,31 @@ export function CurrencyModal({
       </DialogContent>
     </Dialog>
   ) : (
-    <>
-      {/* ─── MOBILE: Slide-up bottom sheet ────────────────────────────────── */}
-      <div>
-        <button
-          type="button"
-          aria-label="Close"
-          className={`fixed inset-0 bg-black/50 ${mobileBackdropZ}`}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onOpenChange(false)
-          }}
-        />
+    (() => {
+      const mobileSheet = (
+        <>
+          <button
+            type="button"
+            aria-label="Close"
+            className={`fixed inset-x-0 top-0 bg-black/50 ${mobileBackdropZ}`}
+            style={checkoutSheet ? { bottom: CHECKOUT_FOOTER_OFFSET } : { bottom: 0 }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onOpenChange(false)
+            }}
+          />
 
-        <div
-          className={`fixed inset-x-0 bottom-0 ${mobileSheetZ} animate-slide-up bg-white rounded-t-3xl flex flex-col max-h-[88dvh] transition-transform duration-100 ease-out will-change-transform`}
-          style={{ transform: `translateY(${sheetTranslateY}px)` }}
-        >
+          <div
+            className={`fixed inset-x-0 ${mobileSheetZ} animate-slide-up bg-white rounded-t-3xl flex flex-col transition-transform duration-100 ease-out will-change-transform shadow-[0_-8px_30px_rgba(0,0,0,0.12)]`}
+            style={{
+              bottom: checkoutSheet ? CHECKOUT_FOOTER_OFFSET : 0,
+              maxHeight: checkoutSheet
+                ? 'min(75dvh, calc(100dvh - 6.25rem - env(safe-area-inset-bottom)))'
+                : '88dvh',
+              transform: `translateY(${sheetTranslateY}px)`,
+            }}
+          >
           {/* Swipe handle only — keep close button outside touch-none so taps register reliably */}
           <div
             className="flex-shrink-0 touch-none"
@@ -336,18 +348,20 @@ export function CurrencyModal({
                   : 'Choose your preferred language and region.'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onOpenChange(false)
-              }}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
-              aria-label="Close"
-            >
-              <X className="w-6 h-6 text-gray-600" />
-            </button>
+            {!checkoutSheet && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onOpenChange(false)
+                }}
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            )}
           </div>
 
           {!currencyOnly && (
@@ -421,8 +435,15 @@ export function CurrencyModal({
             )}
           </div>
           {confirmFooter}
-        </div>
-      </div>
-    </>
+          </div>
+        </>
+      )
+
+      if (checkoutSheet && typeof document !== 'undefined') {
+        return createPortal(mobileSheet, document.body)
+      }
+
+      return <div>{mobileSheet}</div>
+    })()
   )
 }

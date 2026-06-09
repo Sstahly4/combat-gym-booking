@@ -21,10 +21,8 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
-import {
-  setReviewCheckoutChromeHidden,
-  writeReviewModalRestore,
-} from '@/lib/utils/review-checkout-chrome'
+import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
+import { writeReviewModalRestore } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -63,13 +61,15 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
 }
 
 function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string } | null }) {
+  const { showReviewChrome } = useReviewCheckoutChrome()
+
   if (!gym) return <div className="w-8 h-8 shrink-0" aria-hidden />
   return (
     <Link
       href={`/gyms/${gym.slug || gym.id}`}
       onClick={() => {
+        showReviewChrome()
         try { sessionStorage.removeItem('review_modal_restore') } catch {}
-        try { sessionStorage.removeItem('hide_site_chrome') } catch {}
         try { sessionStorage.removeItem('booking_prefill') } catch {}
       }}
       className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
@@ -139,6 +139,7 @@ function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
+  const { hideReviewChrome } = useReviewCheckoutChrome()
 
   const initialPrefill = readSummaryPrefillFromUrl()
 
@@ -220,7 +221,7 @@ function BookingSummaryPageContent() {
         checkout: backCheckout,
         guestCount,
       })
-      setReviewCheckoutChromeHidden()
+      hideReviewChrome()
       const backHref = buildReviewBackHref(slugOrId, pkgId, {
         variantId: backVariantId,
         checkin: backCheckin || undefined,

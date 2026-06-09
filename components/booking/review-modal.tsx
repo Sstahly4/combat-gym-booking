@@ -679,7 +679,9 @@ export function ReviewModal({
 
           {/* ── Fixed bottom: progress + CTA ──────────────────────── */}
           <div
-            className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-[210]"
+            className={`fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 ${
+              currencyModalOpen ? 'z-[340]' : 'z-[210]'
+            }`}
             style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           >
             <StepProgressBar step={1} />
@@ -740,7 +742,7 @@ export function ReviewModal({
             initialTab="currency"
             currencyOnly
             confirmSelection
-            stackClassName="z-[320]"
+            checkoutSheet
           />
         </>
       ) : null}

@@ -5,11 +5,10 @@ import dynamic from 'next/dynamic'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { ReviewModalShell } from '@/components/booking/review-modal-shell'
 import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
+import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
-  clearReviewCheckoutChromeHidden,
   clearReviewModalRestore,
   readReviewModalRestore,
-  setReviewCheckoutChromeHidden,
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 
@@ -117,6 +116,8 @@ export function ReviewModalProvider({
    */
   hasReviewIntent?: boolean
 }) {
+  const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
+
   // Initialise synchronously — no useEffect delay, no flash on back-nav or
   // shared-link load. Priority: URL params (shared link) → sessionStorage (back-nav).
   const [params, setParams] = useState<ReviewModalParams | null>(() => {
@@ -167,27 +168,27 @@ export function ReviewModalProvider({
   const openReviewModal = (p: ReviewModalParams) => {
     const hydrated = hydrateReviewParams(p)
     saveRestoreParams(hydrated)
-    setReviewCheckoutChromeHidden()
+    hideReviewChrome()
     pushReviewUrl(hydrated)
     setParams(hydrated)
   }
 
   const close = () => {
     clearReviewModalRestore()
-    clearReviewCheckoutChromeHidden()
+    showReviewChrome()
     clearReviewUrl()
     setParams(null)
   }
 
   useEffect(() => {
     if (params) {
-      setReviewCheckoutChromeHidden()
+      hideReviewChrome()
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
     }
     return () => { document.body.style.overflow = '' }
-  }, [params])
+  }, [params, hideReviewChrome])
 
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
