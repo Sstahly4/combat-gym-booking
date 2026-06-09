@@ -103,8 +103,9 @@ function Row({
       </div>
       {onEdit && (
         <button
+          type="button"
           onClick={onEdit}
-          className="shrink-0 ml-4 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+          className="ml-4 inline-flex shrink-0 items-center justify-center rounded-lg bg-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-900 can-hover:hover:bg-gray-300 active:bg-gray-300 transition-colors touch-manipulation"
         >
           Change
         </button>
