@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Star, X, ChevronRight } from 'lucide-react'
-import { calculatePackagePrice } from '@/lib/utils'
+import { calculatePackagePrice, type PriceLine } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
@@ -25,6 +25,117 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
           style={{ backgroundColor: s <= step ? '#003580' : '#e5e7eb' }}
         />
       ))}
+    </div>
+  )
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AUD: 'A$',
+  THB: '฿',
+  IDR: 'Rp',
+  JPY: '¥',
+  CNY: '¥',
+  SGD: 'S$',
+  MYR: 'RM',
+  NZD: 'NZ$',
+  CAD: 'C$',
+  HKD: 'HK$',
+  INR: '₹',
+  KRW: '₩',
+  PHP: '₱',
+  VND: '₫',
+}
+
+function formatPriceWithCode(amount: number, currency: string): string {
+  const formatted = amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
+  return symbol ? `${symbol}${formatted} ${currency}` : `${currency} ${formatted}`
+}
+
+function lineUnitLabel(line: PriceLine): string {
+  if (line.label.toLowerCase().includes('session')) {
+    return line.qty === 1 ? 'session' : 'sessions'
+  }
+  if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
+  if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
+  return line.qty === 1 ? 'night' : 'nights'
+}
+
+// ─── Price breakdown bottom sheet ─────────────────────────────────────────────
+function PriceDetailsSheet({
+  lines,
+  savedVsNightly,
+  total,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+  onClose,
+}: {
+  lines: PriceLine[]
+  savedVsNightly: number
+  total: number
+  gymCurrency: string
+  displayCurrency: string
+  convertPrice: (amount: number, fromCurrency: string) => number
+  onClose: () => void
+}) {
+  const formatDisplay = (amount: number) =>
+    formatPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
+
+  return (
+    <div className="fixed inset-0 z-[300]">
+      <div className="fixed inset-0 bg-black/50 z-[301]" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]">
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-lg font-semibold">Price details</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-5 py-5 flex-1 overflow-y-auto space-y-4">
+          {lines.map((line, i) => (
+            <div key={i} className="flex items-start justify-between gap-4">
+              <span className="text-sm text-gray-700">
+                {line.qty} {lineUnitLabel(line)} × {formatDisplay(line.unitPrice)}
+              </span>
+              <span className="text-sm text-gray-900 shrink-0">{formatDisplay(line.subtotal)}</span>
+            </div>
+          ))}
+          {savedVsNightly > 0 && (
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-gray-700">Bundle savings</span>
+              <span className="text-sm text-emerald-600 shrink-0">-{formatDisplay(savedVsNightly)}</span>
+            </div>
+          )}
+          <div className="border-t border-gray-200 pt-4 flex items-baseline justify-between gap-4">
+            <span className="text-base font-semibold text-gray-900">
+              Total <span className="underline">{displayCurrency}</span>
+            </span>
+            <span className="text-base font-semibold text-gray-900 shrink-0">{formatDisplay(total)}</span>
+          </div>
+        </div>
+        <div className="px-5 pb-8 flex-shrink-0" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+          <Button
+            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base"
+            onClick={onClose}
+          >
+            Done
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -97,11 +208,13 @@ function Row({
   value,
   sub,
   onEdit,
+  editLabel = 'Change',
 }: {
   label: string
   value: string
   sub?: string
   onEdit?: () => void
+  editLabel?: string
 }) {
   return (
     <div className="flex items-start justify-between py-4">
@@ -112,10 +225,11 @@ function Row({
       </div>
       {onEdit && (
         <button
+          type="button"
           onClick={onEdit}
-          className="shrink-0 ml-4 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+          className="shrink-0 ml-4 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
         >
-          Change
+          {editLabel}
         </button>
       )}
     </div>
@@ -133,7 +247,7 @@ export function ReviewModal({
   onClose: () => void
 }) {
   const router = useRouter()
-  const { convertPrice, formatPrice } = useCurrency()
+  const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
 
   // If the caller passed pre-loaded data we use it immediately — no skeleton.
   const hasPreloaded = !!(initialParams.gymData && initialParams.packageData)
@@ -156,6 +270,7 @@ export function ReviewModal({
 
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
+  const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [navigating, setNavigating] = useState(false)
 
   useEffect(() => {
@@ -357,6 +472,8 @@ export function ReviewModal({
                       : 'Select dates for pricing'
                   }
                   sub={priceInfo?.durationLabel || undefined}
+                  onEdit={priceInfo && totalPrice != null ? () => setPriceSheetOpen(true) : undefined}
+                  editLabel="Details"
                 />
                 {package_ && checkin && (
                   <div className="py-3">
@@ -410,6 +527,18 @@ export function ReviewModal({
               value={guestCount}
               onChange={setGuestCount}
               onClose={() => setGuestSheetOpen(false)}
+            />
+          )}
+
+          {priceSheetOpen && priceInfo && gym && (
+            <PriceDetailsSheet
+              lines={priceInfo.lines}
+              savedVsNightly={priceInfo.savedVsNightly}
+              total={priceInfo.price}
+              gymCurrency={gym.currency ?? 'USD'}
+              displayCurrency={selectedCurrency}
+              convertPrice={convertPrice}
+              onClose={() => setPriceSheetOpen(false)}
             />
           )}
         </>
