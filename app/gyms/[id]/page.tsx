@@ -539,7 +539,14 @@ export default async function GymDetailsPage({
 
   return (
     <BookingProvider initialCheckin={searchParams.checkin} initialCheckout={searchParams.checkout}>
-    <ReviewModalProvider gymSlugOrId={gym.slug?.trim() || gym.id}>
+    <ReviewModalProvider
+      gymSlugOrId={gym.slug?.trim() || gym.id}
+      gymId={gym.id}
+      hasReviewIntent={
+        (searchParams as Record<string, string | undefined>).review === '1' &&
+        !!(searchParams as Record<string, string | undefined>).pkg
+      }
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}

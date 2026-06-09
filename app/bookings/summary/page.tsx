@@ -19,6 +19,7 @@ import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
+import { readBookingPrefill } from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
 import { DateRangePicker } from '@/components/date-range-picker'
@@ -72,6 +73,7 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [navigatingBack, setNavigatingBack] = useState(false)
 
   // Tracks when initial data load + session restore is done; prevents the
   // persist effect from overwriting a valid saved session with blank defaults.
@@ -106,6 +108,76 @@ function BookingSummaryPageContent() {
     } catch {}
   }, [checkin, checkout, guestCount, discipline, notes, firstName, lastName, email, phone, country, bookingFor])
 
+  /** Restore saved form fields from sessionStorage (back-nav recovery) */
+  const restoreFormSession = (gymId: string): Record<string, any> | null => {
+    let saved: Record<string, any> | null = null
+    try {
+      const raw = sessionStorage.getItem(`booking_session_${gymId}`)
+      if (raw) saved = JSON.parse(raw)
+    } catch {}
+    if (saved) {
+      if (saved.checkin) setCheckin(saved.checkin)
+      if (saved.checkout) setCheckout(saved.checkout)
+      if (typeof saved.guestCount === 'number') setGuestCount(saved.guestCount)
+      if (saved.discipline) setDiscipline(saved.discipline)
+      if (saved.notes !== undefined) setNotes(saved.notes)
+      if (saved.firstName) setFirstName(saved.firstName)
+      if (saved.lastName) setLastName(saved.lastName)
+      if (saved.email) setEmail(saved.email)
+      if (saved.phone) setPhone(saved.phone)
+      if (saved.country) setCountry(saved.country)
+      if (saved.bookingFor) setBookingFor(saved.bookingFor as 'self' | 'other')
+    }
+    return saved
+  }
+
+  /** Apply gym + package data to state and resolve variant/discipline */
+  const applyGymPackageData = (
+    gymData: any,
+    packageData: any,
+    variantId: string | null,
+    savedSession: Record<string, any> | null
+  ) => {
+    setGym(gymData as Gym)
+    setPackage_(packageData as Package)
+    if (!savedSession?.discipline && gymData.disciplines?.length > 0) {
+      setDiscipline(gymData.disciplines[0])
+    }
+    if (variantId && packageData.variants) {
+      const v = packageData.variants.find((x: PackageVariant) => x.id === variantId)
+      if (v) setVariant(v)
+    }
+  }
+
+  /**
+   * Background validation — runs after a prefill paint to silently confirm
+   * gym/package data is still accurate. No UI block; updates state if changed.
+   */
+  const validateInBackground = async (
+    gymId: string,
+    packageId: string,
+    variantId: string | null,
+    savedSession: Record<string, any> | null
+  ) => {
+    try {
+      const supabase = createClient()
+      const [{ data: gymData }, { data: packageData }] = await Promise.all([
+        supabase
+          .from('gyms')
+          .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
+          .eq('id', gymId)
+          .single(),
+        supabase
+          .from('packages')
+          .select('*, variants:package_variants(*)')
+          .eq('id', packageId)
+          .single(),
+      ])
+      if (gymData) setGym(gymData as Gym)
+      if (packageData) applyGymPackageData(gymData, packageData, variantId, savedSession)
+    } catch {}
+  }
+
   const fetchBookingData = async () => {
     const gymId = searchParams.get('gymId')
     const packageId = searchParams.get('packageId')
@@ -117,36 +189,30 @@ function BookingSummaryPageContent() {
       return
     }
 
-    // Restore any previously saved form state for this gym (e.g. after back-nav)
-    const sessionKey = `booking_session_${gymId}`
-    let savedSession: Record<string, any> | null = null
-    try {
-      const raw = sessionStorage.getItem(sessionKey)
-      if (raw) savedSession = JSON.parse(raw)
-    } catch {}
-    if (savedSession) {
-      if (savedSession.checkin) setCheckin(savedSession.checkin)
-      if (savedSession.checkout) setCheckout(savedSession.checkout)
-      if (typeof savedSession.guestCount === 'number') setGuestCount(savedSession.guestCount)
-      if (savedSession.discipline) setDiscipline(savedSession.discipline)
-      if (savedSession.notes !== undefined) setNotes(savedSession.notes)
-      if (savedSession.firstName) setFirstName(savedSession.firstName)
-      if (savedSession.lastName) setLastName(savedSession.lastName)
-      if (savedSession.email) setEmail(savedSession.email)
-      if (savedSession.phone) setPhone(savedSession.phone)
-      if (savedSession.country) setCountry(savedSession.country)
-      if (savedSession.bookingFor) setBookingFor(savedSession.bookingFor as 'self' | 'other')
+    const savedSession = restoreFormSession(gymId)
+
+    // ── Fast path: prefill from review modal ──────────────────────────────────
+    // The review modal writes gym + package data to sessionStorage before
+    // navigating here. If the data matches this gymId + packageId we can render
+    // immediately and validate in the background.
+    const prefill = readBookingPrefill(gymId, packageId)
+    if (prefill) {
+      applyGymPackageData(prefill.gym, prefill.package_, variantId, savedSession)
+      setAverageRating(prefill.reviewAverage)
+      setReviewCount(prefill.reviewCount)
+      sessionLoadedRef.current = true
+      setLoading(false)
+      // Background fetch validates price/availability silently — no UI block
+      validateInBackground(gymId, packageId, variantId, savedSession)
+      return
     }
 
+    // ── Cold path: no prefill (direct URL, refresh, etc.) ────────────────────
     const supabase = createClient()
 
-    // Fetch gym with images
     const { data: gymData, error: gymError } = await supabase
       .from('gyms')
-      .select(`
-        *,
-        images:gym_images(url, variants, order, focus_x, focus_y)
-      `)
+      .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
       .eq('id', gymId)
       .single()
 
@@ -156,30 +222,6 @@ function BookingSummaryPageContent() {
       return
     }
 
-    // Fetch reviews for rating calculation
-    const { data: bookingReviews } = await supabase
-      .from('bookings')
-      .select('id, reviews(rating)')
-      .eq('gym_id', gymId)
-
-    const { data: manualReviews } = await supabase
-      .from('reviews')
-      .select('rating')
-      .eq('gym_id', gymId)
-      .eq('manual_review', true)
-
-    const allReviews = [
-      ...(bookingReviews || []).flatMap((b: any) => b.reviews || []),
-      ...(manualReviews || [])
-    ]
-
-    if (allReviews.length > 0) {
-      const avg = allReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / allReviews.length
-      setAverageRating(avg)
-      setReviewCount(allReviews.length)
-    }
-
-    // Fetch package with variants
     const { data: packageData, error: packageError } = await supabase
       .from('packages')
       .select('*, variants:package_variants(*)')
@@ -192,20 +234,21 @@ function BookingSummaryPageContent() {
       return
     }
 
-    setGym(gymData as Gym)
-    // Auto-select the gym's primary discipline; user can still change it
-    // (skip if a discipline was already restored from sessionStorage)
-    if (!savedSession?.discipline && gymData.disciplines && gymData.disciplines.length > 0) {
-      setDiscipline(gymData.disciplines[0])
-    }
-    setPackage_(packageData as Package)
+    applyGymPackageData(gymData, packageData, variantId, savedSession)
 
-    // If variant ID provided, find the variant
-    if (variantId && packageData.variants) {
-      const selectedVariant = packageData.variants.find((v: PackageVariant) => v.id === variantId)
-      if (selectedVariant) {
-        setVariant(selectedVariant)
-      }
+    // Reviews fetched on cold path only (prefill path has them from the modal)
+    const [{ data: bookingReviews }, { data: manualReviews }] = await Promise.all([
+      supabase.from('bookings').select('id, reviews(rating)').eq('gym_id', gymId),
+      supabase.from('reviews').select('rating').eq('gym_id', gymId).eq('manual_review', true),
+    ])
+    const allReviews = [
+      ...(bookingReviews || []).flatMap((b: any) => b.reviews || []),
+      ...(manualReviews || []),
+    ]
+    if (allReviews.length > 0) {
+      const avg = allReviews.reduce((s: number, r: any) => s + r.rating, 0) / allReviews.length
+      setAverageRating(avg)
+      setReviewCount(allReviews.length)
     }
 
     sessionLoadedRef.current = true
@@ -359,10 +402,19 @@ function BookingSummaryPageContent() {
       {/* Checkout nav: ← Back | × Exit to listing */}
       <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
         <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          onClick={() => {
+            if (navigatingBack) return
+            setNavigatingBack(true)
+            router.back()
+          }}
+          disabled={navigatingBack}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
         >
-          <ArrowLeft className="w-4 h-4" />
+          {navigatingBack ? (
+            <span className="w-4 h-4 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
+          ) : (
+            <ArrowLeft className="w-4 h-4" />
+          )}
           <span>Back</span>
         </button>
         {gym && (

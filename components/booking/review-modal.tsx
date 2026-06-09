@@ -10,6 +10,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
+import { writeBookingPrefill } from '@/lib/utils/booking-prefill'
 import type { Gym, Package } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 
@@ -155,8 +156,12 @@ export function ReviewModal({
 
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
+  const [navigating, setNavigating] = useState(false)
 
   useEffect(() => {
+    // Warm up the summary page bundle so Continue navigation feels instant
+    router.prefetch('/bookings/summary')
+
     const supabase = createClient()
 
     if (!hasPreloaded) {
@@ -246,6 +251,26 @@ export function ReviewModal({
     if (checkout) p.set('checkout', checkout)
     p.set('guests', String(guestCount))
     return `/bookings/summary?${p.toString()}`
+  }
+
+  const handleContinue = () => {
+    if (navigating) return
+    setNavigating(true)
+    if (gym && package_) {
+      writeBookingPrefill({
+        gymId: gym.id,
+        packageId: initialParams.packageId,
+        variantId: initialParams.variantId,
+        gym: gym as unknown as Record<string, unknown>,
+        package_: package_ as unknown as Record<string, unknown>,
+        checkin,
+        checkout,
+        guestCount,
+        reviewCount,
+        reviewAverage: averageRating,
+      })
+    }
+    router.push(buildContinueUrl())
   }
 
   return (
@@ -349,11 +374,15 @@ export function ReviewModal({
           >
             <StepProgressBar step={1} />
             <Button
-              onClick={() => router.push(buildContinueUrl())}
-              className="w-full h-12 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl"
+              onClick={handleContinue}
+              disabled={navigating}
+              className="w-full h-12 text-base font-semibold bg-[#003580] hover:bg-[#003580]/90 text-white rounded-xl disabled:opacity-80"
             >
-              Continue
-              <ChevronRight className="w-4 h-4 ml-1" />
+              {navigating ? (
+                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Continue <ChevronRight className="w-4 h-4 ml-1" /></>
+              )}
             </Button>
           </div>
 

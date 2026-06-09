@@ -29,14 +29,14 @@ export function LoadingOverlay({ show, zClass = 'z-50' }: LoadingOverlayProps) {
 
   return (
     <div
-      className={`fixed inset-0 ${zClass} bg-white/75 backdrop-blur-sm flex items-center justify-center transition-opacity duration-200 pointer-events-none ${
+      className={`fixed inset-0 ${zClass} bg-white/55 flex items-center justify-center transition-opacity duration-200 pointer-events-none ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      <div className="flex gap-1.5 pointer-events-none">
-        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
-        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce [animation-delay:150ms]" />
-        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
+      <div className="flex gap-2 pointer-events-none">
+        <span className="w-2.5 h-2.5 rounded-full bg-gray-500 animate-bounce [animation-delay:0ms]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-gray-500 animate-bounce [animation-delay:150ms]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-gray-500 animate-bounce [animation-delay:300ms]" />
       </div>
     </div>
   )

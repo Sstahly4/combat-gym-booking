@@ -15,6 +15,7 @@ import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
+import { readBookingPrefill } from '@/lib/utils/booking-prefill'
 import Link from 'next/link'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -154,13 +155,50 @@ function CheckoutForm({ booking }: { booking: Booking & { gym: Gym } }) {
   )
 }
 
+type BookingWithExtras = Booking & {
+  gym: Gym & { images?: GymImage[]; averageRating?: number; reviewCount?: number }
+  package?: Package
+  variant?: PackageVariant
+}
+
 export default function PaymentPage() {
   const params = useParams()
   const router = useRouter()
   const { convertPrice, formatPrice } = useCurrency()
   const bookingId = params.id as string
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [booking, setBooking] = useState<(Booking & { gym: Gym & { images?: GymImage[], averageRating?: number, reviewCount?: number }, package?: Package, variant?: PackageVariant }) | null>(null)
+  const [booking, setBooking] = useState<BookingWithExtras | null>(() => {
+    // Synchronously seed from prefill so the page has real content under the
+    // overlay while the PaymentIntent fetch runs. The real booking from the
+    // server replaces this silently once it arrives.
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = sessionStorage.getItem('booking_prefill')
+      if (!raw) return null
+      const prefill = JSON.parse(raw)
+      const gym = prefill.gym as Record<string, any>
+      const pkg = prefill.package_ as Record<string, any>
+      if (!gym || !pkg) return null
+      return {
+        id: '', // filled by server
+        gym_id: prefill.gymId,
+        package_id: prefill.packageId,
+        package_variant_id: prefill.variantId ?? null,
+        start_date: prefill.checkin,
+        end_date: prefill.checkout,
+        total_price: 0, // server-confirmed value replaces this
+        status: 'pending',
+        gym: {
+          ...gym,
+          averageRating: prefill.reviewAverage,
+          reviewCount: prefill.reviewCount,
+        } as Gym & { averageRating?: number; reviewCount?: number },
+        package: pkg as Package,
+      } as unknown as BookingWithExtras
+    } catch {
+      return null
+    }
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [addressCopied, setAddressCopied] = useState(false)
@@ -266,7 +304,9 @@ export default function PaymentPage() {
   }
 
 
-  if (error || !clientSecret || !stripePromise) {
+  // Hard error only — missing clientSecret while loading is normal and
+  // handled by the overlay + conditional Elements render below.
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -277,8 +317,8 @@ export default function PaymentPage() {
                   <CreditCard className="w-8 h-8 text-red-600" />
                 </div>
                 <h2 className="text-xl font-bold mb-2">Payment Unavailable</h2>
-                <p className="text-gray-600 mb-2">{error || 'Failed to load payment page'}</p>
-                {error?.includes('not configured') && (
+                <p className="text-gray-600 mb-2">{error}</p>
+                {error.includes('not configured') && (
                   <p className="text-sm text-gray-500 mt-2">
                     The payment system needs to be set up. Please contact support or try again later.
                   </p>
@@ -296,15 +336,30 @@ export default function PaymentPage() {
   }
 
 
-  const options = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe' as const,
-    },
-  }
+  const options = clientSecret
+    ? { clientSecret, appearance: { theme: 'stripe' as const } }
+    : undefined
 
   const mainImage = booking?.gym?.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
-  const totalPrice = booking?.total_price ?? 0
+  // Prefer the server-confirmed total; fall back to a local recalculation from
+  // prefill data so the price display is never "0" while loading.
+  const serverTotal = booking?.total_price ?? 0
+  const localTotal = (() => {
+    if (serverTotal > 0) return serverTotal
+    if (!booking?.package || !booking.start_date || !booking.end_date) return 0
+    const d = Math.floor(
+      (new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const isTrainingPkg = booking.package.type === 'training'
+    const pricingD = isTrainingPkg ? Math.max(1, d + 1) : d
+    const info = pricingD > 0 ? calculatePackagePrice(pricingD, booking.package.type, {
+      daily: booking.package.price_per_day,
+      weekly: booking.package.price_per_week,
+      monthly: booking.package.price_per_month,
+    }) : null
+    return info ? convertPrice(info.price, (booking.gym as any)?.currency ?? 'USD') : 0
+  })()
+  const totalPrice = localTotal
   const finalTotal = totalPrice
 
   // Reconstruct Step 2 URL so back-nav works even after a page refresh
@@ -326,8 +381,9 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Overlay — covers while booking data loads, fades out when ready */}
-      <LoadingOverlay show={loading} />
+      {/* Overlay — covers while booking + PaymentIntent are loading.
+          Content (gym info, dates, price) is painted underneath from prefill. */}
+      <LoadingOverlay show={loading || !clientSecret} />
       {/* Progress Bar */}
       <BookingProgressBar currentStep={3} />
 
@@ -548,9 +604,11 @@ export default function PaymentPage() {
                   <div className="text-[#003580] text-lg">✓</div>
                 </div>
 
-                <Elements stripe={stripePromise} options={options}>
-                  <CheckoutForm booking={booking} />
-                </Elements>
+                {clientSecret && stripePromise ? (
+                  <Elements stripe={stripePromise} options={options}>
+                    <CheckoutForm booking={booking} />
+                  </Elements>
+                ) : null}
               </div>
             </CardContent>
           </Card>
@@ -810,9 +868,11 @@ export default function PaymentPage() {
                   </div>
                 </div>
 
-                <Elements stripe={stripePromise} options={options}>
-                  <CheckoutForm booking={booking} />
-                </Elements>
+                {clientSecret && stripePromise ? (
+                  <Elements stripe={stripePromise} options={options}>
+                    <CheckoutForm booking={booking} />
+                  </Elements>
+                ) : null}
               </CardContent>
             </Card>
           </div>
