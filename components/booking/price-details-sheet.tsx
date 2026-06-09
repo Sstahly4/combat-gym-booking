@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { PriceLine } from '@/lib/utils'
 import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
@@ -51,12 +51,36 @@ function PriceBreakdownSheet({
     formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
 
   const preDiscountTotal = total + savedVsNightly
+  const rootRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const preventBackdropScroll: EventListener = (e) => {
+      if (sheetRef.current?.contains(e.target as Node)) return
+      e.preventDefault()
+    }
+    root.addEventListener('touchmove', preventBackdropScroll, { passive: false })
+    return () => root.removeEventListener('touchmove', preventBackdropScroll)
+  }, [])
 
   return (
-    <div className="fixed inset-0 z-[310]">
-      <div className="fixed inset-0 bg-black/50 z-[311]" onClick={onClose} />
+    <div
+      ref={rootRef}
+      className="fixed inset-0 z-[310] overscroll-none"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/50 z-[311] touch-none"
+        onClick={onClose}
+      />
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[312] flex flex-col max-h-[85dvh]"
+        ref={sheetRef}
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[312] flex flex-col max-h-[85dvh] overscroll-contain"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">
@@ -144,16 +168,38 @@ export function PriceDetailsSheet({
       ? `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} · ${formatBreakdownDateRange(checkin, checkout)}`
       : `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
 
+  const rootRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const preventBackdropScroll: EventListener = (e) => {
+      if (sheetRef.current?.contains(e.target as Node)) return
+      e.preventDefault()
+    }
+    root.addEventListener('touchmove', preventBackdropScroll, { passive: false })
+    return () => root.removeEventListener('touchmove', preventBackdropScroll)
+  }, [])
+
   return (
-    <div className="fixed inset-0 z-[300]">
-      <div
-        className="fixed inset-0 bg-black/50 z-[301]"
+    <div
+      ref={rootRef}
+      className="fixed inset-0 z-[300] overscroll-none"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/50 z-[301] touch-none"
         onClick={() => {
           if (!breakdownOpen) onClose()
         }}
       />
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]"
+        ref={sheetRef}
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[302] flex flex-col max-h-[85dvh] overscroll-contain"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">

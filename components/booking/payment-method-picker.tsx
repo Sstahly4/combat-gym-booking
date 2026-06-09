@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { CreditCard } from 'lucide-react'
 import { ApplePayMark, CardBrandLogosRow, GooglePayMark } from '@/components/booking/payment-brand-logos'
 
 export type PaymentMethodChoice = 'card' | 'apple_pay' | 'google_pay'
@@ -70,10 +71,12 @@ export function PaymentMethodPicker({
         selected={value === 'card'}
         onSelect={() => onChange('card')}
         label="Credit or debit card"
-        icon={<CardBrandLogosRow size="list" />}
+        icon={<CreditCard className="h-7 w-7 shrink-0 text-gray-900" strokeWidth={1.75} />}
         iconClassName="min-w-[4.75rem]"
         ariaLabel="Pay with credit or debit card"
-      />
+      >
+        <CardBrandLogosRow size="compact" className="mt-1.5" />
+      </PaymentMethodOption>
       <PaymentMethodOption
         selected={value === 'google_pay'}
         onSelect={() => onChange('google_pay')}
@@ -87,6 +90,7 @@ export function PaymentMethodPicker({
         onSelect={() => onChange('apple_pay')}
         label="Apple Pay"
         icon={<ApplePayMark size="list" />}
+        iconClassName="min-w-[4.75rem]"
         ariaLabel="Pay with Apple Pay"
       />
     </div>

@@ -69,12 +69,14 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 const PAYMENT_FORM_ID = 'payment-checkout-form'
 
-const CARD_ELEMENT_OPTIONS: PaymentElementProps['options'] = {
+/** Card-only modal — hide wallet tabs and the optional Link email/save box under the card fields */
+const CARD_ELEMENT_OPTIONS = {
   wallets: {
     applePay: 'never',
     googlePay: 'never',
+    link: 'never',
   },
-}
+} as PaymentElementProps['options']
 
 /** Stripe.js runtime supports paymentMethods + layout; @stripe/stripe-js 2.x types are narrower */
 type WalletExpressOptions = {
@@ -128,7 +130,7 @@ function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions
 
 /** Keep off-screen Stripe iframes at real size — squishing to 1px causes bleed/blur over our logos */
 const CARD_ELEMENT_OFFSCREEN_CLASS =
-  'fixed top-0 -left-[10000px] z-0 w-[min(100%,28rem)] max-w-md opacity-0 pointer-events-none overflow-hidden'
+  'fixed top-0 -left-[10000px] z-0 w-[min(100%,28rem)] max-w-md invisible pointer-events-none overflow-hidden'
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
   card: 'Credit or debit card',
@@ -156,11 +158,15 @@ function PaymentMethodSheet({
   /** Nested sheet stacks above the Pay with picker (e.g. Add card details) */
   layer?: 'primary' | 'nested'
 }) {
+  const rootZ = layer === 'nested' ? 'z-[310]' : 'z-[300]'
   const backdropZ = layer === 'nested' ? 'z-[311]' : 'z-[301]'
   const sheetZ = layer === 'nested' ? 'z-[312]' : 'z-[302]'
   const [sheetTranslateY, setSheetTranslateY] = useState(0)
   const sheetStartY = useRef(0)
   const sheetIsDragging = useRef(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const dragHandleRef = useRef<HTMLDivElement>(null)
 
   const handleSheetTouchStart = (e: TouchEvent) => {
     sheetStartY.current = e.touches[0].clientY
@@ -180,12 +186,38 @@ function PaymentMethodSheet({
     setSheetTranslateY(0)
   }
 
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const preventBackdropScroll: EventListener = (e) => {
+      if (sheetRef.current?.contains(e.target as Node)) return
+      e.preventDefault()
+    }
+    root.addEventListener('touchmove', preventBackdropScroll, { passive: false })
+    return () => root.removeEventListener('touchmove', preventBackdropScroll)
+  }, [])
+
+  useEffect(() => {
+    const handle = dragHandleRef.current
+    if (!handle) return
+    const preventDragScroll: EventListener = (e) => {
+      if (sheetIsDragging.current) e.preventDefault()
+    }
+    handle.addEventListener('touchmove', preventDragScroll, { passive: false })
+    return () => handle.removeEventListener('touchmove', preventDragScroll)
+  }, [])
+
   const sheet = (
-    <div className="md:hidden">
+    <div
+      ref={rootRef}
+      className={`md:hidden fixed inset-0 ${rootZ} overscroll-none`}
+      role="dialog"
+      aria-modal="true"
+    >
       <button
         type="button"
         aria-label="Close"
-        className={`fixed inset-0 bg-black/50 ${backdropZ}`}
+        className={`absolute inset-0 bg-black/50 ${backdropZ} touch-none`}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -193,10 +225,12 @@ function PaymentMethodSheet({
         }}
       />
       <div
-        className={`fixed inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform`}
+        ref={sheetRef}
+        className={`absolute inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-100 ease-out will-change-transform overscroll-contain`}
         style={{ transform: `translateY(${sheetTranslateY}px)` }}
       >
         <div
+          ref={dragHandleRef}
           className="flex-shrink-0 touch-none"
           onTouchStart={handleSheetTouchStart}
           onTouchMove={handleSheetTouchMove}
@@ -293,8 +327,8 @@ function CheckoutForm({
   draftPaymentMethod = 'card',
   onDraftPaymentMethodChange,
   onPaymentModalStepChange,
-  onCardFieldsMounted,
-  cardFieldsMounted = false,
+  onCardDetailsCompleteChange,
+  cardDetailsComplete = false,
   onWalletReadyChange,
   mobileCheckoutDisabled = false,
 }: {
@@ -313,8 +347,9 @@ function CheckoutForm({
   draftPaymentMethod?: PaymentMethodChoice
   onDraftPaymentMethodChange?: (method: PaymentMethodChoice) => void
   onPaymentModalStepChange?: (step: PaymentModalStep) => void
-  onCardFieldsMounted?: () => void
-  cardFieldsMounted?: boolean
+  onCardDetailsCompleteChange?: (complete: boolean) => void
+  /** User finished Add card details (Done), not merely opened the step */
+  cardDetailsComplete?: boolean
   onWalletReadyChange?: (ready: 'idle' | 'available' | 'unavailable') => void
   /** Page-level gate (e.g. client secret still loading) */
   mobileCheckoutDisabled?: boolean
@@ -458,7 +493,7 @@ function CheckoutForm({
   const handlePickPrimary = () => {
     if (draftPaymentMethod === 'card') {
       onPaymentMethodChange?.('card')
-      onCardFieldsMounted?.()
+      onCardDetailsCompleteChange?.(false)
       onPaymentModalStepChange?.('card-details')
       return
     }
@@ -473,25 +508,26 @@ function CheckoutForm({
   }
 
   const handleCardDetailsDismiss = () => {
+    onCardDetailsCompleteChange?.(false)
     onPaymentModalStepChange?.('pick')
   }
 
   const handleCardDetailsDone = () => {
+    onCardDetailsCompleteChange?.(true)
     onCloseMobilePaymentModal?.()
   }
 
   const showCardElementInModal =
     paymentFieldsMounted &&
-    cardFieldsMounted &&
     selectedPaymentMethod === 'card' &&
     mobilePaymentModalOpen &&
     paymentModalStep === 'card-details'
 
   const showCardElementOffscreen =
     paymentFieldsMounted &&
-    cardFieldsMounted &&
+    cardDetailsComplete &&
     selectedPaymentMethod === 'card' &&
-    (!mobilePaymentModalOpen || paymentModalStep !== 'card-details')
+    !mobilePaymentModalOpen
 
   if (hideMobileSubmit) {
     return (
@@ -510,7 +546,7 @@ function CheckoutForm({
               primaryLabel={draftPaymentMethod === 'card' ? 'Next' : 'Done'}
               onPrimary={handlePickPrimary}
             >
-              <div className="relative z-10 flex-shrink-0">
+              <div className="relative z-10 flex-shrink-0 isolate">
                 <PaymentMethodPicker
                   value={draftPaymentMethod}
                   onChange={(method) => onDraftPaymentMethodChange?.(method)}
@@ -555,7 +591,7 @@ function CheckoutForm({
               <Button
                 type="submit"
                 form={formId}
-                disabled={mobileCheckoutDisabled || loading || !cardFieldsMounted || !stripe}
+                disabled={mobileCheckoutDisabled || loading || !cardDetailsComplete || !stripe}
                 className={CHECKOUT_PAY_BUTTON_CLASS}
               >
                 {loading ? 'Processing...' : (
@@ -703,7 +739,7 @@ export default function PaymentPage() {
   const [stripeCheckoutMounted, setStripeCheckoutMounted] = useState(false)
   const [paymentModalStep, setPaymentModalStep] = useState<PaymentModalStep>('pick')
   const [draftPaymentMethod, setDraftPaymentMethod] = useState<PaymentMethodChoice>('card')
-  const [cardFieldsMounted, setCardFieldsMounted] = useState(false)
+  const [cardDetailsComplete, setCardDetailsComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethodChoice>('card')
 
@@ -718,6 +754,19 @@ export default function PaymentPage() {
     setPaymentMethodOpen(false)
     setPaymentModalStep('pick')
   }
+
+  useEffect(() => {
+    if (!paymentMethodOpen && !priceSheetOpen) return
+    const prevBody = document.body.style.overflow
+    const prevHtml = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBody
+      document.documentElement.style.overflow = prevHtml
+    }
+  }, [paymentMethodOpen, priceSheetOpen])
+
   useEffect(() => {
     fetchBookingAndPaymentIntent()
   }, [bookingId])
@@ -1104,8 +1153,8 @@ export default function PaymentPage() {
                 draftPaymentMethod={draftPaymentMethod}
                 onDraftPaymentMethodChange={setDraftPaymentMethod}
                 onPaymentModalStepChange={setPaymentModalStep}
-                onCardFieldsMounted={() => setCardFieldsMounted(true)}
-                cardFieldsMounted={cardFieldsMounted}
+                onCardDetailsCompleteChange={setCardDetailsComplete}
+                cardDetailsComplete={cardDetailsComplete}
                 mobileCheckoutDisabled={!clientSecret || loading}
               />
             </Elements>

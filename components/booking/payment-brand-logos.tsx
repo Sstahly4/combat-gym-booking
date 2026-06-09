@@ -11,53 +11,27 @@ export const PAYMENT_BRAND_ASSETS = {
 } as const
 
 /**
- * @see https://developer.apple.com/apple-pay/marketing/ — preserve aspect ratio; min clear space ≈ ¼ mark height
+ * Picker + summary wallet marks share one left-aligned slot system so Apple Pay and
+ * Google Pay sit on the same vertical edge at matched visual height.
  */
-const APPLE_PAY_MARK_SIZES = {
-  list: 'h-6 w-auto max-w-[2.75rem] object-contain',
-  compact: 'h-5 w-auto max-w-[2.25rem] object-contain',
+const WALLET_MARK_SLOTS = {
+  list: {
+    apple: 'h-7 w-[2.875rem]',
+    google: 'h-7 w-[4.75rem]',
+  },
+  compact: {
+    apple: 'h-5 w-[2.25rem]',
+    google: 'h-5 w-[3.5rem]',
+  },
 } as const
 
-/**
- * Google Pay acceptance mark is much wider (~1.47:1) than Apple Pay.
- * @see https://developers.google.com/pay/api/web/guides/brand-guidelines
- * - Match height to peer payment marks; never smaller than other identities
- * - Clear space ≥ 0.5× capital G height (≥ 8dp) — applied via frame padding
- * - Do not cap width with Apple’s max-w; that shrinks the mark below its set height
- */
-const GOOGLE_PAY_MARK_SIZES = {
-  list: 'h-7 w-auto min-w-[3.25rem] max-w-[5rem] object-contain',
-  compact: 'h-6 w-auto min-w-[2.75rem] max-w-[4.25rem] object-contain',
-} as const
+type WalletMarkSize = keyof typeof WALLET_MARK_SLOTS
 
-type WalletMarkSize = keyof typeof APPLE_PAY_MARK_SIZES
-
-function ApplePayMarkFrame({
-  children,
-  size,
-}: {
-  children: ReactNode
-  size: WalletMarkSize
-}) {
-  const pad = size === 'list' ? 'p-1' : 'p-0.5'
+function WalletMarkSlot({ children, className }: { children: ReactNode; className: string }) {
   return (
-    <span className={`inline-flex shrink-0 items-center justify-center box-content ${pad}`}>
-      {children}
-    </span>
-  )
-}
-
-/** Google mark clear space: min 8dp on all sides per brand guidelines */
-function GooglePayMarkFrame({
-  children,
-  size,
-}: {
-  children: ReactNode
-  size: WalletMarkSize
-}) {
-  const pad = size === 'list' ? 'p-2' : 'p-1.5'
-  return (
-    <span className={`inline-flex shrink-0 items-center justify-center box-content ${pad}`}>
+    <span
+      className={`inline-flex shrink-0 items-center justify-start overflow-hidden ${className}`}
+    >
       {children}
     </span>
   )
@@ -149,11 +123,14 @@ export function GooglePayMark({
   size?: WalletMarkSize
   className?: string
 }) {
-  const markClass = [GOOGLE_PAY_MARK_SIZES[size], className].filter(Boolean).join(' ')
+  const slot = WALLET_MARK_SLOTS[size]
+  const markClass = ['block h-full w-full object-contain object-left', className]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <GooglePayMarkFrame size={size}>
+    <WalletMarkSlot className={slot.google}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.googlePay} alt="Google Pay" className={markClass} />
-    </GooglePayMarkFrame>
+    </WalletMarkSlot>
   )
 }
 
@@ -165,28 +142,41 @@ export function ApplePayMark({
   size?: WalletMarkSize
   className?: string
 }) {
-  const markClass = [APPLE_PAY_MARK_SIZES[size], className].filter(Boolean).join(' ')
+  const slot = WALLET_MARK_SLOTS[size]
+  const markClass = ['block h-full w-full object-contain object-left', className]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <ApplePayMarkFrame size={size}>
+    <WalletMarkSlot className={slot.apple}>
       <PaymentBrandImage src={PAYMENT_BRAND_ASSETS.applePay} alt="Apple Pay" className={markClass} />
-    </ApplePayMarkFrame>
+    </WalletMarkSlot>
   )
 }
 
 const CARD_BRAND_LOGO_SIZES = {
   compact: {
-    visa: 'h-3 w-auto',
-    mastercard: 'h-3.5 w-auto',
-    amex: 'h-3 w-auto',
-    gap: 'gap-2.5',
+    visa: 'h-3 w-[2.25rem]',
+    mastercard: 'h-3.5 w-[1.375rem]',
+    amex: 'h-3 w-[2.25rem]',
+    gap: 'gap-2',
   },
   list: {
-    visa: 'h-4 w-auto',
-    mastercard: 'h-4 w-auto',
-    amex: 'h-4 w-auto',
-    gap: 'gap-1.5',
+    visa: 'h-4 w-12',
+    mastercard: 'h-4 w-8',
+    amex: 'h-4 w-12',
+    gap: 'gap-1',
   },
 } as const
+
+function CardBrandLogoSlot({ children, className }: { children: ReactNode; className: string }) {
+  return (
+    <span
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden isolate ${className}`}
+    >
+      {children}
+    </span>
+  )
+}
 
 export function CardBrandLogosRow({
   className,
@@ -197,10 +187,19 @@ export function CardBrandLogosRow({
 }) {
   const s = CARD_BRAND_LOGO_SIZES[size]
   return (
-    <div className={`flex items-center ${s.gap} ${className ?? ''}`}>
-      <VisaLogo className={s.visa} />
-      <MastercardLogo className={s.mastercard} />
-      <AmexLogo className={s.amex} />
+    <div
+      className={`inline-flex items-center ${s.gap} ${className ?? ''}`}
+      aria-hidden
+    >
+      <CardBrandLogoSlot className={s.visa}>
+        <VisaLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
+      </CardBrandLogoSlot>
+      <CardBrandLogoSlot className={s.mastercard}>
+        <MastercardLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
+      </CardBrandLogoSlot>
+      <CardBrandLogoSlot className={s.amex}>
+        <AmexLogo className="block h-full w-full" preserveAspectRatio="xMidYMid meet" />
+      </CardBrandLogoSlot>
     </div>
   )
 }
