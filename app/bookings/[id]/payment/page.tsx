@@ -94,6 +94,30 @@ const CARD_ELEMENT_OPTIONS = {
   },
 } as PaymentElementProps['options']
 
+/** Klarna Pay in 4 — Payment Element shows only Klarna for redirect checkout */
+const KLARNA_ELEMENT_OPTIONS = {
+  paymentMethodOrder: ['klarna'],
+  wallets: {
+    applePay: 'never',
+    googlePay: 'never',
+    link: 'never',
+  },
+} as PaymentElementProps['options']
+
+function readInitialPayWhen(): PayWhenChoice {
+  if (typeof window === 'undefined') return 'now'
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    if (sp.get('payTiming') === 'klarna') return 'klarna'
+    const raw = sessionStorage.getItem('booking_prefill')
+    if (raw) {
+      const prefill = JSON.parse(raw)
+      if (prefill.payTiming === 'klarna') return 'klarna'
+    }
+  } catch {}
+  return 'now'
+}
+
 /** Stripe.js runtime supports paymentMethods + layout; @stripe/stripe-js 2.x types are narrower */
 type WalletExpressOptions = {
   paymentMethods: {
@@ -347,8 +371,9 @@ function CheckoutForm({
   cardDetailsComplete = false,
   onWalletReadyChange,
   mobileCheckoutDisabled = false,
+  payWhen = 'now',
 }: {
-  booking: Booking & { gym: Gym }
+  booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
   onLoadingChange?: (loading: boolean) => void
   onErrorChange?: (error: string | null) => void
@@ -369,6 +394,7 @@ function CheckoutForm({
   onWalletReadyChange?: (ready: 'idle' | 'available' | 'unavailable') => void
   /** Page-level gate (e.g. client secret still loading) */
   mobileCheckoutDisabled?: boolean
+  payWhen?: PayWhenChoice
 }) {
   const router = useRouter()
   const params = useParams()
@@ -378,11 +404,18 @@ function CheckoutForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [walletReady, setWalletReady] = useState<'idle' | 'available' | 'unavailable'>('idle')
+  const [klarnaComplete, setKlarnaComplete] = useState(false)
+
+  const isKlarnaCheckout = payWhen === 'klarna'
 
   useEffect(() => {
     setWalletReady('idle')
     onWalletReadyChange?.('idle')
   }, [selectedPaymentMethod, onWalletReadyChange])
+
+  useEffect(() => {
+    setKlarnaComplete(false)
+  }, [payWhen])
 
   const updateWalletReady = (ready: 'idle' | 'available' | 'unavailable') => {
     setWalletReady(ready)
@@ -476,7 +509,7 @@ function CheckoutForm({
 
     if (!stripe || !elements) return
 
-    if (hideMobileSubmit && selectedPaymentMethod !== 'card') {
+    if (hideMobileSubmit && !isKlarnaCheckout && selectedPaymentMethod !== 'card') {
       return
     }
 
@@ -546,7 +579,21 @@ function CheckoutForm({
     paymentFieldsMounted &&
     cardDetailsComplete &&
     selectedPaymentMethod === 'card' &&
-    !mobilePaymentModalOpen
+    !mobilePaymentModalOpen &&
+    !isKlarnaCheckout
+
+  const showKlarnaElement =
+    paymentFieldsMounted && isKlarnaCheckout && !mobilePaymentModalOpen
+
+  const klarnaElementOptions = {
+    ...KLARNA_ELEMENT_OPTIONS,
+    defaultValues: {
+      billingDetails: {
+        email: booking.guest_email ?? undefined,
+        name: booking.guest_name ?? undefined,
+      },
+    },
+  } as PaymentElementProps['options']
 
   if (hideMobileSubmit) {
     return (
@@ -603,7 +650,29 @@ function CheckoutForm({
                 {error}
               </div>
             )}
-            {selectedPaymentMethod === 'card' ? (
+            {showKlarnaElement && (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <PaymentElement
+                  options={klarnaElementOptions}
+                  onChange={(event) => setKlarnaComplete(event.complete)}
+                />
+              </div>
+            )}
+            {isKlarnaCheckout ? (
+              <Button
+                type="submit"
+                form={formId}
+                disabled={mobileCheckoutDisabled || loading || !klarnaComplete || !stripe}
+                className={CHECKOUT_PAY_BUTTON_CLASS}
+              >
+                {loading ? 'Processing...' : (
+                  <>
+                    Confirm Booking
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            ) : selectedPaymentMethod === 'card' ? (
               <Button
                 type="submit"
                 form={formId}
@@ -668,12 +737,23 @@ function CheckoutForm({
             className="mb-1"
           />
         )}
-        <p className="text-sm text-gray-600">You&apos;ll pay when you complete this booking.</p>
-        <PaymentElement
-          options={{
-            wallets: { applePay: 'auto', googlePay: 'auto' },
-          }}
-        />
+        <p className="text-sm text-gray-600">
+          {isKlarnaCheckout
+            ? 'Complete your booking with Klarna Pay in 4.'
+            : "You'll pay when you complete this booking."}
+        </p>
+        {isKlarnaCheckout ? (
+          <PaymentElement
+            options={klarnaElementOptions}
+            onChange={(event) => setKlarnaComplete(event.complete)}
+          />
+        ) : (
+          <PaymentElement
+            options={{
+              wallets: { applePay: 'auto', googlePay: 'auto' },
+            }}
+          />
+        )}
       </div>
 
       {error && (
@@ -685,7 +765,11 @@ function CheckoutForm({
         <Button
           type="submit"
           className={CHECKOUT_PAY_BUTTON_CLASS}
-          disabled={!stripe || loading}
+          disabled={
+            !stripe ||
+            loading ||
+            (isKlarnaCheckout ? !klarnaComplete : false)
+          }
         >
           {loading ? 'Processing...' : (
             <>
@@ -758,9 +842,9 @@ export default function PaymentPage() {
   const [cardDetailsComplete, setCardDetailsComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethodChoice>('card')
-  const [payWhen, setPayWhen] = useState<PayWhenChoice>('now')
+  const [payWhen, setPayWhen] = useState<PayWhenChoice>(readInitialPayWhen)
   const [payWhenSheetOpen, setPayWhenSheetOpen] = useState(false)
-  const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>('now')
+  const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>(readInitialPayWhen)
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
@@ -778,9 +862,51 @@ export default function PaymentPage() {
     setPayWhenSheetOpen(false)
   }
 
-  const handlePayWhenSave = () => {
-    setPayWhen(draftPayWhen)
+  const persistPayTimingPrefill = (timing: PayWhenChoice) => {
+    if (!booking?.gym_id || !booking.package_id) return
+    const cached = readBookingPrefill(booking.gym_id, booking.package_id)
+    if (cached) {
+      writeBookingPrefill({ ...cached, payTiming: timing })
+    }
+  }
+
+  const loadPaymentIntent = async (timing: PayWhenChoice) => {
+    clearPaymentIntentCache(bookingId)
+    const response = await fetch(`/api/bookings/${bookingId}/payment-intent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payTiming: timing }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load payment details')
+    }
+    setClientSecret(data.client_secret)
+    return data.client_secret as string
+  }
+
+  const handlePayWhenSave = async () => {
+    const nextTiming = draftPayWhen
     closePayWhenSheet()
+
+    if (nextTiming === payWhen) return
+
+    setPayWhen(nextTiming)
+    persistPayTimingPrefill(nextTiming)
+    setClientSecret(null)
+    setPaymentMethodOpen(false)
+    setCardDetailsComplete(false)
+    setStripeCheckoutMounted(nextTiming === 'klarna')
+
+    try {
+      setLoading(true)
+      await loadPaymentIntent(nextTiming)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update payment option'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handlePayWhenDismiss = () => {
@@ -815,45 +941,70 @@ export default function PaymentPage() {
     dismissDatePicker()
   }
 
-  const handleDatePickerSave = () => {
+  const handleDatePickerSave = async () => {
     if (!booking || !draftCheckin || !draftCheckout) return
-    const nights = Math.floor(
-      (new Date(draftCheckout).getTime() - new Date(draftCheckin).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
-    const isTrainingPkg = booking.package?.type === 'training'
-    const pricingDuration = isTrainingPkg ? Math.max(1, nights + 1) : nights
-    const recalculated =
-      booking.package && pricingDuration > 0
-        ? calculatePackagePrice(pricingDuration, booking.package.type, {
-            daily: booking.variant?.price_per_day ?? booking.package.price_per_day,
-            weekly: booking.variant?.price_per_week ?? booking.package.price_per_week,
-            monthly: booking.variant?.price_per_month ?? booking.package.price_per_month,
-          })
-        : null
-
-    setBooking((prev) =>
-      prev
-        ? {
-            ...prev,
-            start_date: draftCheckin,
-            end_date: draftCheckout,
-            total_price: recalculated?.price ?? prev.total_price,
-          }
-        : prev
-    )
-    const cached =
-      booking.gym_id && booking.package_id
-        ? readBookingPrefill(booking.gym_id, booking.package_id)
-        : null
-    if (cached) {
-      writeBookingPrefill({
-        ...cached,
-        checkin: draftCheckin,
-        checkout: draftCheckout,
-      })
+    if (
+      draftCheckin === booking.start_date &&
+      draftCheckout === booking.end_date
+    ) {
+      dismissDatePicker()
+      return
     }
-    dismissDatePicker()
+
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start_date: draftCheckin,
+          end_date: draftCheckout,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update dates')
+      }
+
+      setBooking((prev) =>
+        prev
+          ? {
+              ...prev,
+              start_date: data.start_date,
+              end_date: data.end_date,
+              total_price: data.total_price,
+              platform_fee: data.platform_fee,
+              cancellation_policy_snapshot: data.cancellation_policy_snapshot,
+            }
+          : prev
+      )
+
+      const cached =
+        booking.gym_id && booking.package_id
+          ? readBookingPrefill(booking.gym_id, booking.package_id)
+          : null
+      if (cached) {
+        writeBookingPrefill({
+          ...cached,
+          checkin: draftCheckin,
+          checkout: draftCheckout,
+        })
+      }
+
+      if (data.payment_intent_reset) {
+        setClientSecret(null)
+        setCardDetailsComplete(false)
+      }
+      await loadPaymentIntent(payWhen)
+
+      dismissDatePicker()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update dates'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const openGuestSheet = () => {
@@ -906,20 +1057,10 @@ export default function PaymentPage() {
   }, [paymentMethodOpen, priceSheetOpen, payWhenSheetOpen, datePickerOpen, guestSheetOpen])
 
   useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search)
-      const fromUrl = sp.get('payTiming')
-      const prefill =
-        booking?.gym_id && booking.package_id
-          ? readBookingPrefill(booking.gym_id, booking.package_id)
-          : null
-      const timing = prefill?.payTiming ?? (fromUrl === 'klarna' ? 'klarna' : 'now')
-      if (timing === 'klarna') {
-        setPayWhen('klarna')
-        setDraftPayWhen('klarna')
-      }
-    } catch {}
-  }, [booking?.gym_id, booking?.package_id])
+    if (payWhen === 'klarna' && clientSecret) {
+      setStripeCheckoutMounted(true)
+    }
+  }, [payWhen, clientSecret])
 
   useEffect(() => {
     fetchBookingAndPaymentIntent()
@@ -927,41 +1068,21 @@ export default function PaymentPage() {
 
   const fetchBookingAndPaymentIntent = async () => {
     try {
-      let resolvedSecret = clientSecret
-
-      if (!resolvedSecret) {
-        const cached = readPaymentIntentCache(bookingId)
-        if (cached) {
-          resolvedSecret = cached
-          setClientSecret(cached)
+      let resolvedSecret: string
+      try {
+        resolvedSecret = await loadPaymentIntent(payWhen)
+      } catch (err: unknown) {
+        const data = err instanceof Error ? err : new Error('Failed to load payment details')
+        console.error('Error creating payment intent:', data.message)
+        let errorMessage = data.message || 'Failed to load payment details'
+        if (errorMessage.includes('not configured') || errorMessage.includes('API key')) {
+          errorMessage =
+            'Payment system is not configured. Please contact support to complete your booking.'
         }
+        setError(errorMessage)
+        setLoading(false)
+        return
       }
-
-      if (!resolvedSecret) {
-        const response = await fetch(`/api/bookings/${bookingId}/payment-intent`, {
-          method: 'POST',
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          console.error('Error creating payment intent:', data.error, data.details)
-          let errorMessage = 'Failed to load payment details'
-          if (data.error?.includes('not configured') || data.error?.includes('API key')) {
-            errorMessage = 'Payment system is not configured. Please contact support to complete your booking.'
-          } else if (data.error) {
-            errorMessage = data.error
-          }
-          setError(errorMessage)
-          setLoading(false)
-          return
-        }
-
-        resolvedSecret = data.client_secret
-        setClientSecret(data.client_secret)
-      }
-
-      if (resolvedSecret) clearPaymentIntentCache(bookingId)
 
       // Fetch booking details via API (handles RLS properly)
       const bookingResponse = await fetch(`/api/bookings/${bookingId}`)
@@ -1294,21 +1415,23 @@ export default function PaymentPage() {
               <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
             </button>
 
-            <button
-              type="button"
-              onClick={openPaymentMethodModal}
-              disabled={!clientSecret}
-              className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
-                <div className="flex items-center gap-2.5 text-sm text-gray-600">
-                  <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
-                  <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
+            {payWhen !== 'klarna' && (
+              <button
+                type="button"
+                onClick={openPaymentMethodModal}
+                disabled={!clientSecret}
+                className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
+                  <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
+                    <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
-            </button>
+                <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
+              </button>
+            )}
           </div>
 
           {datePickerOpen && (
@@ -1403,13 +1526,13 @@ export default function PaymentPage() {
           )}
 
           {clientSecret && stripePromise ? (
-            <Elements stripe={stripePromise} options={options}>
+            <Elements key={clientSecret} stripe={stripePromise} options={options}>
               <CheckoutForm
                 booking={booking}
                 hideMobileSubmit
                 mobilePaymentModalOpen={paymentMethodOpen}
                 onCloseMobilePaymentModal={closePaymentMethodModal}
-                paymentFieldsMounted={stripeCheckoutMounted}
+                paymentFieldsMounted={stripeCheckoutMounted || payWhen === 'klarna'}
                 selectedPaymentMethod={selectedPaymentMethod}
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 paymentModalStep={paymentModalStep}
@@ -1419,6 +1542,7 @@ export default function PaymentPage() {
                 onCardDetailsCompleteChange={setCardDetailsComplete}
                 cardDetailsComplete={cardDetailsComplete}
                 mobileCheckoutDisabled={!clientSecret || loading}
+                payWhen={payWhen}
               />
             </Elements>
           ) : null}
