@@ -22,7 +22,11 @@ import {
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
-import { writeReviewModalRestore } from '@/lib/utils/review-checkout-chrome'
+import {
+  clearReviewModalRestore,
+  setCheckoutExitToGym,
+  writeReviewModalRestore,
+} from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -61,22 +65,27 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
 }
 
 function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string } | null }) {
+  const router = useRouter()
   const { showReviewChrome } = useReviewCheckoutChrome()
 
   if (!gym) return <div className="w-8 h-8 shrink-0" aria-hidden />
+
+  const handleExit = () => {
+    showReviewChrome()
+    clearReviewModalRestore()
+    setCheckoutExitToGym(gym.slug || gym.id, gym.id)
+    router.replace(`/gyms/${gym.slug || gym.id}`)
+  }
+
   return (
-    <Link
-      href={`/gyms/${gym.slug || gym.id}`}
-      onClick={() => {
-        showReviewChrome()
-        try { sessionStorage.removeItem('review_modal_restore') } catch {}
-        try { sessionStorage.removeItem('booking_prefill') } catch {}
-      }}
+    <button
+      type="button"
+      onClick={handleExit}
       className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
       aria-label="Return to gym listing"
     >
       <X className="w-4 h-4 text-gray-900" />
-    </Link>
+    </button>
   )
 }
 

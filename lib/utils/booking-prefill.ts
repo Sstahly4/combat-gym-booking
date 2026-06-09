@@ -1,3 +1,5 @@
+import { prefillMatchesGymRoute } from '@/lib/utils/gym-route'
+
 /**
  * Booking prefill cache — written when the user taps Continue on the review
  * modal. Steps 2 and 3 read this to render real content immediately under the
@@ -61,6 +63,36 @@ export function clearBookingPrefill(): void {
   try {
     sessionStorage.removeItem(PREFILL_KEY)
   } catch {}
+}
+
+/** Latest checkout prefill if still within TTL (no gym filter). */
+export function readLatestBookingPrefill(): BookingPrefillData | null {
+  try {
+    const raw = sessionStorage.getItem(PREFILL_KEY)
+    if (!raw) return null
+    const data: BookingPrefillData = JSON.parse(raw)
+    if (Date.now() - data.writtenAt > TTL_MS) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+/** Prefill only when it belongs to the gym route being loaded (slug or UUID). */
+export function readBookingPrefillForGymRoute(slugOrId: string): BookingPrefillData | null {
+  const prefill = readLatestBookingPrefill()
+  if (!prefill || !prefillMatchesGymRoute(prefill, slugOrId)) return null
+  return prefill
+}
+
+/** Drop checkout prefill when it belongs to a different gym listing. */
+export function clearBookingPrefillIfForeignGym(gymId: string, slugOrId?: string): void {
+  const prefill = readLatestBookingPrefill()
+  if (!prefill) return
+  const matches =
+    prefill.gymId === gymId ||
+    (slugOrId != null && prefillMatchesGymRoute(prefill, slugOrId))
+  if (!matches) clearBookingPrefill()
 }
 
 const PAYMENT_INTENT_PREFIX = 'payment_intent_'

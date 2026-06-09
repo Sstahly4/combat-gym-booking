@@ -237,16 +237,14 @@ export function CurrencyModal({
             </div>
           )}
 
-          {!checkoutSheet && (
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0 px-6 py-6 space-y-8">
@@ -348,20 +346,18 @@ export function CurrencyModal({
                   : 'Choose your preferred language and region.'}
               </p>
             </div>
-            {!checkoutSheet && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onOpenChange(false)
-                }}
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
-                aria-label="Close"
-              >
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onOpenChange(false)
+              }}
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
           </div>
 
           {!currencyOnly && (

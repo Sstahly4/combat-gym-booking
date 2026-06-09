@@ -12,6 +12,7 @@ import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper
 import { GymMap } from '@/components/gym-map'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { ReviewModalProvider } from '@/lib/contexts/review-modal-context'
+import { GymCheckoutExitCleanup } from '@/components/gym/gym-checkout-exit-cleanup'
 import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
 import { ReserveButton } from '@/components/reserve-button'
 import { SaveButton } from '@/components/save-button'
@@ -548,6 +549,7 @@ export default async function GymDetailsPage({
         !!(searchParams as Record<string, string | undefined>).pkg
       }
     >
+      <GymCheckoutExitCleanup gymId={gym.id} />
       <GymPageCurrencyHint currency={gym.currency} />
       <script
         type="application/ld+json"

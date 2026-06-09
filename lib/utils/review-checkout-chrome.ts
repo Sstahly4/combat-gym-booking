@@ -1,3 +1,5 @@
+import { clearBookingPrefillIfForeignGym } from '@/lib/utils/booking-prefill'
+
 export interface ReviewModalRestoreParams {
   gymId: string
   packageId: string
@@ -8,7 +10,70 @@ export interface ReviewModalRestoreParams {
 }
 
 const HIDE_SITE_CHROME_KEY = 'hide_site_chrome'
+const CHECKOUT_EXIT_GYM_KEY = 'checkout_exit_gym'
 export const REVIEW_RESTORE_KEY = 'review_modal_restore'
+const EXIT_TTL_MS = 30 * 60 * 1000
+
+export interface CheckoutExitTarget {
+  slugOrId: string
+  gymId: string
+  writtenAt: number
+}
+
+/** Set while navigating from checkout back to a specific gym listing (instant shell). */
+export function setCheckoutExitToGym(slugOrId: string, gymId: string): void {
+  try {
+    const payload: CheckoutExitTarget = {
+      slugOrId: slugOrId.trim(),
+      gymId,
+      writtenAt: Date.now(),
+    }
+    sessionStorage.setItem(CHECKOUT_EXIT_GYM_KEY, JSON.stringify(payload))
+  } catch {}
+}
+
+export function readCheckoutExitTarget(): CheckoutExitTarget | null {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_EXIT_GYM_KEY)
+    if (!raw) return null
+    const data: CheckoutExitTarget = JSON.parse(raw)
+    if (Date.now() - data.writtenAt > EXIT_TTL_MS) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+export function clearCheckoutExitToGym(): void {
+  try {
+    sessionStorage.removeItem(CHECKOUT_EXIT_GYM_KEY)
+  } catch {}
+}
+
+/** True only when exiting checkout to this exact gym route (slug or UUID). */
+export function isCheckoutExitToGym(slugOrId: string): boolean {
+  if (typeof window === 'undefined') return false
+  const target = readCheckoutExitTarget()
+  if (!target) return false
+  const route = slugOrId.trim()
+  return target.slugOrId === route || target.gymId === route
+}
+
+export function clearReviewModalRestoreIfForeignGym(gymId: string): void {
+  const stored = readReviewModalRestore()
+  if (stored && stored.gymId !== gymId) clearReviewModalRestore()
+}
+
+/** Remove checkout session keys that belong to another gym listing. */
+export function purgeStaleCheckoutSessionForGym(gymId: string, slugOrId?: string): void {
+  clearBookingPrefillIfForeignGym(gymId, slugOrId)
+  clearReviewModalRestoreIfForeignGym(gymId)
+  const exit = readCheckoutExitTarget()
+  if (!exit) return
+  const route = slugOrId?.trim()
+  const matches = exit.gymId === gymId || (route != null && exit.slugOrId === route)
+  if (!matches) clearCheckoutExitToGym()
+}
 
 /** Hide global navbar/footer while the review checkout modal is active. */
 export function setReviewCheckoutChromeHidden(): void {

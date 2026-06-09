@@ -2,12 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import dynamic from 'next/dynamic'
+import { usePathname } from 'next/navigation'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { ReviewModalShell } from '@/components/booking/review-modal-shell'
 import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
   clearReviewModalRestore,
+  purgeStaleCheckoutSessionForGym,
   readReviewModalRestore,
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
@@ -117,11 +119,15 @@ export function ReviewModalProvider({
   hasReviewIntent?: boolean
 }) {
   const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
+  const pathname = usePathname()
+
+  const reviewActiveInUrl = () => readUrlParams(gymId) !== null
 
   // Initialise synchronously — no useEffect delay, no flash on back-nav or
   // shared-link load. Priority: URL params (shared link) → sessionStorage (back-nav).
   const [params, setParams] = useState<ReviewModalParams | null>(() => {
     if (typeof window === 'undefined') return null
+    purgeStaleCheckoutSessionForGym(gymId, gymSlugOrId)
     const fromUrl = readUrlParams(gymId)
     if (fromUrl) return hydrateReviewParams(fromUrl)
     const stored = readReviewModalRestore()
@@ -156,14 +162,19 @@ export function ReviewModalProvider({
     return () => { cancelled = true }
   }, [params])
 
+  // Only treat the modal as open when URL still carries review intent (or pre-hydration).
+  // Router cache can restore stale params after checkout exit while the URL is clean.
+  const modalActive =
+    !!params && (mounted ? reviewActiveInUrl() : hasReviewIntent || reviewActiveInUrl())
+
   // Shell paints instantly from prefill while the modal chunk loads.
-  const showShell = !!params && !modalChunkLoaded
+  const showShell = modalActive && !modalChunkLoaded
 
   // Cover only when we have no shell yet (SSR review intent before hydration).
   const showCover =
-    !showShell && ((!mounted && hasReviewIntent) || (!!params && !modalChunkLoaded))
+    !showShell && ((!mounted && hasReviewIntent) || (modalActive && !modalChunkLoaded))
 
-  const hideGymListing = !!params || hasReviewIntent
+  const hideGymListing = modalActive || (!mounted && hasReviewIntent)
 
   const openReviewModal = (p: ReviewModalParams) => {
     const hydrated = hydrateReviewParams(p)
@@ -180,15 +191,41 @@ export function ReviewModalProvider({
     setParams(null)
   }
 
+  // Keep modal + session caches aligned with the gym route currently being viewed.
   useEffect(() => {
+    if (!mounted) return
+
+    purgeStaleCheckoutSessionForGym(gymId, gymSlugOrId)
+
+    const fromUrl = readUrlParams(gymId)
+    if (fromUrl) {
+      const hydrated = hydrateReviewParams(fromUrl)
+      if (
+        !params ||
+        params.gymId !== hydrated.gymId ||
+        params.packageId !== hydrated.packageId
+      ) {
+        setParams(hydrated)
+      }
+      return
+    }
+
     if (params) {
+      clearReviewModalRestore()
+      showReviewChrome()
+      setParams(null)
+    }
+  }, [mounted, pathname, gymId, gymSlugOrId, showReviewChrome])
+
+  useEffect(() => {
+    if (modalActive) {
       hideReviewChrome()
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
     }
     return () => { document.body.style.overflow = '' }
-  }, [params, hideReviewChrome])
+  }, [modalActive, hideReviewChrome])
 
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
@@ -197,7 +234,7 @@ export function ReviewModalProvider({
       </div>
       <LoadingOverlay show={showCover} zClass="z-[199]" />
       {showShell && params && <ReviewModalShell params={params} />}
-      {params && modalChunkLoaded && (
+      {modalActive && params && modalChunkLoaded && (
         <ReviewModal params={params} gymSlugOrId={gymSlugOrId} onClose={close} />
       )}
     </ReviewModalContext.Provider>
