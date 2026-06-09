@@ -396,18 +396,20 @@ export function ReviewModal({
     router.push(buildContinueUrl())
   }
 
+  const ready = !!(gym && package_)
+  const showOverlay = loading || !ready
+
   return (
     <div className="fixed inset-0 z-[200] bg-white flex flex-col overflow-hidden">
-      {/* Overlay — fades out when data is ready; z-[220] sits above modal chrome */}
-      <LoadingOverlay show={loading} zClass="z-[220]" />
+      <LoadingOverlay show={showOverlay} zClass="z-[220]" />
 
       {/* Error state — only when loading finished and data is missing */}
-      {!loading && (!gym || !package_) ? (
+      {!loading && !ready ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
           <p className="text-gray-600 text-sm">Booking information not found.</p>
           <button onClick={onClose} className="text-[#003580] text-sm font-medium">Go back</button>
         </div>
-      ) : (
+      ) : ready ? (
         <>
           {/* ── Top nav ─────────────────────────────────────────────── */}
           <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
@@ -545,7 +547,7 @@ export function ReviewModal({
             />
           )}
         </>
-      )}
+      ) : null}
     </div>
   )
 }

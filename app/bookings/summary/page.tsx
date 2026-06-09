@@ -651,23 +651,24 @@ function BookingSummaryPageContent() {
               <p className="text-xs text-gray-500">To verify your booking, and for the property to connect if needed</p>
             </div>
 
-            {/* Discipline */}
-            <div className="space-y-2">
-              <Label htmlFor="discipline-mobile" className="text-sm font-medium">
-                Discipline
-              </Label>
-              <Select
-                id="discipline-mobile"
-                value={discipline}
-                onChange={(e) => setDiscipline(e.target.value)}
-                className="h-11"
-              >
-                <option value="">Select a discipline</option>
-                {DISCIPLINES.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </Select>
-            </div>
+            {gym.disciplines && gym.disciplines.length > 1 && (
+              <div className="space-y-2">
+                <Label htmlFor="discipline-mobile" className="text-sm font-medium">
+                  Discipline
+                </Label>
+                <Select
+                  id="discipline-mobile"
+                  value={discipline}
+                  onChange={(e) => setDiscipline(e.target.value)}
+                  className="h-11"
+                >
+                  <option value="">Select a discipline</option>
+                  {DISCIPLINES.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </Select>
+              </div>
+            )}
 
             {/* Sign in to save details checkbox */}
             <div className="space-y-3 pt-2">
@@ -1067,20 +1068,22 @@ function BookingSummaryPageContent() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                  <Label htmlFor="discipline" className="text-sm font-medium">Discipline</Label>
-                    <Select
-                      id="discipline"
-                      value={discipline}
-                      onChange={(e) => setDiscipline(e.target.value)}
-                    className="h-11"
-                    >
-                      <option value="">Select a discipline</option>
-                      {DISCIPLINES.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </Select>
-                </div>
+                  {gym.disciplines && gym.disciplines.length > 1 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="discipline" className="text-sm font-medium">Discipline</Label>
+                      <Select
+                        id="discipline"
+                        value={discipline}
+                        onChange={(e) => setDiscipline(e.target.value)}
+                        className="h-11"
+                      >
+                        <option value="">Select a discipline</option>
+                        {DISCIPLINES.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
 
                 <div className="space-y-2">
                   <Label htmlFor="notes" className="text-sm font-medium">Special Requests (optional)</Label>

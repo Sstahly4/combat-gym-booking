@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { provisionGuestAccountFromBooking } from '@/lib/auth/provision-guest-account-from-booking'
+
+async function tryProvisionGuestAccount(bookingId: string, appOrigin: string) {
+  try {
+    const result = await provisionGuestAccountFromBooking({ bookingId, appOrigin })
+    console.log('[confirm-payment] guest account provision:', result)
+  } catch (err) {
+    console.error('[confirm-payment] guest account provision failed (non-fatal)', err)
+  }
+}
 
 /**
  * Called after payment is authorized (not captured yet)
@@ -35,6 +45,7 @@ export async function POST(
     // Idempotency: if already confirmed/paid, don't re-send notifications.
     if (booking.status === 'confirmed' || booking.status === 'paid') {
       console.log(`Booking already ${booking.status} - skipping notify`)
+      await tryProvisionGuestAccount(bookingId, request.nextUrl.origin)
       return NextResponse.json({ success: true, already_confirmed: true })
     }
 
@@ -120,6 +131,7 @@ export async function POST(
         !fresh?.stripe_payment_intent_id || fresh.stripe_payment_intent_id === payment_intent
       if ((fresh?.status === 'confirmed' || fresh?.status === 'paid') && piOk) {
         console.log('Booking already confirmed by concurrent request — skipping notify')
+        await tryProvisionGuestAccount(bookingId, request.nextUrl.origin)
         return NextResponse.json({ success: true, already_confirmed: true })
       }
 
@@ -146,6 +158,8 @@ export async function POST(
       console.error('Error sending notifications:', notifyError)
       // Don't fail the request if notifications fail
     }
+
+    await tryProvisionGuestAccount(bookingId, request.nextUrl.origin)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

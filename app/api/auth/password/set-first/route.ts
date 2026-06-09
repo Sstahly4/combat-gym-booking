@@ -4,6 +4,10 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { validatePasswordRules } from '@/lib/auth/password-rules'
+import {
+  CHECKOUT_GUEST_ONBOARDING_ENTRY,
+  SELF_SERVE_ONBOARDING_ENTRY,
+} from '@/lib/auth/onboarding-entries'
 
 /**
  * Set a password for the first time on an invited account.
@@ -14,7 +18,7 @@ import { validatePasswordRules } from '@/lib/auth/password-rules'
  * re-authentication.
  *
  * Only allowed when the user has no password yet, identified by
- * onboarding_entry === 'self_serve' in user_metadata.
+ * onboarding_entry === 'self_serve' or 'checkout_guest' in user_metadata.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +35,8 @@ export async function POST(request: NextRequest) {
     // Only allow this path for users who arrived via the self-serve invite flow.
     // Everyone else must go through /api/auth/password/update (which requires current password).
     const onboardingEntry = user.user_metadata?.onboarding_entry
-    if (onboardingEntry !== 'self_serve') {
+    const allowedEntries = new Set([SELF_SERVE_ONBOARDING_ENTRY, CHECKOUT_GUEST_ONBOARDING_ENTRY])
+    if (!allowedEntries.has(onboardingEntry)) {
       return NextResponse.json(
         { error: 'This endpoint is only available for newly invited accounts.' },
         { status: 403 }

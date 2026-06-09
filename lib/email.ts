@@ -653,3 +653,61 @@ If you didn't change bank or identity details, reply to this email and we'll inv
     tag: 'owner-payout-disabled',
   })
 }
+
+// ============================================================================
+// 6. Guest — finish CombatStay account after checkout (password setup)
+// ============================================================================
+
+interface FinishSetupAccountEmailData {
+  guestName: string
+  guestEmail: string
+  setupLink: string
+  bookingReference: string
+}
+
+export async function sendFinishSetupAccountEmail(
+  data: FinishSetupAccountEmailData
+): Promise<boolean> {
+  const firstName = data.guestName.split(' ')[0] || data.guestName
+
+  const innerHtml = [
+    heading(`Finish setting up your account`),
+    paragraph(
+      `Hi ${escape(firstName)} — your booking <strong>${escape(data.bookingReference)}</strong> is confirmed. Create a password to save this trip to your account, manage future bookings in one place, and check out faster next time.`,
+    ),
+    primaryButton(data.setupLink, 'Finish setting up'),
+    linkFallback(data.setupLink),
+    callout({
+      tone: 'neutral',
+      title: 'One quick step',
+      bodyHtml:
+        'Tap the button above, then choose a password. You can still manage this booking from your confirmation email if you prefer not to create an account.',
+    }),
+  ].join('')
+
+  const html = renderEmail({
+    eyebrow: 'Your account',
+    title: 'Finish setting up your CombatStay account',
+    preheader: `Create a password to save booking ${data.bookingReference} to your account.`,
+    innerHtml,
+  })
+
+  const text = `Finish setting up your CombatStay account
+
+Hi ${data.guestName},
+
+Your booking ${data.bookingReference} is confirmed. Create a password to save this trip to your account:
+
+${data.setupLink}
+
+You can still manage this booking from your confirmation email without creating an account.
+`
+
+  return sendEmail({
+    to: data.guestEmail,
+    subject: `Finish setting up your CombatStay account · ${data.bookingReference}`,
+    html,
+    text,
+    tag: 'guest-finish-setup',
+  })
+}

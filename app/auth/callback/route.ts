@@ -31,6 +31,25 @@ export async function GET(request: Request) {
         )
       }
 
+      if (onboardingEntry === 'checkout_guest') {
+        const bookingId = user.user_metadata?.checkout_booking_id
+        const finishPath = bookingId
+          ? `/auth/finish-setup?booking=${encodeURIComponent(String(bookingId))}`
+          : '/auth/finish-setup'
+
+        await supabase.from('profiles').upsert(
+          {
+            id: user.id,
+            role: 'fighter',
+            full_name: user.user_metadata?.full_name || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        )
+
+        return NextResponse.redirect(new URL(finishPath, requestUrl.origin))
+      }
+
       // Owner detection — be defensive so stale links and signups missing
       // role_intent metadata still land in the partner workspace:
       //   1. Explicit role_intent === 'owner' on the user metadata
