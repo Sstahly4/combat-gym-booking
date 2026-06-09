@@ -216,6 +216,16 @@ export function Navbar() {
     }
   }, [isOwner, user?.id])
 
+  // Checkout steps use the thin in-flow progress strip — no global navbar or menu.
+  const isCheckoutStep =
+    pathname === '/bookings/summary' ||
+    pathname.startsWith('/bookings/review') ||
+    /^\/bookings\/[^/]+\/payment/.test(pathname ?? '')
+
+  if (isCheckoutStep) {
+    return null
+  }
+
   return (
     <>
     {isOwnersPage && <div className="h-16" aria-hidden="true" />}

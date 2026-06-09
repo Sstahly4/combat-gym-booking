@@ -14,7 +14,6 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
-import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { readBookingPrefill, readSummaryPrefillFromUrl, writeBookingPrefill } from '@/lib/utils/booking-prefill'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
@@ -42,7 +41,7 @@ function buildReviewBackHref(
 // Thin 3-segment progress bar — matches review modal
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-1.5 px-5 pb-1">
       {([1, 2, 3] as const).map((s) => (
         <div
           key={s}
@@ -50,6 +49,56 @@ function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
           style={{ backgroundColor: s <= step ? '#003580' : '#e5e7eb' }}
         />
       ))}
+    </div>
+  )
+}
+
+function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string } | null }) {
+  if (!gym) return null
+  return (
+    <Link
+      href={`/gyms/${gym.slug || gym.id}`}
+      onClick={() => {
+        try { sessionStorage.removeItem('review_modal_restore') } catch {}
+        try { sessionStorage.removeItem('booking_prefill') } catch {}
+      }}
+      className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+      aria-label="Return to gym listing"
+    >
+      <X className="w-4 h-4 text-gray-700" />
+    </Link>
+  )
+}
+
+function CheckoutBottomBar({
+  error,
+  submitting,
+  disabled,
+  onSubmit,
+}: {
+  error: string | null
+  submitting: boolean
+  disabled: boolean
+  onSubmit: () => void
+}) {
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <StepProgressBar step={2} />
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+      <Button
+        onClick={onSubmit}
+        disabled={disabled || submitting}
+        className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
+      >
+        {submitting ? 'Submitting…' : 'Final Steps'}
+      </Button>
     </div>
   )
 }
@@ -440,67 +489,41 @@ function BookingSummaryPageContent() {
   // Once loading finishes, if gym/package are still null show the overlay over a blank page.
   if (loading || !gym || !package_) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white flex flex-col overflow-hidden">
         <LoadingOverlay show={true} />
-        <div className="hidden md:block"><BookingProgressBar currentStep={2} /></div>
-        <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-          <button
-            onClick={navigateBackToReview}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
+        <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
+          <CheckoutExitButton gym={gym} />
         </div>
-        <div
-          className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-10 md:hidden"
-          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
-        >
-          <StepProgressBar step={2} />
-        </div>
+        <CheckoutBottomBar
+          error={error}
+          submitting={submitting}
+          disabled
+          onSubmit={handleSubmit}
+        />
       </div>
     )
   }
 
   const mainImage = gym.images && gym.images.length > 0 ? gym.images[0].url : null
 
+  const submitDisabled =
+    !isValidDuration ||
+    !meetsMinimumStay ||
+    !firstName ||
+    !lastName ||
+    !email ||
+    !phone
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Progress bar — desktop only; mobile uses the thin bar in the fixed bottom */}
-      <div className="hidden md:block">
-        <BookingProgressBar currentStep={2} />
+    <div className="min-h-screen bg-white flex flex-col overflow-hidden">
+      <div className="flex items-center justify-end px-4 pt-4 pb-2 flex-shrink-0">
+        <CheckoutExitButton gym={gym} />
       </div>
 
-      {/* Checkout nav: ← Back | × Exit to listing */}
-      <div className="max-w-7xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={navigateBackToReview}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
-        </button>
-        {gym && (
-          <Link
-            href={`/gyms/${gym.slug || gym.id}`}
-            onClick={() => {
-              // Clear modal restore + booking prefill so the gym page doesn't
-              // re-open the review modal when the user explicitly exits the flow
-              try { sessionStorage.removeItem('review_modal_restore') } catch {}
-              try { sessionStorage.removeItem('booking_prefill') } catch {}
-            }}
-            className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            aria-label="Return to gym listing"
-          >
-            <X className="w-5 h-5" />
-          </Link>
-        )}
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto pb-36">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
-        <div className="md:hidden space-y-6 pb-36">
+        <div className="md:hidden space-y-6">
           <h1 className="text-2xl font-bold text-gray-900">Your details</h1>
 
           {/* Compact gym summary + guest details — single card */}
@@ -686,35 +709,7 @@ function BookingSummaryPageContent() {
 
             </div>
           </div>
-
-            {/* Mobile Submit — fixed bottom, matching review modal style */}
-            <div
-              className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 space-y-3 z-50 md:hidden"
-              style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
-            >
-              <StepProgressBar step={2} />
-              {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                  {error}
-                </div>
-              )}
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  submitting ||
-                  !isValidDuration ||
-                  !meetsMinimumStay ||
-                  !firstName ||
-                  !lastName ||
-                  !email ||
-                  !phone
-                }
-                className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl"
-              >
-                {submitting ? 'Submitting…' : 'Final Steps'}
-              </Button>
-            </div>
-          </div>
+        </div>
 
         {/* Desktop Layout - Keep existing */}
         <div className="hidden md:grid lg:grid-cols-3 gap-6">
@@ -1100,28 +1095,17 @@ function BookingSummaryPageContent() {
             </Card>
 
 
-            {/* Submit Button */}
-            <div className="pt-2">
-              {error && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              <Button
-                className="w-full h-14 text-lg font-bold bg-[#003580] hover:bg-[#003580]/90 text-white"
-                onClick={handleSubmit}
-                disabled={!isValidDuration || !meetsMinimumStay || !firstName || !lastName || !email || !phone || submitting}
-              >
-                {submitting ? 'Submitting...' : (
-                  <>
-                    Final Steps
-                    <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
         </div>
+      </div>
+      </div>
+
+      <CheckoutBottomBar
+        error={error}
+        submitting={submitting}
+        disabled={submitDisabled}
+        onSubmit={handleSubmit}
+      />
 
         {/* Date Picker Modal - Uses exact same DateRangePicker as homepage */}
         {datePickerOpen && (
@@ -1195,7 +1179,6 @@ function BookingSummaryPageContent() {
           </Dialog>
         </>
         )}
-      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -67,9 +67,25 @@ function lineUnitLabel(line: PriceLine): string {
   return line.qty === 1 ? 'night' : 'nights'
 }
 
-// ─── Price breakdown bottom sheet ─────────────────────────────────────────────
-function PriceDetailsSheet({
-  lines,
+function formatBreakdownDateRange(from: string, to: string): string {
+  const a = new Date(from + 'T00:00:00')
+  const b = new Date(to + 'T00:00:00')
+  const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
+  if (sameMonth) {
+    const month = a.toLocaleDateString('en-GB', { month: 'long' })
+    return `${a.getDate()}–${b.getDate()} ${month}`
+  }
+  return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'short' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'short' })}`
+}
+
+function stayUnitLabel(count: number, isTraining: boolean): string {
+  if (isTraining) return count === 1 ? 'day' : 'days'
+  return count === 1 ? 'night' : 'nights'
+}
+
+// ─── Price breakdown (nested above price details) ─────────────────────────────
+function PriceBreakdownSheet({
+  summaryLabel,
   savedVsNightly,
   total,
   gymCurrency,
@@ -77,7 +93,7 @@ function PriceDetailsSheet({
   convertPrice,
   onClose,
 }: {
-  lines: PriceLine[]
+  summaryLabel: string
   savedVsNightly: number
   total: number
   gymCurrency: string
@@ -88,54 +104,176 @@ function PriceDetailsSheet({
   const formatDisplay = (amount: number) =>
     formatPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
 
+  const preDiscountTotal = total + savedVsNightly
+
   return (
-    <div className="fixed inset-0 z-[300]">
-      <div className="fixed inset-0 bg-black/50 z-[301]" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]">
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
-        </div>
-        <div className="flex items-center justify-between px-5 pt-3 pb-4 border-b border-gray-100 flex-shrink-0">
-          <h3 className="text-lg font-semibold">Price details</h3>
+    <div className="fixed inset-0 z-[310]">
+      <div className="fixed inset-0 bg-black/50 z-[311]" onClick={onClose} />
+      <div
+        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[312] flex flex-col max-h-[85dvh]"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">
+          <h3 className="text-base font-semibold text-gray-900">Price breakdown</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl"
-            aria-label="Close"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close price breakdown"
           >
-            ✕
+            <X className="w-4 h-4 text-gray-800" />
           </button>
         </div>
-        <div className="px-5 py-5 flex-1 overflow-y-auto space-y-4">
-          {lines.map((line, i) => (
-            <div key={i} className="flex items-start justify-between gap-4">
-              <span className="text-sm text-gray-700">
-                {line.qty} {lineUnitLabel(line)} × {formatDisplay(line.unitPrice)}
+
+        <div className="px-6 pb-2 flex-1 overflow-y-auto">
+          <div className="space-y-5">
+            <div className="flex items-start justify-between gap-6">
+              <span className="text-[15px] leading-snug text-gray-900">{summaryLabel}</span>
+              <span className="text-[15px] leading-snug text-gray-900 shrink-0 text-right">
+                {formatDisplay(preDiscountTotal)}
               </span>
-              <span className="text-sm text-gray-900 shrink-0">{formatDisplay(line.subtotal)}</span>
             </div>
-          ))}
-          {savedVsNightly > 0 && (
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-sm text-gray-700">Bundle savings</span>
-              <span className="text-sm text-emerald-600 shrink-0">-{formatDisplay(savedVsNightly)}</span>
-            </div>
-          )}
-          <div className="border-t border-gray-200 pt-4 flex items-baseline justify-between gap-4">
-            <span className="text-base font-semibold text-gray-900">
-              Total <span className="underline">{displayCurrency}</span>
+
+            {savedVsNightly > 0 && (
+              <div>
+                <div className="flex items-start justify-between gap-6">
+                  <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
+                  <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
+                    -{formatDisplay(savedVsNightly)}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-gray-500 pr-6">
+                  Bundle pricing applied for your selected dates. Weekly and monthly rates can
+                  reduce your total compared with paying the nightly rate.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-200 mt-6 pt-5 flex items-baseline justify-between gap-6">
+            <span className="text-[15px] font-semibold text-gray-900">
+              Total <span className="font-semibold underline">{displayCurrency}</span>
             </span>
-            <span className="text-base font-semibold text-gray-900 shrink-0">{formatDisplay(total)}</span>
+            <span className="text-[15px] font-semibold text-gray-900 shrink-0 text-right">
+              {formatDisplay(total)}
+            </span>
           </div>
         </div>
-        <div className="px-5 pb-8 flex-shrink-0" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
-          <Button
-            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base"
+      </div>
+    </div>
+  )
+}
+
+// ─── Price details bottom sheet ────────────────────────────────────────────────
+function PriceDetailsSheet({
+  lines,
+  savedVsNightly,
+  total,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+  checkin,
+  checkout,
+  pricingDuration,
+  isTraining,
+  onClose,
+}: {
+  lines: PriceLine[]
+  savedVsNightly: number
+  total: number
+  gymCurrency: string
+  displayCurrency: string
+  convertPrice: (amount: number, fromCurrency: string) => number
+  checkin: string
+  checkout: string
+  pricingDuration: number
+  isTraining: boolean
+  onClose: () => void
+}) {
+  const [breakdownOpen, setBreakdownOpen] = useState(false)
+
+  const formatDisplay = (amount: number) =>
+    formatPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
+
+  const breakdownSummaryLabel =
+    checkin && checkout && pricingDuration > 0
+      ? `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} · ${formatBreakdownDateRange(checkin, checkout)}`
+      : `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
+
+  return (
+    <div className="fixed inset-0 z-[300]">
+      <div
+        className="fixed inset-0 bg-black/50 z-[301]"
+        onClick={() => {
+          if (!breakdownOpen) onClose()
+        }}
+      />
+      <div
+        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="relative flex items-center justify-center px-6 pt-6 pb-5 flex-shrink-0">
+          <h3 className="text-base font-semibold text-gray-900">Price details</h3>
+          <button
             onClick={onClose}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close"
           >
-            Done
-          </Button>
+            <X className="w-4 h-4 text-gray-800" />
+          </button>
+        </div>
+
+        <div className="px-6 pb-2 flex-1 overflow-y-auto">
+          <div className="space-y-5">
+            {lines.map((line, i) => (
+              <div key={i} className="flex items-start justify-between gap-6">
+                <span className="text-[15px] leading-snug text-gray-900">
+                  {line.qty} {lineUnitLabel(line)} x {formatDisplay(line.unitPrice)}
+                </span>
+                <span className="text-[15px] leading-snug text-gray-900 shrink-0 text-right">
+                  {formatDisplay(line.subtotal)}
+                </span>
+              </div>
+            ))}
+            {savedVsNightly > 0 && (
+              <div className="flex items-start justify-between gap-6">
+                <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
+                <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
+                  -{formatDisplay(savedVsNightly)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-200 mt-6 pt-5 flex items-baseline justify-between gap-6">
+            <span className="text-[15px] font-semibold text-gray-900">
+              Total <span className="font-semibold underline">{displayCurrency}</span>
+            </span>
+            <span className="text-[15px] font-semibold text-gray-900 shrink-0 text-right">
+              {formatDisplay(total)}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setBreakdownOpen(true)}
+            className="mt-4 text-[15px] text-gray-900 underline text-left hover:text-gray-700 transition-colors"
+          >
+            Price breakdown
+          </button>
         </div>
       </div>
+
+      {breakdownOpen && (
+        <PriceBreakdownSheet
+          summaryLabel={breakdownSummaryLabel}
+          savedVsNightly={savedVsNightly}
+          total={total}
+          gymCurrency={gymCurrency}
+          displayCurrency={displayCurrency}
+          convertPrice={convertPrice}
+          onClose={() => setBreakdownOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -211,14 +349,14 @@ function Row({
   editLabel = 'Change',
 }: {
   label: string
-  value: string
+  value: ReactNode
   sub?: string
   onEdit?: () => void
   editLabel?: string
 }) {
   return (
     <div className="flex items-start justify-between py-4">
-      <div>
+      <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-gray-900 mb-0.5">{label}</div>
         <div className="text-sm text-gray-600">{value}</div>
         {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
@@ -227,7 +365,7 @@ function Row({
         <button
           type="button"
           onClick={onEdit}
-          className="ml-4 inline-flex shrink-0 items-center justify-center rounded-lg bg-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-900 can-hover:hover:bg-gray-300 active:bg-gray-300 transition-colors touch-manipulation"
+          className="ml-4 inline-flex shrink-0 items-center justify-center rounded-lg bg-gray-100 px-3.5 py-1.5 text-sm font-medium text-gray-900 can-hover:hover:bg-gray-200 active:bg-gray-200 transition-colors touch-manipulation"
         >
           {editLabel}
         </button>
@@ -475,11 +613,18 @@ export function ReviewModal({
                 <Row
                   label="Total price"
                   value={
-                    totalPrice != null
-                      ? formatPrice(totalPrice)
-                      : checkin && checkout
-                      ? 'Calculating…'
-                      : 'Select dates for pricing'
+                    totalPrice != null ? (
+                      <div className="flex items-baseline justify-between gap-4">
+                        <span>{formatPrice(totalPrice)}</span>
+                        <span className="font-semibold text-gray-900 underline shrink-0">
+                          {selectedCurrency}
+                        </span>
+                      </div>
+                    ) : checkin && checkout ? (
+                      'Calculating…'
+                    ) : (
+                      'Select dates for pricing'
+                    )
                   }
                   sub={priceInfo?.durationLabel || undefined}
                   onEdit={priceInfo && totalPrice != null ? () => setPriceSheetOpen(true) : undefined}
@@ -490,6 +635,38 @@ export function ReviewModal({
                     <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} variant="featured" />
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Choose when to pay</h2>
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <label className="flex items-center justify-between gap-4 px-4 py-4 cursor-default">
+                  <span className="text-[15px] font-semibold text-gray-900">
+                    {totalPrice != null ? (
+                      <>Pay {formatPriceWithCode(totalPrice, selectedCurrency)} now</>
+                    ) : checkin && checkout ? (
+                      'Pay now'
+                    ) : (
+                      'Select dates to see price'
+                    )}
+                  </span>
+                  <span
+                    className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-900 bg-white"
+                    aria-hidden
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full bg-gray-900" />
+                  </span>
+                  <input
+                    type="radio"
+                    name="pay-when"
+                    value="now"
+                    checked
+                    readOnly
+                    className="sr-only"
+                    aria-label="Pay now"
+                  />
+                </label>
               </div>
             </div>
           </div>
@@ -543,6 +720,10 @@ export function ReviewModal({
               gymCurrency={gym.currency ?? 'USD'}
               displayCurrency={selectedCurrency}
               convertPrice={convertPrice}
+              checkin={checkin}
+              checkout={checkout}
+              pricingDuration={pricingDuration}
+              isTraining={!!isTraining}
               onClose={() => setPriceSheetOpen(false)}
             />
           )}
