@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Star, X, Calendar, Users, ChevronRight, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
+import { Star, X, Calendar, Users, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
@@ -341,35 +341,6 @@ function ReviewPageContent() {
                     <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
                   )}
                 </div>
-                {gym.amenities && (
-                  <div className="flex flex-wrap gap-3 mt-2">
-                    {gym.amenities.wifi && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Wifi className="w-3 h-3" /><span>WiFi</span>
-                      </div>
-                    )}
-                    {gym.amenities.parking && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Car className="w-3 h-3" /><span>Parking</span>
-                      </div>
-                    )}
-                    {gym.amenities.meals && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <UtensilsCrossed className="w-3 h-3" /><span>Restaurant</span>
-                      </div>
-                    )}
-                    {gym.amenities.showers && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Droplets className="w-3 h-3" /><span>Showers</span>
-                      </div>
-                    )}
-                    {gym.amenities.accommodation && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Building2 className="w-3 h-3" /><span>Accommodation</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -415,7 +386,7 @@ function ReviewPageContent() {
             {/* Trust / cancellation signal */}
             {package_ && checkin && (
               <div className="py-3">
-                <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} />
+                <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} variant="featured" />
               </div>
             )}
           </div>

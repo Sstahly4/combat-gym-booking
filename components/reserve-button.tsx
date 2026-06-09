@@ -27,13 +27,15 @@ export function ReserveButton({ gym }: { gym: Gym }) {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
     if (isMobile) {
-      // Mobile: open full-screen overlay modal — instant, no navigation
+      // Mobile: open full-screen overlay modal — pass pre-loaded data so it renders instantly
       openReviewModal({
         gymId: gym.id,
         packageId: selectedPackage.id,
         variantId: (selectedPackage as any)?.variant_id,
         checkin: checkin || '',
         checkout: checkout || '',
+        gymData: gym as unknown as Record<string, unknown>,
+        packageData: selectedPackage as unknown as Record<string, unknown>,
       })
     } else {
       // Desktop: navigate straight to summary

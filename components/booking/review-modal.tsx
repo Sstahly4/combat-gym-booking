@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Star, X, Wifi, Car, UtensilsCrossed, Droplets, Building2, ChevronRight } from 'lucide-react'
+import { Star, X, ChevronRight } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
@@ -133,9 +133,16 @@ export function ReviewModal({
   const router = useRouter()
   const { convertPrice, formatPrice } = useCurrency()
 
-  const [gym, setGym] = useState<(Gym & { images?: { url: string; order?: number }[] }) | null>(null)
-  const [package_, setPackage_] = useState<Package | null>(null)
-  const [loading, setLoading] = useState(true)
+  // If the caller passed pre-loaded data we use it immediately — no skeleton.
+  const hasPreloaded = !!(initialParams.gymData && initialParams.packageData)
+
+  const [gym, setGym] = useState<(Gym & { images?: { url: string; order?: number }[] }) | null>(
+    hasPreloaded ? (initialParams.gymData as unknown as Gym & { images?: { url: string; order?: number }[] }) : null
+  )
+  const [package_, setPackage_] = useState<Package | null>(
+    hasPreloaded ? (initialParams.packageData as unknown as Package) : null
+  )
+  const [loading, setLoading] = useState(!hasPreloaded)
   const [averageRating, setAverageRating] = useState(0)
   const [reviewCount, setReviewCount] = useState(0)
 
@@ -147,38 +154,45 @@ export function ReviewModal({
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
 
   useEffect(() => {
-    const fetchData = async () => {
-      const supabase = createClient()
-      const [{ data: gymData }, { data: pkgData }] = await Promise.all([
-        supabase
-          .from('gyms')
-          .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
-          .eq('id', initialParams.gymId)
-          .order('order', { referencedTable: 'gym_images', ascending: true })
-          .single(),
-        supabase.from('packages').select('*').eq('id', initialParams.packageId).single(),
-      ])
+    const supabase = createClient()
 
-      if (gymData) {
-        setGym(gymData as Gym & { images?: { url: string; order?: number }[] })
-        const [{ data: bkgReviews }, { data: manualReviews }] = await Promise.all([
-          supabase.from('bookings').select('id, reviews(rating)').eq('gym_id', initialParams.gymId),
-          supabase.from('reviews').select('rating').eq('gym_id', initialParams.gymId).eq('manual_review', true),
+    if (!hasPreloaded) {
+      // Fallback: fetch gym + package when pre-loaded data wasn't supplied
+      const fetchData = async () => {
+        const [{ data: gymData }, { data: pkgData }] = await Promise.all([
+          supabase
+            .from('gyms')
+            .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
+            .eq('id', initialParams.gymId)
+            .order('order', { referencedTable: 'gym_images', ascending: true })
+            .single(),
+          supabase.from('packages').select('*').eq('id', initialParams.packageId).single(),
         ])
-        const all = [
-          ...((bkgReviews || []) as any[]).flatMap((b) => b.reviews || []),
-          ...(manualReviews || []),
-        ]
-        if (all.length > 0) {
-          setAverageRating(all.reduce((s: number, r: any) => s + r.rating, 0) / all.length)
-          setReviewCount(all.length)
-        }
+        if (gymData) setGym(gymData as Gym & { images?: { url: string; order?: number }[] })
+        if (pkgData) setPackage_(pkgData as Package)
+        setLoading(false)
       }
-      if (pkgData) setPackage_(pkgData as Package)
-      setLoading(false)
+      fetchData()
     }
-    fetchData()
-  }, [initialParams.gymId, initialParams.packageId])
+
+    // Reviews are always fetched in the background — they fade in once ready
+    // without blocking the initial render.
+    const fetchReviews = async () => {
+      const [{ data: bkgReviews }, { data: manualReviews }] = await Promise.all([
+        supabase.from('bookings').select('id, reviews(rating)').eq('gym_id', initialParams.gymId),
+        supabase.from('reviews').select('rating').eq('gym_id', initialParams.gymId).eq('manual_review', true),
+      ])
+      const all = [
+        ...((bkgReviews || []) as any[]).flatMap((b) => b.reviews || []),
+        ...(manualReviews || []),
+      ]
+      if (all.length > 0) {
+        setAverageRating(all.reduce((s: number, r: any) => s + r.rating, 0) / all.length)
+        setReviewCount(all.length)
+      }
+    }
+    fetchReviews()
+  }, [initialParams.gymId, initialParams.packageId, hasPreloaded])
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const duration =
@@ -308,15 +322,6 @@ export function ReviewModal({
                       )}
                       <span className="text-xs text-gray-600 font-medium">{package_.name}</span>
                     </div>
-                    {gym.amenities && (
-                      <div className="flex flex-wrap gap-3 mt-2">
-                        {gym.amenities.wifi && <div className="flex items-center gap-1 text-xs text-gray-500"><Wifi className="w-3 h-3" /><span>WiFi</span></div>}
-                        {gym.amenities.parking && <div className="flex items-center gap-1 text-xs text-gray-500"><Car className="w-3 h-3" /><span>Parking</span></div>}
-                        {gym.amenities.meals && <div className="flex items-center gap-1 text-xs text-gray-500"><UtensilsCrossed className="w-3 h-3" /><span>Restaurant</span></div>}
-                        {gym.amenities.showers && <div className="flex items-center gap-1 text-xs text-gray-500"><Droplets className="w-3 h-3" /><span>Showers</span></div>}
-                        {gym.amenities.accommodation && <div className="flex items-center gap-1 text-xs text-gray-500"><Building2 className="w-3 h-3" /><span>Accommodation</span></div>}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -355,7 +360,7 @@ export function ReviewModal({
                 />
                 {package_ && checkin && (
                   <div className="py-3">
-                    <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} />
+                    <BookingTrustLine pkg={package_ as any} gym={gym} checkin={checkin} variant="featured" />
                   </div>
                 )}
               </div>

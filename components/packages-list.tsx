@@ -46,10 +46,16 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   const { selectedPackage, setSelectedPackage, checkin, checkout, setCheckin, setCheckout } = useBooking()
   const { openReviewModal } = useReviewModal()
 
-  const goToReview = (params: { gymId: string; packageId: string; variantId?: string; checkin: string; checkout: string }) => {
+  const goToReview = (params: { gymId: string; packageId: string; variantId?: string; checkin: string; checkout: string; pkg?: Package }) => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
     if (isMobile) {
-      openReviewModal({ ...params, guestCount: 1 })
+      openReviewModal({
+        ...params,
+        guestCount: 1,
+        // Pass pre-loaded data so the modal renders immediately with no skeleton
+        gymData: gym as unknown as Record<string, unknown>,
+        packageData: params.pkg as unknown as Record<string, unknown>,
+      })
     } else {
       const p = new URLSearchParams({ gymId: params.gymId, packageId: params.packageId, checkin: params.checkin, checkout: params.checkout })
       if (params.variantId) p.set('variantId', params.variantId)
@@ -155,7 +161,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
     if (pkg.offer_type === 'TYPE_ONE_TIME_EVENT') {
       const eventStart = pkg.event_date ? pkg.event_date.split('T')[0] : checkin
       const eventEnd = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (eventStart || checkout)
-      goToReview({ gymId: gym.id, packageId: pkg.id, checkin: eventStart || '', checkout: eventEnd || eventStart || '' })
+      goToReview({ gymId: gym.id, packageId: pkg.id, checkin: eventStart || '', checkout: eventEnd || eventStart || '', pkg })
       return
     }
 
@@ -183,7 +189,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       }
     }
 
-    goToReview({ gymId: gym.id, packageId: pkg.id, checkin: finalCheckin || '', checkout: finalCheckout || '' })
+    goToReview({ gymId: gym.id, packageId: pkg.id, checkin: finalCheckin || '', checkout: finalCheckout || '', pkg })
   }
 
   const handleSelectVariant = (pkg: Package, variant: PackageVariant) => {
@@ -211,7 +217,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
       finalCheckout = pkg.event_end_date ? pkg.event_end_date.split('T')[0] : (finalCheckin || checkout)
     }
 
-    goToReview({ gymId: gym.id, packageId: pkg.id, variantId: variant.id, checkin: finalCheckin || '', checkout: finalCheckout || finalCheckin || '' })
+    goToReview({ gymId: gym.id, packageId: pkg.id, variantId: variant.id, checkin: finalCheckin || '', checkout: finalCheckout || finalCheckin || '', pkg: variantPackage })
   }
 
   // Sort: one-time events first, then training-only, then everything else
@@ -338,7 +344,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   isGhosted 
                     ? 'border-gray-200 bg-gray-50/50 opacity-80' 
                     : isSelected 
-                      ? 'border-[#003580] bg-blue-50/20 shadow-lg cursor-pointer hover:shadow-xl' 
+                      ? 'border-gray-200 bg-white md:border-[#003580] md:bg-blue-50/20 shadow-lg cursor-pointer hover:shadow-xl' 
                       : 'border-gray-200 hover:border-[#003580]/50 bg-white cursor-pointer hover:shadow-xl'
                 }`}
               >
