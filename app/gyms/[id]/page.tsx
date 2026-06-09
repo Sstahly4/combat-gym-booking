@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
@@ -392,7 +392,7 @@ export default async function GymDetailsPage({
     if (searchParams?.checkout) qp.set('checkout', searchParams.checkout)
     if (searchParams?.dates_confirmed === 'true') qp.set('dates_confirmed', 'true')
     const qs = qp.toString()
-    redirect(`/gyms/${gym.slug}${qs ? `?${qs}` : ''}`)
+    permanentRedirect(`/gyms/${gym.slug}${qs ? `?${qs}` : ''}`)
   }
 
   const isVerified = gym.verification_status === 'verified'

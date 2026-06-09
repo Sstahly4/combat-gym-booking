@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { ManageLayoutShell } from '@/components/manage/manage-layout-shell'
+import { privateRouteMetadata } from '@/lib/seo/private-route-metadata'
 
 export const metadata: Metadata = {
+  ...privateRouteMetadata,
   title: 'Partner | CombatStay Partner Hub',
 }
 

@@ -24,6 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths = [
     '/',
     '/search',
+    '/faq',
+    '/owners',
     '/blog',
     '/blog/combat-sports-travel-guide-thailand-2026',
     '/blog/dont-get-burned-thailand-training-trip',

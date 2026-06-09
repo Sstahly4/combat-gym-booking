@@ -6,54 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronDown, Shield, Dumbbell, FileText, HelpCircle, Banknote } from 'lucide-react'
 
 export default function FAQPage() {
-  useEffect(() => {
-    // Set document title
-    document.title = 'Help Center - CombatStay.com'
-    
-    // Set or create meta description
-    let metaDescription = document.querySelector('meta[name="description"]')
-    if (!metaDescription) {
-      metaDescription = document.createElement('meta')
-      metaDescription.setAttribute('name', 'description')
-      document.head.appendChild(metaDescription)
-    }
-    metaDescription.setAttribute('content', 'Find answers to common questions about bookings, safety, training, and more. Get help with your training camp bookings.')
-    
-    // Set Open Graph tags
-    const setMetaTag = (property: string, content: string) => {
-      let tag = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`)
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute(property.startsWith('og:') ? 'property' : 'name', property)
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', content)
-    }
-    
-    setMetaTag('og:title', 'Help Center - CombatStay.com')
-    setMetaTag('og:description', 'Find answers to common questions about bookings, safety, training, and more. Get help with your training camp bookings.')
-    setMetaTag('og:type', 'website')
-    if (typeof window !== 'undefined') {
-      setMetaTag('og:url', window.location.href)
-    }
-    
-    // Set Twitter Card tags
-    setMetaTag('twitter:card', 'summary')
-    setMetaTag('twitter:title', 'Help Center - CombatStay.com')
-    setMetaTag('twitter:description', 'Find answers to common questions about bookings, safety, training, and more. Get help with your training camp bookings.')
-    
-    // Set canonical URL
-    let canonical = document.querySelector('link[rel="canonical"]')
-    if (!canonical) {
-      canonical = document.createElement('link')
-      canonical.setAttribute('rel', 'canonical')
-      document.head.appendChild(canonical)
-    }
-    if (typeof window !== 'undefined') {
-      canonical.setAttribute('href', window.location.href)
-    }
-  }, [])
-
 interface FAQItem {
   id: string
   question: string
