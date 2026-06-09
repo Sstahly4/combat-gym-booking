@@ -23,6 +23,7 @@ import { BookingTrustLine } from '@/components/booking-trust-line'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { CurrencyModal } from '@/components/currency-modal'
 import { writeBookingPrefill, readBookingPrefill } from '@/lib/utils/booking-prefill'
+import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 import type { Gym, Package } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 
@@ -145,10 +146,23 @@ export function ReviewModal({
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
-  const [payWhen, setPayWhen] = useState<PayWhenChoice>(
-    cachedPrefill?.payTiming === 'klarna' ? 'klarna' : 'now'
-  )
+  const gymCurrency = gym?.currency ?? 'USD'
+  const [payWhen, setPayWhen] = useState<PayWhenChoice>(() => {
+    if (
+      cachedPrefill?.payTiming === 'klarna' &&
+      isKlarnaAvailableForCurrency(cachedPrefill.gym?.currency as string | undefined)
+    ) {
+      return 'klarna'
+    }
+    return 'now'
+  })
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
+
+  useEffect(() => {
+    if (payWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)) {
+      setPayWhen('now')
+    }
+  }, [gymCurrency, payWhen])
 
   useEffect(() => {
     const supabase = createClient()
@@ -212,7 +226,9 @@ export function ReviewModal({
         })
       : null
 
-  const totalPrice = priceInfo ? convertPrice(priceInfo.price, gym?.currency ?? 'USD') : null
+  const chargeTotalPrice = priceInfo?.price ?? null
+  const totalPrice =
+    chargeTotalPrice != null ? convertPrice(chargeTotalPrice, gymCurrency) : null
 
   const mainImage =
     gym?.images && gym.images.length > 0
@@ -227,7 +243,9 @@ export function ReviewModal({
     if (checkin) p.set('checkin', checkin)
     if (checkout) p.set('checkout', checkout)
     p.set('guests', String(guestCount))
-    if (payWhen === 'klarna') p.set('payTiming', 'klarna')
+    if (payWhen === 'klarna' && isKlarnaAvailableForCurrency(gymCurrency)) {
+      p.set('payTiming', 'klarna')
+    }
     return `/bookings/summary?${p.toString()}`
   }
 
@@ -252,7 +270,8 @@ export function ReviewModal({
         guestCount,
         reviewCount,
         reviewAverage: averageRating,
-        payTiming: payWhen,
+        payTiming:
+          payWhen === 'klarna' && isKlarnaAvailableForCurrency(gymCurrency) ? 'klarna' : 'now',
       })
     }
     router.push(buildContinueUrl())
@@ -361,6 +380,8 @@ export function ReviewModal({
               onChange={setPayWhen}
               totalPrice={totalPrice}
               selectedCurrency={selectedCurrency}
+              chargeCurrency={gymCurrency}
+              chargeTotalPrice={chargeTotalPrice}
               hasDates={!!(checkin && checkout)}
               onOpenKlarnaInfo={() => setKlarnaInfoOpen(true)}
             />
@@ -435,12 +456,12 @@ export function ReviewModal({
             checkoutSheet
           />
 
-          {totalPrice != null && (
+          {chargeTotalPrice != null && isKlarnaAvailableForCurrency(gymCurrency) && (
             <KlarnaInfoSheet
               open={klarnaInfoOpen}
               onClose={() => setKlarnaInfoOpen(false)}
-              totalPrice={totalPrice}
-              currency={selectedCurrency}
+              totalPrice={chargeTotalPrice}
+              currency={gymCurrency}
             />
           )}
         </>

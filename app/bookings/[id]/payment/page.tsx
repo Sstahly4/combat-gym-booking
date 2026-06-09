@@ -78,6 +78,7 @@ import {
   type PayWhenChoice,
 } from '@/components/booking/choose-when-to-pay'
 import { KlarnaInfoSheet } from '@/components/booking/klarna-info-sheet'
+import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -107,13 +108,13 @@ const KLARNA_ELEMENT_OPTIONS = {
 function readInitialPayWhen(): PayWhenChoice {
   if (typeof window === 'undefined') return 'now'
   try {
-    const sp = new URLSearchParams(window.location.search)
-    if (sp.get('payTiming') === 'klarna') return 'klarna'
     const raw = sessionStorage.getItem('booking_prefill')
-    if (raw) {
-      const prefill = JSON.parse(raw)
-      if (prefill.payTiming === 'klarna') return 'klarna'
-    }
+    const prefill = raw ? JSON.parse(raw) : null
+    const gymCurrency = prefill?.gym?.currency as string | undefined
+    const wantsKlarna =
+      new URLSearchParams(window.location.search).get('payTiming') === 'klarna' ||
+      prefill?.payTiming === 'klarna'
+    if (wantsKlarna && isKlarnaAvailableForCurrency(gymCurrency)) return 'klarna'
   } catch {}
   return 'now'
 }
@@ -886,7 +887,11 @@ export default function PaymentPage() {
   }
 
   const handlePayWhenSave = async () => {
-    const nextTiming = draftPayWhen
+    const gymCurrency = booking?.gym?.currency ?? 'USD'
+    const nextTiming =
+      draftPayWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)
+        ? 'now'
+        : draftPayWhen
     closePayWhenSheet()
 
     if (nextTiming === payWhen) return
@@ -1068,26 +1073,21 @@ export default function PaymentPage() {
 
   const fetchBookingAndPaymentIntent = async () => {
     try {
-      let resolvedSecret: string
-      try {
-        resolvedSecret = await loadPaymentIntent(payWhen)
-      } catch (err: unknown) {
-        const data = err instanceof Error ? err : new Error('Failed to load payment details')
-        console.error('Error creating payment intent:', data.message)
-        let errorMessage = data.message || 'Failed to load payment details'
-        if (errorMessage.includes('not configured') || errorMessage.includes('API key')) {
-          errorMessage =
-            'Payment system is not configured. Please contact support to complete your booking.'
-        }
-        setError(errorMessage)
-        setLoading(false)
-        return
-      }
-
-      // Fetch booking details via API (handles RLS properly)
       const bookingResponse = await fetch(`/api/bookings/${bookingId}`)
+      let effectivePayWhen = payWhen
+
       if (bookingResponse.ok) {
         const bookingApiData = await bookingResponse.json()
+        const gymCurrency = bookingApiData.gym?.currency ?? 'USD'
+        if (payWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)) {
+          effectivePayWhen = 'now'
+          setPayWhen('now')
+          setDraftPayWhen('now')
+          if (bookingApiData.gym_id && bookingApiData.package_id) {
+            const cached = readBookingPrefill(bookingApiData.gym_id, bookingApiData.package_id)
+            if (cached) writeBookingPrefill({ ...cached, payTiming: 'now' })
+          }
+        }
         
         // Fetch reviews for rating if gym_id is available
         if (bookingApiData.gym?.id) {
@@ -1146,6 +1146,19 @@ export default function PaymentPage() {
             package: bookingApiData.package ?? prev?.package,
           } as BookingWithExtras
         })
+
+        try {
+          await loadPaymentIntent(effectivePayWhen)
+        } catch (err: unknown) {
+          const data = err instanceof Error ? err : new Error('Failed to load payment details')
+          console.error('Error creating payment intent:', data.message)
+          let errorMessage = data.message || 'Failed to load payment details'
+          if (errorMessage.includes('not configured') || errorMessage.includes('API key')) {
+            errorMessage =
+              'Payment system is not configured. Please contact support to complete your booking.'
+          }
+          setError(errorMessage)
+        }
       } else {
         const errorData = await bookingResponse.json()
         console.error('Error fetching booking details:', errorData)
@@ -1258,6 +1271,9 @@ export default function PaymentPage() {
   const serverTotal = booking?.total_price ?? 0
   const rawTotal = serverTotal > 0 ? serverTotal : (priceInfo?.price ?? 0)
   const displayTotalPrice = rawTotal > 0 ? convertPrice(rawTotal, gymCurrency) : null
+  const klarnaAvailable = isKlarnaAvailableForCurrency(gymCurrency)
+  const effectivePayWhen =
+    payWhen === 'klarna' && !klarnaAvailable ? 'now' : payWhen
 
   const step2Url = booking
     ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}&guests=${guestCount}`
@@ -1408,14 +1424,14 @@ export default function PaymentPage() {
                 <div className="text-sm font-semibold text-gray-900 mb-2">When you&apos;ll pay</div>
                 <div className="text-sm text-gray-600">
                   {displayTotalPrice != null
-                    ? formatPayWhenSummaryLine(payWhen, displayTotalPrice, selectedCurrency)
+                    ? formatPayWhenSummaryLine(effectivePayWhen, displayTotalPrice, selectedCurrency)
                     : 'Calculating…'}
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
             </button>
 
-            {payWhen !== 'klarna' && (
+            {effectivePayWhen !== 'klarna' && (
               <button
                 type="button"
                 onClick={openPaymentMethodModal}
@@ -1508,6 +1524,8 @@ export default function PaymentPage() {
                   onChange={setDraftPayWhen}
                   totalPrice={displayTotalPrice}
                   selectedCurrency={selectedCurrency}
+                  chargeCurrency={gymCurrency}
+                  chargeTotalPrice={rawTotal > 0 ? rawTotal : null}
                   hasDates={!!(booking.start_date && booking.end_date)}
                   onOpenKlarnaInfo={() => setKlarnaInfoOpen(true)}
                 />
@@ -1516,12 +1534,12 @@ export default function PaymentPage() {
             </PaymentMethodSheet>
           )}
 
-          {displayTotalPrice != null && (
+          {rawTotal > 0 && klarnaAvailable && (
             <KlarnaInfoSheet
               open={klarnaInfoOpen}
               onClose={() => setKlarnaInfoOpen(false)}
-              totalPrice={displayTotalPrice}
-              currency={selectedCurrency}
+              totalPrice={rawTotal}
+              currency={gymCurrency}
             />
           )}
 
@@ -1532,7 +1550,7 @@ export default function PaymentPage() {
                 hideMobileSubmit
                 mobilePaymentModalOpen={paymentMethodOpen}
                 onCloseMobilePaymentModal={closePaymentMethodModal}
-                paymentFieldsMounted={stripeCheckoutMounted || payWhen === 'klarna'}
+                paymentFieldsMounted={stripeCheckoutMounted || effectivePayWhen === 'klarna'}
                 selectedPaymentMethod={selectedPaymentMethod}
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 paymentModalStep={paymentModalStep}
@@ -1542,7 +1560,7 @@ export default function PaymentPage() {
                 onCardDetailsCompleteChange={setCardDetailsComplete}
                 cardDetailsComplete={cardDetailsComplete}
                 mobileCheckoutDisabled={!clientSecret || loading}
-                payWhen={payWhen}
+                payWhen={effectivePayWhen}
               />
             </Elements>
           ) : null}

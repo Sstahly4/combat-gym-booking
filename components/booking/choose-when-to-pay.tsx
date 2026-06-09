@@ -1,6 +1,7 @@
 'use client'
 
 import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
+import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 
 export type PayWhenChoice = 'now' | 'klarna'
 
@@ -38,17 +39,25 @@ export function PayWhenOptions({
   onChange,
   totalPrice,
   selectedCurrency,
+  chargeCurrency,
+  chargeTotalPrice,
   hasDates,
   onOpenKlarnaInfo,
 }: {
   value: PayWhenChoice
   onChange: (choice: PayWhenChoice) => void
+  /** Total in the customer's display currency (pay now row). */
   totalPrice: number | null
   selectedCurrency: string
+  /** Gym settlement currency — Klarna only when this is Stripe-supported. */
+  chargeCurrency: string
+  /** Total in charge currency for Klarna installment copy. */
+  chargeTotalPrice: number | null
   hasDates: boolean
   onOpenKlarnaInfo: () => void
 }) {
-  const showKlarna = totalPrice != null
+  const klarnaAvailable = isKlarnaAvailableForCurrency(chargeCurrency)
+  const showKlarna = totalPrice != null && chargeTotalPrice != null && klarnaAvailable
 
   return (
     <div
@@ -94,7 +103,7 @@ export function PayWhenOptions({
               Pay in 4 payments with Klarna
             </div>
             <p className="mt-1 text-sm text-gray-600 leading-snug">
-              {formatKlarnaInstallmentSummary(totalPrice, selectedCurrency)}
+              {formatKlarnaInstallmentSummary(chargeTotalPrice, chargeCurrency)}
             </p>
             <button
               type="button"
@@ -119,6 +128,8 @@ export function ChooseWhenToPaySection({
   onChange,
   totalPrice,
   selectedCurrency,
+  chargeCurrency,
+  chargeTotalPrice,
   hasDates,
   onOpenKlarnaInfo,
 }: {
@@ -126,6 +137,8 @@ export function ChooseWhenToPaySection({
   onChange: (choice: PayWhenChoice) => void
   totalPrice: number | null
   selectedCurrency: string
+  chargeCurrency: string
+  chargeTotalPrice: number | null
   hasDates: boolean
   onOpenKlarnaInfo: () => void
 }) {
@@ -137,6 +150,8 @@ export function ChooseWhenToPaySection({
         onChange={onChange}
         totalPrice={totalPrice}
         selectedCurrency={selectedCurrency}
+        chargeCurrency={chargeCurrency}
+        chargeTotalPrice={chargeTotalPrice}
         hasDates={hasDates}
         onOpenKlarnaInfo={onOpenKlarnaInfo}
       />

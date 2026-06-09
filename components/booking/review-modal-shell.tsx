@@ -108,7 +108,10 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
           monthly: package_.price_per_month,
         })
       : null
-  const totalPrice = priceInfo ? convertPrice(priceInfo.price, gym?.currency ?? 'USD') : null
+  const gymCurrency = gym?.currency ?? 'USD'
+  const chargeTotalPrice = priceInfo?.price ?? null
+  const totalPrice =
+    chargeTotalPrice != null ? convertPrice(chargeTotalPrice, gymCurrency) : null
   const mainImage = gym?.images && gym.images.length > 0 ? gym.images[0].url : null
 
   return (
@@ -177,6 +180,8 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
           onChange={() => {}}
           totalPrice={totalPrice}
           selectedCurrency={selectedCurrency}
+          chargeCurrency={gymCurrency}
+          chargeTotalPrice={chargeTotalPrice}
           hasDates={!!(checkin && checkout)}
           onOpenKlarnaInfo={() => {}}
         />

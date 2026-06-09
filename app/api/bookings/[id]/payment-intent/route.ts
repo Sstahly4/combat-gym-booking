@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe, PLATFORM_COMMISSION_RATE } from '@/lib/stripe'
+import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 import {
   cancellationPolicyToStripeMetadata,
   resolveCancellationPolicy,
@@ -88,6 +89,15 @@ export async function POST(
       cancellation_policy_tone?: string | null
     }
     const pkg = booking.package as { cancellation_policy_days: number | null } | null
+
+    if (payTiming === 'klarna' && !isKlarnaAvailableForCurrency(gym.currency)) {
+      return NextResponse.json(
+        {
+          error: `Klarna is not available for ${gym.currency.toUpperCase()} bookings. Pay now with card or wallet instead.`,
+        },
+        { status: 400 }
+      )
+    }
 
     if (!stripe) {
       console.error(
