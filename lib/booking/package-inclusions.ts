@@ -141,7 +141,6 @@ export function buildPackageInclusionAccordion(
 
   return [
     {
-      heading: "What's included",
       items: lines.map((line, index) => ({
         id: `inclusion-${index}`,
         title: line.split(' — ')[0] ?? line,

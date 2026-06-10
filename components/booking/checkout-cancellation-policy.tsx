@@ -1,12 +1,13 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type { Package } from '@/lib/types/database'
 import type { GymCancellationPolicyTone } from '@/lib/booking/cancellation-policy'
 import { getCheckoutCancellationCopy } from '@/lib/booking/checkout-cancellation-copy'
 import { CheckoutBottomSheet } from '@/components/booking/checkout-bottom-sheet'
 import { CheckoutAccordion } from '@/components/booking/checkout-accordion'
+import { CheckoutCancellationFullPolicySheet } from '@/components/booking/checkout-cancellation-full-policy'
 
 export function CheckoutCancellationPolicyRow({
   package_,
@@ -53,6 +54,7 @@ export function CheckoutCancellationPolicySheet({
   gymPolicyTone?: GymCancellationPolicyTone | null
   onClose: () => void
 }) {
+  const [fullPolicyOpen, setFullPolicyOpen] = useState(false)
   const copy = getCheckoutCancellationCopy({
     checkin,
     packageCancellationPolicyDays: package_.cancellation_policy_days,
@@ -61,26 +63,39 @@ export function CheckoutCancellationPolicySheet({
 
   if (!copy) return null
 
+  const handleClose = () => {
+    if (fullPolicyOpen) {
+      setFullPolicyOpen(false)
+      return
+    }
+    onClose()
+  }
+
   return (
-    <CheckoutBottomSheet
-      title="Cancellation policy"
-      primaryLabel="Done"
-      onPrimary={onClose}
-      onCancel={onClose}
-      onClose={onClose}
-    >
-      <CheckoutAccordion sections={copy.sections} />
-      <p className="pb-4 text-sm text-gray-700">
-        <Link
-          href={copy.fullPolicyHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-700 transition-colors"
-        >
-          Full policy ↗
-        </Link>
-      </p>
-      <div className="flex-1 min-h-0" aria-hidden />
-    </CheckoutBottomSheet>
+    <>
+      <CheckoutBottomSheet
+        title="Cancellation policy"
+        primaryLabel="Done"
+        onPrimary={handleClose}
+        onCancel={handleClose}
+        onClose={handleClose}
+      >
+        <CheckoutAccordion sections={copy.sections} />
+        <p className="pb-4 text-sm text-gray-700">
+          <button
+            type="button"
+            onClick={() => setFullPolicyOpen(true)}
+            className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-700 transition-colors"
+          >
+            Full policy
+          </button>
+        </p>
+        <div className="flex-1 min-h-0" aria-hidden />
+      </CheckoutBottomSheet>
+
+      {fullPolicyOpen && (
+        <CheckoutCancellationFullPolicySheet onClose={() => setFullPolicyOpen(false)} />
+      )}
+    </>
   )
 }

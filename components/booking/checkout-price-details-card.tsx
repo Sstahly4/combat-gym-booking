@@ -1,6 +1,7 @@
 'use client'
 
-import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
+import { ChevronRight } from 'lucide-react'
+import { formatCheckoutAmountOnly, formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
 import type { PriceLine } from '@/lib/utils'
 
 function lineUnitLabel(line: PriceLine): string {
@@ -10,6 +11,38 @@ function lineUnitLabel(line: PriceLine): string {
   if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
   if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
   return line.qty === 1 ? 'night' : 'nights'
+}
+
+export function CheckoutPriceDetailsRow({
+  total,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+  onOpen,
+}: {
+  total: number
+  gymCurrency: string
+  displayCurrency: string
+  convertPrice: (amount: number, fromCurrency: string) => number
+  onOpen: () => void
+}) {
+  const displayTotal = convertPrice(total, gymCurrency)
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 transition-colors hover:bg-gray-50 active:bg-gray-100"
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-gray-900 mb-2">Price details</div>
+        <div className="text-sm text-gray-600">
+          {formatCheckoutAmountOnly(displayTotal, displayCurrency)} {displayCurrency} total · Line items and breakdown
+        </div>
+      </div>
+      <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
+    </button>
+  )
 }
 
 export function CheckoutPriceDetailsCard({

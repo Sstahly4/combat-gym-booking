@@ -90,9 +90,9 @@ import {
   CheckoutYourDetailsForm,
   type CheckoutYourDetailsFields,
 } from '@/components/booking/checkout-your-details-form'
-import { CheckoutPriceDetailsCard } from '@/components/booking/checkout-price-details-card'
+import { CheckoutPriceDetailsRow } from '@/components/booking/checkout-price-details-card'
 import {
-  CheckoutWhatsIncludedInline,
+  CheckoutWhatsIncludedRow,
   CheckoutWhatsIncludedSheet,
 } from '@/components/booking/checkout-whats-included-inline'
 import {
@@ -1435,11 +1435,11 @@ export default function PaymentPage() {
             </div>
 
             {booking.package && (
-              <CheckoutWhatsIncludedInline
+              <CheckoutWhatsIncludedRow
                 package_={booking.package}
                 gym={booking.gym}
                 variant={booking.variant}
-                onOpenDetails={() => setWhatsIncludedSheetOpen(true)}
+                onOpen={() => setWhatsIncludedSheetOpen(true)}
               />
             )}
 
@@ -1474,6 +1474,18 @@ export default function PaymentPage() {
               <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
             </button>
 
+            {priceInfo && rawTotal > 0 && (
+              <CheckoutPriceDetailsRow
+                total={rawTotal}
+                gymCurrency={gymCurrency}
+                displayCurrency={selectedCurrency}
+                convertPrice={convertPrice}
+                onOpen={() => setPriceSheetOpen(true)}
+              />
+            )}
+
+            <div className="border-t border-gray-200 pt-1" role="presentation" aria-hidden />
+
             {effectivePayWhen !== 'klarna' && (
               <button
                 type="button"
@@ -1492,27 +1504,12 @@ export default function PaymentPage() {
               </button>
             )}
 
-            <div className="border-t border-gray-200" role="presentation" />
-
             <CheckoutYourDetailsCard
               name={guestDisplayName || null}
               email={guestDisplayEmail || null}
               phone={guestDisplayPhone || null}
               onEdit={openDetailsSheet}
             />
-
-            {priceInfo && rawTotal > 0 && (
-              <CheckoutPriceDetailsCard
-                lines={priceInfo.lines}
-                savedVsNightly={priceInfo.savedVsNightly}
-                total={rawTotal}
-                gymCurrency={gymCurrency}
-                displayCurrency={selectedCurrency}
-                convertPrice={convertPrice}
-                onCurrencyClick={() => setCurrencyModalOpen(true)}
-                onPriceBreakdownClick={() => setPriceBreakdownOpen(true)}
-              />
-            )}
           </div>
 
           {detailsSheetOpen && (

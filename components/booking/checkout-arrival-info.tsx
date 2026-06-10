@@ -45,7 +45,6 @@ export function CheckoutArrivalInfoSheet({
 
   const accordionSections = [
     {
-      heading: 'Before you arrive',
       items: sections.map((section) => ({
         id: section.label,
         title: section.label,
