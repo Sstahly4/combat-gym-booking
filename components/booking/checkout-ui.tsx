@@ -108,6 +108,11 @@ export function formatCheckoutAmountOnly(amount: number, currency: string): stri
   return symbol ? `${symbol}${formatted}` : formatted
 }
 
+export function formatCheckoutSummaryValue(value: string | null | undefined): string {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : '—'
+}
+
 export function formatCheckoutPriceWithCode(amount: number, currency: string): string {
   const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,

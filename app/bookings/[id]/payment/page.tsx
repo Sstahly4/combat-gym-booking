@@ -45,6 +45,7 @@ import Link from 'next/link'
 import { calculatePackagePrice } from '@/lib/utils'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
+import { CheckoutPaymentConsent } from '@/components/booking/checkout-payment-consent'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import { BookingWhatsIncluded } from '@/components/booking/booking-whats-included'
 import { BookingSafetyPolicies } from '@/components/booking/booking-safety-policies'
@@ -57,7 +58,7 @@ import {
   writeBookingPrefill,
 } from '@/lib/utils/booking-prefill'
 import { DateRangePicker } from '@/components/date-range-picker'
-import { clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
+import { clearGuestCheckoutSession, readGuestDetails } from '@/lib/utils/checkout-details-prefill'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
   CHECKOUT_WALLET_BUTTON_HEIGHT,
@@ -78,6 +79,9 @@ import {
   type PayWhenChoice,
 } from '@/components/booking/choose-when-to-pay'
 import { KlarnaInfoSheet } from '@/components/booking/klarna-info-sheet'
+import { CurrencyModal } from '@/components/currency-modal'
+import { CheckoutYourDetailsCard } from '@/components/booking/checkout-your-details-card'
+import { CheckoutPriceDetailsCard } from '@/components/booking/checkout-price-details-card'
 import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -646,6 +650,7 @@ function CheckoutForm({
         </form>
         {!mobilePaymentModalOpen && (
           <div className="space-y-2">
+            <CheckoutPaymentConsent />
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 {error}
@@ -762,7 +767,8 @@ function CheckoutForm({
       )}
 
       {/* Desktop: Inline button */}
-      <div className="hidden md:block">
+      <div className="hidden md:block space-y-3">
+        <CheckoutPaymentConsent />
         <Button
           type="submit"
           className={CHECKOUT_PAY_BUTTON_CLASS}
@@ -847,6 +853,7 @@ export default function PaymentPage() {
   const [payWhenSheetOpen, setPayWhenSheetOpen] = useState(false)
   const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>(readInitialPayWhen)
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [guestCount, setGuestCount] = useState(1)
@@ -1278,6 +1285,16 @@ export default function PaymentPage() {
   const step2Url = booking
     ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}&guests=${guestCount}`
     : '#'
+  const cachedGuestDetails = booking?.gym_id ? readGuestDetails(booking.gym_id) : null
+  const guestDisplayName =
+    booking?.guest_name?.trim() ||
+    (cachedGuestDetails
+      ? `${cachedGuestDetails.firstName} ${cachedGuestDetails.lastName}`.trim()
+      : '')
+  const guestDisplayEmail =
+    booking?.guest_email?.trim() || cachedGuestDetails?.email?.trim() || ''
+  const guestDisplayPhone =
+    booking?.guest_phone?.trim() || cachedGuestDetails?.phone?.trim() || ''
   const gymListingHref = booking ? `/gyms/${booking.gym.slug || booking.gym.id}` : '#'
 
   const handleExitToGym = () => {
@@ -1348,7 +1365,8 @@ export default function PaymentPage() {
         <div className="md:hidden space-y-6">
           <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
 
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="space-y-4">
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex gap-3 items-start">
                 {mainImage ? (
@@ -1391,7 +1409,14 @@ export default function PaymentPage() {
                   displayTotalPrice != null ? (
                     <span className="inline-flex items-baseline gap-1">
                       <span>{formatCheckoutAmountOnly(displayTotalPrice, selectedCurrency)}</span>
-                      <span className="font-semibold text-gray-900 underline">{selectedCurrency}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrencyModalOpen(true)}
+                        className="font-semibold text-gray-900 underline hover:text-gray-700 transition-colors"
+                        aria-label={`Change currency, currently ${selectedCurrency}`}
+                      >
+                        {selectedCurrency}
+                      </button>
                     </span>
                   ) : (
                     'Calculating…'
@@ -1411,9 +1436,8 @@ export default function PaymentPage() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
 
-          <div className="space-y-4">
             <button
               type="button"
               onClick={openPayWhenSheet}
@@ -1447,6 +1471,26 @@ export default function PaymentPage() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
               </button>
+            )}
+
+            <div className="border-t border-gray-200" role="presentation" />
+
+            <CheckoutYourDetailsCard
+              name={guestDisplayName || null}
+              email={guestDisplayEmail || null}
+              phone={guestDisplayPhone || null}
+              onEdit={() => router.replace(step2Url)}
+            />
+
+            {priceInfo && rawTotal > 0 && (
+              <CheckoutPriceDetailsCard
+                lines={priceInfo.lines}
+                savedVsNightly={priceInfo.savedVsNightly}
+                total={rawTotal}
+                gymCurrency={gymCurrency}
+                displayCurrency={selectedCurrency}
+                convertPrice={convertPrice}
+              />
             )}
           </div>
 
@@ -1542,6 +1586,15 @@ export default function PaymentPage() {
               currency={gymCurrency}
             />
           )}
+
+          <CurrencyModal
+            open={currencyModalOpen}
+            onOpenChange={setCurrencyModalOpen}
+            initialTab="currency"
+            currencyOnly
+            confirmSelection
+            checkoutSheet
+          />
 
           {clientSecret && stripePromise ? (
             <Elements key={clientSecret} stripe={stripePromise} options={options}>

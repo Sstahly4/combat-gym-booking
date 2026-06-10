@@ -1,0 +1,62 @@
+'use client'
+
+import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
+import type { PriceLine } from '@/lib/utils'
+
+function lineUnitLabel(line: PriceLine): string {
+  if (line.label.toLowerCase().includes('session')) {
+    return line.qty === 1 ? 'session' : 'sessions'
+  }
+  if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
+  if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
+  return line.qty === 1 ? 'night' : 'nights'
+}
+
+export function CheckoutPriceDetailsCard({
+  lines,
+  savedVsNightly,
+  total,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+}: {
+  lines: PriceLine[]
+  savedVsNightly: number
+  total: number
+  gymCurrency: string
+  displayCurrency: string
+  convertPrice: (amount: number, fromCurrency: string) => number
+}) {
+  const formatDisplay = (amount: number) =>
+    formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
+
+  return (
+    <div className="border border-gray-200 rounded-xl px-4 py-4">
+      <h2 className="text-sm font-semibold text-gray-900 mb-4">Price details</h2>
+      <div className="space-y-3 text-sm">
+        {lines.map((line, i) => (
+          <div key={i} className="flex items-start justify-between gap-4">
+            <span className="text-gray-900 leading-snug">
+              {line.qty} {lineUnitLabel(line)} x {formatDisplay(line.unitPrice)}
+            </span>
+            <span className="text-gray-900 shrink-0 text-right">{formatDisplay(line.subtotal)}</span>
+          </div>
+        ))}
+        {savedVsNightly > 0 && (
+          <div className="flex items-start justify-between gap-4">
+            <span className="text-emerald-700 leading-snug">Special offer</span>
+            <span className="text-emerald-700 shrink-0 text-right">-{formatDisplay(savedVsNightly)}</span>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-gray-200 mt-4 pt-4 flex items-baseline justify-between gap-4">
+        <span className="text-sm font-semibold text-gray-900">
+          Total <span className="underline">{displayCurrency}</span>
+        </span>
+        <span className="text-sm font-semibold text-gray-900 shrink-0 text-right">
+          {formatDisplay(total)}
+        </span>
+      </div>
+    </div>
+  )
+}

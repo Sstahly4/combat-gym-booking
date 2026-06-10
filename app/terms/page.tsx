@@ -59,7 +59,7 @@ export default function TermsPage() {
             </ul>
           </section>
 
-          <section>
+          <section id="booking-terms">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">4. Booking Process</h2>
             <ul className="list-disc pl-6 space-y-1">
               <li>Bookings are subject to gym availability and confirmation</li>
