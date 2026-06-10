@@ -90,7 +90,7 @@ import {
   CheckoutYourDetailsForm,
   type CheckoutYourDetailsFields,
 } from '@/components/booking/checkout-your-details-form'
-import { CheckoutPriceDetailsRow } from '@/components/booking/checkout-price-details-card'
+import { CheckoutPriceDetailsInline } from '@/components/booking/checkout-price-details-card'
 import {
   CheckoutWhatsIncludedRow,
   CheckoutWhatsIncludedSheet,
@@ -1474,16 +1474,6 @@ export default function PaymentPage() {
               <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
             </button>
 
-            {priceInfo && rawTotal > 0 && (
-              <CheckoutPriceDetailsRow
-                total={rawTotal}
-                gymCurrency={gymCurrency}
-                displayCurrency={selectedCurrency}
-                convertPrice={convertPrice}
-                onOpen={() => setPriceSheetOpen(true)}
-              />
-            )}
-
             <div className="border-t border-gray-200 pt-1" role="presentation" aria-hidden />
 
             {effectivePayWhen !== 'klarna' && (
@@ -1510,6 +1500,19 @@ export default function PaymentPage() {
               phone={guestDisplayPhone || null}
               onEdit={openDetailsSheet}
             />
+
+            {priceInfo && rawTotal > 0 && (
+              <CheckoutPriceDetailsInline
+                lines={priceInfo.lines}
+                savedVsNightly={priceInfo.savedVsNightly}
+                total={rawTotal}
+                gymCurrency={gymCurrency}
+                displayCurrency={selectedCurrency}
+                convertPrice={convertPrice}
+                onCurrencyClick={() => setCurrencyModalOpen(true)}
+                onPriceBreakdownClick={() => setPriceBreakdownOpen(true)}
+              />
+            )}
           </div>
 
           {detailsSheetOpen && (
@@ -1966,6 +1969,10 @@ export default function PaymentPage() {
           checkin={booking.start_date}
           gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
           onClose={() => setCancellationSheetOpen(false)}
+          onChangeDates={() => {
+            setCancellationSheetOpen(false)
+            openDatePicker()
+          }}
         />
       )}
 

@@ -2,7 +2,7 @@
 
 import { ChevronRight } from 'lucide-react'
 import {
-  buildArrivalInfoSections,
+  buildArrivalInfoAccordion,
   hasArrivalInfo,
   type ArrivalInfoGym,
 } from '@/lib/booking/arrival-info'
@@ -18,6 +18,8 @@ export function CheckoutArrivalInfoRow({
 }) {
   if (!hasArrivalInfo(gym)) return null
 
+  const subtitle = gym.address?.trim() || [gym.city, gym.country].filter(Boolean).join(', ')
+
   return (
     <button
       type="button"
@@ -26,7 +28,9 @@ export function CheckoutArrivalInfoRow({
     >
       <div className="min-w-0">
         <div className="text-sm font-semibold text-gray-900 mb-2">Arrival info</div>
-        <div className="text-sm text-gray-600">Address, hours, and how to get there</div>
+        <div className="text-sm text-gray-600 leading-snug line-clamp-2">
+          {subtitle || 'Directions, hours, and what to bring'}
+        </div>
       </div>
       <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
     </button>
@@ -40,26 +44,7 @@ export function CheckoutArrivalInfoSheet({
   gym: ArrivalInfoGym
   onClose: () => void
 }) {
-  const sections = buildArrivalInfoSections(gym)
-  if (sections.length === 0) return null
-
-  const accordionSections = [
-    {
-      items: sections.map((section) => ({
-        id: section.label,
-        title: section.label,
-        subtitle: section.value.split('\n')[0],
-        body: section.href
-          ? 'Open the link below for directions or to call the gym on arrival.'
-          : section.value,
-        link: section.href
-          ? { href: section.href, label: section.value }
-          : undefined,
-      })),
-      footerText:
-        'Exact check-in instructions may be confirmed by the gym after your booking is complete.',
-    },
-  ]
+  const sections = buildArrivalInfoAccordion(gym)
 
   return (
     <CheckoutBottomSheet
@@ -69,7 +54,7 @@ export function CheckoutArrivalInfoSheet({
       onCancel={onClose}
       onClose={onClose}
     >
-      <CheckoutAccordion sections={accordionSections} />
+      <CheckoutAccordion sections={sections} />
       <div className="flex-1 min-h-0" aria-hidden />
     </CheckoutBottomSheet>
   )

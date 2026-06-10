@@ -45,16 +45,7 @@ export function CheckoutPriceDetailsRow({
   )
 }
 
-export function CheckoutPriceDetailsCard({
-  lines,
-  savedVsNightly,
-  total,
-  gymCurrency,
-  displayCurrency,
-  convertPrice,
-  onCurrencyClick,
-  onPriceBreakdownClick,
-}: {
+type CheckoutPriceDetailsContentProps = {
   lines: PriceLine[]
   savedVsNightly: number
   total: number
@@ -63,12 +54,23 @@ export function CheckoutPriceDetailsCard({
   convertPrice: (amount: number, fromCurrency: string) => number
   onCurrencyClick: () => void
   onPriceBreakdownClick: () => void
-}) {
+}
+
+function CheckoutPriceDetailsContent({
+  lines,
+  savedVsNightly,
+  total,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+  onCurrencyClick,
+  onPriceBreakdownClick,
+}: CheckoutPriceDetailsContentProps) {
   const formatDisplay = (amount: number) =>
     formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
 
   return (
-    <div className="border border-gray-200 rounded-xl px-4 py-4">
+    <>
       <h2 className="text-sm font-semibold text-gray-900 mb-4">Price details</h2>
       <div className="space-y-3 text-sm">
         {lines.map((line, i) => (
@@ -109,6 +111,23 @@ export function CheckoutPriceDetailsCard({
       >
         Price breakdown
       </button>
+    </>
+  )
+}
+
+/** Inline price block for mobile checkout — no card border, sits above pay button. */
+export function CheckoutPriceDetailsInline(props: CheckoutPriceDetailsContentProps) {
+  return (
+    <div>
+      <CheckoutPriceDetailsContent {...props} />
+    </div>
+  )
+}
+
+export function CheckoutPriceDetailsCard(props: CheckoutPriceDetailsContentProps) {
+  return (
+    <div className="border border-gray-200 rounded-xl px-4 py-4">
+      <CheckoutPriceDetailsContent {...props} />
     </div>
   )
 }

@@ -25,7 +25,10 @@ export function CheckoutWhatsIncludedRow({
   onOpen,
 }: {
   package_: Package
-  gym: Pick<Gym, 'amenities'> & { training_schedule?: Gym['training_schedule'] }
+  gym: Pick<Gym, 'amenities'> & {
+    training_schedule?: Gym['training_schedule']
+    offers_accommodation?: boolean
+  }
   variant?: PackageVariant | null
   onOpen: () => void
 }) {
@@ -56,7 +59,10 @@ export function CheckoutWhatsIncludedSheet({
   onClose,
 }: {
   package_: Package
-  gym: Pick<Gym, 'amenities'> & { training_schedule?: Gym['training_schedule'] }
+  gym: Pick<Gym, 'amenities'> & {
+    training_schedule?: Gym['training_schedule']
+    offers_accommodation?: boolean
+  }
   variant?: PackageVariant | null
   onClose: () => void
 }) {

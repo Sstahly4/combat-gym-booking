@@ -9,6 +9,7 @@ export type CheckoutAccordionItem = {
   subtitle?: string
   body: string
   link?: { href: string; label: string }
+  action?: { label: string; onClick: () => void }
 }
 
 export type CheckoutAccordionSection = {
@@ -58,16 +59,27 @@ export function CheckoutAccordion({ sections }: { sections: CheckoutAccordionSec
                       <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                         {item.body}
                       </p>
-                      {item.link && (
-                        <a
-                          href={item.link.href}
-                          target={item.link.href.startsWith('tel:') ? undefined : '_blank'}
-                          rel={item.link.href.startsWith('tel:') ? undefined : 'noopener noreferrer'}
-                          className="inline-block text-sm font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-700 transition-colors"
-                        >
-                          {item.link.label}
-                        </a>
-                      )}
+                      <div className="flex flex-wrap gap-3">
+                        {item.link && (
+                          <a
+                            href={item.link.href}
+                            target={item.link.href.startsWith('tel:') ? undefined : '_blank'}
+                            rel={item.link.href.startsWith('tel:') ? undefined : 'noopener noreferrer'}
+                            className="inline-block text-sm font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-700 transition-colors"
+                          >
+                            {item.link.label}
+                          </a>
+                        )}
+                        {item.action && (
+                          <button
+                            type="button"
+                            onClick={item.action.onClick}
+                            className="inline-flex h-10 items-center rounded-xl bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+                          >
+                            {item.action.label}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

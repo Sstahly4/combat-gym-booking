@@ -48,17 +48,20 @@ export function CheckoutCancellationPolicySheet({
   checkin,
   gymPolicyTone,
   onClose,
+  onChangeDates,
 }: {
   package_: Package
   checkin: string
   gymPolicyTone?: GymCancellationPolicyTone | null
   onClose: () => void
+  onChangeDates?: () => void
 }) {
   const [fullPolicyOpen, setFullPolicyOpen] = useState(false)
   const copy = getCheckoutCancellationCopy({
     checkin,
     packageCancellationPolicyDays: package_.cancellation_policy_days,
     gymPolicyTone: gymPolicyTone ?? null,
+    onChangeDates,
   })
 
   if (!copy) return null
@@ -80,7 +83,11 @@ export function CheckoutCancellationPolicySheet({
         onCancel={handleClose}
         onClose={handleClose}
       >
+        <p className="text-lg font-semibold text-gray-900 leading-snug -mt-1 mb-4">
+          {copy.headline}
+        </p>
         <CheckoutAccordion sections={copy.sections} />
+        <p className="pb-3 text-sm text-gray-600 leading-relaxed">{copy.finePrint}</p>
         <p className="pb-4 text-sm text-gray-700">
           <button
             type="button"
