@@ -12,8 +12,11 @@ export type ArrivalInfoGym = {
   opening_hours?: Record<string, string> | null
 }
 
-const DEFAULT_ARRIVAL_INSTRUCTIONS =
-  'Go to reception on arrival and show your booking confirmation (email or reference). Your trainer or daily schedule is usually assigned at check-in. If nobody is at the front desk, call the gym contact number below.'
+function arrivalInstructionsBody(gym: ArrivalInfoGym): string {
+  const name = gym.name?.trim()
+  const gymLabel = name || 'the gym'
+  return `Go to reception at ${gymLabel} on arrival and show your booking confirmation (email or reference). Your trainer or daily schedule is usually assigned at check-in. If nobody is at the front desk, call the gym contact number below.`
+}
 
 const WHAT_TO_BRING = [
   'Passport or photo ID',
@@ -44,23 +47,49 @@ function formatTrainingHours(hours: Record<string, string>): string | null {
 
 function howToGetThereBody(gym: ArrivalInfoGym): string {
   const name = gym.name?.trim() || 'the gym'
-  const place = [gym.city, gym.country].filter(Boolean).join(', ')
+  const city = gym.city?.trim()
+  const country = gym.country?.trim()
   const address = gym.address?.trim()
+  const isThailand = country?.toLowerCase() === 'thailand'
 
-  const parts = [
-    `Taxi or ride-hailing apps (Grab in Thailand) are the easiest way to get there.`,
-    `Tell the driver ${name}${address ? `, ${address}` : place ? ` in ${place}` : ''}.`,
-  ]
+  const lines: string[] = []
 
-  if (address) {
-    parts.push(`Full address: ${address}.`)
+  if (isThailand) {
+    lines.push(
+      'Grab or a taxi is the easiest way. Most drivers in Thailand know gyms by name — you usually do not need the street address.'
+    )
+  } else {
+    lines.push('A taxi or ride-hailing app is the easiest way to get there.')
   }
 
-  parts.push(
-    'If you are landing at an airport, you can also request an airport transfer from the gym after your booking is confirmed (see What\'s included).'
+  if (city) {
+    lines.push(`Tell the driver "${name}" in ${city}.`)
+  } else {
+    lines.push(`Tell the driver "${name}".`)
+  }
+
+  if (address) {
+    lines.push(`If they need more detail, show them this full address:\n${address}`)
+  } else if (city || country) {
+    lines.push(
+      `If they ask for an address, search "${name}${city ? ` ${city}` : ''}" in Google Maps or use the link in the Address section above.`
+    )
+  }
+
+  lines.push(
+    'Landing at an airport? You can request an airport transfer from the gym after your booking is confirmed (see What\'s included).'
   )
 
-  return parts.join(' ')
+  return lines.join('\n\n')
+}
+
+function howToGetThereSubtitle(gym: ArrivalInfoGym): string {
+  const name = gym.name?.trim()
+  if (name) {
+    return gym.city?.trim() ? `Taxi or Grab to ${name}` : `Getting to ${name}`
+  }
+  if (gym.city?.trim()) return `Getting to ${gym.city.trim()}`
+  return 'Taxi or ride-hailing recommended'
 }
 
 export function hasArrivalInfo(gym: ArrivalInfoGym): boolean {
@@ -78,16 +107,16 @@ export function buildArrivalInfoAccordion(gym: ArrivalInfoGym): CheckoutAccordio
     id: 'address',
     title: 'Address',
     subtitle: locationFallback.split('\n')[0],
-    body: address
-      ? `${address}\n\nTap Open in Google Maps below for directions.`
-      : `${locationFallback}\n\nTap Open in Google Maps below for directions.`,
+    body: maps
+      ? 'Open in Google Maps for directions.'
+      : 'Directions link will be in your confirmation email.',
     link: maps ? { href: maps, label: 'Open in Google Maps' } : undefined,
   })
 
   items.push({
     id: 'how-to-get-there',
     title: 'How to get there',
-    subtitle: gym.city ? `Getting to ${gym.city}` : 'Taxi or ride-hailing recommended',
+    subtitle: howToGetThereSubtitle(gym),
     body: howToGetThereBody(gym),
     link: maps ? { href: maps, label: 'Open in Google Maps' } : undefined,
   })
@@ -109,7 +138,7 @@ export function buildArrivalInfoAccordion(gym: ArrivalInfoGym): CheckoutAccordio
     id: 'arrival-instructions',
     title: 'Arrival instructions',
     subtitle: 'What to do when you arrive',
-    body: DEFAULT_ARRIVAL_INSTRUCTIONS,
+    body: arrivalInstructionsBody(gym),
   })
 
   if (gym.public_contact_phone?.trim()) {

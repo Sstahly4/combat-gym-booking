@@ -2,6 +2,17 @@
 
 import { formatCheckoutSummaryValue } from '@/components/booking/checkout-ui'
 
+function condensedDetailsLine(
+  name: string | null | undefined,
+  email: string | null | undefined,
+  phone: string | null | undefined
+): string {
+  return [name, email, phone]
+    .map((value) => formatCheckoutSummaryValue(value))
+    .filter((value) => value !== '—')
+    .join(' · ')
+}
+
 export function CheckoutYourDetailsCard({
   name,
   email,
@@ -13,9 +24,11 @@ export function CheckoutYourDetailsCard({
   phone: string | null | undefined
   onEdit: () => void
 }) {
+  const summary = condensedDetailsLine(name, email, phone)
+
   return (
-    <div className="border border-gray-200 rounded-xl px-4 py-4">
-      <div className="flex items-start justify-between gap-4 mb-3">
+    <div>
+      <div className="flex items-center justify-between gap-4">
         <h2 className="text-sm font-semibold text-gray-900">Your details</h2>
         <button
           type="button"
@@ -25,20 +38,9 @@ export function CheckoutYourDetailsCard({
           Change
         </button>
       </div>
-      <dl className="space-y-3 text-sm">
-        <div>
-          <dt className="font-semibold text-gray-900">Name</dt>
-          <dd className="mt-0.5 text-gray-700">{formatCheckoutSummaryValue(name)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-gray-900">Email</dt>
-          <dd className="mt-0.5 text-gray-700 break-all">{formatCheckoutSummaryValue(email)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-gray-900">Phone</dt>
-          <dd className="mt-0.5 text-gray-700">{formatCheckoutSummaryValue(phone)}</dd>
-        </div>
-      </dl>
+      <p className="mt-2 text-sm text-gray-600 leading-snug line-clamp-2">
+        {summary || 'Add your name, email, and phone'}
+      </p>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type ReactNode,
 } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
@@ -73,11 +74,8 @@ import {
   PriceDetailsSheet,
   buildPriceBreakdownSummaryLabel,
 } from '@/components/booking/price-details-sheet'
-import {
-  PaymentMethodPicker,
-  type PaymentMethodChoice,
-} from '@/components/booking/payment-method-picker'
-import { PaymentMethodSummaryIcon } from '@/components/booking/payment-brand-logos'
+import type { PaymentMethodChoice } from '@/components/booking/payment-method-picker'
+import { PaymentMethodTiles } from '@/components/booking/payment-method-tiles'
 import {
   PayWhenOptions,
   formatPayWhenSummaryLine,
@@ -195,18 +193,6 @@ function walletExpressOptions(method: PaymentMethodChoice): WalletExpressOptions
   }
 }
 
-/** Off-screen Stripe mount — 1px + clip keeps Elements alive without compositor bleed */
-const CARD_ELEMENT_OFFSCREEN_CLASS =
-  'fixed top-0 left-0 -z-50 h-px w-px overflow-hidden opacity-0 pointer-events-none invisible [clip-path:inset(100%)]'
-
-const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
-  card: 'Credit or debit card',
-  apple_pay: 'Apple Pay',
-  google_pay: 'Google Pay',
-}
-
-type PaymentModalStep = 'pick' | 'card-details'
-
 function PaymentCheckoutTopBar({
   onBack,
   onExit,
@@ -242,43 +228,26 @@ function CheckoutForm({
   onLoadingChange,
   onErrorChange,
   hideMobileSubmit = false,
-  mobilePaymentModalOpen = false,
-  onCloseMobilePaymentModal,
   paymentFieldsMounted = false,
   selectedPaymentMethod = 'card',
   onPaymentMethodChange,
-  paymentModalStep = 'pick',
-  draftPaymentMethod = 'card',
-  onDraftPaymentMethodChange,
-  onPaymentModalStepChange,
-  onCardDetailsCompleteChange,
-  cardDetailsComplete = false,
   onWalletReadyChange,
   mobileCheckoutDisabled = false,
   payWhen = 'now',
+  priceDetailsSection,
 }: {
   booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
   onLoadingChange?: (loading: boolean) => void
   onErrorChange?: (error: string | null) => void
   hideMobileSubmit?: boolean
-  mobilePaymentModalOpen?: boolean
-  onCloseMobilePaymentModal?: () => void
-  /** Keep Stripe elements mounted after the modal is first opened */
   paymentFieldsMounted?: boolean
   selectedPaymentMethod?: PaymentMethodChoice
   onPaymentMethodChange?: (method: PaymentMethodChoice) => void
-  paymentModalStep?: PaymentModalStep
-  draftPaymentMethod?: PaymentMethodChoice
-  onDraftPaymentMethodChange?: (method: PaymentMethodChoice) => void
-  onPaymentModalStepChange?: (step: PaymentModalStep) => void
-  onCardDetailsCompleteChange?: (complete: boolean) => void
-  /** User finished Add card details (Done), not merely opened the step */
-  cardDetailsComplete?: boolean
   onWalletReadyChange?: (ready: 'idle' | 'available' | 'unavailable') => void
-  /** Page-level gate (e.g. client secret still loading) */
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
+  priceDetailsSection?: ReactNode
 }) {
   const router = useRouter()
   const params = useParams()
@@ -289,6 +258,7 @@ function CheckoutForm({
   const [error, setError] = useState<string | null>(null)
   const [walletReady, setWalletReady] = useState<'idle' | 'available' | 'unavailable'>('idle')
   const [klarnaComplete, setKlarnaComplete] = useState(false)
+  const [cardDetailsComplete, setCardDetailsComplete] = useState(false)
 
   const isKlarnaCheckout = payWhen === 'klarna'
 
@@ -296,6 +266,12 @@ function CheckoutForm({
     setWalletReady('idle')
     onWalletReadyChange?.('idle')
   }, [selectedPaymentMethod, onWalletReadyChange])
+
+  useEffect(() => {
+    if (hideMobileSubmit) {
+      setCardDetailsComplete(false)
+    }
+  }, [selectedPaymentMethod, hideMobileSubmit])
 
   useEffect(() => {
     setKlarnaComplete(false)
@@ -423,51 +399,12 @@ function CheckoutForm({
     await handlePaymentResult(confirmError ?? null, paymentIntent)
   }
 
-  const handlePickPrimary = () => {
-    if (draftPaymentMethod === 'card') {
-      onPaymentMethodChange?.('card')
-      onCardDetailsCompleteChange?.(false)
-      onPaymentModalStepChange?.('card-details')
-      return
-    }
-    onPaymentMethodChange?.(draftPaymentMethod)
-    onCloseMobilePaymentModal?.()
+  const handlePaymentMethodChange = (method: PaymentMethodChoice) => {
+    onPaymentMethodChange?.(method)
+    setCardDetailsComplete(false)
   }
 
-  const handlePickDismiss = () => {
-    onDraftPaymentMethodChange?.(selectedPaymentMethod)
-    onPaymentModalStepChange?.('pick')
-    onCloseMobilePaymentModal?.()
-  }
-
-  const handleCardDetailsDismiss = () => {
-    onCardDetailsCompleteChange?.(false)
-    onPaymentModalStepChange?.('pick')
-  }
-
-  const handleCardDetailsDone = () => {
-    onCardDetailsCompleteChange?.(true)
-    onCloseMobilePaymentModal?.()
-  }
-
-  const payWithPickerOpen =
-    mobilePaymentModalOpen && paymentModalStep === 'pick'
-
-  const showCardElementInModal =
-    paymentFieldsMounted &&
-    selectedPaymentMethod === 'card' &&
-    mobilePaymentModalOpen &&
-    paymentModalStep === 'card-details'
-
-  const showCardElementOffscreen =
-    paymentFieldsMounted &&
-    cardDetailsComplete &&
-    selectedPaymentMethod === 'card' &&
-    !mobilePaymentModalOpen &&
-    !isKlarnaCheckout
-
-  const showKlarnaElement =
-    paymentFieldsMounted && isKlarnaCheckout && !mobilePaymentModalOpen
+  const showKlarnaElement = paymentFieldsMounted && isKlarnaCheckout
 
   const klarnaElementOptions = {
     ...KLARNA_ELEMENT_OPTIONS,
@@ -481,133 +418,107 @@ function CheckoutForm({
 
   if (hideMobileSubmit) {
     return (
-      <>
-        <form id={formId} onSubmit={handleSubmit}>
-          {showCardElementOffscreen && (
-            <div className={CARD_ELEMENT_OFFSCREEN_CLASS} aria-hidden>
-              <PaymentElement options={CARD_ELEMENT_OPTIONS} />
-            </div>
-          )}
-          {paymentFieldsMounted && payWithPickerOpen && (
-            <CheckoutBottomSheet
-              onClose={handlePickDismiss}
-              onCancel={handlePickDismiss}
-              title="Pay with"
-              primaryLabel={draftPaymentMethod === 'card' ? 'Next' : 'Done'}
-              onPrimary={handlePickPrimary}
-            >
-              <PaymentMethodPicker
-                value={draftPaymentMethod}
-                onChange={(method) => onDraftPaymentMethodChange?.(method)}
+      <div className="space-y-6">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+          {!isKlarnaCheckout && paymentFieldsMounted && (
+            <div className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900">How would you like to pay?</h2>
+              <PaymentMethodTiles
+                value={selectedPaymentMethod}
+                onChange={handlePaymentMethodChange}
               />
-            </CheckoutBottomSheet>
-          )}
-          {paymentFieldsMounted &&
-            mobilePaymentModalOpen &&
-            paymentModalStep === 'card-details' && (
-              <CheckoutBottomSheet
-                layer="nested"
-                onClose={handleCardDetailsDismiss}
-                onCancel={handleCardDetailsDismiss}
-                title="Add card details"
-                primaryLabel="Done"
-                onPrimary={handleCardDetailsDone}
-              >
-                <div className="relative z-10 flex-shrink-0 overflow-y-auto space-y-3 pb-4">
-                  <p className="text-sm text-gray-600">
-                    You&apos;ll pay when you complete this booking.
-                  </p>
-                  {showCardElementInModal && (
-                    <PaymentElement options={CARD_ELEMENT_OPTIONS} />
-                  )}
-                </div>
-                {error && (
-                  <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
-                )}
-              </CheckoutBottomSheet>
-            )}
-        </form>
-        {!mobilePaymentModalOpen && (
-          <div className="space-y-2">
-            <CheckoutPaymentConsent />
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {error}
-              </div>
-            )}
-            {showKlarnaElement && (
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <PaymentElement
-                  options={klarnaElementOptions}
-                  onChange={(event) => setKlarnaComplete(event.complete)}
-                />
-              </div>
-            )}
-            {isKlarnaCheckout ? (
-              <Button
-                type="submit"
-                form={formId}
-                disabled={mobileCheckoutDisabled || loading || !klarnaComplete || !stripe}
-                className={CHECKOUT_PAY_BUTTON_CLASS}
-              >
-                {loading ? 'Processing...' : (
-                  <>
-                    Confirm Booking
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </Button>
-            ) : selectedPaymentMethod === 'card' ? (
-              <Button
-                type="submit"
-                form={formId}
-                disabled={mobileCheckoutDisabled || loading || !cardDetailsComplete || !stripe}
-                className={CHECKOUT_PAY_BUTTON_CLASS}
-              >
-                {loading ? 'Processing...' : (
-                  <>
-                    Confirm Booking
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </Button>
-            ) : paymentFieldsMounted ? (
-              walletReady === 'unavailable' ? (
-                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-                  {selectedPaymentMethod === 'apple_pay'
-                    ? 'Apple Pay is not available in this browser. Use Safari on an iPhone, iPad, or Mac, or choose another payment method.'
-                    : 'Google Pay is not available on this device. Choose another payment method.'}
-                </p>
-              ) : (
-                <div
-                  className={`w-full min-w-0 ${
-                    walletReady === 'idle' ? 'invisible overflow-hidden' : ''
-                  }`}
-                  style={{ minHeight: CHECKOUT_WALLET_BUTTON_HEIGHT }}
-                >
-                  <ExpressCheckoutElement
-                    key={selectedPaymentMethod}
-                    onConfirm={handleWalletConfirm}
-                    onReady={(event) => {
-                      const available =
-                        selectedPaymentMethod === 'apple_pay'
-                          ? event.availablePaymentMethods?.applePay
-                          : event.availablePaymentMethods?.googlePay
-                      updateWalletReady(available ? 'available' : 'unavailable')
-                    }}
-                    options={
-                      walletExpressOptions(selectedPaymentMethod) as unknown as NonNullable<
-                        ComponentProps<typeof ExpressCheckoutElement>['options']
-                      >
-                    }
+              {selectedPaymentMethod === 'card' && (
+                <div className="space-y-3 pt-1">
+                  <p className="text-sm font-semibold text-gray-900">New card</p>
+                  <PaymentElement
+                    options={CARD_ELEMENT_OPTIONS}
+                    onChange={(event) => setCardDetailsComplete(event.complete)}
                   />
                 </div>
-              )
-            ) : null}
-            <PaymentHoldExplainer />
-          </div>
-        )}
-      </>
+              )}
+            </div>
+          )}
+          {showKlarnaElement && (
+            <PaymentElement
+              options={klarnaElementOptions}
+              onChange={(event) => setKlarnaComplete(event.complete)}
+            />
+          )}
+        </form>
+
+        {priceDetailsSection}
+
+        <div className="space-y-2">
+          <CheckoutPaymentConsent />
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              {error}
+            </div>
+          )}
+          {isKlarnaCheckout ? (
+            <Button
+              type="submit"
+              form={formId}
+              disabled={mobileCheckoutDisabled || loading || !klarnaComplete || !stripe}
+              className={CHECKOUT_PAY_BUTTON_CLASS}
+            >
+              {loading ? 'Processing...' : (
+                <>
+                  Confirm Booking
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
+            </Button>
+          ) : selectedPaymentMethod === 'card' ? (
+            <Button
+              type="submit"
+              form={formId}
+              disabled={mobileCheckoutDisabled || loading || !cardDetailsComplete || !stripe}
+              className={CHECKOUT_PAY_BUTTON_CLASS}
+            >
+              {loading ? 'Processing...' : (
+                <>
+                  Confirm Booking
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
+            </Button>
+          ) : paymentFieldsMounted ? (
+            walletReady === 'unavailable' ? (
+              <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                {selectedPaymentMethod === 'apple_pay'
+                  ? 'Apple Pay is not available in this browser. Use Safari on an iPhone, iPad, or Mac, or choose another payment method.'
+                  : 'Google Pay is not available on this device. Choose another payment method.'}
+              </p>
+            ) : (
+              <div
+                className={`w-full min-w-0 ${
+                  walletReady === 'idle' ? 'invisible overflow-hidden' : ''
+                }`}
+                style={{ minHeight: CHECKOUT_WALLET_BUTTON_HEIGHT }}
+              >
+                <ExpressCheckoutElement
+                  key={selectedPaymentMethod}
+                  onConfirm={handleWalletConfirm}
+                  onReady={(event) => {
+                    const available =
+                      selectedPaymentMethod === 'apple_pay'
+                        ? event.availablePaymentMethods?.applePay
+                        : event.availablePaymentMethods?.googlePay
+                    updateWalletReady(available ? 'available' : 'unavailable')
+                  }}
+                  options={
+                    walletExpressOptions(selectedPaymentMethod) as unknown as NonNullable<
+                      ComponentProps<typeof ExpressCheckoutElement>['options']
+                    >
+                  }
+                />
+              </div>
+            )
+          ) : null}
+          <PaymentHoldExplainer />
+        </div>
+      </div>
     )
   }
 
@@ -725,11 +636,6 @@ export default function PaymentPage() {
   const [arrivalInfoOpen, setArrivalInfoOpen] = useState(false)
   const [cancellationSheetOpen, setCancellationSheetOpen] = useState(false)
   const [whatsIncludedSheetOpen, setWhatsIncludedSheetOpen] = useState(false)
-  const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
-  const [stripeCheckoutMounted, setStripeCheckoutMounted] = useState(false)
-  const [paymentModalStep, setPaymentModalStep] = useState<PaymentModalStep>('pick')
-  const [draftPaymentMethod, setDraftPaymentMethod] = useState<PaymentMethodChoice>('card')
-  const [cardDetailsComplete, setCardDetailsComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethodChoice>('card')
   const [payWhen, setPayWhen] = useState<PayWhenChoice>(readInitialPayWhen)
@@ -797,10 +703,6 @@ export default function PaymentPage() {
     setPayWhen(nextTiming)
     persistPayTimingPrefill(nextTiming)
     setClientSecret(null)
-    setPaymentMethodOpen(false)
-    setCardDetailsComplete(false)
-    setStripeCheckoutMounted(nextTiming === 'klarna')
-
     try {
       setLoading(true)
       await loadPaymentIntent(nextTiming)
@@ -815,18 +717,6 @@ export default function PaymentPage() {
   const handlePayWhenDismiss = () => {
     setDraftPayWhen(payWhen)
     closePayWhenSheet()
-  }
-
-  const openPaymentMethodModal = () => {
-    setStripeCheckoutMounted(true)
-    setDraftPaymentMethod(selectedPaymentMethod)
-    setPaymentModalStep('pick')
-    setPaymentMethodOpen(true)
-  }
-
-  const closePaymentMethodModal = () => {
-    setPaymentMethodOpen(false)
-    setPaymentModalStep('pick')
   }
 
   const openDatePicker = () => {
@@ -897,7 +787,6 @@ export default function PaymentPage() {
 
       if (data.payment_intent_reset) {
         setClientSecret(null)
-        setCardDetailsComplete(false)
       }
       await loadPaymentIntent(payWhen)
 
@@ -1041,7 +930,6 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (
-      !paymentMethodOpen &&
       !priceSheetOpen &&
       !priceBreakdownOpen &&
       !payWhenSheetOpen &&
@@ -1062,7 +950,6 @@ export default function PaymentPage() {
       document.documentElement.style.overflow = prevHtml
     }
   }, [
-    paymentMethodOpen,
     priceSheetOpen,
     priceBreakdownOpen,
     payWhenSheetOpen,
@@ -1073,12 +960,6 @@ export default function PaymentPage() {
     cancellationSheetOpen,
     whatsIncludedSheetOpen,
   ])
-
-  useEffect(() => {
-    if (payWhen === 'klarna' && clientSecret) {
-      setStripeCheckoutMounted(true)
-    }
-  }, [payWhen, clientSecret])
 
   useEffect(() => {
     fetchBookingAndPaymentIntent()
@@ -1476,43 +1357,12 @@ export default function PaymentPage() {
 
             <div className="border-t border-gray-200 pt-1" role="presentation" aria-hidden />
 
-            {effectivePayWhen !== 'klarna' && (
-              <button
-                type="button"
-                onClick={openPaymentMethodModal}
-                disabled={!clientSecret}
-                className="w-full border border-gray-200 rounded-xl px-4 py-4 text-left flex items-center justify-between gap-4 disabled:opacity-60 transition-colors hover:bg-gray-50 active:bg-gray-100"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-900 mb-2">Payment method</div>
-                  <div className="flex items-center gap-2.5 text-sm text-gray-600">
-                    <PaymentMethodSummaryIcon method={selectedPaymentMethod} />
-                    <span>{PAYMENT_METHOD_LABELS[selectedPaymentMethod]}</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-900 shrink-0" />
-              </button>
-            )}
-
             <CheckoutYourDetailsCard
               name={guestDisplayName || null}
               email={guestDisplayEmail || null}
               phone={guestDisplayPhone || null}
               onEdit={openDetailsSheet}
             />
-
-            {priceInfo && rawTotal > 0 && (
-              <CheckoutPriceDetailsInline
-                lines={priceInfo.lines}
-                savedVsNightly={priceInfo.savedVsNightly}
-                total={rawTotal}
-                gymCurrency={gymCurrency}
-                displayCurrency={selectedCurrency}
-                convertPrice={convertPrice}
-                onCurrencyClick={() => setCurrencyModalOpen(true)}
-                onPriceBreakdownClick={() => setPriceBreakdownOpen(true)}
-              />
-            )}
           </div>
 
           {detailsSheetOpen && (
@@ -1644,19 +1494,25 @@ export default function PaymentPage() {
               <CheckoutForm
                 booking={booking}
                 hideMobileSubmit
-                mobilePaymentModalOpen={paymentMethodOpen}
-                onCloseMobilePaymentModal={closePaymentMethodModal}
-                paymentFieldsMounted={stripeCheckoutMounted || effectivePayWhen === 'klarna'}
+                paymentFieldsMounted={!!clientSecret}
                 selectedPaymentMethod={selectedPaymentMethod}
                 onPaymentMethodChange={setSelectedPaymentMethod}
-                paymentModalStep={paymentModalStep}
-                draftPaymentMethod={draftPaymentMethod}
-                onDraftPaymentMethodChange={setDraftPaymentMethod}
-                onPaymentModalStepChange={setPaymentModalStep}
-                onCardDetailsCompleteChange={setCardDetailsComplete}
-                cardDetailsComplete={cardDetailsComplete}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
+                priceDetailsSection={
+                  priceInfo && rawTotal > 0 ? (
+                    <CheckoutPriceDetailsInline
+                      lines={priceInfo.lines}
+                      savedVsNightly={priceInfo.savedVsNightly}
+                      total={rawTotal}
+                      gymCurrency={gymCurrency}
+                      displayCurrency={selectedCurrency}
+                      convertPrice={convertPrice}
+                      onCurrencyClick={() => setCurrencyModalOpen(true)}
+                      onPriceBreakdownClick={() => setPriceBreakdownOpen(true)}
+                    />
+                  ) : null
+                }
               />
             </Elements>
           ) : null}
