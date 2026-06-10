@@ -5,11 +5,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
-  type MouseEvent,
-  type ReactNode,
-  type TouchEvent,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
 import {
@@ -58,7 +54,12 @@ import {
   writeBookingPrefill,
 } from '@/lib/utils/booking-prefill'
 import { DateRangePicker } from '@/components/date-range-picker'
-import { clearGuestCheckoutSession, readGuestDetails } from '@/lib/utils/checkout-details-prefill'
+import {
+  clearGuestCheckoutSession,
+  readGuestDetails,
+  writeGuestDetails,
+} from '@/lib/utils/checkout-details-prefill'
+import { splitGuestName } from '@/lib/booking/guest-name'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
   CHECKOUT_WALLET_BUTTON_HEIGHT,
@@ -67,7 +68,11 @@ import {
   formatCheckoutAmountOnly,
   formatCheckoutDateRange,
 } from '@/components/booking/checkout-ui'
-import { PriceDetailsSheet } from '@/components/booking/price-details-sheet'
+import {
+  PriceBreakdownSheet,
+  PriceDetailsSheet,
+  buildPriceBreakdownSummaryLabel,
+} from '@/components/booking/price-details-sheet'
 import {
   PaymentMethodPicker,
   type PaymentMethodChoice,
@@ -81,7 +86,24 @@ import {
 import { KlarnaInfoSheet } from '@/components/booking/klarna-info-sheet'
 import { CurrencyModal } from '@/components/currency-modal'
 import { CheckoutYourDetailsCard } from '@/components/booking/checkout-your-details-card'
+import {
+  CheckoutYourDetailsForm,
+  type CheckoutYourDetailsFields,
+} from '@/components/booking/checkout-your-details-form'
 import { CheckoutPriceDetailsCard } from '@/components/booking/checkout-price-details-card'
+import {
+  CheckoutWhatsIncludedInline,
+  CheckoutWhatsIncludedSheet,
+} from '@/components/booking/checkout-whats-included-inline'
+import {
+  CheckoutCancellationPolicyRow,
+  CheckoutCancellationPolicySheet,
+} from '@/components/booking/checkout-cancellation-policy'
+import { CheckoutBottomSheet } from '@/components/booking/checkout-bottom-sheet'
+import {
+  CheckoutArrivalInfoRow,
+  CheckoutArrivalInfoSheet,
+} from '@/components/booking/checkout-arrival-info'
 import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -184,149 +206,6 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethodChoice, string> = {
 }
 
 type PaymentModalStep = 'pick' | 'card-details'
-
-function PaymentMethodSheet({
-  onClose,
-  onCancel,
-  title,
-  primaryLabel,
-  onPrimary,
-  children,
-  layer = 'primary',
-}: {
-  onClose: () => void
-  onCancel: () => void
-  title: string
-  primaryLabel: 'Next' | 'Done' | 'Save'
-  onPrimary: () => void
-  children: ReactNode
-  /** Nested sheet stacks above the Pay with picker (e.g. Add card details) */
-  layer?: 'primary' | 'nested'
-}) {
-  const rootZ = layer === 'nested' ? 'z-[310]' : 'z-[300]'
-  const sheetZ = layer === 'nested' ? 'z-[312]' : 'z-[302]'
-  const [sheetTranslateY, setSheetTranslateY] = useState(0)
-  const sheetStartY = useRef(0)
-  const sheetIsDragging = useRef(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const sheetRef = useRef<HTMLDivElement>(null)
-  const dragHandleRef = useRef<HTMLDivElement>(null)
-
-  const handleSheetTouchStart = (e: TouchEvent) => {
-    sheetStartY.current = e.touches[0].clientY
-    sheetIsDragging.current = true
-  }
-
-  const handleSheetTouchMove = (e: TouchEvent) => {
-    if (!sheetIsDragging.current) return
-    const diffY = e.touches[0].clientY - sheetStartY.current
-    if (diffY > 0) setSheetTranslateY(diffY)
-  }
-
-  const handleSheetTouchEnd = () => {
-    if (!sheetIsDragging.current) return
-    sheetIsDragging.current = false
-    if (sheetTranslateY > 100) onClose()
-    setSheetTranslateY(0)
-  }
-
-  const handleRootClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return
-    onClose()
-  }
-
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
-    const preventBackdropScroll: EventListener = (e) => {
-      if (sheetRef.current?.contains(e.target as Node)) return
-      e.preventDefault()
-    }
-    root.addEventListener('touchmove', preventBackdropScroll, { passive: false })
-    return () => root.removeEventListener('touchmove', preventBackdropScroll)
-  }, [])
-
-  useEffect(() => {
-    const handle = dragHandleRef.current
-    if (!handle) return
-    const preventDragScroll: EventListener = (e) => {
-      if (sheetIsDragging.current) e.preventDefault()
-    }
-    handle.addEventListener('touchmove', preventDragScroll, { passive: false })
-    return () => handle.removeEventListener('touchmove', preventDragScroll)
-  }, [])
-
-  const sheetDragging = sheetTranslateY > 0
-
-  const sheet = (
-    <div
-      ref={rootRef}
-      className={`md:hidden fixed inset-0 ${rootZ} overscroll-none bg-black/50`}
-      role="dialog"
-      aria-modal="true"
-      onClick={handleRootClick}
-    >
-      <div
-        ref={sheetRef}
-        className={`absolute inset-x-0 top-[4%] bottom-0 ${sheetZ} flex flex-col rounded-t-2xl bg-white shadow-2xl overscroll-contain ${
-          sheetDragging ? 'transition-transform duration-100 ease-out' : ''
-        }`}
-        style={sheetDragging ? { transform: `translateY(${sheetTranslateY}px)` } : undefined}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          ref={dragHandleRef}
-          className="flex-shrink-0 touch-none"
-          onTouchStart={handleSheetTouchStart}
-          onTouchMove={handleSheetTouchMove}
-          onTouchEnd={handleSheetTouchEnd}
-        >
-          <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
-          </div>
-        </div>
-        <div className="flex items-start justify-between gap-4 px-6 pt-2 pb-5 flex-shrink-0">
-          <h2 className="text-[22px] font-semibold leading-tight text-gray-900">{title}</h2>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onClose()
-            }}
-            className="w-8 h-8 -mr-1 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0 touch-manipulation"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4 text-gray-800" />
-          </button>
-        </div>
-        <div className="flex-1 flex flex-col min-h-0 px-6">{children}</div>
-        <div
-          className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-100 flex-shrink-0"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        >
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-sm font-semibold text-gray-900 py-1.5 hover:text-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onPrimary}
-            className="h-11 px-6 text-sm font-semibold rounded-xl bg-gray-900 hover:bg-gray-800 text-white transition-colors"
-          >
-            {primaryLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (typeof document === 'undefined') return sheet
-  return createPortal(sheet, document.body)
-}
 
 function PaymentCheckoutTopBar({
   onBack,
@@ -610,7 +489,7 @@ function CheckoutForm({
             </div>
           )}
           {paymentFieldsMounted && payWithPickerOpen && (
-            <PaymentMethodSheet
+            <CheckoutBottomSheet
               onClose={handlePickDismiss}
               onCancel={handlePickDismiss}
               title="Pay with"
@@ -621,12 +500,12 @@ function CheckoutForm({
                 value={draftPaymentMethod}
                 onChange={(method) => onDraftPaymentMethodChange?.(method)}
               />
-            </PaymentMethodSheet>
+            </CheckoutBottomSheet>
           )}
           {paymentFieldsMounted &&
             mobilePaymentModalOpen &&
             paymentModalStep === 'card-details' && (
-              <PaymentMethodSheet
+              <CheckoutBottomSheet
                 layer="nested"
                 onClose={handleCardDetailsDismiss}
                 onCancel={handleCardDetailsDismiss}
@@ -645,7 +524,7 @@ function CheckoutForm({
                 {error && (
                   <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-md text-sm">{error}</div>
                 )}
-              </PaymentMethodSheet>
+              </CheckoutBottomSheet>
             )}
         </form>
         {!mobilePaymentModalOpen && (
@@ -842,6 +721,10 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null)
   const [addressCopied, setAddressCopied] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
+  const [priceBreakdownOpen, setPriceBreakdownOpen] = useState(false)
+  const [arrivalInfoOpen, setArrivalInfoOpen] = useState(false)
+  const [cancellationSheetOpen, setCancellationSheetOpen] = useState(false)
+  const [whatsIncludedSheetOpen, setWhatsIncludedSheetOpen] = useState(false)
   const [paymentMethodOpen, setPaymentMethodOpen] = useState(false)
   const [stripeCheckoutMounted, setStripeCheckoutMounted] = useState(false)
   const [paymentModalStep, setPaymentModalStep] = useState<PaymentModalStep>('pick')
@@ -854,6 +737,14 @@ export default function PaymentPage() {
   const [draftPayWhen, setDraftPayWhen] = useState<PayWhenChoice>(readInitialPayWhen)
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
+  const [detailsSheetOpen, setDetailsSheetOpen] = useState(false)
+  const [detailsSaveError, setDetailsSaveError] = useState<string | null>(null)
+  const [draftDetails, setDraftDetails] = useState<CheckoutYourDetailsFields>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+  })
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
   const [guestCount, setGuestCount] = useState(1)
@@ -1047,6 +938,98 @@ export default function PaymentPage() {
     dismissGuestSheet()
   }
 
+  const resolveDetailsFields = (): CheckoutYourDetailsFields => {
+    const cached = booking?.gym_id ? readGuestDetails(booking.gym_id) : null
+    const fullName =
+      booking?.guest_name?.trim() ||
+      (cached ? `${cached.firstName} ${cached.lastName}`.trim() : '')
+    const split = splitGuestName(fullName)
+    return {
+      firstName: cached?.firstName?.trim() || split.firstName,
+      lastName: cached?.lastName?.trim() || split.lastName,
+      email: booking?.guest_email?.trim() || cached?.email?.trim() || '',
+      phone: booking?.guest_phone?.trim() || cached?.phone?.trim() || '',
+    }
+  }
+
+  const openDetailsSheet = () => {
+    setDraftDetails(resolveDetailsFields())
+    setDetailsSaveError(null)
+    setDetailsSheetOpen(true)
+  }
+
+  const dismissDetailsSheet = () => {
+    setDetailsSheetOpen(false)
+    setDetailsSaveError(null)
+  }
+
+  const handleDetailsDismiss = () => {
+    dismissDetailsSheet()
+  }
+
+  const handleDetailsSave = async () => {
+    if (!booking) return
+    const firstName = draftDetails.firstName.trim()
+    const lastName = draftDetails.lastName.trim()
+    const email = draftDetails.email.trim()
+    const phone = draftDetails.phone.trim()
+
+    if (!firstName || !lastName || !email || !phone) {
+      setDetailsSaveError('Please fill in all required fields')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setDetailsSaveError(null)
+      const response = await fetch(`/api/bookings/${bookingId}/guest-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          guest_email: email,
+          guest_phone: phone,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update your details')
+      }
+
+      setBooking((prev) =>
+        prev
+          ? {
+              ...prev,
+              guest_name: data.guest_name,
+              guest_email: data.guest_email,
+              guest_phone: data.guest_phone,
+            }
+          : prev
+      )
+
+      const cached = booking.gym_id ? readGuestDetails(booking.gym_id) : null
+      if (booking.gym_id) {
+        writeGuestDetails(booking.gym_id, {
+          firstName,
+          lastName,
+          email,
+          phone,
+          country: cached?.country ?? 'Australia',
+          notes: cached?.notes ?? '',
+          discipline: cached?.discipline ?? '',
+        })
+      }
+
+      dismissDetailsSheet()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update your details'
+      setDetailsSaveError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!booking?.gym_id || !booking.package_id) return
     const cached = readBookingPrefill(booking.gym_id, booking.package_id)
@@ -1057,7 +1040,19 @@ export default function PaymentPage() {
   }, [booking?.gym_id, booking?.package_id])
 
   useEffect(() => {
-    if (!paymentMethodOpen && !priceSheetOpen && !payWhenSheetOpen && !datePickerOpen && !guestSheetOpen) return
+    if (
+      !paymentMethodOpen &&
+      !priceSheetOpen &&
+      !priceBreakdownOpen &&
+      !payWhenSheetOpen &&
+      !datePickerOpen &&
+      !guestSheetOpen &&
+      !detailsSheetOpen &&
+      !arrivalInfoOpen &&
+      !cancellationSheetOpen &&
+      !whatsIncludedSheetOpen
+    )
+      return
     const prevBody = document.body.style.overflow
     const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -1066,7 +1061,18 @@ export default function PaymentPage() {
       document.body.style.overflow = prevBody
       document.documentElement.style.overflow = prevHtml
     }
-  }, [paymentMethodOpen, priceSheetOpen, payWhenSheetOpen, datePickerOpen, guestSheetOpen])
+  }, [
+    paymentMethodOpen,
+    priceSheetOpen,
+    priceBreakdownOpen,
+    payWhenSheetOpen,
+    datePickerOpen,
+    guestSheetOpen,
+    detailsSheetOpen,
+    arrivalInfoOpen,
+    cancellationSheetOpen,
+    whatsIncludedSheetOpen,
+  ])
 
   useEffect(() => {
     if (payWhen === 'klarna' && clientSecret) {
@@ -1425,18 +1431,31 @@ export default function PaymentPage() {
                 onEdit={priceInfo && rawTotal > 0 ? () => setPriceSheetOpen(true) : undefined}
                 editLabel="Details"
               />
-              {booking.package && booking.start_date && (
-                <div className="py-3">
-                  <BookingTrustLine
-                    pkg={booking.package as any}
-                    gym={booking.gym}
-                    checkin={booking.start_date}
-                    variant="featured"
-                  />
-                </div>
-              )}
             </div>
             </div>
+
+            {booking.package && (
+              <CheckoutWhatsIncludedInline
+                package_={booking.package}
+                gym={booking.gym}
+                variant={booking.variant}
+                onOpenDetails={() => setWhatsIncludedSheetOpen(true)}
+              />
+            )}
+
+            {booking.package && booking.start_date && (
+              <CheckoutCancellationPolicyRow
+                package_={booking.package}
+                checkin={booking.start_date}
+                gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+                onOpen={() => setCancellationSheetOpen(true)}
+              />
+            )}
+
+            <CheckoutArrivalInfoRow
+              gym={booking.gym}
+              onOpen={() => setArrivalInfoOpen(true)}
+            />
 
             <button
               type="button"
@@ -1479,7 +1498,7 @@ export default function PaymentPage() {
               name={guestDisplayName || null}
               email={guestDisplayEmail || null}
               phone={guestDisplayPhone || null}
-              onEdit={() => router.replace(step2Url)}
+              onEdit={openDetailsSheet}
             />
 
             {priceInfo && rawTotal > 0 && (
@@ -1490,12 +1509,36 @@ export default function PaymentPage() {
                 gymCurrency={gymCurrency}
                 displayCurrency={selectedCurrency}
                 convertPrice={convertPrice}
+                onCurrencyClick={() => setCurrencyModalOpen(true)}
+                onPriceBreakdownClick={() => setPriceBreakdownOpen(true)}
               />
             )}
           </div>
 
+          {detailsSheetOpen && (
+            <CheckoutBottomSheet
+              onClose={handleDetailsDismiss}
+              onCancel={handleDetailsDismiss}
+              title="Your details"
+              primaryLabel="Save"
+              onPrimary={handleDetailsSave}
+            >
+              <div className="relative z-10 flex-shrink-0 overflow-y-auto pb-4">
+                <CheckoutYourDetailsForm
+                  values={draftDetails}
+                  onChange={(patch) => setDraftDetails((prev) => ({ ...prev, ...patch }))}
+                  idPrefix="payment-details"
+                />
+                {detailsSaveError && (
+                  <p className="mt-4 text-sm text-red-700">{detailsSaveError}</p>
+                )}
+              </div>
+              <div className="flex-1 min-h-0" aria-hidden />
+            </CheckoutBottomSheet>
+          )}
+
           {datePickerOpen && (
-            <PaymentMethodSheet
+            <CheckoutBottomSheet
               onClose={handleDatePickerCancel}
               onCancel={handleDatePickerCancel}
               title="Change dates"
@@ -1513,11 +1556,11 @@ export default function PaymentPage() {
                   onCheckoutChange={setDraftCheckout}
                 />
               </div>
-            </PaymentMethodSheet>
+            </CheckoutBottomSheet>
           )}
 
           {guestSheetOpen && (
-            <PaymentMethodSheet
+            <CheckoutBottomSheet
               onClose={handleGuestSheetCancel}
               onCancel={handleGuestSheetCancel}
               title="Change guests"
@@ -1551,11 +1594,11 @@ export default function PaymentPage() {
                 </div>
               </div>
               <div className="flex-1 min-h-0" aria-hidden />
-            </PaymentMethodSheet>
+            </CheckoutBottomSheet>
           )}
 
           {payWhenSheetOpen && displayTotalPrice != null && (
-            <PaymentMethodSheet
+            <CheckoutBottomSheet
               onClose={handlePayWhenDismiss}
               onCancel={handlePayWhenDismiss}
               title="Choose when to pay"
@@ -1575,7 +1618,7 @@ export default function PaymentPage() {
                 />
               </div>
               <div className="flex-1 min-h-0" aria-hidden />
-            </PaymentMethodSheet>
+            </CheckoutBottomSheet>
           )}
 
           {rawTotal > 0 && klarnaAvailable && (
@@ -1859,6 +1902,7 @@ export default function PaymentPage() {
                   duration={duration}
                   pricingDuration={displayDuration}
                   gym={booking.gym}
+                  variant={booking.variant}
                   className="rounded-lg border border-gray-300 bg-white p-5 space-y-4"
                 />
                 <BookingSafetyPolicies
@@ -1909,6 +1953,45 @@ export default function PaymentPage() {
         </div>
         </div>
       </div>
+
+      {whatsIncludedSheetOpen && booking.package && (
+        <CheckoutWhatsIncludedSheet
+          package_={booking.package}
+          gym={booking.gym}
+          variant={booking.variant}
+          onClose={() => setWhatsIncludedSheetOpen(false)}
+        />
+      )}
+
+      {cancellationSheetOpen && booking.package && booking.start_date && (
+        <CheckoutCancellationPolicySheet
+          package_={booking.package}
+          checkin={booking.start_date}
+          gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
+          onClose={() => setCancellationSheetOpen(false)}
+        />
+      )}
+
+      {arrivalInfoOpen && (
+        <CheckoutArrivalInfoSheet gym={booking.gym} onClose={() => setArrivalInfoOpen(false)} />
+      )}
+
+      {priceBreakdownOpen && priceInfo && rawTotal > 0 && booking && (
+        <PriceBreakdownSheet
+          summaryLabel={buildPriceBreakdownSummaryLabel({
+            checkin: booking.start_date,
+            checkout: booking.end_date,
+            pricingDuration: displayDuration,
+            isTraining: !!isTraining,
+          })}
+          savedVsNightly={priceInfo.savedVsNightly}
+          total={rawTotal}
+          gymCurrency={gymCurrency}
+          displayCurrency={selectedCurrency}
+          convertPrice={convertPrice}
+          onClose={() => setPriceBreakdownOpen(false)}
+        />
+      )}
 
       {priceSheetOpen && priceInfo && rawTotal > 0 && (
         <PriceDetailsSheet

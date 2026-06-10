@@ -14,7 +14,7 @@ function lineUnitLabel(line: PriceLine): string {
   return line.qty === 1 ? 'night' : 'nights'
 }
 
-function formatBreakdownDateRange(from: string, to: string): string {
+export function formatBreakdownDateRange(from: string, to: string): string {
   const a = new Date(from + 'T00:00:00')
   const b = new Date(to + 'T00:00:00')
   const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
@@ -30,7 +30,24 @@ function stayUnitLabel(count: number, isTraining: boolean): string {
   return count === 1 ? 'night' : 'nights'
 }
 
-function PriceBreakdownSheet({
+export function buildPriceBreakdownSummaryLabel({
+  checkin,
+  checkout,
+  pricingDuration,
+  isTraining,
+}: {
+  checkin: string
+  checkout: string
+  pricingDuration: number
+  isTraining: boolean
+}): string {
+  if (checkin && checkout && pricingDuration > 0) {
+    return `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} · ${formatBreakdownDateRange(checkin, checkout)}`
+  }
+  return `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
+}
+
+export function PriceBreakdownSheet({
   summaryLabel,
   savedVsNightly,
   total,
@@ -163,10 +180,12 @@ export function PriceDetailsSheet({
   const formatDisplay = (amount: number) =>
     formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
 
-  const breakdownSummaryLabel =
-    checkin && checkout && pricingDuration > 0
-      ? `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} · ${formatBreakdownDateRange(checkin, checkout)}`
-      : `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
+  const breakdownSummaryLabel = buildPriceBreakdownSummaryLabel({
+    checkin,
+    checkout,
+    pricingDuration,
+    isTraining,
+  })
 
   const rootRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)

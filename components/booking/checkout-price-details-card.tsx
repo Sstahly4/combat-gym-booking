@@ -19,6 +19,8 @@ export function CheckoutPriceDetailsCard({
   gymCurrency,
   displayCurrency,
   convertPrice,
+  onCurrencyClick,
+  onPriceBreakdownClick,
 }: {
   lines: PriceLine[]
   savedVsNightly: number
@@ -26,6 +28,8 @@ export function CheckoutPriceDetailsCard({
   gymCurrency: string
   displayCurrency: string
   convertPrice: (amount: number, fromCurrency: string) => number
+  onCurrencyClick: () => void
+  onPriceBreakdownClick: () => void
 }) {
   const formatDisplay = (amount: number) =>
     formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
@@ -50,13 +54,28 @@ export function CheckoutPriceDetailsCard({
         )}
       </div>
       <div className="border-t border-gray-200 mt-4 pt-4 flex items-baseline justify-between gap-4">
-        <span className="text-sm font-semibold text-gray-900">
-          Total <span className="underline">{displayCurrency}</span>
+        <span className="text-sm font-semibold text-gray-900 inline-flex items-baseline gap-1">
+          Total{' '}
+          <button
+            type="button"
+            onClick={onCurrencyClick}
+            className="font-semibold text-gray-900 underline hover:text-gray-700 transition-colors"
+            aria-label={`Change currency, currently ${displayCurrency}`}
+          >
+            {displayCurrency}
+          </button>
         </span>
         <span className="text-sm font-semibold text-gray-900 shrink-0 text-right">
           {formatDisplay(total)}
         </span>
       </div>
+      <button
+        type="button"
+        onClick={onPriceBreakdownClick}
+        className="mt-4 text-sm text-gray-900 underline text-left hover:text-gray-700 transition-colors"
+      >
+        Price breakdown
+      </button>
     </div>
   )
 }

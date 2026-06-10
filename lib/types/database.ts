@@ -95,6 +95,8 @@ export interface Gym {
   longitude: number | null
   disciplines: string[]
   amenities: Record<string, any>
+  opening_hours?: Record<string, string> | null
+  training_schedule?: Record<string, Array<{ time: string; type?: string }>> | null
   price_per_day: number
   price_per_week: number | null
   price_per_month: number | null
