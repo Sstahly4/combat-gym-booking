@@ -143,7 +143,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
           <p>
             Famous fight camps matter if you plan to compete. They matter less if you have never thrown a jab. A camp
             with a stadium pedigree and a room full of active fighters can still be a bad first trip if nobody runs a
-            fundamentals block and you get treated like luggage in a group class.
+            fundamentals block and you end up in a large group class with no corrections.
           </p>
           <p>
             Start with <strong>city</strong>, then <strong>daily logistics</strong>, then <strong>coaching fit</strong>.
@@ -186,7 +186,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Pad work with a coach who talks you through balance beats an empty bag room you share with twenty strangers.
+              Coached pad rounds teach faster than sharing heavy bags with strangers and no feedback.
             </figcaption>
           </figure>
         </div>
@@ -195,8 +195,8 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
       <section id="beginner-camp" className="mb-14 scroll-mt-24">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">What a good beginner camp offers</h2>
         <p className="mb-8 max-w-3xl text-gray-600">
-          Ignore the Instagram reel with twelve fighters skipping rope in unison. These are the signals that predict
-          whether you leave Thailand with better technique or a limp and a refund story.
+          Camp marketing often shows fighter-only sessions. For a first trip you need coached fundamentals, clear class
+          times, and optional sparring. These are the signals that matter.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
           {[
@@ -218,7 +218,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
             },
             {
               title: 'Short commute or on-site stay',
-              body: 'Thai traffic eats training time. A camp five minutes from your bed beats a famous name forty minutes away in a Grab during rush hour.',
+              body: 'Thai traffic eats training time. A camp five minutes from your bed is easier to reach daily than a famous name forty minutes away in rush-hour traffic.',
             },
             {
               title: 'Recovery you will use',
@@ -354,7 +354,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
             },
             {
               title: 'Reviews that only mention parties',
-              body: 'Nightlife-heavy camps exist. They are a poor fit if you flew in to learn teeps and sleep before the morning run.',
+              body: 'Nightlife-heavy camps exist. They are a poor fit if you came to learn basics and need sleep before the morning run.',
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl border border-red-100 bg-red-50/40 p-5">
@@ -371,7 +371,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Days 1–3</p>
             <ul className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
-              <li>One coached session per day. Afternoon often beats morning while jet lag lingers.</li>
+              <li>One coached session per day. Train in the afternoon while jet lag lingers if mornings feel rough.</li>
               <li>Stance, guard, jab-cross, teep, round kick mechanics. Repeat until boring.</li>
               <li>No sparring. Tell every coach you are new.</li>
               <li>Sleep eight hours. Eat rice and protein. Drink water until it feels excessive.</li>
@@ -406,7 +406,7 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
           {[
             {
               title: 'Booking the most famous name',
-              body: 'Fame correlates with fighter traffic. Beginners need repetition and corrections, not proximity to a stadium poster.',
+              body: 'Popular fight camps draw active fighters. Beginners need repetition and corrections, not proximity to a stadium poster.',
             },
             {
               title: 'Training twice daily in week one',

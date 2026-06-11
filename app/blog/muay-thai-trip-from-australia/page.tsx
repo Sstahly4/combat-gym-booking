@@ -67,7 +67,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Bangkok, Phuket, or Chiang Mai from Australia?',
-    a: 'Chiang Mai suits beginners and long stays: lower costs, cooler mornings November to February. Phuket suits beach access and island camps with direct or one-stop flights in peak season. Bangkok suits fight-night access and maximum gym choice if you tolerate heat and traffic. Match city to camp shortlist, not Instagram location tags.',
+    a: 'Chiang Mai suits beginners and long stays: lower costs, cooler mornings November to February. Phuket suits beach access and island camps with direct or one-stop flights in peak season. Bangkok suits fight-night access and maximum gym choice if you tolerate heat and traffic. Match city to your camp shortlist, not a gym you saw on social media.',
   },
   {
     q: 'Can I train on the first day after flying from Australia?',
@@ -303,7 +303,7 @@ export default function MuayThaiTripFromAustraliaPage() {
           {[
             {
               title: 'Day 0 (arrival)',
-              body: 'Clear immigration, grab a SIM or eSIM at the airport, transit to accommodation, eat a proper meal, shower, sleep. Do not hero-roll into an evening session after an overnight flight.',
+              body: 'Clear immigration, grab a SIM or eSIM at the airport, transit to accommodation, eat a proper meal, shower, sleep. Skip the evening session if you flew overnight.',
             },
             {
               title: 'Day 1',

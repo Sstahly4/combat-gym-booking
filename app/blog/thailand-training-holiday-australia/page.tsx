@@ -46,12 +46,12 @@ const FAQ_ITEMS = [
     a: 'Phuket, Hua Hin, Koh Samui, and Krabi pair gyms with beach access and restaurant density. Chiang Mai trades beaches for cooler mornings and lower costs. Bangkok suits short urban holidays with stadium nights if your partner wants city culture while you train.',
   },
   {
-    q: 'Can my partner join if they do not train Muay Thai?',
-    a: 'Yes. Pick a base with pool, spa, and walkable cafes. Phuket and Hua Hin work well: they get beach days while you do a 90-minute session. Book accommodation with good Wi-Fi if they remote-work part of the trip.',
+    q: 'Can I bring a partner who will not train Muay Thai?',
+    a: 'Yes. Pick a base with a pool, restaurants, and easy transport. Phuket and Hua Hin work well: they can swim or explore while you do a morning class. Book accommodation with reliable Wi-Fi if they need to work from the room.',
   },
   {
     q: 'How many training sessions per week on a holiday trip?',
-    a: 'Four to five coached sessions per week is sustainable for most holiday travelers. Take two full rest days for tours, massage, or pool time. One session per day beats two-a-days when you also want dinners out and day trips.',
+    a: 'Four to five coached sessions per week is sustainable for most holiday travelers. Take two full rest days for tours, massage, or pool time. One session per day is enough when you also want dinners out and day trips.',
   },
   {
     q: 'All-inclusive camp or gym plus separate hotel?',
@@ -71,7 +71,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Training holiday vs full Muay Thai trip from Australia?',
-    a: 'A training holiday prioritizes rest days, partner comfort, and location vibe. A full training trip prioritizes volume, repeat sessions, and camp immersion. Same country, different weekly rhythm. Logistics for flights and visas are covered in our Australia-to-Thailand trip guide.',
+    a: 'A training holiday leaves room for rest days, shared meals, and time outside the gym. A full training trip chases volume with repeat sessions and camp immersion. Same country, different weekly rhythm. Logistics for flights and visas are covered in our Australia-to-Thailand trip guide.',
   },
 ]
 
@@ -117,7 +117,7 @@ export default function ThailandTrainingHolidayAustraliaPage() {
           { href: '#holiday-vs-camp', label: 'Holiday vs hardcore camp' },
           { href: '#leave', label: 'Annual leave math' },
           { href: '#destinations', label: 'Best bases' },
-          { href: '#partner', label: 'Non-training partners' },
+          { href: '#partner', label: 'Non-training travel partner' },
           { href: '#week', label: 'Sample week' },
           { href: '#packages', label: 'Booking style' },
           { href: '#mistakes', label: 'Mistakes' },
@@ -188,7 +188,7 @@ export default function ThailandTrainingHolidayAustraliaPage() {
             },
             {
               title: 'Hua Hin',
-              body: 'Calmer than Phuket, easier driving, royal-city food scene. Fewer backpacker parties, more long-stay retirees and golf tourists. Gyms are smaller in number but commute stress is low.',
+              body: 'Calmer than Phuket, easier driving, solid food scene. Quieter at night than the big beach towns. Gyms are fewer but commute stress is low.',
             },
             {
               title: 'Koh Samui',
@@ -224,19 +224,20 @@ export default function ThailandTrainingHolidayAustraliaPage() {
       </GuideSection>
 
       <section id="partner" className="mb-14 scroll-mt-24">
-        <GuideAccentIntro icon={Users} title="When your partner does not train" subtitle="Pick the base, not only the gym" />
+        <GuideAccentIntro icon={Users} title="When only one of you trains" subtitle="Pick where you stay before you pick the gym" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Your partner&apos;s day shapes where you stay. If they hate scooters and remote roads, do not book a gym down
-            a dark soi forty minutes from the beach hotel they picked from photos.
+            If your partner, friend, or spouse is not training, their day still decides where you can live. Do not book a
+            gym down a side street forty minutes from the beach hotel they chose. You will skip sessions when the drive
+            feels like a chore.
           </p>
           <p>
-            Look for camps with on-site pool and air-conditioned rooms, or stay at a beach hotel and commute to morning
-            class. Phuket and Hua Hin split well: training hub in the morning, beach chair in the afternoon.
+            Camps with on-site pool and air-conditioned rooms work well. So does a beach hotel with a short morning
+            commute to class. In Phuket and Hua Hin you can train before lunch and spend the afternoon at the beach.
           </p>
           <p>
-            Remote workers need desk space and backup internet. Ask the hotel about Wi-Fi stability before you assume
-            cafe culture will carry work calls.
+            Remote workers need desk space and stable Wi-Fi. Ask the hotel before you assume a nearby cafe will handle
+            work calls.
           </p>
         </div>
         <figure className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -250,7 +251,8 @@ export default function ThailandTrainingHolidayAustraliaPage() {
             />
           </div>
           <figcaption className="px-4 py-3 text-xs text-gray-600">
-            One coached session plus recovery beats two sessions plus resentment when you only have two weeks off work.
+            Four or five sessions a week leaves room to recover on a two-week holiday. Two-a-days rarely survive that
+            schedule.
           </figcaption>
         </figure>
       </section>
@@ -318,23 +320,23 @@ export default function ThailandTrainingHolidayAustraliaPage() {
             },
             {
               title: 'Stacking tours on rest days',
-              body: 'Phi Phi speedboat plus full moon party plus pads the next morning equals illness. Protect at least one slow day per week.',
+              body: 'A long boat trip plus late night out plus morning pads is a reliable way to get sick. Keep at least one slow day per week.',
             },
             {
-              title: 'Ignoring partner logistics',
-              body: 'If they are stuck at a remote villa with no footpaths, you will skip sessions to fix morale. Book for both travelers.',
+              title: 'Ignoring your travel partner',
+              body: 'If they are stuck at a remote villa with no footpaths or food nearby, you will skip sessions to fix morale. Book for both travelers.',
             },
             {
-              title: 'Treating alcohol like recovery',
-              body: 'Chang beer after pads feels like a reward. Your sleep and shins disagree. Pick two nights out, not seven.',
+              title: 'Drinking most nights after training',
+              body: 'Alcohol after evening class wrecks sleep and slows recovery. Plan two social nights, not seven.',
             },
             {
               title: 'Zero rest days because leave feels short',
-              body: 'Four sessions in six days beats six sessions in six days for holiday travelers. Progress needs sleep.',
+              body: 'Six sessions in six days rarely works on a holiday trip. Four coached classes with rest days between them is enough.',
             },
             {
               title: 'Skipping travel insurance sports cover',
-              body: 'Holiday vibe does not mean low injury risk. Pad work still breaks toes. Upgrade insurance before you fly.',
+              body: 'Pad work still breaks toes even on a relaxed trip. Upgrade insurance before you fly.',
             },
           ].map((item) => (
             <div key={item.title} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
