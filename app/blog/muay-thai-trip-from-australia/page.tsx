@@ -15,7 +15,7 @@ import {
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
 import { Clock, Plane, Shield, Wallet } from 'lucide-react'
 
-const TITLE = 'Muay Thai Trip from Australia: Flights, Visas, Budget & Planning (2026)'
+const TITLE = 'Muay Thai Trip from Australia: Flights, Visas, Budget and Planning (2026)'
 const SEO_TITLE = 'Muay Thai Trip from Australia 2026 [Flights, Visa, AUD Budget]'
 const PATH = '/blog/muay-thai-trip-from-australia'
 const DATE_PUBLISHED = '2026-06-08'
@@ -71,7 +71,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I train on the first day after flying from Australia?',
-    a: 'Land, clear immigration, reach your accommodation, eat, sleep. Start training the next afternoon if you slept on the plane poorly. Jet lag from Australia to Thailand is a three-hour forward shift (Bangkok). Your first session should be light pad work, not a double session to “make up for travel day.”',
+    a: 'Land, clear immigration, reach your accommodation, eat, sleep. Start training the next afternoon if you slept on the plane poorly. Jet lag from Australia to Thailand is a three-hour forward shift (Bangkok). Your first session should be light pad work, not a double session to make up for travel day.',
   },
 ]
 
@@ -225,7 +225,7 @@ export default function MuayThaiTripFromAustraliaPage() {
             your CombatStay confirmation accessible on your phone if immigration asks where you are staying.
           </p>
         </div>
-      </GuideSection>
+      </section>
 
       <GuideSection id="budget" variant="default" className="mb-14 border border-gray-200 bg-white">
         <GuideAccentIntro icon={Wallet} title="AUD budget for a Muay Thai trip from Australia" subtitle="Where the money goes" />

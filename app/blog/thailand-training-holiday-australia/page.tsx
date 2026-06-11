@@ -15,8 +15,8 @@ import {
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
 import { Calendar, Palmtree, Sun, Users } from 'lucide-react'
 
-const TITLE = 'Thailand Training Holiday from Australia: Balance Training & Rest (2026)'
-const SEO_TITLE = 'Thailand Training Holiday Australia 2026 [Beach, Leave & Camp Plans]'
+const TITLE = 'Thailand Training Holiday from Australia: Balance Training and Rest (2026)'
+const SEO_TITLE = 'Thailand Training Holiday Australia 2026 [Beach, Leave and Camp Plans]'
 const PATH = '/blog/thailand-training-holiday-australia'
 const DATE_PUBLISHED = '2026-06-08'
 const DATE_MODIFIED = '2026-06-08'
@@ -299,7 +299,7 @@ export default function ThailandTrainingHolidayAustraliaPage() {
             </div>
           ))}
         </div>
-      </GuideSection>
+      </section>
 
       <GuideCtaStrip
         title="Find a camp that fits a training holiday pace"
@@ -343,7 +343,7 @@ export default function ThailandTrainingHolidayAustraliaPage() {
             </div>
           ))}
         </div>
-      </GuideSection>
+      </section>
 
       <GuideSection variant="amber" className="mb-14">
         <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Holiday pace, real progress</h2>
