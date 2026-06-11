@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: `Is Pattaya good for Muay Thai training?`,
-    a: `Yes—if you plan your routine. Pattaya can be convenient for beach lifestyle and access to Bangkok, but distractions exist. Choose accommodation for sleep and a gym you can reach consistently.`,
+    a: `Yes, if you plan your routine. Pattaya can be convenient for beach lifestyle and access to Bangkok, but distractions exist. Choose accommodation for sleep and a gym you can reach consistently.`,
   },
   {
     q: `How are these Pattaya gyms ranked?`,
@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `What is the best area to stay in Pattaya for training?`,
-    a: `Pick the area that makes your commute repeatable. If you plan two sessions/day, avoid a long travel time—sleep and recovery matter more than nightlife proximity.`,
+    a: `Pick the area that makes your commute repeatable. If you plan two sessions/day, avoid a long travel time, sleep and recovery matter more than nightlife proximity.`,
   },
   {
     q: `How much does Muay Thai cost in Pattaya?`,
@@ -71,7 +71,7 @@ const FAQ_ITEMS = [
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   { title: `Top Pattaya picks`, body: <p>Highest review momentum inside the Pattaya filter. Compare schedules and class structure, not just rank.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified/trusted listings—differences are often review history and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified/trusted listings, differences are often review history and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific location fit.</p> },
   { title: `More gyms`, body: <p>Widen your shortlist beyond the handful of names that show up on old blogs.</p> },
   { title: `Final ranked slots`, body: <p>Completes a deeper ranked set so you can compare more than three camps.</p> },
@@ -100,7 +100,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle={`Pattaya training is about routines: pick a gym you can reach consistently, then recover like an athlete so you actually improve.`}
+      subtitle={`Pattaya training is about routines: pick a gym you can reach consistently, then recover like an athlete so you keep improving.`}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -116,7 +116,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
         imageSrc={HERO_IMAGE}
         imageAlt={`Pattaya Thailand coastline`}
         priority
-        overlayText="Pattaya Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Pattaya ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -136,18 +136,18 @@ export default async function BestMuayThaiGymsPattayaPage() {
         <GuideAccentIntro icon={MapPin} title={`Why train Muay Thai in ${CITY}?`} subtitle="Beach lifestyle + consistency" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best Muay Thai gyms in Pattaya</strong> are usually balancing training with lifestyle.
+            If you are training in Pattaya, you are probably balancing training with lifestyle.
             Pattaya can work well for longer stays if you prioritize a repeatable commute, good sleep, and recovery habits.
           </p>
           <p>
-            This page filters for verified/trusted listings that match Pattaya on CombatStay and list Muay Thai—so you’re
+            This page filters for verified/trusted listings that match Pattaya on CombatStay and list Muay Thai, so you’re
             not comparing random gyms with no booking-ready information.
           </p>
         </div>
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Pattaya training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Pattaya training stay for a long stay</h2>
         <GuideThreeCards
           items={[
             {
@@ -190,7 +190,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              A long stay is won on routines: sleep, food, and showing up—more than the perfect gym name.
+              A long stay is won on routines: sleep, food, and showing up, more than the perfect gym name.
             </figcaption>
           </figure>
         </div>
@@ -205,7 +205,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
               <p>
                 For “best Muay Thai gyms in Pattaya” searches, most people underestimate the boring variables that decide results:
                 <strong> sleep</strong>, <strong>transport time</strong>, and <strong>how easy it is to repeat the week</strong>.
-                If you want two-a-days, you’re effectively commuting to the gym twice every day—so distance matters.
+                If you want two-a-days, you’re effectively commuting to the gym twice every day, so distance matters.
               </p>
               <p>
                 The right answer depends on your goal. If you’re chasing a serious 2–6 week block, choose the area that makes you
@@ -322,7 +322,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Pattaya Muay Thai camp?"
-        subtitle="Filter every verified Pattaya gym by price, dates, and amenities — book directly on CombatStay."
+        subtitle="Filter every verified Pattaya gym by price, dates, and amenities, book directly on CombatStay."
         href="/search?country=Thailand&location=Pattaya&discipline=Muay%20Thai"
         buttonLabel="Find your Pattaya camp"
       />

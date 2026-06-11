@@ -21,7 +21,7 @@ import { Building2, MapPin, Waves } from 'lucide-react'
 
 const GOOGLE_MAPS_URL = 'https://maps.app.goo.gl/MiNR1d9mrAe7DSAU7'
 
-/** Production listing — used as fallback if name/city filters miss the gym. */
+/** Production listing. Used as fallback if name/city filters miss the gym. */
 const LUDUS_GYM_ID = 'ce09dd1f-6fa8-4801-b7eb-a6534d2bb1b3'
 
 const TITLE = 'LUDUS Sports Complex Chalong: Complete Training & Stay Guide (2026)'
@@ -46,7 +46,7 @@ function pickGymImage(gym: GuideGym | null, index: number, fallback: string) {
 }
 
 const DESCRIPTION =
-  'LUDUS Sports Complex Chalong on Soi Ta Iad: 5,000 m² gym, Muay Thai & MMA classes, on-site hotel, spa, and 2026 prices—plus how it compares to Tiger and Unit 27 on Fitness Street.'
+  'LUDUS Sports Complex Chalong on Soi Ta Iad: 5,000 m² gym, Muay Thai & MMA classes, on-site hotel, spa, and 2026 prices, plus how it compares to Tiger and Unit 27 on Fitness Street.'
 
 const ADDRESS = '10/130 Moo 5, Chalong, Mueang Phuket, Phuket 83130, Thailand'
 const LUDUS_WEBSITE = 'https://ludusphuket.com/'
@@ -89,7 +89,7 @@ function buildFaqItems(gymHref: string) {
   },
   {
     q: 'Can you stay on-site at LUDUS?',
-    a: 'Yes. LUDUS integrates 55 hotel rooms (including six junior suites) inside the sports complex—unusual on Fitness Street, where most camps use partner guesthouses. That matters if you want gym-to-room in under two minutes after a hard morning session.',
+    a: 'Yes. LUDUS integrates 55 hotel rooms (including six junior suites) inside the sports complex. That is unusual on Fitness Street, where most camps use partner guesthouses. It matters if you want gym-to-room in under two minutes after a hard morning session.',
   },
   {
     q: 'How much does gym access cost at LUDUS in 2026?',
@@ -97,11 +97,11 @@ function buildFaqItems(gymHref: string) {
   },
   {
     q: 'Is LUDUS better than Tiger Muay Thai on the same street?',
-    a: 'Different fit. Tiger is the famous full-time camp with massive class volume and decades of fight-camp reputation. LUDUS is a newer integrated resort model—gym, spa, pool, hotel, food hall—better if you want resort amenities and flexible class drops rather than a traditional “live at camp” rhythm. Many serious fighters still pick Tiger or Unit 27 for camp culture; LUDUS wins on all-in-one convenience.',
+    a: 'Different fit. Tiger is the famous full-time camp with massive class volume and decades of fight-camp reputation. LUDUS is a newer integrated resort model with gym, spa, pool, hotel, and food hall. It suits travelers who want resort amenities and flexible class drops rather than a traditional “live at camp” rhythm. Many serious fighters still pick Tiger or Unit 27 for camp culture. LUDUS wins on all-in-one convenience.',
   },
   {
     q: 'Does LUDUS have recovery facilities?',
-    a: 'Yes—this is a major differentiator. The spa includes 13 massage rooms, Finnish and herbal saunas, steam rooms, hammam, rain room, and Harnn cosmetics. There is also a 25-metre swimming pool. For a two-to-four-week Fitness Street block, that on-site recovery stack can replace separate massage bookings.',
+    a: 'Yes. This is a major differentiator. The spa includes 13 massage rooms, Finnish and herbal saunas, steam rooms, hammam, rain room, and Harnn cosmetics. There is also a 25-metre swimming pool. For a two-to-four-week Fitness Street block, that on-site recovery stack can replace separate massage bookings.',
   },
   {
     q: 'Who should train at LUDUS?',
@@ -109,7 +109,7 @@ function buildFaqItems(gymHref: string) {
   },
   {
     q: 'Can I book LUDUS through CombatStay?',
-    a: `Yes—LUDUS is live on CombatStay with packages, photos, and opening hours. Book at ${absoluteUrl(gymHref)} or compare nearby Chalong gyms if you want a wider shortlist.`,
+    a: `Yes. LUDUS is live on CombatStay with packages, photos, and opening hours. Book at ${absoluteUrl(gymHref)} or compare nearby Chalong gyms if you want a wider shortlist.`,
   },
   ]
 }
@@ -193,7 +193,7 @@ export default async function LudusSportsComplexChalongPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="LUDUS is not another open-air camp on Fitness Street (Soi Ta Iad)—it is a 5,000 m² sports resort with hotel, spa, and pool. Here is who it fits, what it costs, and how it compares to Tiger and Unit 27."
+      subtitle="LUDUS is not another open-air camp on Fitness Street (Soi Ta Iad). It is a 5,000 m² sports resort with hotel, spa, and pool. Here is who it fits, what it costs, and how it compares to Tiger and Unit 27."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -210,7 +210,7 @@ export default async function LudusSportsComplexChalongPage() {
         imageSrc={heroImage}
         imageAlt="LUDUS Sports Complex Chalong on Soi Ta Iad, Phuket"
         priority
-        overlayText="Phuket’s Fitness Street finally has a full sports resort—not just another camp. LUDUS packs Muay Thai, MMA, hotel rooms, spa, and a 25 m pool into one Chalong complex."
+        overlayText="Phuket’s Fitness Street finally has a full sports resort, not just another camp. LUDUS packs Muay Thai, MMA, hotel rooms, spa, and a 25 m pool into one Chalong complex."
       />
 
       <GuideLeadRow
@@ -226,7 +226,7 @@ export default async function LudusSportsComplexChalongPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue="5,000 m²"
-        statDescription="Training floor across eight zones—one of the largest purpose-built complexes on Soi Ta Iad, with 55 on-site hotel rooms."
+        statDescription="Training floor across eight zones. One of the largest purpose-built complexes on Soi Ta Iad, with 55 on-site hotel rooms."
         statIcon={<Building2 className="h-5 w-5" />}
       />
 
@@ -237,7 +237,7 @@ export default async function LudusSportsComplexChalongPage() {
             <tbody className="divide-y divide-gray-100 text-gray-800">
               {[
                 ['Address', ADDRESS],
-                ['Street', 'Soi Ta Iad — also called Fitness Street or Soi Ta-Iad (Chalong)'],
+                ['Street', 'Soi Ta Iad, also called Fitness Street or Soi Ta-Iad (Chalong)'],
                 ['Operator', 'Vedasiam'],
                 ['Floor space', '5,000 m² across 8 training zones'],
                 ['Weekly classes', '50+ (Muay Thai, MMA, boxing, CrossFit, yoga, Pilates, HIIT, cycling)'],
@@ -294,20 +294,20 @@ export default async function LudusSportsComplexChalongPage() {
             </h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                <strong>Soi Ta Iad</strong> (ซอยตาเอียด)—known to fighters as <strong>Fitness Street</strong>—is a short
+                <strong>Soi Ta Iad</strong> (ซอยตาเอียด), known to fighters as <strong>Fitness Street</strong>, is a short
                 road in Chalong lined with Muay Thai camps, MMA rooms, and CrossFit boxes (Tiger, Sinbi, Unit 27, and
                 others). The classic setup: train hard, walk to a protein café, sleep in a fan-cooled room, repeat.
                 That model works. It also burns people out by week three when sleep and recovery lag behind volume.
               </p>
               <p>
                 LUDUS flips the script: <strong>gym + hotel + spa + food hall + pool in one gated complex</strong>.
-                The Latin <em>ludus</em> (“training school”) branding is deliberate—this is closer to a European sports
+                The Latin <em>ludus</em> (“training school”) branding is deliberate. This is closer to a European sports
                 resort dropped onto Phuket than a traditional Thai camp. That is exactly why travelers who found Tiger
                 “too intense” or Unit 27 “too CrossFit-centric” are showing up here.
               </p>
               <p>
                 If you searched for LUDUS on TripAdvisor or Google Maps, you mostly get an address, a few photos, and
-                sparse reviews—not pricing, coach backgrounds, or how LUDUS compares to neighbors on the same street.
+                sparse reviews, not pricing, coach backgrounds, or how LUDUS compares to neighbors on the same street.
                 This guide fills that gap so you can plan a real training stay, not just tick off an attraction listing.
               </p>
             </div>
@@ -323,7 +323,7 @@ export default async function LudusSportsComplexChalongPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Eight zones span cardio, strength, functional, stretching, boxing, CrossFit, TRX, and cycling—photo from the{' '}
+              Eight zones span cardio, strength, functional, stretching, boxing, CrossFit, TRX, and cycling. Photo from the{' '}
               <Link href={gymHref} className="font-medium text-[#003580] underline">
                 LUDUS CombatStay listing
               </Link>
@@ -337,26 +337,26 @@ export default async function LudusSportsComplexChalongPage() {
         <GuideAccentIntro icon={Waves} title="Training & coaches" subtitle="Combat sports with real fight records" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            LUDUS is not pad-work for tourists only. The Muay Thai roster includes stadium-experienced coaches—worth
+            LUDUS is not pad-work for tourists only. The Muay Thai roster includes stadium-experienced coaches, worth
             verifying on arrival, but the public coach list is stronger than most resort-style gyms:
           </p>
         </div>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-gray-700">
           <li>
-            <strong>Taweekit Sit-O</strong> — 350+ fights; Rajadamnern Super Featherweight champion; Fighter of the Year
+            <strong>Taweekit Sit-O</strong>: 350+ fights; Rajadamnern Super Featherweight champion; Fighter of the Year
             2016.
           </li>
           <li>
-            <strong>Mr. Sanan Nuankaew</strong> — 300 career fights; Lumpinee experience; True4U champion at 122 lbs.
+            <strong>Mr. Sanan Nuankaew</strong>: 300 career fights; Lumpinee experience; True4U champion at 122 lbs.
           </li>
           <li>
-            <strong>Chonlathan Nuankaew</strong> — 120 fights; True4U champion.
+            <strong>Chonlathan Nuankaew</strong>: 120 fights; True4U champion.
           </li>
           <li>
-            <strong>Rittichai Puangphothong</strong> — 88 professional bouts; Rajadamnern and Rangsit experience.
+            <strong>Rittichai Puangphothong</strong>: 88 professional bouts; Rajadamnern and Rangsit experience.
           </li>
           <li>
-            <strong>Noelle Grandjean</strong> — international Judo/MMA coach; 2nd dan Judo; professional experience in
+            <strong>Noelle Grandjean</strong>: international Judo/MMA coach; 2nd dan Judo; professional experience in
             ONE Championship.
           </li>
         </ul>
@@ -400,7 +400,7 @@ export default async function LudusSportsComplexChalongPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">LUDUS prices in 2026 (from ludusphuket.com)</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
           Promotional rates below were live in June 2026. LUDUS runs switch-over promos for travelers transferring from
-          other gyms—show your old pass expiry at reception to port remaining days. Always confirm on-site before
+          other gyms. Show your old pass expiry at reception to port remaining days. Always confirm on-site before
           budgeting a full camp.
         </p>
         <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -428,7 +428,7 @@ export default async function LudusSportsComplexChalongPage() {
                       [
                         'CombatStay training package (from)',
                         combatStayDayPrice,
-                        'Live bookable rate on CombatStay—incl. taxes per listing',
+                        'Live bookable rate on CombatStay, incl. taxes per listing',
                       ] as const,
                     ]
                   : []),
@@ -444,7 +444,7 @@ export default async function LudusSportsComplexChalongPage() {
         </div>
         <p className="mt-4 text-sm text-gray-600">
           Context: a typical Phuket fight-camp week can run 8,000–15,000 THB all-in with accommodation. LUDUS’s monthly
-          gym pass at 2,000 THB is cheap for the facility spec—but hotel, food, and classes stack quickly. Use our{' '}
+          gym pass at 2,000 THB is cheap for the facility spec, but hotel, food, and classes stack quickly. Use our{' '}
           <Link href="/blog/muay-thai-camp-thailand-cost" className="font-medium text-[#003580] underline">
             Thailand training cost guide
           </Link>{' '}
@@ -456,7 +456,7 @@ export default async function LudusSportsComplexChalongPage() {
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">LUDUS vs Tiger Muay Thai vs Unit 27</h2>
         <p className="mb-8 max-w-3xl text-gray-600">
           All three are on the same 1.5 km street. Your choice depends on whether you want camp culture, CrossFit
-          performance training, or resort-style amenities—not which logo looks best on Instagram.
+          performance training, or resort-style amenities, not which logo looks best in a brochure.
         </p>
         <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -470,13 +470,13 @@ export default async function LudusSportsComplexChalongPage() {
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white text-gray-800">
               {[
-                ['Primary vibe', 'Sports resort · spa · hotel', 'World-famous Muay Thai / MMA camp', 'Elite CrossFit · HYROX'],
+                ['Camp style', 'Sports resort · spa · hotel', 'World-famous Muay Thai / MMA camp', 'Elite CrossFit · HYROX'],
                 ['Best for', 'Flexible classes + recovery + couples', 'Full-time fight camp immersion', 'S&C & conditioning PRs'],
-                ['On-site stay', '55 hotel rooms in complex', 'Camp accommodation options', 'No hotel—nearby rentals'],
+                ['On-site stay', '55 hotel rooms in complex', 'Camp accommodation options', 'No hotel; nearby rentals'],
                 ['Pool / spa', '25 m pool + full spa', 'Pool at camp', 'Recovery area · no full spa'],
                 ['Muay Thai depth', 'Strong coaches · class-based', 'Deep camp lineage · highest volume', 'Striking classes · not MT-focused'],
                 ['Typical stay', '1–4 weeks mixed training', '2–8 weeks camp', '2–6 weeks performance block'],
-                ['Walk to protein cafés', 'Yes—same street', 'Yes', 'Yes'],
+                ['Walk to protein cafés', 'Yes, same street', 'Yes', 'Yes'],
               ].map(([factor, ludus, tiger, unit]) => (
                 <tr key={factor}>
                   <td className="px-4 py-3 font-semibold">{factor}</td>
@@ -489,7 +489,7 @@ export default async function LudusSportsComplexChalongPage() {
           </table>
         </div>
         <p className="mt-4 text-sm font-medium text-gray-800">
-          Our take: pick LUDUS if you will actually use the spa and pool; pick Tiger if you want camp accountability; pick
+          Our take: pick LUDUS if you will use the spa and pool; pick Tiger if you want camp accountability; pick
           Unit 27 if your bottleneck is engine and strength, not pad work.
         </p>
       </section>
@@ -500,7 +500,7 @@ export default async function LudusSportsComplexChalongPage() {
           <div className="space-y-4 text-base leading-relaxed text-gray-700">
             <p>
               <strong>On-site (simplest):</strong> 55 hotel rooms inside the complex. Walking from bed to gym in two
-              minutes beats most guesthouses on Fitness Street when you are training twice daily in 33°C heat.
+              minutes tops most guesthouses on Fitness Street when you train twice daily in 33°C heat.
             </p>
             <p>
               <strong>Walking distance on Soi Ta Iad:</strong> Budget bungalows, gym-focused hotels (The Blue Mavi,
@@ -509,7 +509,7 @@ export default async function LudusSportsComplexChalongPage() {
             </p>
             <p>
               <strong>Beach areas (Rawai / Nai Harn / Kata):</strong> Fine if you have a scooter and accept traffic
-              risk. Many fighters prefer living on the soi and visiting beaches on rest days—not commuting before
+              risk. Many fighters prefer living on the soi and visiting beaches on rest days, not commuting before
               morning pads.
             </p>
             <p>
@@ -549,7 +549,7 @@ export default async function LudusSportsComplexChalongPage() {
           items={[
             {
               title: 'Airport → Chalong',
-              body: '40–50 minutes to Phuket International (HKT) off-peak; add 20+ minutes in high season. Pre-book a taxi or use Grab; scooter rental is common but risky if you are not experienced—crashes end camps.',
+              body: '40–50 minutes to Phuket International (HKT) off-peak; add 20+ minutes in high season. Pre-book a taxi or use Grab. Scooter rental is common but risky if you are not experienced. Crashes end camps.',
             },
             {
               title: 'Daily life on Fitness Street',
@@ -557,7 +557,7 @@ export default async function LudusSportsComplexChalongPage() {
             },
             {
               title: 'Best time to book',
-              body: 'High season (Nov–Feb) fills Fitness Street fast. Book accommodation 4–6 weeks ahead for a month stay. Rainy season is cheaper but humidity hits recovery—pack extra electrolytes.',
+              body: 'High season (Nov–Feb) fills Fitness Street fast. Book accommodation 4–6 weeks ahead for a month stay. Rainy season is cheaper but humidity hits recovery. Pack extra electrolytes.',
             },
           ]}
         />
@@ -588,14 +588,14 @@ export default async function LudusSportsComplexChalongPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Food hall on-site—less time hunting meals between sessions.
+              Food hall on-site. Less time hunting meals between sessions.
             </figcaption>
           </figure>
         </div>
       </section>
 
       <GuideSection id="who" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Who should book LUDUS—and who should skip it</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Who should book LUDUS, and who should skip it</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-xl border border-green-200 bg-green-50/50 p-6">
             <p className="text-sm font-semibold text-green-900">Book LUDUS if you…</p>
@@ -612,7 +612,7 @@ export default async function LudusSportsComplexChalongPage() {
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-900/90">
               <li>Need daily sparring culture and fight-team accountability</li>
               <li>Are preparing for a specific bout in 6–8 weeks (consider a fight-prep camp)</li>
-              <li>Want the cheapest possible month—traditional camps still win on pure value</li>
+              <li>Want the cheapest possible month. Traditional camps still win on pure value</li>
               <li>Dislike resort-style pricing for food and spa add-ons</li>
               <li>Only want elite CrossFit / HYROX (Unit 27 or Kong S&amp;C fit better)</li>
             </ul>
@@ -623,13 +623,13 @@ export default async function LudusSportsComplexChalongPage() {
           <Link href="/blog/best-mma-camps-thailand" className="font-medium text-[#003580] underline">
             best MMA camps in Thailand
           </Link>{' '}
-          list—LUDUS is strong on amenities, but dedicated MMA gyms may offer more cage time per week.
+          list. LUDUS is strong on amenities, but dedicated MMA gyms may offer more cage time per week.
         </p>
       </GuideSection>
 
       <GuideCtaStrip
         title={gymOnCombatStay ? 'Book LUDUS on CombatStay' : 'Find LUDUS and Chalong gyms on CombatStay'}
-        subtitle="Live photos, reviews, and booking-ready listings—filter by discipline, amenities, and stay length."
+        subtitle="Live photos, reviews, and booking-ready listings. Filter by discipline, amenities, and stay length."
         href={gymHref}
         buttonLabel={gymOnCombatStay ? 'View LUDUS profile' : 'Search Chalong gyms'}
       />
@@ -637,7 +637,7 @@ export default async function LudusSportsComplexChalongPage() {
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
         <p className="mb-8 text-gray-600">
-          Common questions about training and staying at LUDUS Sports Complex Chalong—answered with specifics, not fluff.
+          Common questions about training and staying at LUDUS Sports Complex Chalong, answered with specifics, not fluff.
         </p>
         <GuideFaqList items={faqItems} />
       </GuideSection>

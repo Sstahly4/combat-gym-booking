@@ -59,11 +59,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Do I tip coaches and pad-holders at Thai Muay Thai camps?',
-    a: 'Tipping culture varies by camp. Many long-stay trainees tip their padman a modest amount at the end of a block or after fights. Ask the camp manager what is customary—do not guess.',
+    a: 'Tipping culture varies by camp. Many long-stay trainees tip their padman a modest amount at the end of a block or after fights. Ask the camp manager what is customary. Do not guess.',
   },
   {
     q: 'Is travel insurance worth it for a Muay Thai trip?',
-    a: 'Yes&mdash;and check that the policy explicitly covers amateur combat sports training, not just recreational activity. Standard travel insurance often excludes injuries from contact training.',
+    a: 'Yes. Check that the policy explicitly covers amateur combat sports training, not just recreational activity. Standard travel insurance often excludes injuries from contact training.',
   },
 ]
 
@@ -111,7 +111,7 @@ export default function MuayThaiCampCostPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Honest 2026 numbers for a Muay Thai trip to Thailand—training, accommodation, food, gear, and the costs nobody puts in the brochure."
+      subtitle="Honest 2026 numbers for a Muay Thai trip to Thailand: training, accommodation, food, gear, and the costs nobody puts in the brochure."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -125,7 +125,7 @@ export default function MuayThaiCampCostPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Muay Thai camp in Thailand with training equipment"
         priority
-        overlayText="A one-month Muay Thai camp in Thailand can cost anywhere from ~$1,000 to $6,000+. The gap is not about gym quality—it is about your choices."
+        overlayText="A one-month Muay Thai camp in Thailand can cost anywhere from ~$1,000 to $6,000+. City, accommodation tier, and food choices drive most of that spread."
       />
 
       <GuideLeadRow
@@ -197,19 +197,19 @@ export default function MuayThaiCampCostPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">The real average cost of a 1-month Muay Thai camp</h2>
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            If you asked ten experienced Muay Thai travelers what a month in Thailand costs in 2026, you would get ten different numbers&mdash;and all of them would be right. The difference comes down to <strong>which city</strong>, <strong>which accommodation tier</strong>, and <strong>how much Western food you buy</strong>.
+            Ask ten experienced Muay Thai travelers what a month in Thailand costs in 2026 and you will get ten different numbers. All of them can be right. Your total depends on <strong>which city</strong> you pick, <strong>which accommodation tier</strong> you book, and <strong>how much Western food you buy</strong>.
           </p>
           <p>
-            A realistic <strong>mid-tier</strong> month&mdash;training twice a day, six days a week, in a fan or basic-AC room near the gym, eating Thai street food and local restaurants, with a rented scooter&mdash;lands around <strong>$1,700&ndash;$2,500 USD all-in</strong>, excluding flights. That is the number most long-stay trainees report.
+            A realistic <strong>mid-tier</strong> month means training twice a day, six days a week, in a fan or basic-AC room near the gym, eating Thai street food and local restaurants, with a rented scooter. That setup lands around <strong>$1,700&ndash;$2,500 USD all-in</strong>, excluding flights. Most long-stay trainees report numbers in that band.
           </p>
           <p>
-            A <strong>budget</strong> month in a cheaper city (Chiang Mai, Pattaya, smaller mainland towns), sharing accommodation or using a gym bungalow, and cooking some meals, can genuinely come in near <strong>$1,000&ndash;$1,400 USD</strong>. A <strong>premium</strong> month in a Phuket resort-style camp with private coaching, nutrition, and condos near the beach can stretch to <strong>$4,000&ndash;$6,000+ USD</strong>.
+            A <strong>budget</strong> month in a cheaper city (Chiang Mai, Pattaya, smaller mainland towns), sharing accommodation or using a gym bungalow, and cooking some meals, can come in near <strong>$1,000&ndash;$1,400 USD</strong>. A <strong>premium</strong> month in a Phuket resort-style camp with private coaching, nutrition, and condos near the beach can stretch to <strong>$4,000&ndash;$6,000+ USD</strong>.
           </p>
         </div>
       </section>
 
       <GuideSection id="whats-included" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">What is actually included in a camp package?</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">What is included in a camp package?</h2>
         <GuideThreeCards
           items={[
             {
@@ -222,7 +222,7 @@ export default function MuayThaiCampCostPage() {
             },
             {
               title: 'Meals',
-              body: 'Premium camps often include 2&ndash;3 meals daily. Mid-tier gyms rarely do. You will usually eat out&mdash;which is cheap in Thailand.',
+              body: 'Premium camps often include 2&ndash;3 meals daily. Mid-tier gyms rarely do. You will eat out most days. Thai food stays cheap.',
             },
           ]}
         />
@@ -254,7 +254,7 @@ export default function MuayThaiCampCostPage() {
                 <strong>Chiang Mai</strong> runs cheaper across every category: training, rent, and food. A comparable monthly training package can come in 20&ndash;40% under Phuket pricing, and apartments in the Old City or Nimman are realistic for $300&ndash;$600/month.
               </p>
               <p>
-                <strong>Koh Tao</strong> is a special case&mdash;training itself is moderate, but island food and accommodation logistics push the total higher than Chiang Mai. You are paying for island supply chains, not gym prestige.
+                <strong>Koh Tao</strong> is a special case. Training fees sit in the middle, but island food and accommodation logistics push the total higher than Chiang Mai. You pay for island supply chains, not gym prestige.
               </p>
               <p>
                 Compare ranked options: <Link href="/blog/best-muay-thai-gyms-phuket" className="font-medium text-[#003580] underline">Phuket</Link>,{' '}
@@ -274,7 +274,7 @@ export default function MuayThaiCampCostPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Same sport, three very different price tiers&mdash;pick the city that matches your budget first.
+              Same sport, three different price tiers. Pick the city that matches your budget first.
             </figcaption>
           </figure>
         </div>
@@ -286,7 +286,7 @@ export default function MuayThaiCampCostPage() {
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Hidden costs to look out for</h2>
             <p className="mt-3 text-sm leading-relaxed text-gray-800">
-              These are the line items nobody tells you about in the Instagram reel. Budget for them or they will eat your trip.
+              Brochures skip these line items. Budget for them or they will eat your trip.
             </p>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {[
@@ -295,7 +295,7 @@ export default function MuayThaiCampCostPage() {
                 { t: 'Private sessions', d: 'Tempting after week 2 when you want personal attention. Budget for 2&ndash;4 if you plan to use them.' },
                 { t: 'Gear replacement', d: 'Wraps fray, shorts tear, gloves break down. Set aside ~$50&ndash;$100 for mid-trip replacements.' },
                 { t: 'Massage &amp; physio', d: '$10&ndash;$15/hour for Thai massage is the best recovery tool you are not using.' },
-                { t: 'Scooter accidents', d: 'Even minor skins cost real money and training days. Consider taxis or a helmet you actually trust.' },
+                { t: 'Scooter accidents', d: 'Even minor skins cost real money and training days. Consider taxis or a helmet you trust.' },
                 { t: 'Fight night expenses', d: 'Entry fees, taxis, food out. Fun nights are rarely cheap nights.' },
                 { t: 'Laundry', d: 'You will do laundry constantly. Budget $20&ndash;$40/month if you outsource it.' },
               ].map((item) => (
@@ -313,12 +313,12 @@ export default function MuayThaiCampCostPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">How to lower your total cost without ruining the trip</h2>
         <div className="max-w-4xl space-y-4 text-base leading-relaxed text-gray-800">
           <p>
-            Do not cut training sessions to save money&mdash;that is the one thing you came for. Cut the things that do not add to your camp experience. The biggest levers are <strong>city choice</strong>, <strong>accommodation tier</strong>, and <strong>how much Western food you eat</strong>.
+            Keep your training sessions. Cut spending on things that do not add to your camp experience. The biggest levers are <strong>city choice</strong>, <strong>accommodation tier</strong>, and <strong>how much Western food you eat</strong>.
           </p>
           <ul className="list-disc pl-5 space-y-2">
             <li>Pick Chiang Mai or a smaller mainland city over Phuket for identical training quality at 30&ndash;40% lower total spend.</li>
-            <li>Book a fan or basic-AC room near the gym instead of a beachfront condo&mdash;you will be at the gym, not the balcony.</li>
-            <li>Eat Thai food. A $2&ndash;$3 rice-and-protein plate is objectively better fuel than a $14 Western breakfast.</li>
+            <li>Book a fan or basic-AC room near the gym instead of a beachfront condo. You will spend your days at the gym, not on a balcony.</li>
+            <li>Eat Thai food. A $2&ndash;$3 rice-and-protein plate works better than a $14 Western breakfast as training fuel.</li>
             <li>Buy gear locally. You will pay 30&ndash;60% less and get a proper fit.</li>
             <li>Lock in a weekly or monthly training package after a 2&ndash;3 day trial. Daily rates are a tax on indecision.</li>
             <li>Don&rsquo;t fly between cities mid-trip unless there is a specific reason. Each internal flight is a training day and $100+ gone.</li>
@@ -328,14 +328,14 @@ export default function MuayThaiCampCostPage() {
 
       <GuideCtaStrip
         title="See real 2026 prices on verified Thailand camps"
-        subtitle="Filter by city, budget, and discipline&mdash;book directly."
+        subtitle="Filter by city, budget, and discipline. Book directly."
         href="/search?country=Thailand&discipline=Muay%20Thai"
         buttonLabel="Browse Thailand camps"
       />
 
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
-        <p className="mb-8 text-gray-600">The pricing questions travelers actually ask.</p>
+        <p className="mb-8 text-gray-600">Common pricing questions from travelers.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

@@ -51,16 +51,16 @@ const FAQ_ITEMS = [
     a: `The gym must be live on CombatStay with Muay Thai in disciplines and a city name that matches our Phuket filter. Owners can update their listing to appear here.`,
   },
   {
-    q: `Beach area vs Old Town—does ranking account for location?`,
+    q: `Beach area vs Old Town, does ranking account for location?`,
     a: `Rankings use reviews and listing quality, not distance to the beach. Use maps on each gym profile and factor in your accommodation when you choose.`,
   },
   {
     q: `What is the best area to stay in Phuket for Muay Thai training?`,
-    a: `There is no single best area—optimize for sleep, food, and a repeatable commute. Pick accommodation near your chosen gym (or a central area with easy transport) so you can realistically train 1–2 sessions per day for weeks.`,
+    a: `There is no single best area, optimize for sleep, food, and a repeatable commute. Pick accommodation near your chosen gym (or a central area with easy transport) so you can realistically train 1–2 sessions per day for weeks.`,
   },
   {
     q: `Is Phuket good for beginners?`,
-    a: `Yes. Many camps support beginners—but intensity varies. Read each gym profile for fundamentals blocks, coach ratios, and sparring policies so you can start safely and build volume gradually.`,
+    a: `Yes. Many camps support beginners, but intensity varies. Read each gym profile for fundamentals blocks, coach ratios, and sparring policies so you can start safely and build volume gradually.`,
   },
   {
     q: `When is the best time of year to train in Phuket?`,
@@ -74,7 +74,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          These are the highest review-momentum camps in our Phuket-filtered set—not a paid placement list. Compare
+          These are the highest review-momentum camps in our Phuket-filtered set, not a paid placement list. Compare
           morning and evening sessions, and whether you want walkable food options or a quieter road.
         </p>
       </>
@@ -86,7 +86,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
       <>
         <p>
           Still verified Muay Thai gyms with real listings. The gap from the top band is often review volume or a few
-          rating points—open profiles to see coach ratios and class splits.
+          rating points, open profiles to see coach ratios and class splits.
         </p>
       </>
     ),
@@ -96,7 +96,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          Great for travelers who prioritize dates, budget, or a specific neighborhood. Cross-check commute from your hotel—
+          Great for travelers who prioritize dates, budget, or a specific neighborhood. Cross-check commute from your hotel, 
           Phuket traffic can matter more than a one-spot rank difference.
         </p>
       </>
@@ -152,7 +152,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle={`Ranked Muay Thai training camps in ${CITY}—live listings, not recycled “top 3” blog spam.`}
+      subtitle={`Ranked Muay Thai training camps in ${CITY}, live listings, not recycled “top 3” blog spam.`}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -168,7 +168,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
         imageSrc={HERO_IMAGE}
         imageAlt={`Muay Thai training in ${CITY}, Thailand`}
         priority
-        overlayText={`${CITY} combines island life with serious Muay Thai—use this guide to compare camps by reviews, price, and real schedule data.`}
+        overlayText={`${CITY} pairs island life with serious Muay Thai. Compare camps by reviews, price, and schedule data.`}
       />
 
       <GuideLeadRow
@@ -190,11 +190,11 @@ export default async function BestMuayThaiGymsPhuketPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Where people stay (and why it matters)</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Search intent for <strong>best Muay Thai gyms in Phuket</strong> is often really about tradeoffs: beach access,
+                Picking <strong>best Muay Thai gyms in Phuket</strong> usually comes down to tradeoffs: beach access,
                 quiet recovery, nightlife temptation, and whether you can repeat the commute twice daily for 2–4 weeks.
               </p>
               <p>
-                Your “best gym” becomes the one you consistently attend. Pick an area that supports sleep, food, and routines—
+                Your “best gym” becomes the one you consistently attend. Pick an area that supports sleep, food, and routines, 
                 then choose a camp whose schedule fits your actual day.
               </p>
             </div>
@@ -210,7 +210,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              If you’re training hard, choose accommodation for recovery first—then optimize the fun stuff.
+              If you’re training hard, choose accommodation for recovery first, then optimize the fun stuff.
             </figcaption>
           </figure>
         </div>
@@ -220,12 +220,12 @@ export default async function BestMuayThaiGymsPhuketPage() {
         <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${CITY}?`} subtitle="Island logistics + fight culture" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching for the <strong>best Muay Thai gyms in Phuket</strong> usually want two things at once: real
-            training progression <em>and</em> a holiday setting. That is doable—but you should plan for heat, seasonal crowds,
+            If you are comparing <strong>best Muay Thai gyms in Phuket</strong>, you probably want two things at once: real
+            training progression <em>and</em> a holiday setting. That is doable, but you should plan for heat, seasonal crowds,
             and transport time between your hotel and the gym.
           </p>
           <p>
-            Unlike generic listicles, this page pulls <strong>only verified gyms</strong> that list Muay Thai on CombatStay
+            This page lists <strong>only verified gyms</strong> that tag Muay Thai on CombatStay
             and match our {CITY} location filter. Rankings follow the same review-first logic as our national guides so you
             can compare consistently.
           </p>
@@ -234,7 +234,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
             <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
               LUDUS Sports Complex
             </Link>{' '}
-            —a 5,000 m² resort-style gym with on-site hotel, spa, and Muay Thai/MMA classes—and how it compares to Tiger and
+            , a 5,000 m² resort-style gym with on-site hotel, spa, and Muay Thai/MMA classes, and how it compares to Tiger and
             Unit 27 on the same soi.
           </p>
         </div>
@@ -250,7 +250,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
             },
             {
               title: 'Total trip cost',
-              body: `Compare package types—not only per-day training. On-site rooms, meals, and airport transfers can swing value more than rank order.`,
+              body: `Compare package types, per-day training and. On-site rooms, meals, and airport transfers can swing value more than rank order.`,
             },
             {
               title: 'After training',
@@ -269,7 +269,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
                 <strong>Sat:</strong> skill day (lighter sparring, drills) + errands (laundry, gear, meal prep).
               </li>
               <li>
-                <strong>Sun:</strong> full rest or easy swim/walk—this is when recovery makes next week better.
+                <strong>Sun:</strong> full rest or easy swim/walk, this is when recovery makes next week better.
               </li>
             </ul>
             <p className="mt-3 text-sm text-gray-600">
@@ -360,7 +360,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">Ranked Muay Thai gyms in {CITY}</h2>
         <p className="mb-8 max-w-3xl text-gray-600">
           Structured data matches the order below: #1 first. We insert long-form context every five camps so the page reads
-          like a guide—not a bare directory.
+          like a guide, not a bare directory.
         </p>
 
         {gyms.length === 0 ? (
@@ -389,7 +389,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Phuket Muay Thai camp?"
-        subtitle="Filter verified Phuket gyms by dates, price, and vibe — then book the one your schedule actually fits."
+        subtitle="Filter verified Phuket gyms by dates, price, and schedule, then book the one your schedule fits."
         href="/search?country=Thailand&location=Phuket&discipline=Muay%20Thai"
         buttonLabel="Find your Phuket camp"
       />

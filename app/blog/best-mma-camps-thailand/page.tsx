@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Why a separate MMA guide from Muay Thai?',
-    a: 'MMA requires different coaching, class structure, and often grappling infrastructure. Muay-Thai-only blogs cannot credibly rank MMA gyms—this page filters disciplines accordingly.',
+    a: 'MMA requires different coaching, class structure, and often grappling infrastructure. Muay-Thai-only blogs cannot credibly rank MMA gyms, this page filters disciplines accordingly.',
   },
   {
     q: 'Do these gyms include only professional fighters?',
@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How is ranking calculated?',
-    a: 'Verified Thailand gyms that list MMA-related disciplines, sorted by review score and volume—same transparency approach as our Muay Thai hub.',
+    a: 'Verified Thailand gyms that list MMA-related disciplines, sorted by review score and volume, same transparency approach as our Muay Thai hub.',
   },
   {
     q: 'Is Thailand good for MMA beginners?',
@@ -61,7 +61,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Do Thailand MMA camps include wrestling?',
-    a: 'Some do and some do not. Check whether a gym offers no-gi grappling, takedown work, and cage wrestling—not just pad rounds with MMA branding.',
+    a: 'Some do and some do not. Check whether a gym offers no-gi grappling, takedown work, and cage wrestling, not just pad rounds with MMA branding.',
   },
   {
     q: 'Can I combine MMA with Muay Thai while in Thailand?',
@@ -86,7 +86,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Top MMA picks',
     body: (
       <p>
-        Highest review momentum among MMA-tagged gyms. Compare striking vs grappling emphasis—some camps lean Muay
+        Highest review momentum among MMA-tagged gyms. Compare striking vs grappling emphasis, some camps lean Muay
         style, others run more cage-work and wrestling entries.
       </p>
     ),
@@ -104,7 +104,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Mid-list',
     body: (
       <p>
-        Use this band if you need specific dates or pricing. Rank is national—not “nearest to my hotel.”
+        Use this band if you need specific dates or pricing. Rank is national, not “nearest to my hotel.”
       </p>
     ),
   },
@@ -121,7 +121,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Final ranked listings',
     body: (
       <p>
-        If your favorite gym is missing, it may not tag MMA yet—owners can update disciplines to qualify.
+        If your favorite gym is missing, it may not tag MMA yet, owners can update disciplines to qualify.
       </p>
     ),
   },
@@ -150,7 +150,7 @@ export default async function BestMmaCampsThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Thailand’s MMA scene is broader than pure Muay Thai—this guide owns search intent competitors literally cannot."
+      subtitle="Ranked MMA gyms in Thailand with discipline-filtered listings, live reviews, and planning advice."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -166,7 +166,7 @@ export default async function BestMmaCampsThailandPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="MMA training in Thailand"
         priority
-        overlayText="MMA in Thailand: blend striking tradition with cage-ready grappling—compare real gyms with transparent listings, not generic travel fluff."
+        overlayText="MMA in Thailand blends striking tradition with cage-ready grappling. Compare gyms with transparent listings and live reviews."
       />
 
       <GuideLeadRow
@@ -211,7 +211,7 @@ export default async function BestMmaCampsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Clarify whether you’re optimizing for striking, grappling, or full MMA—then pick a schedule you’ll repeat.
+              Clarify whether you’re optimizing for striking, grappling, or full MMA, then pick a schedule you’ll repeat.
             </figcaption>
           </figure>
         </div>
@@ -221,13 +221,13 @@ export default async function BestMmaCampsThailandPage() {
         <GuideAccentIntro icon={Zap} title="Why an MMA-specific Thailand guide matters" subtitle="Authority + intent" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Searchers typing <strong>best MMA camps in Thailand</strong> need mixed martial arts coaching—not a Muay Thai
+            If you want <strong>best MMA camps in Thailand</strong>, you need mixed martial arts coaching, not a Muay Thai
             list retitled for clicks. CombatStay is discipline-aware: this article only surfaces gyms whose profiles
             include MMA or mixed martial arts tags, then ranks them using the same review signals as our other guides.
           </p>
           <p>
-            That matters for SEO <em>and</em> for travelers. You get grappling blocks, cage context, and coaching styles
-            that pure striking gyms may not offer—without guessing from a vague “fight camp” blog.
+            You get grappling blocks, cage context, and coaching styles
+            that pure striking gyms may not offer, without guessing from a vague “fight camp” blog.
           </p>
         </div>
       </section>
@@ -242,7 +242,7 @@ export default async function BestMmaCampsThailandPage() {
             },
             {
               title: 'Grappling depth',
-              body: 'Ask about wrestling entries, cage wrestling, and BJJ/no-gi availability—MMA gyms differ wildly.',
+              body: 'Ask about wrestling entries, cage wrestling, and BJJ/no-gi availability, MMA gyms differ wildly.',
             },
             {
               title: 'Sparring policy',
@@ -255,14 +255,14 @@ export default async function BestMmaCampsThailandPage() {
       <section id="method" className="mb-14 scroll-mt-24">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">Ranking methodology</h2>
         <p className="mb-6 max-w-3xl text-gray-600">
-          We publish this so rankings are inspectable—not a mystery editor’s whim.
+          We publish this so rankings are inspectable, not a mystery editor’s whim.
         </p>
         <GuideFeatureGrid
           items={[
             { icon: <Check className="h-5 w-5 text-green-600" />, title: 'Discipline filter', text: 'only gyms that list MMA-related disciplines after post-validation.' },
             { icon: <Check className="h-5 w-5 text-green-600" />, title: 'Thailand only', text: 'country filter with live verified/trusted listings.' },
             { icon: <Check className="h-5 w-5 text-green-600" />, title: 'Review signal', text: 'rating average plus volume so one review cannot dominate.' },
-            { icon: <Shield className="h-5 w-5 text-[#003580]" />, title: 'Safety', text: 'insurance and gym rules still belong to you and the camp—confirm on site.' },
+            { icon: <Shield className="h-5 w-5 text-[#003580]" />, title: 'Safety', text: 'insurance and gym rules still belong to you and the camp, confirm on site.' },
           ]}
         />
       </section>
@@ -295,7 +295,7 @@ export default async function BestMmaCampsThailandPage() {
                 <strong>6–9 sessions/week:</strong> alternate hard and technical days.
               </li>
               <li>
-                <strong>Protect sparring:</strong> controlled rounds beat ego rounds.
+                <strong>Protect sparring:</strong> controlled rounds over ego rounds.
               </li>
               <li>
                 <strong>1 true rest day:</strong> keep it sacred to sustain volume.
@@ -332,7 +332,7 @@ export default async function BestMmaCampsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Choose a camp you can repeat for weeks—then let consistency do the work.
+              Choose a camp you can repeat for weeks, then let consistency do the work.
             </figcaption>
           </figure>
         </div>
@@ -345,7 +345,7 @@ export default async function BestMmaCampsThailandPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Thailand fight-scene context</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               If you’re planning a longer MMA trip, it helps to understand the broader fight ecosystem (events, gyms, and
-              culture). Use these as background context—your gym choice should still come from the listings and schedules.
+              culture). Use these as background context, your gym choice should still come from the listings and schedules.
             </p>
             <div className="mt-6 grid gap-4">
               <a
@@ -381,7 +381,7 @@ export default async function BestMmaCampsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              For month-long plans, build a schedule you can recover from—not the hardest week you can survive.
+              For month-long plans, build a schedule you can recover from, not the hardest week you can survive.
             </figcaption>
           </figure>
         </div>
@@ -422,7 +422,7 @@ export default async function BestMmaCampsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand MMA camp?"
-        subtitle="Filter every verified Thailand MMA gym by price, dates, and disciplines — book directly on CombatStay."
+        subtitle="Filter every verified Thailand MMA gym by price, dates, and disciplines, book directly on CombatStay."
         href="/search?country=Thailand&discipline=MMA"
         buttonLabel="Find your MMA camp"
       />

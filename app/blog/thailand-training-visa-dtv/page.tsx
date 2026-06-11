@@ -21,7 +21,7 @@ const DATE_PUBLISHED = '2025-10-15'
 const DATE_MODIFIED = '2026-04-20'
 const HERO_IMAGE = '/highquality-world-map-vector-art_1112614-9909.jpg'
 const DESCRIPTION =
-  'Plan longer combat sports training in Thailand: visa routes, DTV basics, documents, insurance, and official sources—editorial guide, not legal advice.'
+  'Plan longer combat sports training in Thailand: visa routes, DTV basics, documents, insurance, and official sources. Editorial guide, not legal advice.'
 
 export const metadata: Metadata = {
   title: `${TITLE} | CombatStay`,
@@ -46,7 +46,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What is the DTV (Destination Thailand Visa)?',
-    a: 'DTV can suit certain longer stays and remote-work lifestyles, depending on eligibility and current policy. Requirements evolve—use official sources for forms, fees, and permitted activities.',
+    a: 'DTV can suit certain longer stays and remote-work lifestyles, depending on eligibility and current policy. Requirements evolve. Use official sources for forms, fees, and permitted activities.',
   },
   {
     q: 'What documents help for combat sports travelers?',
@@ -62,7 +62,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Does training count as “work”?',
-    a: 'Visa categories define permitted activities differently. Do not assume training, coaching, or online work are interchangeable—confirm with official guidance for your specific visa.',
+    a: 'Visa categories define permitted activities differently. Do not assume training, coaching, or online work are interchangeable. Confirm with official guidance for your specific visa.',
   },
   {
     q: 'Where can I find official DTV/visa requirements?',
@@ -74,7 +74,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What is the biggest mistake long-stay fighters make with visas?',
-    a: 'Leaving it too late. Visa and airline checks are timing-sensitive—build buffer days, keep digital copies of documents, and confirm the latest checklist right before you fly.',
+    a: 'Leaving it too late. Visa and airline checks are timing-sensitive. Build buffer days, keep digital copies of documents, and confirm the latest checklist right before you fly.',
   },
 ]
 
@@ -98,7 +98,7 @@ export default function ThailandTrainingVisaDtvPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Longer stays need a plan: documents, insurance, realistic training load, and official rules—not forum rumors."
+      subtitle="Longer stays need a plan: documents, insurance, realistic training load, and official rules, not forum rumors."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -112,7 +112,7 @@ export default function ThailandTrainingVisaDtvPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Training in Thailand"
         priority
-        overlayText="Visa rules change—use this guide to structure your research, then confirm every detail with official immigration sources."
+        overlayText="Visa rules change. Use this guide to structure your research, then confirm every detail with official immigration sources."
       />
 
       <GuideLeadRow
@@ -131,12 +131,12 @@ export default function ThailandTrainingVisaDtvPage() {
         <GuideAccentIntro icon={Plane} title="Why visa planning matters for fight camps" subtitle="Flights are the easy part" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            If you are training Muay Thai, MMA, BJJ, or boxing in Thailand for more than a quick holiday, your visa
-            strategy is as important as your camp choice. The wrong assumption—treating a long stay like a short
-            tourist trip—can create stress, denied boarding, or last-minute booking losses.
+            If you train Muay Thai, MMA, BJJ, or boxing in Thailand for more than a quick holiday, your visa
+            strategy matters as much as your camp choice. Treating a long stay like a short
+            tourist trip can create stress, denied boarding, or last-minute booking losses.
           </p>
           <p>
-            This page is a <strong>structured editorial overview</strong> of how travelers commonly think about Thailand
+            This page is a <strong>structured editorial overview</strong> of how travelers plan Thailand
             stays, including references to DTV where relevant. It is <strong>not legal advice</strong>. Rules depend on
             nationality, embassy, and policy updates.
           </p>
@@ -150,11 +150,11 @@ export default function ThailandTrainingVisaDtvPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Think in stamps, dates, and permitted stay</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Visa talk is abstract until you see the pattern: entries, extensions, and dates that control how long you
-                can stay. The “right” option depends on your passport, your stay length, and what documents you can provide.
+                Visa talk stays abstract until you map entries, extensions, and dates that control how long you
+                can stay. The right option depends on your passport, your stay length, and what documents you can provide.
               </p>
               <p>
-                The goal of this guide is to help you build a repeatable process: start from official sources, make a
+                This guide helps you build a repeatable process. Start from official sources, make a
                 checklist, and avoid last-minute surprises that can ruin a month-long camp plan.
               </p>
             </div>
@@ -183,7 +183,7 @@ export default function ThailandTrainingVisaDtvPage() {
           items={[
             {
               title: 'Shorter tourist-style visits',
-              body: 'Often used for shorter camps when permitted for your nationality. Confirm permitted stay length and extensions with official guidance—not blogs.',
+              body: 'Often used for shorter camps when permitted for your nationality. Confirm permitted stay length and extensions with official guidance, not blogs.',
             },
             {
               title: 'Longer-stay categories',
@@ -203,8 +203,7 @@ export default function ThailandTrainingVisaDtvPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">High ROI planning</p>
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">A pre-flight checklist for long-stay training trips</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
-              If you want the trip to last longer than a week, treat visas like training: a system beats motivation. This checklist is
-              designed to prevent last-minute stress and expensive re-booking.
+              If you want the trip to last longer than a week, treat visas like training. Build a system. This checklist prevents last-minute stress and expensive re-booking.
             </p>
             <ul className="mt-6 space-y-2 text-sm text-gray-700">
               <li>
@@ -248,7 +247,7 @@ export default function ThailandTrainingVisaDtvPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Use visa images as visual reference only—always confirm rules with official sources for your passport.
+              Use visa images as visual reference only. Confirm rules with official sources for your passport.
             </figcaption>
           </figure>
         </div>
@@ -261,12 +260,12 @@ export default function ThailandTrainingVisaDtvPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">What changes most often (and how to react)</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                The trap is memorizing a blog’s “visa rules” once and assuming it will be true next month. What changes is
-                often the <strong>implementation</strong>: required documents, appointment flow, fees, or what an airline
+                Do not memorize a blog&rsquo;s visa rules once and assume they hold next month. What changes is
+                the <strong>implementation</strong>: required documents, appointment flow, fees, or what an airline
                 wants before boarding.
               </p>
               <p>
-                Treat anything you read—including this page—as a framework. Then validate the current checklist from the
+                Treat anything you read, including this page, as a framework. Validate the current checklist from the
                 Immigration Bureau, MFA, and your embassy/consulate links below.
               </p>
             </div>
@@ -282,7 +281,7 @@ export default function ThailandTrainingVisaDtvPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Visa-on-arrival image from Wikimedia Commons. Use it as a visual reference only—eligibility and rules vary by
+              Visa-on-arrival image from Wikimedia Commons. Use it as a visual reference only. Eligibility and rules vary by
               passport and policy.
             </figcaption>
           </figure>
@@ -292,8 +291,8 @@ export default function ThailandTrainingVisaDtvPage() {
       <GuideSection id="documents" variant="amber" className="mb-14">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">Documents travelers often prepare</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
-          Your embassy may ask for different items than a friend’s passport. Use this as a packing list for your research
-          folder—not a guarantee.
+          Your embassy may ask for different items than a friend&rsquo;s passport. Use this as a packing list for your research
+          folder, not a guarantee.
         </p>
         <ul className="grid gap-4 sm:grid-cols-2">
           {[
@@ -319,13 +318,13 @@ export default function ThailandTrainingVisaDtvPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">Training load vs immigration stress</h2>
         <div className="max-w-4xl space-y-4 text-base leading-relaxed text-gray-800">
           <p>
-            Long-stay athletes sometimes underestimate recovery. If you are navigating visa appointments, housing setup,
-            and jet lag while jumping into twice-daily training, injury risk rises. Build buffer days and sleep—your camp
-            will still be there after you are rested.
+            Long-stay athletes underestimate recovery. If you navigate visa appointments, housing setup,
+            and jet lag while jumping into twice-daily training, injury risk rises. Build buffer days and sleep. Your camp
+            will still be there after you rest.
           </p>
           <p>
             If you plan to compete, add medical and coaching conversations early. Insurance that excludes contact sports
-            can leave you exposed—read policy details carefully.
+            can leave you exposed. Read policy details carefully.
           </p>
         </div>
       </section>
@@ -333,7 +332,7 @@ export default function ThailandTrainingVisaDtvPage() {
       <GuideSection variant="slate" className="mb-14">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">A simple “ask your camp” checklist (before you book)</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
-          Camps cannot give legal advice, but they can confirm logistics that affect your planning—especially for longer stays.
+          Camps cannot give legal advice, but they can confirm logistics that affect your planning, especially for longer stays.
         </p>
         <ul className="grid gap-4 sm:grid-cols-2">
           {[
@@ -358,7 +357,7 @@ export default function ThailandTrainingVisaDtvPage() {
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Official sources beat blogs</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               Use the Royal Thai Immigration Bureau, Ministry of Foreign Affairs, and your embassy for forms, fees, and
-              processing times. Third-party articles—including ours—go stale when rules change.
+              processing times. Third-party articles, including ours, go stale when rules change.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {[
@@ -461,7 +460,7 @@ export default function ThailandTrainingVisaDtvPage() {
 
       <GuideSection id="faq" variant="default" className="mb-14 border border-gray-200 bg-white p-6 md:p-10">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">Frequently asked questions</h2>
-        <p className="mb-8 text-gray-600">High-signal answers for combat sports travelers—confirm details with officials.</p>
+        <p className="mb-8 text-gray-600">Answers for combat sports travelers. Confirm details with officials.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

@@ -45,8 +45,8 @@ function money(n: number | null | undefined, currency?: string | null) {
 
 const FAQ_ITEMS = [
   {
-    q: 'Do Krabi Muay Thai camps actually offer private rooms with AC?',
-    a: 'Some do—either on-site bungalows/rooms or partner accommodation nearby. Always confirm whether AC is in the room you are booking (not just “AC in common areas”).',
+    q: 'Do Krabi Muay Thai camps offer private rooms with AC?',
+    a: 'Some do, either on-site bungalows/rooms or partner accommodation nearby. Always confirm whether AC is in the room you are booking (not just “AC in common areas”).',
   },
   {
     q: 'Is AC worth it for a Thailand training camp?',
@@ -58,11 +58,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is Krabi cheaper than Phuket for a stay-and-train package?',
-    a: 'Often, yes—Krabi can offer lower accommodation and food costs than Phuket, while still providing beach access and a strong training routine.',
+    a: 'Often, yes. Krabi can offer lower accommodation and food costs than Phuket, while still providing beach access and a strong training routine.',
   },
   {
     q: 'Can I book Krabi camps directly on CombatStay?',
-    a: 'Yes—open any gym profile to see live pricing, photos, reviews, and booking-ready details.',
+    a: 'Yes. Open any gym profile to see live pricing, photos, reviews, and booking-ready details.',
   },
 ]
 

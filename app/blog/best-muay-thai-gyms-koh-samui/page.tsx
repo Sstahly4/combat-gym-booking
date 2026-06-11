@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: `Is Koh Samui good for Muay Thai training?`,
-    a: `Yes—if you want island lifestyle with training. The key is logistics: choose accommodation for sleep and a commute you can repeat for weeks.`,
+    a: `Yes, if you want island lifestyle with training. The key is logistics: choose accommodation for sleep and a commute you can repeat for weeks.`,
   },
   {
     q: `How are Koh Samui gyms ranked?`,
@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `When is the best time of year to train in Koh Samui?`,
-    a: `It depends on weather and crowds. Check official weather patterns before booking a long stay—humidity and rainfall change recovery and training load.`,
+    a: `It depends on weather and crowds. Check official weather patterns before booking a long stay, humidity and rainfall change recovery and training load.`,
   },
   {
     q: `Is Koh Samui beginner-friendly for Muay Thai?`,
@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the Koh Samui filter. Compare schedules and class structure.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified/trusted listings—differences are often review recency and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified listings. Differences usually come down to review recency and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific area.</p> },
   { title: `More gyms`, body: <p>Expand beyond whatever one blog post repeats.</p> },
   { title: `Final ranked slots`, body: <p>Completes a deeper ranked list so you can compare more options.</p> },
@@ -124,7 +124,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Koh Samui Thailand beach and palm trees"
         priority
-        overlayText="Koh Samui Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Koh Samui ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -145,8 +145,8 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
         <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${CITY}?`} subtitle="Island life + repeatable weeks" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best Muay Thai gyms in {CITY}</strong> usually want the island lifestyle without losing
-            training progress. That is possible—but only if you plan for commute, sleep, and heat recovery.
+            If you are comparing <strong>best Muay Thai gyms in {CITY}</strong>, you probably want the island lifestyle without losing
+            training progress. That is possible, but only if you plan for commute, sleep, and heat recovery.
           </p>
           <p>
             This page ranks verified/trusted listings that match our {CITY} filter and list Muay Thai. Rankings follow the
@@ -156,7 +156,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan an island training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan an island training stay for a long stay</h2>
         <GuideThreeCards
           items={[
             { title: 'Decide the goal', body: 'One session/day is plenty for beginners. Two-a-days work when sleep and recovery are stable.' },
@@ -226,7 +226,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
                 <strong>1 recovery day:</strong> treat it as mandatory to sustain the stay.
               </li>
               <li>
-                <strong>Sparring:</strong> controlled rounds beat ego rounds.
+                <strong>Sparring:</strong> controlled rounds over ego rounds.
               </li>
             </ul>
           </div>
@@ -260,7 +260,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Consistency beats perfect gear. Pack basics and focus on repeatable weeks.
+              Pack basics and focus on repeatable weeks. Pack basics and focus on repeatable weeks.
             </figcaption>
           </figure>
         </div>
@@ -334,7 +334,7 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Koh Samui Muay Thai camp?"
-        subtitle="Compare live prices, reviews, and schedules at every verified Koh Samui camp — and book in minutes."
+        subtitle="Compare live prices, reviews, and schedules at every verified Koh Samui camp, and book in minutes."
         href="/search?country=Thailand&location=Koh%20Samui&discipline=Muay%20Thai"
         buttonLabel="Find your Koh Samui camp"
       />

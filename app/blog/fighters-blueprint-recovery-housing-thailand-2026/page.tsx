@@ -60,7 +60,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is this list complete?',
-    a: 'No—this is a curated shortlist built from live verified/trusted CombatStay listings that show both accommodation and recovery signals. Use Thailand search to widen.',
+    a: 'No. This is a curated shortlist built from live verified/trusted CombatStay listings that show both accommodation and recovery signals. Use Thailand search to widen.',
   },
   {
     q: 'Do I need a special visa for longer stays?',
@@ -111,7 +111,7 @@ export default async function FightersBlueprintRecoveryHousingThailand2026Page()
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Outcome-driven shortlist: camps that reduce commute friction and support recovery. Built from live CombatStay amenities—not vague marketing copy."
+      subtitle="Outcome-driven shortlist: camps that reduce commute friction and support recovery. Built from live CombatStay amenities, not vague marketing copy."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -214,7 +214,7 @@ export default async function FightersBlueprintRecoveryHousingThailand2026Page()
             <h3 className="text-lg font-semibold text-gray-900">On-site housing is a performance tool</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-700">
               When you remove commute friction, you get the two things most travelers lose first: <strong>sleep</strong> and
-              <strong> consistency</strong>. That’s why housing beats a “better” gym you rarely attend.
+              <strong> consistency</strong>. That is why on-site housing tops a “better” gym you rarely attend.
             </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -235,7 +235,7 @@ export default async function FightersBlueprintRecoveryHousingThailand2026Page()
       </GuideSection>
 
       <GuideSection id="how-to-use" variant="slate" className="mb-14">
-        <GuideAccentIntro icon={Snowflake} title="How to choose (don’t overpay for vibes)" subtitle="Outcome-driven filters" />
+        <GuideAccentIntro icon={Snowflake} title="How to choose (don’t overpay for marketing)" subtitle="Outcome-driven filters" />
         <div className="grid gap-6 md:grid-cols-3">
           {[
             { t: 'Confirm the housing is real', d: '“Accommodation” can mean on-site rooms or nearby partners. Verify walking distance and inclusions.' },

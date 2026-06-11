@@ -22,7 +22,7 @@ const DATE_PUBLISHED = '2026-04-21'
 const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = '/training-center-1.avif'
 const DESCRIPTION =
-  'Decide between a 1-week and 1-month Muay Thai camp in Thailand: cost per day, realistic progress, recovery, and who each stay length actually suits.'
+  'Decide between a 1-week and 1-month Muay Thai camp in Thailand: cost per day, realistic progress, recovery, and who each stay length suits.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
     a: 'It is long enough to get a meaningful taste, improve a handful of technical details, and experience Thai training culture. It is not long enough for body composition change, significant skill development, or fight preparation.',
   },
   {
-    q: 'How much progress do you actually make in a month?',
+    q: 'How much progress do you make in a month?',
     a: 'Most people who train consistently for a full month see visible improvement in stance, kick mechanics, pad timing, and conditioning. Sparring composure usually starts to settle around weeks 3&ndash;4.',
   },
   {
@@ -59,11 +59,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What happens if I get injured in week 1 of a 1-month stay?',
-    a: 'Talk to your coach immediately. Good camps will adjust&mdash;lighter pads, bag-only work, technique days&mdash;so you can keep training around the injury. Travel insurance with physio coverage helps.',
+    a: 'Talk to your coach immediately. Good camps will adjust with lighter pads, bag-only work, or technique days so you can keep training around the injury. Travel insurance with physio coverage helps.',
   },
   {
     q: 'Can I extend from 1 week to 1 month once I arrive?',
-    a: 'Usually yes, and many gyms will re-price the remainder at weekly or monthly rates. You may also need to extend your visa&mdash;check that before you commit.',
+    a: 'Usually yes, and many gyms will re-price the remainder at weekly or monthly rates. You may also need to extend your visa. Check that before you commit.',
   },
 ]
 
@@ -87,7 +87,7 @@ export default function OneWeekVsOneMonthPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="A week gets you a taste. A month changes you. Here is exactly what each stay length delivers&mdash;and what it does not."
+      subtitle="A week gives you a sample of Thai camp life. A month lets technique and conditioning settle. This guide compares what each stay length delivers and what it does not."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -101,7 +101,7 @@ export default function OneWeekVsOneMonthPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Muay Thai training ring in Thailand"
         priority
-        overlayText="The gap between a 7-day Muay Thai holiday and a 30-day Muay Thai camp is not linear. Four weeks is not four times as much training—it is a different experience."
+        overlayText="Seven days and thirty days are not the same trip scaled up. A month is a different training block with different recovery demands."
       />
 
       <GuideLeadRow
@@ -115,7 +115,7 @@ export default function OneWeekVsOneMonthPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue="30 days"
-        statDescription="The stay length where most first-time trainees report feeling they left a different person than they arrived."
+        statDescription="The stay length where many first-time trainees report clear changes in technique and daily routine."
         statIcon={<CalendarDays className="h-5 w-5" />}
       />
 
@@ -158,16 +158,16 @@ export default function OneWeekVsOneMonthPage() {
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Short &amp; punchy</p>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">What the 1-week camp actually delivers</h2>
+            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">What a 1-week camp delivers</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                A 1-week Muay Thai camp in Thailand is honestly a <strong>flavored holiday</strong>, and that is not an insult. It is an excellent introduction: you experience Thai training culture, meet coaches, work on 3&ndash;5 technical cues, and come home with a clear idea of whether you want to return for longer.
+                A 1-week Muay Thai camp in Thailand works as a short training trip. You experience Thai training culture, meet coaches, work on 3&ndash;5 technical cues, and come home with a clear idea of whether you want to return for longer.
               </p>
               <p>
                 Do not expect body composition change, real sparring confidence, or fight prep. Do expect shin bruises, an overhauled opinion of your conditioning, and a list of drills to take home.
               </p>
               <p>
-                <strong>One-week trip tactic:</strong> one session per day, every day, plus one optional morning run. Avoid two-a-days unless you already train hard at home&mdash;you will wreck your last three days.
+                <strong>One-week tactic:</strong> one session per day, every day, plus one optional morning run. Skip two-a-days unless you already train hard at home. A second daily session in week one often ruins the last three days.
               </p>
             </div>
           </div>
@@ -182,7 +182,7 @@ export default function OneWeekVsOneMonthPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              A week is a taster. Plan it like one and you will actually enjoy it.
+              A week is a taster. Plan for one session per day and recovery time.
             </figcaption>
           </figure>
         </div>
@@ -192,13 +192,13 @@ export default function OneWeekVsOneMonthPage() {
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Transformational</p>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">What the 1-month camp actually delivers</h2>
+            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">What a 1-month camp delivers</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
                 A month is where Muay Thai in Thailand starts to become a skill instead of an experience. By day 21, your stance is quieter, your kicks land cleaner, your clinch feels less chaotic, and you understand why Thai coaches drill the same 4 combos forever.
               </p>
               <p>
-                The cost structure also shifts. Training packages get cheaper per day, gear pays itself off, and food becomes routine instead of tourism. The main risk is not cost&mdash;it is burnout. Week 3 is when most first-timers hit a wall.
+                The cost structure also shifts. Training packages get cheaper per day, gear pays for itself over time, and food becomes routine instead of restaurant-hopping. The main risk is burnout. Week 3 is when most first-timers hit a wall.
               </p>
               <p>
                 <strong>Month-long tactic:</strong> build the week like a training block, not a holiday. One protected rest day. Roadwork 3x per week. Sparring only when your coach invites you. See the{' '}
@@ -218,7 +218,7 @@ export default function OneWeekVsOneMonthPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              A month earns you depth&mdash;but only if you respect recovery.
+              A month builds depth if you protect recovery days and sleep.
             </figcaption>
           </figure>
         </div>
@@ -230,15 +230,15 @@ export default function OneWeekVsOneMonthPage() {
           items={[
             {
               title: 'Week 1',
-              body: 'Adaptation. You are fighting heat, soreness, new rhythm. Big technical gains are unusual&mdash;focus on stance, teep, and pad basics.',
+              body: 'Adaptation. You are fighting heat, soreness, and a new rhythm. Big technical gains are uncommon in week one. Focus on stance, teep, and pad basics.',
             },
             {
               title: 'Weeks 2–3',
-              body: 'The cliff. Technique starts to stick. Your third session of the week feels different from your first. This is why a month matters.',
+              body: 'Technique starts to stick. Your third session of the week feels different from your first. This is why a month matters.',
             },
             {
               title: 'Week 4',
-              body: 'Consolidation. Drop novelty and repeat your cleanest 3&ndash;4 combos. You will leave with something portable, not just memories.',
+              body: 'Consolidation. Drop novelty and repeat your cleanest 3&ndash;4 combos. You will leave with skills you can train at home, not only memories.',
             },
           ]}
         />
@@ -251,7 +251,7 @@ export default function OneWeekVsOneMonthPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Why the month is cheaper per training day</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Gyms price longer stays to fill their floor predictably. A monthly training package in Thailand typically costs around 2.5&ndash;3x a weekly package, not 4x. Accommodation and food also cheapen per day&mdash;monthly apartments are dramatically cheaper than nightly hotels, and you stop eating like a tourist by week two.
+                Gyms price longer stays to fill their floor predictably. A monthly training package in Thailand typically costs around 2.5&ndash;3x a weekly package, not 4x. Accommodation and food also cost less per day. Monthly apartments run cheaper than nightly hotels, and you stop eating like a tourist by week two.
               </p>
               <p>
                 The practical result: the incremental cost of your <em>second</em> week is lower than the first, and the third and fourth weeks cost even less per day. For a full breakdown, see the{' '}
@@ -271,7 +271,7 @@ export default function OneWeekVsOneMonthPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Long stays compound&mdash;training costs, rent, and food all scale better than a week.
+              Long stays lower your cost per training day for gym fees, rent, and food compared with a one-week trip.
             </figcaption>
           </figure>
         </div>
@@ -301,9 +301,9 @@ export default function OneWeekVsOneMonthPage() {
         <div className="flex items-start gap-4">
           <Timer className="mt-1 h-8 w-8 shrink-0 text-[#003580]" aria-hidden />
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">The honest bias: book longer if you can</h2>
+            <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Book longer if you can</h2>
             <p className="mt-3 text-sm leading-relaxed text-gray-800">
-              Almost nobody who does a full month regrets it. Plenty of people who do a week regret not staying longer. If the visa and logistics allow it, book for three to four weeks&mdash;you can always cut short a week if needed, but you cannot retroactively add training days to a week-long trip.
+              Most people who complete a full month are glad they stayed. Many who book only a week wish they had more time. If visa and logistics allow, book three to four weeks. You can cut a week short if needed, but you cannot add training days to a trip after you fly home.
             </p>
           </div>
         </div>
@@ -318,7 +318,7 @@ export default function OneWeekVsOneMonthPage() {
 
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
-        <p className="mb-8 text-gray-600">The stay-length questions travelers actually ask.</p>
+        <p className="mb-8 text-gray-600">Common questions about stay length.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

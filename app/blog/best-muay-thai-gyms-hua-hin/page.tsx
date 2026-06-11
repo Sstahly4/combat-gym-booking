@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: `Is Hua Hin good for Muay Thai training?`,
-    a: `Yes—especially for long stays if you want a calmer routine than Bangkok or Phuket. Choose accommodation for sleep and a gym you can commute to consistently for 2–6 weeks.`,
+    a: `Yes, especially for long stays if you want a calmer routine than Bangkok or Phuket. Choose accommodation for sleep and a gym you can commute to consistently for 2–6 weeks.`,
   },
   {
     q: `How are gyms ranked on this Hua Hin page?`,
@@ -69,7 +69,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `What should I pack for a 2–4 week Muay Thai stay?`,
-    a: `Wraps, mouthguard, lightweight training clothes, blister/tape basics, and hydration support. Many travelers buy gloves/shin guards locally to avoid luggage weight—confirm gym rules on the listing.`,
+    a: `Wraps, mouthguard, lightweight training clothes, blister/tape basics, and hydration support. Many travelers buy gloves/shin guards locally to avoid luggage weight, confirm gym rules on the listing.`,
   },
   {
     q: `Does the ranking include every Muay Thai gym in Hua Hin?`,
@@ -78,8 +78,8 @@ const FAQ_ITEMS = [
 ]
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
-  { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the {CITY} filter. Compare schedule fit and class structure—not only the rank number.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified/trusted listings—differences are often review history and availability.</p> },
+  { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the {CITY} filter. Compare schedule fit and class structure, the rank number alone.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified/trusted listings, differences are often review history and availability.</p> },
   { title: `Mid-list options`, body: <p>Good when you need specific dates, budget fit, or a quieter environment.</p> },
   { title: `More gyms`, body: <p>Expand your shortlist beyond what old forum threads repeat.</p> },
   { title: `Final ranked slots`, body: <p>Completes the ranked list so you can compare more options.</p> },
@@ -108,7 +108,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle={`${CITY} is a strong long-stay pick if you want a calmer base. Use this ranked guide to compare verified camps, then choose the schedule you’ll actually follow.`}
+      subtitle={`${CITY} is a strong long-stay pick if you want a calmer base. Use this ranked guide to compare verified camps, then choose the schedule you can keep.`}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -124,7 +124,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Hua Hin Thailand coastline"
         priority
-        overlayText="Hua Hin Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Hua Hin ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -145,8 +145,8 @@ export default async function BestMuayThaiGymsHuaHinPage() {
         <GuideAccentIntro icon={MapPin} title={`Why train Muay Thai in ${CITY}?`} subtitle="Calmer routine, consistent weeks" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Searchers looking for <strong>best Muay Thai gyms in {CITY}</strong> often want a stable daily rhythm: train,
-            recover, sleep, repeat. That’s where {CITY} can shine compared to higher-distraction hubs—if you choose a gym you
+            If you are comparing <strong>best Muay Thai gyms in {CITY}</strong>, you probably want a stable daily rhythm: train,
+            recover, sleep, repeat. That’s where {CITY} can shine compared to higher-distraction hubs, if you choose a gym you
             can reach consistently.
           </p>
           <p>
@@ -157,7 +157,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a {CITY} training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a {CITY} training stay for a long stay</h2>
         <GuideThreeCards
           items={[
             { title: 'Consistency', body: 'For 2–6 week stays, the biggest lever is simply showing up. Choose commute + schedule you can repeat.' },
@@ -200,8 +200,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
       <GuideSection id="week-template" variant="slate" className="mb-14">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">A realistic 7‑day Hua Hin training template</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
-          This is a practical routine that keeps people training longer (and ranking pages tend to perform better when they
-          actually help readers plan).
+          This is a practical routine that keeps people training longer (and Use it as a baseline and adjust for your experience level.
         </p>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -231,7 +230,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
                 <strong>1 true rest day:</strong> protect joints and sleep so volume compounds.
               </li>
               <li>
-                <strong>Sparring:</strong> keep it controlled; technical rounds beat ego rounds.
+                <strong>Sparring:</strong> keep it controlled; technical rounds over ego rounds.
               </li>
             </ul>
             <p className="mt-3 text-sm text-gray-600">
@@ -253,7 +252,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
               </p>
               <p>
                 Use the ranked list as your shortlist, then open each profile to confirm package inclusions (private sessions,
-                accommodation, meals, airport pickup) so you can compare total value—not just rank order.
+                accommodation, meals, airport pickup) so you can compare total value, not just rank order.
               </p>
             </div>
           </div>
@@ -342,7 +341,7 @@ export default async function BestMuayThaiGymsHuaHinPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Hua Hin Muay Thai camp?"
-        subtitle="Compare verified Hua Hin camps — live prices, real reviews, flexible dates — and book directly."
+        subtitle="Compare verified Hua Hin camps, live prices, real reviews, flexible dates, and book directly."
         href="/search?country=Thailand&location=Hua%20Hin&discipline=Muay%20Thai"
         buttonLabel="Find your Hua Hin camp"
       />

@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Is Bangkok good for beginners in Muay Thai?',
-    a: 'Yes—many camps offer fundamentals classes and tourist-friendly schedules. Read each profile for beginner blocks, coach ratios, and whether sparring is optional.',
+    a: 'Yes, many camps offer fundamentals classes and tourist-friendly schedules. Read each profile for beginner blocks, coach ratios, and whether sparring is optional.',
   },
   {
     q: 'How do I choose between camps in different neighborhoods?',
@@ -56,7 +56,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What neighborhoods are best for Muay Thai in Bangkok?',
-    a: 'The best neighborhood is the one that keeps your commute sustainable. Prioritize BTS/MRT access, food options, and sleep-friendly areas—then pick a gym whose schedule you can repeat for weeks.',
+    a: 'The best neighborhood is the one that keeps your commute sustainable. Prioritize BTS/MRT access, food options, and sleep-friendly areas, then pick a gym whose schedule you can repeat for weeks.',
   },
   {
     q: 'How much do Muay Thai gyms in Bangkok cost?',
@@ -64,7 +64,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I train Muay Thai in Bangkok and still explore the city?',
-    a: 'Yes—plan your week. Many travelers train hard 4–6 days/week and keep one recovery/light sightseeing day so fatigue does not accumulate.',
+    a: 'Yes, plan your week. Many travelers train hard 4–6 days/week and keep one recovery/light sightseeing day so fatigue does not accumulate.',
   },
   {
     q: 'Can I realistically do two-a-days in Bangkok?',
@@ -72,7 +72,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What should I pack for Muay Thai training in Bangkok?',
-    a: 'Wraps, mouthguard, lightweight training clothes, and blister/tape basics. Many travelers buy gloves/shin guards locally to avoid luggage weight—confirm gym rules on each listing.',
+    a: 'Wraps, mouthguard, lightweight training clothes, and blister/tape basics. Many travelers buy gloves/shin guards locally to avoid luggage weight, confirm gym rules on each listing.',
   },
 ]
 
@@ -81,7 +81,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Leading Bangkok picks',
     body: (
       <p>
-        High review scores with enough volume to trust the average. Compare class times—Bangkok traffic makes “two sessions
+        High review scores with enough volume to trust the average. Compare class times, Bangkok traffic makes “two sessions
         per day” harder than it sounds if you are far from the gym.
       </p>
     ),
@@ -99,7 +99,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Mid-list',
     body: (
       <p>
-        Useful when you need specific dates or a quieter room line. Cross-check distance from where you are staying—use map
+        Useful when you need specific dates or a quieter room line. Cross-check distance from where you are staying, use map
         links on each gym page.
       </p>
     ),
@@ -120,7 +120,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Final ranked slots',
     body: (
       <p>
-        Completes a deep shortlist for capital-city training. Confirm current rates on the profile—Bangkok camps update
+        Completes a deep shortlist for capital-city training. Confirm current rates on the profile, Bangkok camps update
         packages frequently.
       </p>
     ),
@@ -150,7 +150,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Bangkok’s density of Muay Thai gyms means you can optimize for schedule, neighborhood, and budget—if you read past the headline rank."
+      subtitle="Bangkok’s density of Muay Thai gyms means you can optimize for schedule, neighborhood, and budget, if you read past the headline rank."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -166,7 +166,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
         imageSrc={HERO_IMAGE}
         imageAlt={`Muay Thai gyms in ${CITY}`}
         priority
-        overlayText="Bangkok: maximum convenience, huge variety, and easy access to stadium shows—pick a camp that fits your commute and schedule, not only its rank."
+        overlayText="Bangkok has dozens of Muay Thai camps. Pick one that fits your commute and schedule, not just its rank."
       />
 
       <GuideLeadRow
@@ -187,7 +187,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Bangkok logistics</p>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Pick a gym you’ll actually reach twice a day</h2>
+            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Pick a gym you can reach twice a day</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               In Bangkok, the best camp for your results is often the one with a commute you can repeat for 2–6 weeks.
               Use this ranked list as a shortlist, then choose based on neighborhood fit and schedule.
@@ -214,9 +214,9 @@ export default async function BestMuayThaiGymsBangkokPage() {
         <GuideAccentIntro icon={Building2} title="Why train Muay Thai in Bangkok?" subtitle="Capital advantages + tradeoffs" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Search demand for <strong>best Muay Thai gyms in Bangkok</strong> keeps growing because the city offers the
+            <strong>Best Muay Thai gyms in Bangkok</strong> are worth comparing because the city offers the
             easiest logistics in Thailand: transit, food, medical, and fight shows. The tradeoff is heat, traffic, and
-            decision fatigue—there are many gyms, not all of them fit your routine.
+            too many options. Not every gym fits your routine.
           </p>
           <p>
             This ranking uses the same review-first methodology as our other guides, but filtered to gyms that match{' '}
@@ -235,11 +235,11 @@ export default async function BestMuayThaiGymsBangkokPage() {
             },
             {
               title: 'Stadium nights',
-              body: 'Watching fights can inspire your training—just protect sleep if you are stacking hard morning sessions.',
+              body: 'Watching fights can inspire your training, just protect sleep if you are stacking hard morning sessions.',
             },
             {
               title: 'Hydration & recovery',
-              body: 'Urban heat plus pad work adds up. Budget time for food, massage, and rest—not only gym hours.',
+              body: 'Urban heat plus pad work adds up. Budget time for food, massage, and rest, gym hours alone.',
             },
           ]}
         />
@@ -275,7 +275,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
                 <strong>1 true rest day:</strong> protect joints and sleep.
               </li>
               <li>
-                <strong>Commute rule:</strong> if travel time is killing two-a-days, move accommodation—not gyms.
+                <strong>Commute rule:</strong> if travel time is killing two-a-days, move accommodation, not gyms.
               </li>
             </ul>
           </div>
@@ -357,7 +357,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              For long stays, commute time is a training variable—treat it like part of your program.
+              For long stays, commute time is a training variable, treat it like part of your program.
             </figcaption>
           </figure>
         </div>
@@ -401,7 +401,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Bangkok Muay Thai camp?"
-        subtitle="Filter verified Bangkok gyms by price, dates, and neighborhood — then book the one that fits your week."
+        subtitle="Filter verified Bangkok gyms by price, dates, and neighborhood, then book the one that fits your week."
         href="/search?country=Thailand&location=Bangkok&discipline=Muay%20Thai"
         buttonLabel="Find your Bangkok camp"
       />

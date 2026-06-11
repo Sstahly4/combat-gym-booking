@@ -31,7 +31,7 @@ const DATE_PUBLISHED = '2025-10-15'
 const DATE_MODIFIED = '2026-04-20'
 const HERO_IMAGE = '/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png'
 const DESCRIPTION =
-  'Brazilian Jiu-Jitsu gyms in Thailand: ranked by reviews, with gi/no-gi tips, pricing signals, and discipline-only filtering—not generic fight camp lists.'
+  'Brazilian Jiu-Jitsu gyms in Thailand: ranked by reviews, with gi/no-gi tips, pricing signals, and discipline-only filtering, not generic fight camp lists.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
 
 const FAQ_ITEMS = [
   {
-    q: 'Gi vs no-gi—which do Thailand BJJ gyms emphasize?',
+    q: 'Gi vs no-gi, which do Thailand BJJ gyms emphasize?',
     a: 'It varies by gym and coach lineups. Read each profile for class types, nogi schedules, and competition teams.',
   },
   {
@@ -56,7 +56,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is no-gi common in Thailand BJJ gyms?',
-    a: 'Many gyms offer no-gi, but schedules vary. Check each listing for class types and weekly frequency—some gyms run mostly gi with a few no-gi sessions.',
+    a: 'Many gyms offer no-gi, but schedules vary. Check each listing for class types and weekly frequency, some gyms run mostly gi with a few no-gi sessions.',
   },
   {
     q: 'Do Thailand BJJ gyms allow drop-ins?',
@@ -94,7 +94,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Next tier',
     body: (
       <p>
-        Still grappling-filtered. Look for open mat times, shower facilities, and whether drop-ins are welcome—especially in
+        Still grappling-filtered. Look for open mat times, shower facilities, and whether drop-ins are welcome, especially in
         tourist-heavy areas.
       </p>
     ),
@@ -103,7 +103,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Mid-list',
     body: (
       <p>
-        Great for travelers comparing price and schedule fit. Rank is not personality—read “about” sections closely.
+        Great for travelers comparing price and schedule fit. Rank is not personality, read “about” sections closely.
       </p>
     ),
   },
@@ -152,7 +152,7 @@ export default async function BestBjjGymsThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Grappling-only rankings—own search terms pure Muay Thai competitors cannot touch."
+      subtitle="BJJ and grappling gyms in Thailand, ranked from verified listings with gi/no-gi planning tips."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -168,7 +168,7 @@ export default async function BestBjjGymsThailandPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Brazilian Jiu-Jitsu training in Thailand"
         priority
-        overlayText="Thailand’s BJJ scene pairs well with MMA and Muay Thai—this guide ranks grappling gyms with real discipline tags and live reviews."
+        overlayText="Thailand’s BJJ scene pairs well with MMA and Muay Thai, this guide ranks grappling gyms with real discipline tags and live reviews."
       />
 
       <GuideLeadRow
@@ -192,7 +192,7 @@ export default async function BestBjjGymsThailandPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">How to choose a Thailand BJJ gym for a long stay</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Ranking matters—but retention comes from routine. For a 2–8 week trip, optimize for a schedule you’ll keep:
+                Ranking matters, but retention comes from routine. For a 2–8 week trip, optimize for a schedule you’ll keep:
                 class frequency, open mats, recovery, and whether the gym culture fits your personality.
               </p>
               <p>
@@ -222,13 +222,13 @@ export default async function BestBjjGymsThailandPage() {
         <GuideAccentIntro icon={Users} title="Why train BJJ in Thailand?" subtitle="Grappling + travel" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best BJJ gyms in Thailand</strong> want open mats, coach quality, and schedules that
-            survive jet lag—not a renamed kickboxing article. We filter listings so only gyms that tag Brazilian Jiu-Jitsu,
+            If you are comparing <strong>best BJJ gyms in Thailand</strong>, you want open mats, coach quality, and schedules that
+            survive jet lag, not a renamed kickboxing article. We filter listings so only gyms that tag Brazilian Jiu-Jitsu,
             grappling, or clear BJJ variants appear here, then rank by verified guest feedback.
           </p>
           <p>
             Thailand’s appeal is lifestyle + training density: you can pair grappling with striking tourism, recovery, and
-            food—if you pace the workload.
+            food, if you pace the workload.
           </p>
         </div>
       </section>
@@ -243,7 +243,7 @@ export default async function BestBjjGymsThailandPage() {
             },
             {
               title: 'Hygiene & culture',
-              body: 'Mat culture matters—clean gis, trimmed nails, and respectful rolling. Ask about shoe rules off the mat.',
+              body: 'Mat culture matters, clean gis, trimmed nails, and respectful rolling. Ask about shoe rules off the mat.',
             },
             {
               title: 'Cross-training',
@@ -256,7 +256,7 @@ export default async function BestBjjGymsThailandPage() {
       <GuideSection id="week-template" variant="slate" className="mb-14">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">A realistic 7‑day BJJ training template</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
-          If you want to stay longer (and actually improve), build a week you can repeat. This structure works for 1–8 week trips.
+          If you want to stay longer and see real progress, build a week you can repeat. This structure works for 1–8 week trips.
         </p>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -329,7 +329,7 @@ export default async function BestBjjGymsThailandPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Rulesets and competition context</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               If you’re choosing a gym for competition prep, it helps to know which ruleset and format you’re training for.
-              Use these as references—then choose a Thailand gym based on schedule, coaching fit, and culture.
+              Use these as references, then choose a Thailand gym based on schedule, coaching fit, and culture.
             </p>
             <div className="mt-6 grid gap-4">
               <a
@@ -365,7 +365,7 @@ export default async function BestBjjGymsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Competition prep is about repeatable weeks—choose a schedule you can maintain.
+              Competition prep is about repeatable weeks, choose a schedule you can maintain.
             </figcaption>
           </figure>
         </div>
@@ -407,7 +407,7 @@ export default async function BestBjjGymsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand BJJ gym?"
-        subtitle="Filter every verified Thailand BJJ gym by price, dates, and gi/no-gi — book directly on CombatStay."
+        subtitle="Filter every verified Thailand BJJ gym by price, dates, and gi/no-gi, book directly on CombatStay."
         href="/search?country=Thailand&discipline=BJJ"
         buttonLabel="Find your BJJ gym"
       />

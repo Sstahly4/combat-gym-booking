@@ -32,7 +32,7 @@ const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 const TITLE = '25 Best Muay Thai Camps in Thailand (2026)'
 const SEO_TITLE = '25 Best Muay Thai Camps in Thailand 2026 [Prices + Reviews]'
 const DESCRIPTION =
-  'Stop messaging gyms on Instagram. Compare real prices and book Muay Thai training camps in Thailand instantly — Bangkok, Phuket, Chiang Mai and beyond.'
+  'Compare real prices and book Muay Thai training camps in Thailand: Bangkok, Phuket, Chiang Mai and beyond.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -61,7 +61,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Are prices on this page guaranteed?',
-    a: 'Cards show the prices and currency stored on each gym profile. Promotions, seasonal rates, and package inclusions can change—always confirm on the gym page before you book.',
+    a: 'Cards show the prices and currency stored on each gym profile. Promotions, seasonal rates, and package inclusions can change. Always confirm on the gym page before you book.',
   },
   {
     q: 'Where do class schedules come from?',
@@ -69,7 +69,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Bangkok, Phuket, or Chiang Mai for Muay Thai?',
-    a: 'Bangkok offers maximum convenience and fight-scene density. Phuket blends beaches with serious camps. Chiang Mai suits a slower pace and cooler weather. There is no single “best” region—match the city to your budget, climate preference, and how much tourism you want around training.',
+    a: 'Bangkok offers maximum convenience and fight-scene density. Phuket blends beaches with serious camps. Chiang Mai suits a slower pace and cooler weather. There is no single “best” region. Match the city to your budget, climate preference, and how much tourism you want around training.',
   },
   {
     q: 'Do I need a special visa to train Muay Thai in Thailand?',
@@ -77,7 +77,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can beginners use this list?',
-    a: 'Yes. Rankings reflect overall listing quality and reviews—not “fighters only.” Read each gym description for beginner-friendly classes, fundamentals blocks, and whether sparring is optional.',
+    a: 'Yes. Rankings reflect overall listing quality and reviews, not “fighters only.” Read each gym description for beginner-friendly classes, fundamentals blocks, and whether sparring is optional.',
   },
   {
     q: 'How is this different from other “best camps” blogs?',
@@ -85,7 +85,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How much does it cost to train Muay Thai in Thailand?',
-    a: 'Costs vary by city, package type, and whether accommodation/meals are included. Use this guide to shortlist camps, then confirm current package pricing on each gym page—monthly bundles can be better value than paying day-to-day. For a fuller breakdown, read our Thailand Muay Thai camp cost guide.',
+    a: 'Costs vary by city, package type, and whether accommodation/meals are included. Use this guide to shortlist camps, then confirm current package pricing on each gym page. Monthly bundles can be better value than paying day-to-day. For a fuller breakdown, read our Thailand Muay Thai camp cost guide.',
   },
   {
     q: 'How long should I stay to see real progress?',
@@ -97,7 +97,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What should I pack for a Thailand training camp?',
-    a: 'Bring wraps, a mouthguard, lightweight training clothes, and basic first-aid (tape/blister care). Many travelers buy gloves/shin guards locally to avoid luggage weight—confirm gear rules on each gym profile. For a full checklist, read our Thailand combat sports packing list.',
+    a: 'Bring wraps, a mouthguard, lightweight training clothes, and basic first-aid (tape/blister care). Many travelers buy gloves/shin guards locally to avoid luggage weight. Confirm gear rules on each gym profile. For a full checklist, read our Thailand combat sports packing list.',
   },
 ]
 
@@ -108,12 +108,11 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
       <>
         <p>
           The top five positions skew toward camps with strong recent reviews and enough volume that the score means
-          something—not a single five-star review from a friend. These are often the first stops for travelers who want
-          confidence that other guests enjoyed the experience.
+          something. One five-star review from a friend does not move the needle. Travelers who want proof that other guests enjoyed the stay start here.
         </p>
         <p>
-          If you are comparing two camps in this band, look past the rank number: check morning vs evening sessions,
-          whether accommodation is on-site, and how many days per week you realistically plan to train.
+          If you compare two camps in this band, look past the rank number. Check morning vs evening sessions,
+          whether accommodation is on-site, and how many days per week you plan to train.
         </p>
       </>
     ),
@@ -123,13 +122,13 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          Camps ranked six through ten are still drawn from the same strict filter—verified Thailand gyms with Muay Thai
-          tagged—so you are not looking at random drop-ins. The difference is often review count, recency, or a few
-          points on average rating.
+          Camps ranked six through ten come from the same filter: verified Thailand gyms with Muay Thai
+          tagged. You are not looking at random drop-ins. Review count, recency, or a few
+          points on average rating usually explain the gap from the top five.
         </p>
         <p>
-          This band is where savvy bookers sometimes find better availability or a more relaxed vibe while keeping
-          professional coaching. Always read the full profile for coach ratios and class structure.
+          Bookers in this band sometimes find better availability or a quieter pace while keeping
+          professional coaching. Read the full profile for coach ratios and class structure.
         </p>
       </>
     ),
@@ -139,7 +138,7 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          Mid-list camps can be perfect if your dates overlap peak season elsewhere, or if you want a smaller room line
+          Mid-list camps work well if your dates overlap peak season elsewhere, or if you want a shorter line
           at the front desk. Use filters on{' '}
           <Link href="/search?country=Thailand&discipline=Muay%20Thai" className="text-[#003580] font-medium underline">
             Thailand Muay Thai search
@@ -147,8 +146,8 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
           to sort by price, location, and amenities after you shortlist names from this article.
         </p>
         <p>
-          Remember: a camp ranked #14 for the whole country can still be the best choice for your neighborhood, budget,
-          or training hours.
+          A camp ranked #14 for the whole country can still fit your neighborhood, budget,
+          or training hours best.
         </p>
       </>
     ),
@@ -158,8 +157,8 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          As we move deeper into the top twenty-five, you will still see legitimate camps with full pricing and photos—the
-          ranking gap is usually about review history, not safety. Cross-check distance to your accommodation and commute
+          Deeper into the top twenty-five, you still see legitimate camps with full pricing and photos. The
+          ranking gap tracks review history, not safety. Cross-check distance to your accommodation and commute
           time in Thai traffic if you are not staying on-site.
         </p>
       </>
@@ -170,8 +169,8 @@ const BETWEEN_CHUNKS: Array<{ title: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          The final slots round out a national shortlist so you have twenty-five names to compare without hunting through
-          forums. If none of these fit your dates, browse the full directory—CombatStay lists every qualifying Muay Thai
+          The final slots round out a national shortlist with twenty-five names to compare. You do not need to hunt through
+          forums first. If none of these fit your dates, browse the full directory. CombatStay lists every qualifying Muay Thai
           camp in Thailand, not only this page.
         </p>
       </>
@@ -204,7 +203,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Live rankings, real prices, and honest regional advice—built for people searching “best Muay Thai camps Thailand” who are tired of recycled top-seven lists."
+      subtitle="Live rankings, real prices, and regional advice for people searching best Muay Thai camps Thailand and tired of recycled top-seven lists."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -219,7 +218,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         imageSrc={HERO_IMAGE}
         imageAlt="Muay Thai training in Thailand"
         priority
-        overlayText="Find the right camp faster: ranked gyms, transparent pricing signals, and regional context—then book on CombatStay."
+        overlayText="Find the right camp faster: ranked gyms, transparent pricing signals, and regional context. Book on CombatStay."
       />
 
       <GuideLeadRow
@@ -250,7 +249,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">A quick visual: Thailand camp life</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               Most travelers bounce between pad rounds, group technique, conditioning, and recovery. Use the ranked cards
-              below to shortlist—then open each profile to confirm schedules, package inclusions, and coach ratios.
+              below to shortlist, then open each profile to confirm schedules, package inclusions, and coach ratios.
             </p>
           </div>
           <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -278,21 +277,21 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            If you are searching for the <strong>best Muay Thai camps in Thailand</strong>, you are already choosing the
-            country with the deepest coaching lineage, the widest range of camp styles, and the most fight-week ecosystem
-            support anywhere in the world. That does not mean every gym is perfect—it means you have enough volume to
+            If you search for the <strong>best Muay Thai camps in Thailand</strong>, you pick the
+            country with the deepest coaching lineage, the widest range of camp styles, and the strongest fight-week ecosystem
+            support anywhere in the world. Not every gym fits every traveler, but you have enough volume to
             match <em>your</em> goals: tourist-friendly fundamentals, fighter-focused fight camps, or something in between.
           </p>
           <p>
-            Unlike generic travel blogs that cherry-pick seven famous names, this guide starts from a{' '}
+            Generic travel blogs cherry-pick seven famous names. This guide starts from a{' '}
             <strong>live marketplace</strong>: gyms must be verified or trusted on CombatStay and must list Muay Thai
             as a discipline. We rank every qualifying gym nationally using review signals, then give the top twenty-five
-            extra editorial breaks—everyone else continues in the same order so new listings still surface on this page.
+            extra editorial breaks. Everyone else continues in the same order so new listings still surface on this page.
           </p>
           <p>
-            Use the ranked cards below as a shortcut, but treat each profile as the source of truth for{' '}
+            Use the ranked cards below as a shortcut. Treat each profile as the source of truth for{' '}
             <strong>class times</strong>, <strong>accommodation</strong>, <strong>meals</strong>, and{' '}
-            <strong>what is included in each package</strong>—those details change faster than any annual blog post can
+            <strong>what is included in each package</strong>. Those details change faster than any annual blog post can
             be rewritten by hand.
           </p>
         </div>
@@ -304,15 +303,15 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           items={[
             {
               title: 'Bangkok',
-              body: 'Maximum connectivity, huge variety, and easy access to stadium culture if you want to watch fights between sessions. Traffic and heat can wear on you—pick a camp whose schedule fits your commute if you are not staying on-site.',
+              body: 'Maximum connectivity, huge variety, and easy access to stadium culture if you want to watch fights between sessions. Traffic and heat can wear on you. Pick a camp whose schedule fits your commute if you are not staying on-site.',
             },
             {
               title: 'Phuket & islands',
-              body: 'Beach lifestyle plus serious training is a powerful combo. Seasonality matters for crowds and cost. Compare total trip price—not only per-day training—when you add food and transport.',
+              body: 'Beach lifestyle plus serious training is a strong combo. Seasonality matters for crowds and cost. Compare total trip price, not only per-day training, when you add food and transport.',
             },
             {
               title: 'Chiang Mai & north',
-              body: 'Cooler mornings and a slower pace suit longer stays and digital-nomad style routines. Fight density differs from Bangkok—choose based on lifestyle fit, not hype.',
+              body: 'Cooler mornings and a slower pace suit longer stays and digital-nomad style routines. Fight density differs from Bangkok. Choose based on lifestyle fit, not hype.',
             },
           ]}
         />
@@ -329,7 +328,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           <Link href="/blog/best-muay-thai-gyms-chiang-mai" className="font-medium text-[#003580] underline">
             Chiang Mai
           </Link>{' '}
-          guides—or stay on this page for the national top 25.
+          guides, or stay on this page for the national top 25.
         </p>
       </GuideSection>
 
@@ -340,16 +339,16 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">How to pick the best Muay Thai camp for you</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                The phrase <strong>best Muay Thai camp in Thailand</strong> means different things: some travelers want a
-                beginner-friendly fundamentals track; others want a fighter-heavy room and stadium exposure.
+                <strong>Best Muay Thai camp in Thailand</strong> means different things to different travelers. Some want a
+                beginner-friendly fundamentals track. Others want a fighter-heavy room and stadium exposure.
               </p>
               <p>
-                Use this quick framework before you obsess over rank numbers: choose your ideal <strong>weekly schedule</strong>,
+                Before you obsess over rank numbers, choose your ideal <strong>weekly schedule</strong>,
                 your preferred <strong>city/lifestyle</strong>, and the <strong>intensity</strong> you can sustain for 2–6 weeks.
               </p>
               <p>
-                Then compare camps by what actually drives outcomes: coaching feedback frequency, class structure, recovery support,
-                and whether you can realistically show up twice per day.
+                Then compare camps on coaching feedback frequency, class structure, recovery support,
+                and whether you can show up twice per day.
               </p>
             </div>
           </div>
@@ -364,7 +363,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Consistency beats perfect planning: pick a camp you can attend (and recover from) week after week.
+              Consistency tops perfect planning: pick a camp you can attend (and recover from) week after week.
             </figcaption>
           </figure>
         </div>
@@ -404,8 +403,8 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">How we rank the top 25 Muay Thai camps</h2>
         <div className="mb-6 space-y-4 text-base leading-relaxed text-gray-800">
           <p>
-            Transparency matters for SEO and for travelers. Our ordering is <strong>algorithmic, not pay-to-play</strong>:
-            we start from all Thailand Muay Thai gyms that meet verification rules, then sort primarily by average review
+            Our ordering is <strong>algorithmic, not pay-to-play</strong>.
+            We start from all Thailand Muay Thai gyms that meet verification rules, then sort primarily by average review
             rating and number of reviews, with alphabetical tie-breaking.
           </p>
         </div>
@@ -419,7 +418,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             {
               icon: <Check className="h-5 w-5 text-green-600" aria-hidden />,
               title: 'Review signal',
-              text: 'rewards camps guests actually rate—volume matters so one-off scores do not dominate.',
+              text: 'rewards camps guests rate. Volume matters so one-off scores do not dominate.',
             },
             {
               icon: <Check className="h-5 w-5 text-green-600" aria-hidden />,
@@ -443,7 +442,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             <p>
               Day-rate training is only one line item. Accommodation on-site, meals, laundry, scooter or Grab budget, and
               whether you join add-ons like private lessons or massage all move the needle. Use each gym profile to compare
-              package types—not only the headline daily rate.
+              package types, not only the headline daily rate.
             </p>
             <p>
               If you are price sensitive, sort the{' '}
@@ -464,7 +463,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             <h3 className="text-lg font-semibold text-gray-900">Packing and etiquette basics</h3>
             <p>
               Bring quick-dry gear, sandals for wet bathrooms, and a separate bag for sweaty clothes. Respect pad holders,
-              show up clean, and ask about gym culture before filming—some camps are strict about phones on the mat.
+              show up clean, and ask about gym culture before filming. Some camps are strict about phones on the mat.
             </p>
             <p>
               Planning a longer stay? Read{' '}
@@ -506,7 +505,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
 
       <GuideCtaStrip
         title={`Browse all ${totalListed} Muay Thai camps in Thailand`}
-        subtitle="Filter by city, price, and more—beyond this top 25 shortlist."
+        subtitle="Filter by city, price, and more. Go beyond this top 25 shortlist."
         href="/search?country=Thailand&discipline=Muay%20Thai"
         buttonLabel="Open directory"
         variant="light"
@@ -520,7 +519,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
           include long-form context between every five cards.
           {remainder.length > 0
             ? ` Ranks #${top25.length + 1}–#${totalListed} follow in a second grid with the same ordering rules.`
-            : ' We break the grid into five sections so you get context between batches—not an endless wall of cards.'}
+            : ' We break the grid into five sections so you get context between batches, not an endless wall of cards.'}
         </p>
 
         <ChunkedGymGrid
@@ -538,7 +537,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             National ranks #{top25.length + 1}–#{totalListed}: every other verified Muay Thai camp
           </h2>
           <p className="mb-8 max-w-3xl text-base text-gray-600">
-            Same ranking rules as the section above—review signals first—so camps outside the “featured 25” still get a
+            Same ranking rules as the section above: review signals first. Camps outside the &ldquo;featured 25&rdquo; still get a
             crawlable, bookable card on this guide. Prefer a city-only view? Use the regional links in the footer or open{' '}
             <Link href="/search?country=Thailand&discipline=Muay%20Thai" className="font-medium text-[#003580] underline">
               Thailand Muay Thai search
@@ -569,8 +568,8 @@ export default async function BestMuayThaiCampsThailand2026Page() {
         title="Ready to lock in your Thailand Muay Thai camp?"
         subtitle={
           remainder.length > 0
-            ? "You've seen the full national ranking on this page — compare live prices, reviews, and dates, then book in a few clicks."
-            : "You've seen the top 25 — compare live prices, reviews, and dates, then book in a few clicks."
+            ? "You've seen the full national ranking on this page. Compare live prices, reviews, and dates, then book in a few clicks."
+            : "You've seen the top 25. Compare live prices, reviews, and dates, then book in a few clicks."
         }
         href="/search?country=Thailand&discipline=Muay%20Thai"
         buttonLabel="Browse all camps & book"

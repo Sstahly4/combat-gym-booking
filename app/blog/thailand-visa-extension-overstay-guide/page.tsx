@@ -42,7 +42,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What happens if I overstay in Thailand?',
-    a: 'Overstay can involve fines and more serious consequences depending on duration and circumstances. Do not treat overstay as “just a fee”—use official sources and fix status before it becomes a bigger problem.',
+    a: 'Overstay can involve fines and more serious consequences depending on duration and circumstances. Do not treat overstay as “just a fee.” Use official sources and fix status before it becomes a bigger problem.',
   },
   {
     q: 'Is this legal advice?',
@@ -50,11 +50,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Where do I extend my stay in Thailand?',
-    a: 'Extensions are typically handled at immigration offices. The exact office, documents, and steps can vary by location and visa type—use official Immigration Bureau information and confirm requirements before you go.',
+    a: 'Extensions are typically handled at immigration offices. The exact office, documents, and steps can vary by location and visa type. Use official Immigration Bureau information and confirm requirements before you go.',
   },
   {
     q: 'How early should I apply for an extension?',
-    a: 'Earlier is safer. Build buffer days so you are not forced into last-minute decisions. Rules and queues vary—treat timing as a key part of your plan.',
+    a: 'Earlier is safer. Build buffer days so you are not forced into last-minute decisions. Rules and queues vary. Treat timing as a key part of your plan.',
   },
   {
     q: 'Should I book non-refundable camps before my status is clear?',
@@ -82,7 +82,7 @@ export default function ThailandVisaExtensionOverstayGuidePage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Built for long-stay fighters and travelers who need a reliable planning framework—plus official links—before they commit to a month-long camp."
+      subtitle="Built for long-stay fighters and travelers who need a reliable planning framework and official links before they commit to a month-long camp."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -115,7 +115,7 @@ export default function ThailandVisaExtensionOverstayGuidePage() {
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
             People search <strong>Thailand visa extension</strong> when they’re already under stress. The best time to plan
-            is earlier—before you book a month-long camp and before your permitted stay window gets tight.
+            is earlier, before you book a month-long camp and before your permitted stay window gets tight.
           </p>
           <p>
             This page is intentionally practical: it gives you a framework, a checklist, and links to official sources. It
@@ -153,7 +153,7 @@ export default function ThailandVisaExtensionOverstayGuidePage() {
             />
           </div>
           <figcaption className="px-4 py-3 text-xs text-gray-600">
-            Wikimedia Commons passport stamp photo. Visual reference only—rules depend on your passport and current policy.
+            Wikimedia Commons passport stamp photo. Visual reference only. Rules depend on your passport and current policy.
           </figcaption>
         </figure>
       </GuideSection>

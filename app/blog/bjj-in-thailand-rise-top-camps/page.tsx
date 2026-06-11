@@ -22,7 +22,7 @@ const DATE_PUBLISHED = '2026-04-21'
 const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = '/tjj8r5ovjts8nhqjhkqc.avif'
 const DESCRIPTION =
-  'How BJJ in Thailand grew from a handful of mats to a real training destination. Top camps in Bangkok, Phuket, Chiang Mai, and the islands—plus what to expect on the mats.'
+  'How BJJ in Thailand grew from a handful of mats to a real training destination. Top camps in Bangkok, Phuket, Chiang Mai, and the islands, plus what to expect on the mats.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I cross-train Muay Thai and BJJ in Thailand?',
-    a: 'Yes&mdash;many camps, particularly MMA-focused ones, offer both under one roof. Some travelers split their stay between a Muay Thai camp and a BJJ academy in the same city.',
+    a: 'Yes. Many camps, particularly MMA-focused ones, offer both under one roof. Some travelers split their stay between a Muay Thai camp and a BJJ academy in the same city.',
   },
   {
     q: 'Where is the best BJJ in Thailand?',
@@ -59,11 +59,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What is the competition scene like?',
-    a: 'Thailand hosts regional IBJJF, ADCC-style, and local tournaments across the year. If you are travel-training, you can often time a visit around a local comp&mdash;check academy Instagram feeds for dates.',
+    a: 'Thailand hosts regional IBJJF, ADCC-style, and local tournaments across the year. If you are travel-training, you can often time a visit around a local comp. Check academy social pages or ask the front desk for dates.',
   },
   {
     q: 'Is BJJ safer than Muay Thai for long trips?',
-    a: 'Injury profiles differ&mdash;BJJ is lower on concussion risk, higher on joint/soft-tissue strain. Neither is risk-free. For multi-week stays, work in rest days and technical drilling blocks regardless of discipline.',
+    a: 'Injury profiles differ. BJJ is lower on concussion risk, higher on joint/soft-tissue strain. Neither is risk-free. For multi-week stays, work in rest days and technical drilling blocks regardless of discipline.',
   },
 ]
 
@@ -87,7 +87,7 @@ export default function BjjRiseThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Five years ago, &ldquo;Thailand BJJ&rdquo; meant one or two academies in Bangkok. Today it means a legitimate national scene—here is why, where, and how to train."
+      subtitle="Five years ago, &ldquo;Thailand BJJ&rdquo; meant one or two academies in Bangkok. Today it means a legitimate national scene. Here is why, where, and how to train."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -101,7 +101,7 @@ export default function BjjRiseThailandPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Brazilian Jiu-Jitsu training at a Thailand BJJ academy"
         priority
-        overlayText="Thailand is no longer just a Muay Thai destination—its BJJ scene has grown into a real, visit-worthy grappling ecosystem."
+        overlayText="Thailand is no longer just a Muay Thai destination. Its BJJ scene has grown into a real, visit-worthy grappling ecosystem."
       />
 
       <GuideLeadRow
@@ -115,7 +115,7 @@ export default function BjjRiseThailandPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue="4 cities"
-        statDescription="Legitimate BJJ training hubs in Thailand&mdash;Bangkok, Phuket, Chiang Mai, and the Samui/Phangan islands."
+        statDescription="Legitimate BJJ training hubs in Thailand: Bangkok, Phuket, Chiang Mai, and the Samui/Phangan islands."
         statIcon={<TrendingUp className="h-5 w-5" />}
       />
 
@@ -126,7 +126,7 @@ export default function BjjRiseThailandPage() {
             Three forces created the current Thailand BJJ scene: <strong>ONE Championship</strong>, which raised the profile of grappling across Southeast Asia; <strong>MMA-focused camps</strong> like Tiger Muay Thai and others in Phuket, which integrated BJJ deeply into their schedules; and <strong>the digital-nomad migration</strong>, which brought a wave of consistent, gi-wearing training partners to Thailand for months at a time.
           </p>
           <p>
-            Add in black belts relocating full-time, regional IBJJF-style competitions, and better gi shops&mdash;and you have a scene that has matured from &ldquo;try a class while you&rsquo;re here&rdquo; to &ldquo;plan a real training block.&rdquo;
+            Add in black belts relocating full-time, regional IBJJF-style competitions, and better gi shops, and you have a scene that has matured from &ldquo;try a class while you&rsquo;re here&rdquo; to &ldquo;plan a real training block.&rdquo;
           </p>
           <p>
             The growth is most visible in <strong>Bangkok</strong>, where the density of academies rivals any second-tier global BJJ market, and in <strong>Phuket</strong>, where MMA camps have deepened their grappling programs in parallel with their striking.
@@ -163,7 +163,7 @@ export default function BjjRiseThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Bangkok is where Thai BJJ is deepest&mdash;multiple academies per district and real open-mat culture.
+              Bangkok is where Thai BJJ is deepest: multiple academies per district and real open-mat culture.
             </figcaption>
           </figure>
         </div>
@@ -214,7 +214,7 @@ export default function BjjRiseThailandPage() {
             },
             {
               title: 'Koh Phangan &amp; Koh Samui',
-              body: 'Small but real scenes&mdash;often one to two serious academies per island, with open mat culture and decent coaching. Best for combining BJJ with island lifestyle.',
+              body: 'Small but real scenes, often one to two serious academies per island, with open mat culture and decent coaching. Best for combining BJJ with island lifestyle.',
             },
             {
               title: 'Koh Tao',
@@ -228,7 +228,7 @@ export default function BjjRiseThailandPage() {
         <GuideAccentIntro icon={Swords} title="What to expect on the mats in Thailand" subtitle="Culture, intensity, and etiquette" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Thai BJJ academies are overwhelmingly international. You will roll with Brazilian, European, American, Australian, Korean, Japanese, and Thai training partners in the same session. The etiquette is the same global BJJ etiquette&mdash;bow to the mat, tap early, listen to the coach&mdash;but the rolling diversity is a real feature.
+            Thai BJJ academies are overwhelmingly international. You will roll with Brazilian, European, American, Australian, Korean, Japanese, and Thai training partners in the same session. The etiquette is the same global BJJ etiquette: bow to the mat, tap early, listen to the coach. The rolling diversity is a real feature.
           </p>
           <p>
             Intensity varies widely. Some academies run hard competition-style rolls, others protect a technical flow. Ask what today&rsquo;s class looks like before you warm up, especially on your first day. A good coach will match you to the right partner.
@@ -246,7 +246,7 @@ export default function BjjRiseThailandPage() {
                 One of the reasons travelers pick Thailand over pure-grappling destinations is the ability to build a real striking-plus-grappling stack. A sustainable weekly template: 4&ndash;5 Muay Thai sessions, 3&ndash;4 BJJ sessions, one protected rest day, optional conditioning.
               </p>
               <p>
-                Two rules make cross-training actually work: <strong>separate the sessions by at least 4 hours</strong>, and <strong>never schedule hard sparring in both disciplines on the same day</strong>. Your neck and hips will thank you by week 3.
+                Two rules make cross-training work: <strong>separate the sessions by at least 4 hours</strong>, and <strong>never schedule hard sparring in both disciplines on the same day</strong>. Your neck and hips will thank you by week 3.
               </p>
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function BjjRiseThailandPage() {
 
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
-        <p className="mb-8 text-gray-600">The BJJ-in-Thailand questions travelers actually ask.</p>
+        <p className="mb-8 text-gray-600">Common BJJ-in-Thailand questions from travelers.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

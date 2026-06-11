@@ -22,7 +22,7 @@ const DATE_PUBLISHED = '2026-04-21'
 const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = '/481020258.avif'
 const DESCRIPTION =
-  'A direct comparison of Koh Tao vs Koh Phangan for Muay Thai training: gym density, cost, vibe, nightlife, logistics, and who should pick each island in 2026.'
+  'A direct comparison of Koh Tao vs Koh Phangan for Muay Thai training: gym density, cost, pace, nightlife, logistics, and who should pick each island in 2026.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 
 const FAQ_ITEMS = [
   {
-    q: 'Koh Tao or Koh Phangan—which is better for Muay Thai?',
+    q: 'Koh Tao or Koh Phangan: which is better for Muay Thai?',
     a: 'Neither is objectively better. Koh Phangan has more gyms, more variety, and a bigger long-stay training community. Koh Tao is smaller, quieter, diving-focused, and better if you want low-distraction training and a shorter trip.',
   },
   {
@@ -43,7 +43,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is there good Muay Thai on Koh Tao at all?',
-    a: 'Yes—there are legitimate camps on Koh Tao, but the overall gym count is low compared to Phangan or Phuket. If you want one good option and a calm island, Koh Tao works. If you want choice, Phangan is better.',
+    a: 'Yes. There are legitimate camps on Koh Tao, but the overall gym count is low compared to Phangan or Phuket. If you want one good option and a calm island, Koh Tao works. If you want choice, Phangan is better.',
   },
   {
     q: 'Can I combine diving with Muay Thai on Koh Tao?',
@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How do I get to Koh Tao or Koh Phangan for a training trip?',
-    a: 'Most travelers fly into Koh Samui (USM) or Surat Thani (URT), then take a ferry. Factor a travel day on each end&mdash;do not schedule training for the day you arrive.',
+    a: 'Most travelers fly into Koh Samui (USM) or Surat Thani (URT), then take a ferry. Factor a travel day on each end. Do not schedule training for the day you arrive.',
   },
   {
     q: 'Are there fights on either island?',
@@ -87,7 +87,7 @@ export default function KohTaoVsKohPhanganPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Two very different islands, two very different training experiences. This guide helps you pick the one that matches your goal, not the one with the prettiest beach drone shot."
+      subtitle="Two islands on the same ferry route with different training setups. Pick based on your goals and stay length, not beach photos."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -101,7 +101,7 @@ export default function KohTaoVsKohPhanganPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Thai island beach near Muay Thai training destinations"
         priority
-        overlayText="Koh Tao and Koh Phangan share a ferry route and almost nothing else. Pick based on how you want to train, not how you want to be photographed."
+        overlayText="Koh Tao and Koh Phangan share a ferry route and little else. Choose based on how you want to train, not how the island looks in photos."
       />
 
       <GuideLeadRow
@@ -115,15 +115,15 @@ export default function KohTaoVsKohPhanganPage() {
           { href: '#faq', label: 'FAQ' },
         ]}
         statValue="2 islands"
-        statDescription="Compared head-to-head on gym density, cost, vibe, recovery, and stay length."
+        statDescription="Compared head-to-head on gym density, cost, pace, recovery, and stay length."
         statIcon={<Scale className="h-5 w-5" />}
       />
 
       <section id="at-a-glance" className="mb-14 scroll-mt-24">
-        <GuideAccentIntro icon={Waves} title="The short answer, up front" subtitle="For people who hate long intros" />
+        <GuideAccentIntro icon={Waves} title="The short answer, up front" subtitle="Start here" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            If you want <strong>more gyms, more community, and a longer stay</strong>&mdash;Koh Phangan. If you want <strong>a small island with fewer distractions and you are combining Muay Thai with diving or a short reset</strong>&mdash;Koh Tao.
+            If you want <strong>more gyms, more community, and a longer stay</strong>, choose Koh Phangan. If you want <strong>a small island with fewer distractions and you are combining Muay Thai with diving or a short reset</strong>, choose Koh Tao.
           </p>
           <p>
             Both are legitimate. Both have real Muay Thai camps run by Thai coaches. Neither is a replacement for Phuket, Chiang Mai, or Bangkok if you are training seriously for a fight. They are <em>lifestyle training destinations</em>, and they are very good at that job.
@@ -138,13 +138,13 @@ export default function KohTaoVsKohPhanganPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Koh Tao for Muay Thai</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Koh Tao is small—roughly 21 square kilometers—and is built around diving. That shapes Muay Thai training here: fewer gyms, a closer-knit trainee community, and a rhythm that blends easily with water activities. It is also genuinely beautiful, which is both a help and a hazard.
+                Koh Tao is small (roughly 21 square kilometers) and built around diving. That shapes Muay Thai training here: fewer gyms, a closer-knit trainee community, and a rhythm that blends with water activities. The scenery is a draw, but it can also pull you away from the gym.
               </p>
               <p>
                 The island is good for <strong>1&ndash;2 week trips</strong> where you want to disappear, train once a day, and eat clean. It is less good for a serious 4&ndash;6 week block because gym variety is limited and accommodation near the gym can get tight in high season.
               </p>
               <p>
-                If you are reading the <Link href="/blog/best-muay-thai-gyms-koh-tao" className="font-medium text-[#003580] underline">best Muay Thai gyms in Koh Tao</Link> guide, notice how the list is short. That is a feature here, not a bug.
+                If you are reading the <Link href="/blog/best-muay-thai-gyms-koh-tao" className="font-medium text-[#003580] underline">best Muay Thai gyms in Koh Tao</Link> guide, notice how the list is short. That is normal on a small island.
               </p>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function KohTaoVsKohPhanganPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Koh Tao rewards focus&mdash;small island, small social surface area, and easy recovery between sessions.
+              Koh Tao suits focused training: a small island, a small social scene, and easy recovery between sessions.
             </figcaption>
           </figure>
         </div>
@@ -175,10 +175,10 @@ export default function KohTaoVsKohPhanganPage() {
                 Koh Phangan is larger, cheaper on average, and has the infrastructure to support long training stays: more gyms, more apartments, more food options, and a sizeable digital-nomad-meets-wellness community. It is also the Full Moon Party island, which some travelers love and some avoid entirely.
               </p>
               <p>
-                For <strong>3&ndash;8 week training blocks</strong> with yoga days, smoothie-bowl breakfasts, and a floor full of training partners at different levels, Koh Phangan is the stronger island. For fight-focused camps it still trails Phuket and Chiang Mai, but for combat-sports-plus-lifestyle it is among the best options in Thailand.
+                For <strong>3&ndash;8 week training blocks</strong> with yoga on rest days, varied food options, and training partners at different levels, Koh Phangan is the stronger island. For fight-focused camps it still trails Phuket and Chiang Mai, but for combat-sports-plus-lifestyle it is among the best options in Thailand.
               </p>
               <p>
-                Check the <Link href="/blog/best-muay-thai-gyms-koh-phangan" className="font-medium text-[#003580] underline">best Muay Thai gyms in Koh Phangan</Link> guide for ranked listings across the island&mdash;Sri Thanu, Haad Yuan, and the east coast all have legitimate camps with different vibes.
+                Check the <Link href="/blog/best-muay-thai-gyms-koh-phangan" className="font-medium text-[#003580] underline">best Muay Thai gyms in Koh Phangan</Link> guide for ranked listings across the island. Sri Thanu, Haad Yuan, and the east coast all have legitimate camps with different characters.
               </p>
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function KohTaoVsKohPhanganPage() {
               <p>
                 For long stays you will also want to plan your exit. Read the{' '}
                 <Link href="/blog/thailand-visa-extension-overstay-guide" className="font-medium text-[#003580] underline">Thailand visa extension &amp; overstay guide</Link>{' '}
-                before you assume you can just push your stay an extra two weeks.
+                before you assume you can extend your stay an extra two weeks.
               </p>
             </div>
           </div>
@@ -286,7 +286,7 @@ export default function KohTaoVsKohPhanganPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Build travel days into your training calendar&mdash;ferry delays are the norm, not the exception.
+              Build travel days into your training calendar. Ferry delays are common.
             </figcaption>
           </figure>
         </div>
@@ -301,7 +301,7 @@ export default function KohTaoVsKohPhanganPage() {
 
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
-        <p className="mb-8 text-gray-600">The questions travelers actually ask before choosing.</p>
+        <p className="mb-8 text-gray-600">Common questions before you choose an island.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

@@ -45,10 +45,10 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: `Is Krabi good for Muay Thai training?`,
-    a: `Yes—Krabi can be great for training + recovery if you want beach access and a calmer base than Phuket. Choose a camp you can reach consistently and don’t underestimate humidity.`,
+    a: `Yes, Krabi can be great for training + recovery if you want beach access and a calmer base than Phuket. Choose a camp you can reach consistently and don’t underestimate humidity.`,
   },
   {
-    q: `Ao Nang vs Krabi Town—what is better for training?`,
+    q: `Ao Nang vs Krabi Town, what is better for training?`,
     a: `It depends on your routine. Ao Nang often suits travelers who want walkable food and beaches; Krabi Town can be quieter. Pick based on commute to your chosen gym.`,
   },
   {
@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `When is the best season to train in Krabi?`,
-    a: `It depends on heat, rainfall, and crowds. Check official weather patterns and plan recovery—humidity affects training load as much as session count.`,
+    a: `It depends on heat, rainfall, and crowds. Check official weather patterns and plan recovery, humidity affects training load as much as session count.`,
   },
   {
     q: `Is Krabi beginner-friendly for Muay Thai?`,
@@ -69,7 +69,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `Can I train and still do island tours in Krabi?`,
-    a: `Yes—plan your week. Treat tours like training load: keep one recovery day and don’t stack the hardest sessions with the longest boat days.`,
+    a: `Yes, plan your week. Treat tours like training load: keep one recovery day and don’t stack the hardest sessions with the longest boat days.`,
   },
   {
     q: `Does this list include every Muay Thai gym in Krabi?`,
@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the Krabi filter. Compare class structure and schedule fit.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified listings—differences are often review recency and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified listings. Differences usually come down to review recency and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific area.</p> },
   { title: `More gyms`, body: <p>Widen your shortlist beyond old blog roundups.</p> },
   { title: `Final ranked slots`, body: <p>Completes a deeper ranked list so you can compare more options.</p> },
@@ -108,7 +108,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle={`${CITY} pairs training with recovery: beach access, quieter routines, and a strong long-stay vibe—if you choose a gym you can actually attend consistently.`}
+      subtitle={`${CITY} pairs training with recovery: beach access, quieter routines, and a strong long-stay pace, if you choose a gym you can attend every week.`}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -124,7 +124,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Krabi Thailand limestone cliffs and beach"
         priority
-        overlayText="Krabi Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Krabi ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -145,8 +145,8 @@ export default async function BestMuayThaiGymsKrabiPage() {
         <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${CITY}?`} subtitle="Beach recovery + calmer weeks" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best Muay Thai gyms in {CITY}</strong> often want training that still leaves room for
-            recovery. Krabi’s pace can support that—if you don’t overload your schedule on day one.
+            If you are comparing <strong>best Muay Thai gyms in {CITY}</strong>, you probably want training that still leaves room for
+            recovery. Krabi’s pace can support that, if you don’t overload your schedule on day one.
           </p>
           <p>
             This page only includes verified/trusted listings that match our {CITY} filter and list Muay Thai. Rankings follow
@@ -156,7 +156,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Krabi training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Krabi training stay for a long stay</h2>
         <GuideThreeCards
           items={[
             { title: 'Humidity is real', body: 'In coastal heat, recovery and hydration determine whether you can train again tomorrow.' },
@@ -204,7 +204,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Plan recovery like training—Krabi heat changes how much volume you can sustain.
+              Plan recovery like training, Krabi heat changes how much volume you can sustain.
             </figcaption>
           </figure>
         </div>
@@ -240,7 +240,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
                 <strong>1 recovery day:</strong> protect joints; hydration is mandatory.
               </li>
               <li>
-                <strong>Tour day:</strong> treat it like load—don’t combine with max sparring.
+                <strong>Tour day:</strong> treat it like load, don’t combine with max sparring.
               </li>
             </ul>
           </div>
@@ -254,7 +254,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Ao Nang vs Krabi Town (the real tradeoff)</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                For long stays, your accommodation choice determines your sleep and commute—two variables that control how much
+                For long stays, your accommodation choice determines your sleep and commute, two variables that control how much
                 training you can sustain.
               </p>
               <p>
@@ -370,7 +370,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Krabi Muay Thai camp?"
-        subtitle="Filter verified Krabi gyms by dates, price, and amenities — book directly on CombatStay."
+        subtitle="Filter verified Krabi gyms by dates, price, and amenities, book directly on CombatStay."
         href="/search?country=Thailand&location=Krabi&discipline=Muay%20Thai"
         buttonLabel="Find your Krabi camp"
       />

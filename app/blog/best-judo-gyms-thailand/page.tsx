@@ -44,11 +44,11 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Is judo common in Thailand?',
-    a: 'It exists but is less ubiquitous than Muay Thai. That’s why this guide filters for judo-tagged listings—so you can find genuine options when they’re available.',
+    a: 'It exists but is less ubiquitous than Muay Thai. That’s why this guide filters for judo-tagged listings, so you can find genuine options when they’re available.',
   },
   {
     q: 'Can I combine judo with BJJ or MMA in Thailand?',
-    a: 'Yes. Many travelers cross-train. The key is recovery and joint management—throwing volume plus hard rounds can be intense. Use schedules to plan sustainable weeks.',
+    a: 'Yes. Many travelers cross-train. The key is recovery and joint management, throwing volume plus hard rounds can be intense. Use schedules to plan sustainable weeks.',
   },
   {
     q: 'Do these gyms accept beginners?',
@@ -107,7 +107,7 @@ export default async function BestJudoGymsThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="A judo-specific Thailand guide—throws, grips, and training structure—built to match search intent and keep you from landing in a striking-only camp."
+      subtitle="Judo gyms in Thailand, ranked from verified listings with throws, grips, and training structure."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -144,7 +144,7 @@ export default async function BestJudoGymsThailandPage() {
         <GuideAccentIntro icon={Users} title="Why train judo in Thailand?" subtitle="A niche with upside" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best judo gyms in Thailand</strong> often want a grappling base that complements BJJ or MMA.
+            If you are comparing <strong>best judo gyms in Thailand</strong>, you probably want a grappling base that complements BJJ or MMA.
             This guide filters for judo-tagged listings and ranks them using the same review-first logic as our other guides.
           </p>
           <p>
@@ -210,7 +210,7 @@ export default async function BestJudoGymsThailandPage() {
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
                 For longer trips, cost is more than class fees. Consider accommodation proximity to the dojo, recovery costs, and how many
-                sessions per week are actually offered.
+                sessions per week run each week.
               </p>
               <p>
                 Confirm gi requirements (buy/rent), hygiene rules, and class times on the listing before you book accommodation.
@@ -228,7 +228,7 @@ export default async function BestJudoGymsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Grip and repetition are the game—plan a schedule you can repeat.
+              Grip and repetition are the game, plan a schedule you can repeat.
             </figcaption>
           </figure>
         </div>
@@ -301,7 +301,7 @@ export default async function BestJudoGymsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand judo gym?"
-        subtitle="Compare every verified Thailand judo gym — live prices, reviews, dates — and book directly."
+        subtitle="Compare every verified Thailand judo gym, live prices, reviews, dates, and book directly."
         href="/search?country=Thailand&discipline=Judo"
         buttonLabel="Find your judo gym"
       />

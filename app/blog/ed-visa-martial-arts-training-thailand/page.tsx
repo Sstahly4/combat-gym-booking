@@ -22,7 +22,7 @@ const DATE_PUBLISHED = '2026-04-21'
 const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = '/highquality-world-map-vector-art_1112614-9909.jpg'
 const DESCRIPTION =
-  'How martial arts travelers use the Thailand Education (Ed) visa, DTV, and tourist options for long Muay Thai, BJJ, and MMA training trips. Not legal advice—a structured planning framework.'
+  'How martial arts travelers use the Thailand Education (Ed) visa, DTV, and tourist options for long Muay Thai, BJJ, and MMA training trips. Not legal advice. A structured planning framework.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -35,11 +35,11 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Is there a specific Thailand Muay Thai visa?',
-    a: 'There is no single dedicated &ldquo;Muay Thai visa&rdquo; for all nationalities. Martial arts travelers typically use one of: short-stay tourist entry, a Non-Immigrant Education (ED) visa tied to a recognized training institution, or the newer DTV (Destination Thailand Visa). Eligibility varies by passport—always verify with your embassy and Thai immigration.',
+    a: 'There is no single dedicated &ldquo;Muay Thai visa&rdquo; for all nationalities. Martial arts travelers typically use one of: short-stay tourist entry, a Non-Immigrant Education (ED) visa tied to a recognized training institution, or the newer DTV (Destination Thailand Visa). Eligibility varies by passport. Always verify with your embassy and Thai immigration.',
   },
   {
     q: 'What is the Ed visa and who is it for?',
-    a: 'The Non-Immigrant ED visa is issued for educational purposes at schools, universities, or institutions recognized by Thai authorities. Some Muay Thai camps and martial arts schools partner with recognized educational institutions or sport organizations to sponsor training students—rules and processes differ by camp and by nationality.',
+    a: 'The Non-Immigrant ED visa is issued for educational purposes at schools, universities, or institutions recognized by Thai authorities. Some Muay Thai camps and martial arts schools partner with recognized educational institutions or sport organizations to sponsor training students. Rules and processes differ by camp and by nationality.',
   },
   {
     q: 'How long can you stay on a Thailand Ed visa?',
@@ -47,7 +47,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is the DTV better than the Ed visa for martial arts training?',
-    a: 'It depends on your situation. DTV may suit remote-working trainees and some long-stay travelers. ED visa suits those sponsored by a recognized training institution. Neither is strictly better—they serve different profiles.',
+    a: 'It depends on your situation. DTV may suit remote-working trainees and some long-stay travelers. ED visa suits those sponsored by a recognized training institution. Neither is strictly better. They serve different profiles.',
   },
   {
     q: 'Can I train on a tourist-style visa?',
@@ -59,7 +59,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How much does an Ed visa cost?',
-    a: 'Fees vary: embassy or e-visa application fees, institution tuition/training fees, and periodic extension fees. Budget should be treated as a planning line item, not a rounding error—see the cost guide.',
+    a: 'Fees vary: embassy or e-visa application fees, institution tuition/training fees, and periodic extension fees. Budget should be treated as a planning line item, not a rounding error. See the cost guide.',
   },
   {
     q: 'Do I still need visa runs on an Ed visa?',
@@ -67,7 +67,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What is the single biggest mistake travelers make?',
-    a: 'Booking flights before confirming the visa path in writing with both their camp and their embassy/consulate. Visa planning is slow; flights are fast&mdash;do the slow thing first.',
+    a: 'Booking flights before confirming the visa path in writing with both their camp and their embassy/consulate. Visa planning is slow. Flights are fast. Do the slow thing first.',
   },
 ]
 
@@ -105,7 +105,7 @@ export default function EdVisaGuidePage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Thailand long-stay training visa planning"
         priority
-        overlayText="There is no single &lsquo;Muay Thai visa.&rsquo; There are visa categories that fit different stay lengths—pick the one that matches your trip, not the one someone on a forum told you about."
+        overlayText="There is no single &lsquo;Muay Thai visa.&rsquo; There are visa categories that fit different stay lengths. Pick the one that matches your trip, not the one someone on a forum told you about."
       />
 
       <GuideLeadRow
@@ -128,7 +128,7 @@ export default function EdVisaGuidePage() {
         <GuideAccentIntro icon={ShieldCheck} title="The basics, stated plainly" subtitle="Start here before the forums" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            If you are going to Thailand for a weekend-length taste of Muay Thai, BJJ, or MMA, visa planning is usually simple. If you are going for a <strong>real training block of a month, three months, or a year</strong>, visa planning is the single most important logistics decision you will make&mdash;and the most commonly botched.
+            If you are going to Thailand for a weekend-length taste of Muay Thai, BJJ, or MMA, visa planning is usually simple. If you are going for a <strong>real training block of a month, three months, or a year</strong>, visa planning is the single most important logistics decision you will make, and the most commonly botched.
           </p>
           <p>
             This page is an editorial planning framework, not legal advice. Rules depend on your nationality, the sponsoring institution, and current Thai immigration policy, which changes. Always verify with official sources before booking flights, and read this alongside the{' '}
@@ -145,7 +145,7 @@ export default function EdVisaGuidePage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">The Ed (Education) visa</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                The Non-Immigrant <strong>ED visa</strong> is Thailand&rsquo;s visa category for educational purposes&mdash;language schools, universities, and, in some cases, sports or martial arts institutions recognized by Thai authorities. Some well-established Muay Thai camps partner with recognized educational or sport bodies to sponsor students on multi-month training stays.
+                The Non-Immigrant <strong>ED visa</strong> is Thailand&rsquo;s visa category for educational purposes: language schools, universities, and, in some cases, sports or martial arts institutions recognized by Thai authorities. Some well-established Muay Thai camps partner with recognized educational or sport bodies to sponsor students on multi-month training stays.
               </p>
               <p>
                 For the traveler, the ED visa typically means: a sponsoring institution, documented training commitments, initial issuance for a multi-month period, and periodic extensions handled through Thai Immigration. The exact process varies by institution and nationality.
@@ -179,7 +179,7 @@ export default function EdVisaGuidePage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">DTV as an alternative for training travelers</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                The <strong>DTV</strong> (Destination Thailand Visa) was introduced to support longer-term visitors including remote workers, cultural participants, and certain training-related stays. For some martial arts travelers, DTV can be a cleaner fit than ED&mdash;especially if they are not enrolled in a formally sponsoring institution but are training long-term and working remotely.
+                The <strong>DTV</strong> (Destination Thailand Visa) was introduced to support longer-term visitors including remote workers, cultural participants, and certain training-related stays. For some martial arts travelers, DTV can be a cleaner fit than ED, especially if they are not enrolled in a formally sponsoring institution but are training long-term and working remotely.
               </p>
               <p>
                 Eligibility, activity coverage, and documentation requirements evolve. Treat DTV as its own research project with official checklists. Start at the{' '}
@@ -219,7 +219,7 @@ export default function EdVisaGuidePage() {
             },
             {
               title: 'Back-to-back entries',
-              body: 'Historically some travelers relied on repeated short entries. Immigration policy on this has tightened over time&mdash;do not build a multi-year plan around it.',
+              body: 'Historically some travelers relied on repeated short entries. Immigration policy on this has tightened over time. Do not build a multi-year plan around it.',
             },
           ]}
         />
@@ -290,7 +290,7 @@ export default function EdVisaGuidePage() {
       <GuideSection id="official" variant="brand" className="mb-14">
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">Official sources</h2>
         <p className="mb-6 max-w-3xl text-gray-700">
-          Use Thai government and your embassy&rsquo;s pages for the actual forms, fees, and latest rules. Articles go stale.
+          Use Thai government and your embassy&rsquo;s pages for the current forms, fees, and latest rules. Articles go stale.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {[

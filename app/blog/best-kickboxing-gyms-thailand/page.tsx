@@ -48,7 +48,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I train kickboxing and Muay Thai on the same trip?',
-    a: 'Yes—many travelers do. The key is load management: alternate hard sparring days, protect shins/wrists, and plan recovery so you can stay consistent for weeks.',
+    a: 'Yes, many travelers do. The key is load management: alternate hard sparring days, protect shins/wrists, and plan recovery so you can stay consistent for weeks.',
   },
   {
     q: 'Are these rankings paid placements?',
@@ -64,7 +64,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What gear should I bring for kickboxing in Thailand?',
-    a: 'Wraps, mouthguard, and lightweight training clothes are the essentials. Many travelers buy gloves/shin guards locally to reduce luggage weight—confirm gym gear rules and sparring expectations before you pack.',
+    a: 'Wraps, mouthguard, and lightweight training clothes are the essentials. Many travelers buy gloves/shin guards locally to reduce luggage weight, confirm gym gear rules and sparring expectations before you pack.',
   },
   {
     q: 'How long should I stay to improve in kickboxing?',
@@ -92,7 +92,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   },
   {
     title: 'Mid-list',
-    body: <p>Good options when you need specific dates, neighborhoods, or pricing—open profiles and compare schedules.</p>,
+    body: <p>Good options when you need specific dates, neighborhoods, or pricing, open profiles and compare schedules.</p>,
   },
   {
     title: 'More gyms',
@@ -127,7 +127,7 @@ export default async function BestKickboxingGymsThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Kickboxing-specific rankings and planning advice—built for the search term “best kickboxing gyms Thailand,” not recycled Muay Thai lists."
+      subtitle="Kickboxing-specific rankings and planning advice, built for the search term “best kickboxing gyms Thailand,” not recycled Muay Thai lists."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -222,7 +222,7 @@ export default async function BestKickboxingGymsThailandPage() {
                 <strong>4–6 days/week:</strong> 1–2 sessions/day based on recovery.
               </li>
               <li>
-                <strong>Sparring:</strong> keep it controlled; technical rounds beat ego rounds.
+                <strong>Sparring:</strong> keep it controlled; technical rounds over ego rounds.
               </li>
               <li>
                 <strong>1 recovery day:</strong> protect shins, wrists, and sleep.
@@ -331,7 +331,7 @@ export default async function BestKickboxingGymsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand kickboxing gym?"
-        subtitle="Filter every verified Thailand kickboxing gym by price, dates, and striking style — book directly."
+        subtitle="Filter every verified Thailand kickboxing gym by price, dates, and striking style, book directly."
         href="/search?country=Thailand&discipline=Kickboxing"
         buttonLabel="Find your kickboxing gym"
       />

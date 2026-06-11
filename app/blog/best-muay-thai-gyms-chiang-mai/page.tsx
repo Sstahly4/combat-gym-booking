@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Is Chiang Mai better than Bangkok for long Muay Thai stays?',
-    a: 'Many travelers prefer the north for slower pace and cooler mornings—but fight density and camp variety differ from Bangkok. Choose based on lifestyle, not hype.',
+    a: 'Many travelers prefer the north for slower pace and cooler mornings, but fight density and camp variety differ from Bangkok. Choose based on lifestyle, not hype.',
   },
   {
     q: 'How does ranking work on this page?',
@@ -52,19 +52,19 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I combine trekking and hard training?',
-    a: 'Yes, but manage load. Add recovery days if you stack big hikes with twice-daily training—injury risk rises when you overbook activities.',
+    a: 'Yes, but manage load. Add recovery days if you stack big hikes with twice-daily training, injury risk rises when you overbook activities.',
   },
   {
     q: 'Is Chiang Mai good for beginners in Muay Thai?',
-    a: 'Yes—many gyms support beginners. Read each profile for fundamentals blocks, coach ratios, and sparring policy so you can ramp up safely.',
+    a: 'Yes, many gyms support beginners. Read each profile for fundamentals blocks, coach ratios, and sparring policy so you can ramp up safely.',
   },
   {
     q: 'When is the best season to train in Chiang Mai?',
-    a: 'It depends on weather preferences and air quality considerations. Check official forecasts and plan recovery—cooler mornings can help, but conditions change across the year.',
+    a: 'It depends on weather preferences and air quality considerations. Check official forecasts and plan recovery, cooler mornings can help, but conditions change across the year.',
   },
   {
     q: 'How long should I stay in Chiang Mai to improve?',
-    a: 'Most people feel meaningful progress with 2–4 weeks of consistent training. Longer stays work best when you pick a routine you can sustain—sleep, food, and recovery matter as much as sessions.',
+    a: 'Most people feel meaningful progress with 2–4 weeks of consistent training. Longer stays work best when you pick a routine you can sustain, sleep, food, and recovery matter as much as sessions.',
   },
   {
     q: 'Where should I stay in Chiang Mai for Muay Thai training?',
@@ -76,7 +76,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What should I pack for a Chiang Mai training stay?',
-    a: 'Wraps, mouthguard, lightweight training clothes, and blister/tape basics. Many travelers buy gloves/shin guards locally to reduce luggage weight—confirm gym rules on each listing.',
+    a: 'Wraps, mouthguard, lightweight training clothes, and blister/tape basics. Many travelers buy gloves/shin guards locally to reduce luggage weight, confirm gym rules on each listing.',
   },
 ]
 
@@ -85,7 +85,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Top northern picks',
     body: (
       <p>
-        Highest review momentum within the Chiang Mai filter. Check elevation and weather seasonality—mornings can feel
+        Highest review momentum within the Chiang Mai filter. Check elevation and weather seasonality, mornings can feel
         cooler than the south, which helps roadwork.
       </p>
     ),
@@ -94,7 +94,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Next tier',
     body: (
       <p>
-        Still verified listings. Compare fundamentals vs fighter tracks on each profile—northern camps vary in how they
+        Still verified listings. Compare fundamentals vs fighter tracks on each profile, northern camps vary in how they
         split skill levels.
       </p>
     ),
@@ -103,7 +103,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Mid-list',
     body: (
       <p>
-        Worth comparing if you want a specific vibe or quieter training floor. Rank is not personality—read descriptions.
+        Worth comparing if you want a specific atmosphere or quieter training floor. Rank is not personality. Read descriptions.
       </p>
     ),
   },
@@ -153,7 +153,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Chiang Mai offers a different training rhythm than Bangkok or the islands—rankings still come from live reviews and listings."
+      subtitle="Chiang Mai offers a different training rhythm than Bangkok or the islands, rankings still come from live reviews and listings."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -169,7 +169,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
         imageSrc={HERO_IMAGE}
         imageAlt={`Muay Thai in ${CITY}`}
         priority
-        overlayText="Chiang Mai: cooler mornings, slower pace, and serious camps—pick a gym that matches how hard you want to train and how quiet you want life outside the gym."
+        overlayText="Chiang Mai offers cooler mornings and a slower pace. Pick a gym that matches your training load and how quiet you want life outside the gym."
       />
 
       <GuideLeadRow
@@ -192,7 +192,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Why Chiang Mai keeps people longer</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               Longer stays succeed when your routine is sustainable: sleep, food, recovery, and a gym you enjoy returning to.
-              Use this ranked list to compare—then choose based on vibe and schedule.
+              Use this ranked list to compare, then choose based on schedule and gym culture.
             </p>
           </div>
           <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -216,12 +216,11 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
         <GuideAccentIntro icon={Mountain} title="Why train Muay Thai in Chiang Mai?" subtitle="North vs south Thailand" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Travelers searching <strong>best Muay Thai gyms in Chiang Mai</strong> often want a calmer base than Phuket or
-            Bangkok, with mountain air and a digital-nomad-friendly rhythm. The north still has real fight culture—just
-            verify class intensity and coaching style on each listing.
+            <strong>Best Muay Thai gyms in Chiang Mai</strong> suit travelers who want a calmer base than Phuket or
+            Bangkok, with mountain air and a slower daily rhythm. The north still has real fight culture. Verify class intensity and coaching style on each listing.
           </p>
           <p>
-            This page ranks only <strong>verified</strong> gyms that list Muay Thai and match our {CITY} location filter—
+            This page ranks only <strong>verified</strong> gyms that list Muay Thai and match our {CITY} location filter, 
             same integrity rules as our national guide.
           </p>
         </div>
@@ -233,7 +232,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
           items={[
             {
               title: 'Weather & load',
-              body: 'Cooler mornings can hide dehydration—still hydrate aggressively and scale running volume if you are new to altitude or hills.',
+              body: 'Cooler mornings can hide dehydration, still hydrate aggressively and scale running volume if you are new to altitude or hills.',
             },
             {
               title: 'Lifestyle balance',
@@ -300,7 +299,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Chiang Mai rewards routine—choose a base you can live in comfortably while you train.
+              Chiang Mai rewards routine, choose a base you can live in comfortably while you train.
             </figcaption>
           </figure>
         </div>
@@ -347,7 +346,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              For long stays, pick accommodation for recovery first—then let training compound.
+              For long stays, pick accommodation for recovery first, then let training compound.
             </figcaption>
           </figure>
         </div>
@@ -355,7 +354,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
 
       <GuideCtaStrip
         title={`Search ${CITY} Muay Thai camps`}
-        subtitle="Filter and compare every listing, not only this article."
+        subtitle="Filter and compare every listing on CombatStay, not just this page."
         href={`/search?country=Thailand&location=${encodeURIComponent(CITY)}&discipline=Muay%20Thai`}
         buttonLabel="Open Chiang Mai search"
       />
@@ -389,7 +388,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Chiang Mai Muay Thai camp?"
-        subtitle="Compare live prices, reviews, and training blocks at every verified Chiang Mai camp — book in a few clicks."
+        subtitle="Compare live prices, reviews, and training blocks at every verified Chiang Mai camp, book in a few clicks."
         href="/search?country=Thailand&location=Chiang%20Mai&discipline=Muay%20Thai"
         buttonLabel="Find your Chiang Mai camp"
       />

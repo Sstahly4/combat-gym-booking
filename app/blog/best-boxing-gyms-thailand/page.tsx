@@ -31,7 +31,7 @@ const DATE_PUBLISHED = '2025-10-15'
 const DATE_MODIFIED = '2026-04-20'
 const HERO_IMAGE = '/Superbon-Singha-Mawynn-Chingiz-Allazov-ONE-Fight-Night-6-1920X1280-62.jpg'
 const DESCRIPTION =
-  'Boxing-only gym rankings in Thailand: real listings, prices, reviews, and long-form advice—separate from Muay Thai roundups.'
+  'Boxing-only gym rankings in Thailand: real listings, prices, reviews, and long-form advice, separate from Muay Thai roundups.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Is Thailand boxing different from Muay Thai training?',
-    a: 'Yes—stance, scoring, and class drills differ. This page filters boxing-tagged gyms so you do not land in a pure Muay Thai camp by mistake.',
+    a: 'Yes, stance, scoring, and class drills differ. This page filters boxing-tagged gyms so you do not land in a pure Muay Thai camp by mistake.',
   },
   {
     q: 'Do I need fight experience?',
@@ -52,7 +52,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How are gyms ranked?',
-    a: 'Verified Thailand listings with boxing disciplines, sorted by review score and volume—consistent with our other guides.',
+    a: 'Verified Thailand listings with boxing disciplines, sorted by review score and volume, consistent with our other guides.',
   },
   {
     q: 'Is Thailand good for boxing beginners?',
@@ -60,7 +60,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I train boxing and Muay Thai on the same trip?',
-    a: 'Yes—many travelers do. The key is workload: alternate hard days, protect your hands/wrists, and avoid stacking maximum sparring volume across disciplines.',
+    a: 'Yes, many travelers do. The key is workload: alternate hard days, protect your hands/wrists, and avoid stacking maximum sparring volume across disciplines.',
   },
   {
     q: 'What gloves should I use for boxing in Thailand?',
@@ -76,7 +76,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What should I pack for a boxing training trip?',
-    a: 'Wraps, mouthguard, and lightweight training clothes. Many gyms prefer 14–16oz gloves for sparring, but rules vary—confirm on the listing. Consider buying gloves locally to reduce luggage weight.',
+    a: 'Wraps, mouthguard, and lightweight training clothes. Many gyms prefer 14–16oz gloves for sparring, but rules vary, confirm on the listing. Consider buying gloves locally to reduce luggage weight.',
   },
 ]
 
@@ -85,7 +85,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'Top boxing picks',
     body: (
       <p>
-        Highest momentum in the boxing-filtered set. Compare conditioning emphasis vs technical drilling—some gyms skew
+        Highest momentum in the boxing-filtered set. Compare conditioning emphasis vs technical drilling, some gyms skew
         fitness, others toward amateur competition.
       </p>
     ),
@@ -110,7 +110,7 @@ const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
     title: 'More gyms',
     body: (
       <p>
-        Deep comparison set—useful if you want multiple quotes or trial days before committing to a month-long stay.
+        Deep comparison set, useful if you want multiple quotes or trial days before committing to a month-long stay.
       </p>
     ),
   },
@@ -155,7 +155,7 @@ export default async function BestBoxingGymsThailandPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Hands, footwork, and conditioning—boxed into a discipline-specific guide competitors cannot copy."
+      subtitle="Boxing-only gym rankings in Thailand with live listings, prices, and long-form planning advice."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -171,7 +171,7 @@ export default async function BestBoxingGymsThailandPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Boxing training in Thailand"
         priority
-        overlayText="Boxing in Thailand: sharpen timing and cardio without pretending every camp is the same as Muay Thai—this list is boxing-tagged only."
+        overlayText="Boxing in Thailand: sharpen timing and cardio. This list includes boxing-tagged gyms only."
       />
 
       <GuideLeadRow
@@ -195,8 +195,8 @@ export default async function BestBoxingGymsThailandPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Who this guide is for</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Searchers who want the <strong>best boxing gyms in Thailand</strong> usually care about hands: jab mechanics,
-                footwork, conditioning, and controlled sparring—not clinch-first Muay Thai.
+                If you want the <strong>best boxing gyms in Thailand</strong>, you probably care about hands: jab mechanics,
+                footwork, conditioning, and controlled sparring, not clinch-first Muay Thai.
               </p>
               <p>
                 Use this list if you’re staying 1–8 weeks and want a boxing base you can stack with MMA or Muay Thai on other
@@ -215,7 +215,7 @@ export default async function BestBoxingGymsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              If your wrists/shoulders flare up, reduce volume before you change gyms—load management beats hype.
+              If your wrists/shoulders flare up, reduce volume before you change gyms, load management over hype.
             </figcaption>
           </figure>
         </div>
@@ -225,12 +225,12 @@ export default async function BestBoxingGymsThailandPage() {
         <GuideAccentIntro icon={HandMetal} title="Why a boxing-only Thailand guide?" subtitle="Intent + clarity" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best boxing gyms in Thailand</strong> often want Western boxing mechanics, bag rounds,
-            and footwork progressions—not a Muay Thai camp with boxing bolted into the title tag. We post-filter listings so
+            If you are comparing <strong>best boxing gyms in Thailand</strong>, you probably want Western boxing mechanics, bag rounds,
+            and footwork progressions, not a Muay Thai camp with boxing bolted into the title tag. We post-filter listings so
             boxing appears in disciplines, then rank by verified reviews.
           </p>
           <p>
-            That clarity helps SEO and travelers: you spend less time decoding whether “fight camp” means elbows and clinch
+            You spend less time decoding whether “fight camp” means elbows and clinch
             or straight punches through the jab.
           </p>
         </div>
@@ -242,7 +242,7 @@ export default async function BestBoxingGymsThailandPage() {
           items={[
             {
               title: 'Workload',
-              body: 'Stacking hard striking sessions daily wears on shoulders and wrists. Plan recovery and sleep—not only gym hours.',
+              body: 'Stacking hard striking sessions daily wears on shoulders and wrists. Plan recovery and sleep, gym hours alone.',
             },
             {
               title: 'Coach communication',
@@ -301,7 +301,7 @@ export default async function BestBoxingGymsThailandPage() {
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
                 For long stays, “best boxing gym” usually means you can attend consistently. Compare class times, coach feedback,
-                and mitt work access—not just a headline price.
+                and mitt work access, not just a headline price.
               </p>
               <p>
                 Total cost includes recovery (massage, nutrition), transport, and whether your accommodation lets you sleep well.
@@ -332,7 +332,7 @@ export default async function BestBoxingGymsThailandPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Boxing rules and scoring context</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-700">
               If you’re choosing a boxing gym for competition prep, you should know which rule set you’re aiming at. Use these
-              references as background—then choose a gym based on coaching fit and schedule consistency.
+              references as background, then choose a gym based on coaching fit and schedule consistency.
             </p>
             <div className="mt-6 grid gap-4">
               <a
@@ -368,7 +368,7 @@ export default async function BestBoxingGymsThailandPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Better boxing is built on boring repetitions—choose a gym you’ll attend consistently.
+              Better boxing is built on boring repetitions, choose a gym you’ll attend consistently.
             </figcaption>
           </figure>
         </div>
@@ -409,7 +409,7 @@ export default async function BestBoxingGymsThailandPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Thailand boxing gym?"
-        subtitle="Compare every verified Thailand boxing gym — live prices, reviews, dates — and book directly."
+        subtitle="Compare every verified Thailand boxing gym, live prices, reviews, dates, and book directly."
         href="/search?country=Thailand&discipline=Boxing"
         buttonLabel="Find your boxing gym"
       />

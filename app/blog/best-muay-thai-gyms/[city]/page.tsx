@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 const FAQ_ITEMS = (city: string) => [
   {
     q: `Is ${city} good for Muay Thai training?`,
-    a: `It can be—if you choose a gym you can attend consistently. For most travelers the biggest “performance lever” is routine: commute, sleep, and recovery.`,
+    a: `Yes, if you choose a gym you can attend consistently. For most travelers the biggest “performance lever” is routine: commute, sleep, and recovery.`,
   },
   {
     q: `Do I need an ED visa to train Muay Thai in ${city}?`,
@@ -78,7 +78,7 @@ const FAQ_ITEMS = (city: string) => [
 
 const EDITORIAL = (city: string): Array<{ title: string; body: ReactNode }> => [
   { title: `Top ${city} picks`, body: <p>Highest review momentum inside the {city} filter. Compare schedule fit first.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified listings—differences are often commute, vibe, and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified listings, differences are often commute, schedule, and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific training style.</p> },
   { title: `More gyms`, body: <p>Widen your shortlist beyond thin affiliate roundups.</p> },
   { title: `Final ranked slots`, body: <p>Completes a deeper list so you can compare more options.</p> },
@@ -128,7 +128,7 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
         imageSrc={HERO_IMAGE}
         imageAlt={`${city} Thailand Muay Thai training`}
         priority
-        overlayText={`${city} Muay Thai gyms ranked from verified listings—compare schedules, prices, and reviews, then book the right fit.`}
+        overlayText={`Verified Muay Thai camps in ${city}, ranked by reviews. Compare schedules, prices, and book on CombatStay.`}
       />
 
       <GuideLeadRow
@@ -145,11 +145,11 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
       />
 
       <section id="why" className="mb-14 scroll-mt-24">
-        <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${city}?`} subtitle="Consistency beats hype" />
+        <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${city}?`} subtitle="Show up every week" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best Muay Thai gyms in {city}</strong> usually care about routine: commute, recovery, and
-            whether the gym’s schedule matches their energy and experience level.
+            If you are comparing <strong>best Muay Thai gyms in {city}</strong>, you probably care about routine: commute, recovery, and
+            whether the gym’s schedule matches your energy and experience level.
           </p>
           <p>
             This page only includes verified/trusted listings that match our <em>{city}</em> city/suburb filter and list Muay
@@ -203,7 +203,7 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Pick a gym you can attend consistently — results follow attendance.
+              Pick a gym you can attend consistently, results follow attendance.
             </figcaption>
           </figure>
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -277,7 +277,7 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
 
       <GuideCtaStrip
         title={`Ready to pick your ${city} Muay Thai gym?`}
-        subtitle="Filter verified listings by dates, price, and amenities — book directly on CombatStay."
+        subtitle="Filter verified listings by dates, price, and amenities, book directly on CombatStay."
         href={`/search?country=Thailand&location=${encodeURIComponent(city)}&discipline=Muay%20Thai`}
         buttonLabel={`Find your ${city} camp`}
       />

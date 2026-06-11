@@ -8,18 +8,18 @@ import { GuideHero, GuideSection } from '@/components/guides/guide-page-blocks'
 export const metadata: Metadata = {
   title: 'Training Guides | Thailand Muay Thai, MMA, BJJ & More | CombatStay.com',
   description:
-    'Data-backed Thailand guides: ranked Muay Thai camps, city shortlists, MMA/BJJ/boxing, and visa planning. Live gym listings—not recycled affiliate lists.',
+    'Data-backed Thailand guides: ranked Muay Thai camps, city shortlists, MMA/BJJ/boxing, and visa planning. Live gym listings, not recycled affiliate lists.',
   openGraph: {
     title: 'Training Guides - CombatStay.com',
     description:
-      'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing—plus city guides and visa basics.',
+      'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing, plus city guides and visa basics.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Training Guides - CombatStay.com',
     description:
-      'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing—plus city guides and visa basics.',
+      'Ranked Thailand camp guides for Muay Thai, MMA, BJJ, and boxing, plus city guides and visa basics.',
   },
   alternates: {
     canonical: '/blog',
@@ -31,7 +31,7 @@ export default function BlogPage() {
     {
       title: '25 Best Muay Thai Camps in Thailand (2026)',
       excerpt:
-        'Flagship national ranking: twenty-five camps, long-form regional advice, methodology, FAQ, and structured data—built to outrank thin “top 7” posts.',
+        'Flagship national ranking: twenty-five camps, long-form regional advice, methodology, FAQ, and structured data built to outrank thin “top 7” posts.',
       category: 'Thailand · Muay Thai',
       href: '/blog/best-muay-thai-camps-thailand-2026',
     },
@@ -79,7 +79,7 @@ export default function BlogPage() {
     },
     {
       title: 'Koh Tao vs. Koh Phangan: Where Is the Best Place to Train?',
-      excerpt: 'A direct island comparison on gyms, cost, vibe, and stay length.',
+      excerpt: 'A direct island comparison on gyms, cost, pace, and stay length.',
       href: '/blog/koh-tao-vs-koh-phangan-muay-thai',
     },
     {
@@ -171,7 +171,7 @@ export default function BlogPage() {
     },
     {
       title: 'Best Muay Thai gyms in Rawai',
-      excerpt: 'South Phuket shortlist: ranked from verified listings (not recycled affiliate lists).',
+      excerpt: 'South Phuket shortlist ranked from verified listings with live gym data.',
       href: '/blog/best-muay-thai-gyms/rawai',
     },
     {
@@ -189,7 +189,7 @@ export default function BlogPage() {
   const combatSports = [
     {
       title: 'Best MMA Camps in Thailand',
-      excerpt: 'MMA-only discipline filter—striking plus grappling context Muay-Thai-only sites cannot own.',
+      excerpt: 'MMA-only discipline filter with striking and grappling context.',
       href: '/blog/best-mma-camps-thailand',
     },
     {
@@ -199,17 +199,17 @@ export default function BlogPage() {
     },
     {
       title: 'Best Boxing Gyms in Thailand',
-      excerpt: 'Boxing-tagged gyms only—clear intent for hands and footwork searches.',
+      excerpt: 'Boxing-tagged gyms only, with clear intent for hands and footwork searches.',
       href: '/blog/best-boxing-gyms-thailand',
     },
     {
       title: 'Best Kickboxing Gyms in Thailand',
-      excerpt: 'Kickboxing-tagged listings only—avoid Muay-Thai-only camps when you want kickboxing intent.',
+      excerpt: 'Kickboxing-tagged listings only. Skip Muay-Thai-only camps when you want kickboxing intent.',
       href: '/blog/best-kickboxing-gyms-thailand',
     },
     {
       title: 'Best Judo Gyms in Thailand',
-      excerpt: 'Judo-tagged listings only—throws + grappling structure for cross-trainers.',
+      excerpt: 'Judo-tagged listings only, with throws and grappling structure for cross-trainers.',
       href: '/blog/best-judo-gyms-thailand',
     },
   ]
@@ -227,7 +227,7 @@ export default function BlogPage() {
     },
     {
       title: 'Thailand Visa Extension & Overstay Guide',
-      excerpt: 'TM.7 mindset, official links, timing mistakes, and overstay risk—built for longer training trips.',
+      excerpt: 'TM.7 mindset, official links, timing mistakes, and overstay risk, built for longer training trips.',
       href: '/blog/thailand-visa-extension-overstay-guide',
     },
     {
@@ -252,7 +252,7 @@ export default function BlogPage() {
         imageSrc="/training-center-1.avif"
         imageAlt="Combat sports training guides"
         priority
-        overlayText="Training guides that rank—and help travelers decide."
+        overlayText="Training guides that rank and help travelers decide."
       />
 
       <div className="mb-8 flex flex-wrap gap-3">
@@ -278,8 +278,8 @@ export default function BlogPage() {
           <div>
             <h2 className="text-xl font-bold text-gray-900">How these guides are structured</h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-700">
-              Each article uses consistent hierarchy: hero imagery, table-of-contents anchors, long-form sections, and—where
-              listings exist—chunked gym grids with editorial breaks.
+              Each article uses consistent hierarchy: hero imagery, table-of-contents anchors, long-form sections, and
+              chunked gym grids with editorial breaks where listings exist.
             </p>
           </div>
         </div>

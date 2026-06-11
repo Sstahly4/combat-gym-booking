@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is Western boxing in Thailand as good as boxing in the West?',
-    a: 'At the top level, Thai-based boxing gyms can hold their own&mdash;many have coaches from the Philippines, Cuba, Mexico, and Eastern Europe, plus strong local talent. You are paying for coaching, not geography.',
+    a: 'At the top level, Thai-based boxing gyms can hold their own, many have coaches from the Philippines, Cuba, Mexico, and Eastern Europe, plus strong local talent. You are paying for coaching, not geography.',
   },
   {
     q: 'What are boxing class prices like in Bangkok?',
@@ -51,7 +51,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I combine boxing and Muay Thai in the same Bangkok trip?',
-    a: 'Yes&mdash;and many travelers do. Some gyms run both on the same schedule; others specialize. For mixed stacks, plan recovery carefully because both disciplines hammer the neck and shoulders.',
+    a: 'Yes, and many travelers do. Some gyms run both on the same schedule; others specialize. For mixed stacks, plan recovery carefully because both disciplines hammer the neck and shoulders.',
   },
   {
     q: 'Is there a fight scene for amateur Western boxing in Bangkok?',
@@ -59,11 +59,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Do I need a gi-equivalent kit for boxing?',
-    a: 'No. Bring wraps, a mouthguard, and clothing you can sweat through. Most travelers buy or borrow gloves locally&mdash;proper 12oz or 14oz training gloves matter.',
+    a: 'No. Bring wraps, a mouthguard, and clothing you can sweat through. Most travelers buy or borrow gloves locally, proper 12oz or 14oz training gloves matter.',
   },
   {
     q: 'What part of Bangkok is best to stay in for boxing?',
-    a: 'Depends on which gym you choose. Sukhumvit and Silom tend to have more international options; Chatuchak and other districts have more traditional Thai boxing camps. Prioritize commute length&mdash;Bangkok traffic is the real enemy.',
+    a: 'Depends on which gym you choose. Sukhumvit and Silom tend to have more international options; Chatuchak and other districts have more traditional Thai boxing camps. Prioritize commute length, Bangkok traffic is the real enemy.',
   },
 ]
 
@@ -102,7 +102,7 @@ export default function WesternBoxingBangkokPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Boxing training culture in Bangkok, Thailand"
         priority
-        overlayText="Traditional hand-wrap culture, modern strength rooms, and international coaches—Bangkok boxing is not a side dish to Muay Thai anymore."
+        overlayText="Traditional hand-wrap culture, modern strength rooms, and international coaches. Bangkok boxing stands on its own beside Muay Thai."
       />
 
       <GuideLeadRow
@@ -130,7 +130,7 @@ export default function WesternBoxingBangkokPage() {
             The result is a city where you can do a hard sparring round in a classic concrete gym in the morning, and walk into a polished downtown studio for a technical mitt session that evening. Few cities in the region offer that range.
           </p>
           <p>
-            For ranked listings that match pure boxing intent&mdash;rather than Muay Thai camps that happen to have a bag&mdash;see the <Link href="/blog/best-boxing-gyms-thailand" className="font-medium text-[#003580] underline">best boxing gyms in Thailand</Link> guide and filter{' '}
+            For ranked listings that match pure boxing intent, rather than Muay Thai camps that happen to have a bag, see the <Link href="/blog/best-boxing-gyms-thailand" className="font-medium text-[#003580] underline">best boxing gyms in Thailand</Link> guide and filter{' '}
             <Link href="/search?country=Thailand&location=Bangkok&discipline=Boxing" className="font-medium text-[#003580] underline">Bangkok boxing listings</Link>.
           </p>
         </div>
@@ -146,7 +146,7 @@ export default function WesternBoxingBangkokPage() {
                 The classic side of Bangkok boxing looks like you would expect: concrete floors, open-air fans, heavy bags that remember every boxer who hit them, and coaches whose English is functional but whose mitt work is a masterclass. Many of these gyms share space with Muay Thai operations and serve Thai pros, amateurs, and the occasional serious traveler.
               </p>
               <p>
-                Intensity is usually calibrated by coach, not by class. If you show up consistently and take corrections, the ceiling is high. If you treat it like a drop-in fitness session, you will not get the most out of it&mdash;and a good coach will nudge you accordingly.
+                Intensity is usually calibrated by coach, not by class. If you show up consistently and take corrections, the ceiling is high. If you treat it like a drop-in fitness session, you will not get the most out of it, and a good coach will nudge you accordingly.
               </p>
             </div>
           </div>
@@ -177,7 +177,7 @@ export default function WesternBoxingBangkokPage() {
                 Over the past several years, Bangkok has seen a wave of modern boxing gyms: air-conditioned, structured classes, written curriculums, and coaches who have trained in London, Havana, Manila, or Kyiv. These gyms cater to a mix of expats, serious hobbyists, and Thai students who grew up with more international exposure.
               </p>
               <p>
-                For travelers who want a clean, scheduled experience&mdash;fundamentals on Monday, footwork on Wednesday, sparring on Saturday&mdash;the modern side of Bangkok boxing is as good as equivalent gyms in London or Los Angeles, often at a fraction of the cost.
+                For travelers who want a clean, scheduled experience, fundamentals on Monday, footwork on Wednesday, sparring on Saturday, the modern side of Bangkok boxing is as good as equivalent gyms in London or Los Angeles, often at a fraction of the cost.
               </p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function WesternBoxingBangkokPage() {
           items={[
             {
               title: 'If you are serious about hands',
-              body: 'Look for a gym with a head coach who competed and currently corners fighters. Read recent reviews for sparring quality, not just class vibe.',
+              body: 'Look for a gym with a head coach who competed and currently corners fighters. Read recent reviews for sparring quality, not just class quality.',
             },
             {
               title: 'If you want structure',
@@ -225,10 +225,10 @@ export default function WesternBoxingBangkokPage() {
             <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Crossover with Muay Thai</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
-                Bangkok is one of the few cities where you can credibly train both Western boxing and Muay Thai at a high level in the same week. The risk is overlapping fatigue&mdash;shoulders, neck, and hands get hammered by both&mdash;so your schedule has to respect recovery.
+                Bangkok is one of the few cities where you can credibly train both Western boxing and Muay Thai at a high level in the same week. The risk is overlapping fatigue, shoulders, neck, and hands get hammered by both, so your schedule has to respect recovery.
               </p>
               <p>
-                A sane template: 3&ndash;4 boxing sessions and 3&ndash;4 Muay Thai sessions, never two hard sparring days in the same week, and one protected rest day. Compare options in the{' '}
+                A sane template: 3-4 boxing sessions and 3-4 Muay Thai sessions, never two hard sparring days in the same week, and one protected rest day. Compare options in the{' '}
                 <Link href="/blog/best-muay-thai-gyms-bangkok" className="font-medium text-[#003580] underline">best Muay Thai gyms in Bangkok</Link> guide alongside Western boxing listings.
               </p>
             </div>
@@ -254,7 +254,7 @@ export default function WesternBoxingBangkokPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">The amateur fight scene</h2>
         <div className="max-w-4xl space-y-4 text-base leading-relaxed text-gray-800">
           <p>
-            Amateur Western boxing in Thailand is real but quieter than stadium Muay Thai. Cards run at a slower frequency and are less centralized, so finding a fight often comes through your gym&rsquo;s network rather than a public calendar. If competition is part of your trip, tell your head coach on day one and align your training schedule around matchmaking.
+            Amateur Western boxing in Thailand is real but quieter than stadium Muay Thai. Cards run at a slower frequency and are less centralized, so finding a fight often comes through your gym's network rather than a public calendar. If competition is part of your trip, tell your head coach on day one and align your training schedule around matchmaking.
           </p>
           <p>
             For travelers just wanting to watch, Bangkok has amateur nights, boxing-focused events, and ONE Championship cards that include boxing-adjacent bouts. Your gym will know what is on.
@@ -264,7 +264,7 @@ export default function WesternBoxingBangkokPage() {
 
       <GuideCtaStrip
         title="Find your Bangkok boxing gym"
-        subtitle="Browse verified boxing-tagged listings&mdash;no Muay-Thai-only camps in disguise."
+        subtitle="Browse verified boxing-tagged listings, no Muay-Thai-only camps in disguise."
         href="/search?country=Thailand&location=Bangkok&discipline=Boxing"
         buttonLabel="Open Bangkok boxing search"
       />

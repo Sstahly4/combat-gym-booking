@@ -43,19 +43,19 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What matters most in a Phuket conditioning gym?',
-    a: 'Equipment that matches your goal (barbells, machines, sleds), coaches who understand combat sports fatigue, and a location close enough that you will actually show up after training.',
+    a: 'Equipment that matches your goal (barbells, machines, sleds), coaches who understand combat sports fatigue, and a location close enough that you will show up after training.',
   },
   {
     q: 'Is Phuket good for long training blocks?',
-    a: 'Yes—Phuket has high gym density, strong training community, and good recovery options. It is also one of Thailand’s more expensive destinations, so plan your all-in budget (accommodation + food + transport).',
+    a: 'Yes, Phuket has high gym density, strong training community, and good recovery options. It is also one of Thailand’s more expensive destinations, so plan your all-in budget (accommodation + food + transport).',
   },
   {
     q: 'Should I do S&C on the same day as Muay Thai?',
-    a: 'Often yes, but separate by 4+ hours when possible. Keep hard sparring and heavy lifting away from each other—pair technique-focused Muay Thai days with lifting, and keep fight-simulation days lighter.',
+    a: 'Often yes, but separate by 4+ hours when possible. Keep hard sparring and heavy lifting away from each other, pair technique-focused Muay Thai days with lifting, and keep fight-simulation days lighter.',
   },
   {
     q: 'Are ice baths/sauna worth it in Phuket?',
-    a: 'They can be—especially for long stays where recovery is the limiting factor. But sleep and nutrition beat every recovery gadget. Treat ice/sauna as tools, not miracles.',
+    a: 'They can be, especially for long stays where recovery is the limiting factor. But sleep and nutrition matter more than recovery gadgets. Treat ice/sauna as tools, not miracles.',
   },
   {
     q: 'Is it safe to rent a scooter to get to an S&C gym in Phuket?',
@@ -87,7 +87,7 @@ export default function PhuketFighterConditioningGymsPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Most Phuket camp injuries happen when people out-train their recovery. Smart S&C makes you harder to break—this guide shows how to choose it."
+      subtitle="Most Phuket camp injuries come from out-training recovery. This guide helps you pick strength and conditioning that supports your camp."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -102,7 +102,7 @@ export default function PhuketFighterConditioningGymsPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Phuket training and conditioning for fighters"
         priority
-        overlayText="Phuket is famous for striking camps—but the best long-stay fighters treat strength, conditioning, and recovery as part of the camp, not an afterthought."
+        overlayText="Phuket is famous for striking camps. Long-stay fighters treat strength, conditioning, and recovery as part of the camp, not an afterthought."
       />
 
       <GuideLeadRow
@@ -157,7 +157,7 @@ export default function PhuketFighterConditioningGymsPage() {
             },
             {
               title: '3) Combat-sports performance clinics (coach-led, small group)',
-              body: 'Best when you want coaching feedback on movement quality. These gyms focus on keeping knees, hips, and shoulders healthy under striking volume—often the highest ROI for long-stay travelers.',
+              body: 'Best when you want coaching feedback on movement quality. These gyms focus on keeping knees, hips, and shoulders healthy under striking volume, often the highest ROI for long-stay travelers.',
             },
             {
               title: '4) Rehab/physio-forward gyms (injury management)',
@@ -203,7 +203,7 @@ export default function PhuketFighterConditioningGymsPage() {
           <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
             LUDUS Sports Complex
           </Link>{' '}
-          bundles gym, spa, pool, and hotel in one complex—useful if recovery amenities matter as much as barbells.
+          bundles gym, spa, pool, and hotel in one complex, useful if recovery amenities matter as much as barbells.
         </p>
       </GuideSection>
 
@@ -249,7 +249,7 @@ export default function PhuketFighterConditioningGymsPage() {
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Recovery</p>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Phuket recovery: what actually works</h2>
+            <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Phuket recovery: what helps recovery</h2>
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
                 The best recovery stack in Phuket is still boring: <strong>sleep</strong>, consistent{' '}
@@ -257,7 +257,7 @@ export default function PhuketFighterConditioningGymsPage() {
                 only after the basics are locked.
               </p>
               <p>
-                If you are budgeting a longer stay, plan the full trip cost—not only training fees. Use the{' '}
+                If you are budgeting a longer stay, plan the full trip cost, training fees alone. Use the{' '}
                 <Link href="/blog/muay-thai-camp-thailand-cost" className="font-medium text-[#003580] underline">
                   Thailand Muay Thai cost guide (2026)
                 </Link>{' '}

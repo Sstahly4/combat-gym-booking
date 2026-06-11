@@ -21,7 +21,7 @@ const DATE_PUBLISHED = '2026-04-21'
 const DATE_MODIFIED = '2026-04-21'
 const HERO_IMAGE = '/training-center-1.avif'
 const DESCRIPTION =
-  'Exactly what to pack for a Muay Thai, BJJ, or MMA training trip to Thailand in 2026—what to bring, what to buy locally, and what to leave at home.'
+  'Exactly what to pack for a Muay Thai, BJJ, or MMA training trip to Thailand in 2026: what to bring, what to buy locally, and what to leave at home.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -34,11 +34,11 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'Should I bring gloves from home?',
-    a: 'Most travelers buy gloves in Thailand. Prices are lower, quality is strong, and coaches can help you fit properly. If you already own gloves that fit perfectly, bring them&mdash;but do not buy new ones at home just for the trip.',
+    a: 'Most travelers buy gloves in Thailand. Prices are lower, quality is strong, and coaches can help you fit properly. If you already own gloves that fit perfectly, bring them. Do not buy new ones at home only for the trip.',
   },
   {
     q: 'How many training outfits should I pack?',
-    a: '3&ndash;4 sets is usually enough. You will sweat through everything, but laundry is cheap and frequent. Quick-dry fabrics beat cotton in Thai heat and humidity.',
+    a: '3&ndash;4 sets is usually enough. You will sweat through everything, but laundry is cheap and frequent. Quick-dry fabrics work better than cotton in Thai heat and humidity.',
   },
   {
     q: 'Do I need a gi for BJJ in Thailand?',
@@ -58,11 +58,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Should I bring protein powder or supplements?',
-    a: 'Usually not worth the luggage. Thai food is high-quality fuel and supplements are available locally. Electrolytes are the one exception&mdash;pack a stash.',
+    a: 'Usually not worth the luggage. Thai food is high-quality fuel and supplements are available locally. Electrolytes are the one exception. Pack a stash.',
   },
   {
     q: 'What is the single most forgotten item?',
-    a: 'A reusable water bottle that actually seals. Second place: a second pair of hand wraps, because one pair will be wet.',
+    a: 'A reusable water bottle that seals without leaking. Second: a second pair of hand wraps, because one pair will be wet.',
   },
 ]
 
@@ -86,7 +86,7 @@ export default function PackingListPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="A packing list built by travelers who have been to Thailand six times, not written by someone who Googled &lsquo;Muay Thai trip essentials.&rsquo;"
+      subtitle="A packing list from travelers who have trained in Thailand multiple times, not a generic gear roundup."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -100,7 +100,7 @@ export default function PackingListPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Combat sports training gear laid out for a Thailand trip"
         priority
-        overlayText="The gear rule for Thailand: bring what you already trust, buy what is cheaper locally, and leave at home anything you are packing &lsquo;just in case.&rsquo;"
+        overlayText="Bring gear you already trust. Buy what is cheaper locally. Leave at home anything you packed only as a backup."
       />
 
       <GuideLeadRow
@@ -123,7 +123,7 @@ export default function PackingListPage() {
         <GuideAccentIntro icon={PackageCheck} title="The packing philosophy" subtitle="Less than you think" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Thailand is not a remote outpost. Bangkok, Phuket, and Chiang Mai have every piece of training gear you could want at a lower price than your home gym pro shop, often with better local-brand options than imported equivalents. Packing for a Thailand combat sports trip should follow a simple rule: <strong>bring what fits you perfectly</strong>, <strong>buy what is cheaper locally</strong>, and <strong>leave at home anything you added &ldquo;just in case.&rdquo;</strong>
+            Thailand is not a remote outpost. Bangkok, Phuket, and Chiang Mai stock every piece of training gear you could want at a lower price than your home gym pro shop, often with strong local-brand options. Pack for a Thailand combat sports trip with three rules: <strong>bring what fits you perfectly</strong>, <strong>buy what is cheaper locally</strong>, and <strong>leave at home anything you added as a backup</strong>.
           </p>
           <p>
             If you are staying a month or longer, pack for the first 3&ndash;4 days of training and the first night of sleep. Everything else you can sort in-country by day two.
@@ -144,12 +144,12 @@ export default function PackingListPage() {
                 { t: 'Hand wraps (2–3 pairs)', d: 'Light, cheap, and you always need a dry pair ready.' },
                 { t: 'Mouthguard', d: 'Boil-and-bite or custom. Bring a spare if you already own one.' },
                 { t: 'Running shoes', d: 'Bring a well-fitting pair and expect to buy a second beater pair locally.' },
-                { t: '3–4 quick-dry training shirts', d: 'Cotton soaks and never dries. Technical fabric wins.' },
+                { t: '3–4 quick-dry training shirts', d: 'Cotton soaks and never dries. Technical fabric works better in humidity.' },
                 { t: 'Compression shorts', d: 'Prevent chafing during long sessions, especially for BJJ.' },
                 { t: 'Sandals (flip-flops)', d: 'Gym floors, beach days, every walk outside the ring.' },
                 { t: 'Sunscreen (face + body)', d: 'Thai sunscreen options differ from Western brands. Bring what your skin likes.' },
                 { t: 'Personal meds + prescription copies', d: 'Labeled, in original packaging, with a doctor&rsquo;s note if needed.' },
-                { t: 'Blister tape / athletic tape', d: 'Your feet will need it. Your skin will thank you.' },
+                { t: 'Blister tape / athletic tape', d: 'Your feet and shins will need it within the first week.' },
                 { t: 'Travel adapter (Type A/B/C)', d: 'Thailand outlets accept common plug types; a universal adapter is easiest.' },
               ].map((item) => (
                 <li key={item.t} className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-800 shadow-sm">
@@ -168,11 +168,11 @@ export default function PackingListPage() {
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Buy in Thailand</h2>
             <p className="mt-3 text-sm leading-relaxed text-gray-700">
-              These items are cheaper, better fitted, or easier to source locally&mdash;and leave room in your suitcase for the ride home.
+              These items are cheaper, better fitted, or easier to source locally. They also leave room in your suitcase for the ride home.
             </p>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {[
-                { t: 'Training gloves (10oz–14oz)', d: 'Fatip, Top King, Fairtex, Yokkao&mdash;all available in most training cities.' },
+                { t: 'Training gloves (10oz–14oz)', d: 'Fatip, Top King, Fairtex, Yokkao. All available in most training cities.' },
                 { t: 'Shin guards', d: 'Essential for Muay Thai. Try them on before buying.' },
                 { t: 'Muay Thai shorts', d: 'Traditional cut is cut for kicks. Buy 2&ndash;3; they are cheap and fun souvenirs.' },
                 { t: 'Rash guards (for BJJ/MMA)', d: 'Heat-friendly material, available locally in all major training cities.' },
@@ -240,7 +240,7 @@ export default function PackingListPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {[
             { t: 'Electrolyte tablets or packets', d: 'You will sweat more than you plan for. Replace salts.' },
-            { t: 'Blister tape, kinesio tape', d: 'Feet and shins thank you.' },
+            { t: 'Blister tape, kinesio tape', d: 'Feet and shins take a beating in the first week.' },
             { t: 'Anti-chafe balm', d: 'Humidity + friction = skin problems by day 4.' },
             { t: 'Ibuprofen / paracetamol', d: 'Available locally too, but bring a small supply.' },
             { t: 'Antiseptic cream', d: 'Small cuts are inevitable; mat staph risk is real for BJJ.' },
@@ -267,7 +267,7 @@ export default function PackingListPage() {
               <li>Return or onward ticket (airlines sometimes check)</li>
               <li>Digital + paper copies of visa, insurance, and prescriptions</li>
               <li>Two bank cards from different banks + some USD cash</li>
-              <li>Emergency contact list (on paper, not just on phone)</li>
+              <li>Emergency contact list (on paper, not only on your phone)</li>
             </ul>
             <p className="mt-4 text-sm text-gray-700">
               For long stays, read the <Link href="/blog/thailand-training-visa-dtv" className="font-medium text-[#003580] underline">Thailand training visa / DTV guide</Link> and the{' '}
@@ -285,7 +285,7 @@ export default function PackingListPage() {
               />
             </div>
             <figcaption className="px-4 py-3 text-xs text-gray-600">
-              Have your paperwork organized before you fly&mdash;it reduces day-one friction.
+              Have your paperwork organized before you fly. It cuts day-one friction at immigration and check-in.
             </figcaption>
           </figure>
         </div>
@@ -295,12 +295,12 @@ export default function PackingListPage() {
         <h2 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">Do not bring</h2>
         <div className="max-w-3xl space-y-3 text-base leading-relaxed text-gray-800">
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>New gloves or shin guards</strong>&mdash;buy in Thailand for better price and fit.</li>
-            <li><strong>A month of protein powder</strong>&mdash;heavy, expensive to fly, available locally.</li>
-            <li><strong>Six pairs of jeans</strong>&mdash;you will wear shorts 95% of the trip.</li>
-            <li><strong>&ldquo;Just in case&rdquo; gear</strong>&mdash;if you are not sure you will use it, you will not use it.</li>
-            <li><strong>Expensive jewelry or watches</strong>&mdash;leave them at home; you are here to train, not flex.</li>
-            <li><strong>A full first aid kit</strong>&mdash;bring the essentials, buy the rest at Boots or a pharmacy.</li>
+            <li><strong>New gloves or shin guards</strong>: buy in Thailand for better price and fit.</li>
+            <li><strong>A month of protein powder</strong>: heavy, expensive to fly, available locally.</li>
+            <li><strong>Six pairs of jeans</strong>: you will wear shorts most of the trip.</li>
+            <li><strong>Backup gear you are unsure about</strong>: if you are not sure you will use it, leave it home.</li>
+            <li><strong>Expensive jewelry or watches</strong>: leave them at home. You are here to train.</li>
+            <li><strong>A full first aid kit</strong>: bring the essentials, buy the rest at Boots or a pharmacy.</li>
           </ul>
         </div>
       </section>
@@ -314,7 +314,7 @@ export default function PackingListPage() {
 
       <GuideSection id="faq" variant="default" padding="p-6 md:p-8" className="mb-14 shadow-sm">
         <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">FAQ</h2>
-        <p className="mb-8 text-gray-600">Practical packing questions from real training travelers.</p>
+        <p className="mb-8 text-gray-600">Common packing questions from training travelers.</p>
         <GuideFaqList items={FAQ_ITEMS} />
       </GuideSection>
 

@@ -46,7 +46,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What’s the best city base for training (Bangkok vs Phuket vs Chiang Mai)?',
-    a: 'Bangkok maximizes convenience and fight-scene density, Phuket blends beaches with serious training, and Chiang Mai suits a slower pace and cooler mornings. There is no universal best—optimize for the routine you can maintain.',
+    a: 'Bangkok maximizes convenience and fight-scene density, Phuket blends beaches with serious training, and Chiang Mai suits a slower pace and cooler mornings. Pick the city where you can keep a steady routine.',
   },
   {
     q: 'What is the biggest mistake travelers make?',
@@ -77,7 +77,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Visa, gear, recovery, and gym selection—built for high-intent travelers who want outcomes, not generic “cheap training” fluff."
+      subtitle="Visa, gear, recovery, and gym selection for travelers who want a trip that produces real training progress."
       breadcrumbs={[{ label: 'Training Guides', href: '/blog' }]}
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
@@ -88,7 +88,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
         imageSrc={HERO_IMAGE}
         imageAlt="Training gloves and gym scene"
         priority
-        overlayText="Combat sports travel is a logistics problem. Solve visas, recovery, and routine first—then “best gym” becomes obvious."
+        overlayText="Combat sports travel is a logistics problem. Sort visas, recovery, and routine first. The right gym follows from that."
       />
 
       <GuideLeadRow
@@ -117,7 +117,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
             },
             {
               title: 'Recovery is a feature',
-              body: 'Ice bath, sauna, physio, massage, mobility space—these are not luxuries when training twice a day.',
+              body: 'Ice bath, sauna, physio, massage, mobility space. You need these when training twice a day.',
             },
             {
               title: 'Legality is part of training',
@@ -157,13 +157,11 @@ export default function CombatSportsTravelGuideThailand2026Page() {
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Info gain (what most lists never say)</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-700">
-            If you’re comparing two “top” camps, the deciding variables are usually not price or hype — they’re repeatability
-            signals. In 2026, the strongest predictors of progress are <strong>attendance</strong>, <strong>sleep</strong>, and a
+            When you compare two &ldquo;top&rdquo; camps, look for repeatability signals. In 2026, progress tracks with <strong>attendance</strong>, <strong>sleep</strong>, and a
             training load you can sustain without injury.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-gray-700">
-            CombatStay listings already expose structured amenities (recovery, housing, visa guidance). Next, we’ll layer in
-            higher-moat metrics like coach ratio and sparring culture as gyms verify them.
+            CombatStay listings show structured amenities (recovery, housing, visa guidance). We will add coach ratio and sparring culture data as gyms verify them.
           </p>
         </div>
         <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -183,7 +181,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
             <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Fast action</p>
             <h3 className="mt-2 text-lg font-semibold text-gray-900">Browse live listings instead of reading 10 blogs</h3>
             <p className="mt-2 text-sm text-gray-700">
-              Use search to filter by country, city, discipline, and amenities—then open profiles to confirm schedules and booking details.
+              Use search to filter by country, city, discipline, and amenities, then open profiles to confirm schedules and booking details.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
@@ -208,7 +206,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
               title: 'Bangkok',
               body: (
                 <p>
-                  Convenience + fight-scene density. Great if you want stadium culture and short commutes via BTS/MRT—less great if traffic becomes your “third session.”
+                  Convenience and fight-scene density. Works well if you want stadium culture and short commutes via BTS/MRT. Traffic can eat your recovery time if you live far from the gym.
                 </p>
               ),
             },
@@ -292,7 +290,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
         <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Semantic gap coverage</p>
         <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Recovery &amp; legality (the “hidden” trip constraints)</h2>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-gray-700">
-          Most competitor posts ignore the entities that decide whether your trip works: visa planning and recovery infrastructure.
+          Visa planning and recovery infrastructure decide whether your trip works. Most travel posts skip both.
         </p>
         <GuideLogisticsBlocks cityLabel="Thailand" />
       </GuideSection>
@@ -333,7 +331,7 @@ export default function CombatSportsTravelGuideThailand2026Page() {
           {[
             { t: 'Booking the gym before the routine', d: 'Pick the city area and commute first. Two-a-days collapse when logistics are painful.' },
             { t: 'Overtraining week one', d: 'Start at 1 session/day. Add volume only when sleep and soreness stabilize.' },
-            { t: 'Ignoring recovery entities', d: 'Ice bath/sauna/physio/massage aren’t fluff when training is high volume.' },
+            { t: 'Skipping recovery amenities', d: 'Ice bath/sauna/physio/massage matter when training is high volume.' },
             { t: 'Treating visa help as guaranteed', d: 'Use official sources. Gyms may offer guidance but can’t override immigration rules.' },
           ].map((x) => (
             <div key={x.t} className="rounded-xl border border-amber-200/70 bg-white/90 p-5 shadow-sm">

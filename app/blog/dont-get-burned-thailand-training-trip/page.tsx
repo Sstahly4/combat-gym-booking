@@ -76,7 +76,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Most blogs sell vibes. This page checks the boring stuff that decides whether you can actually train for weeks."
+      subtitle="This page covers the logistics that determine whether you can train for weeks: commute, schedule, recovery, and visa planning."
       breadcrumbs={[{ label: 'Training Guides', href: '/blog' }]}
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
@@ -87,7 +87,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Training intensity and planning"
         priority
-        overlayText="If you want progress, protect your routine. These four checks prevent the most common Thailand training-trip failures."
+        overlayText="Protect your routine before you pay. These four checks prevent the most common Thailand training-trip failures."
       />
 
       <GuideLeadRow
@@ -128,7 +128,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
               <p className="text-sm font-semibold text-gray-900">{x.t}</p>
               <p className="mt-2 text-sm text-gray-700 leading-relaxed">{x.d}</p>
               <p className="mt-4 text-xs text-gray-500">
-                Shortcut: browse listings and use filters after you shortlist —{' '}
+                Shortcut: browse listings and use filters after you shortlist.{' '}
                 <Link href="/search?country=Thailand" className="font-semibold text-[#003580] underline">
                   open Thailand search
                 </Link>
@@ -143,7 +143,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
               <MapPin className="h-4 w-4 text-[#003580]" aria-hidden /> Commute wins
             </div>
             <p className="mt-2 text-sm text-gray-700">
-              A “better” gym you rarely attend loses to a “good” gym you attend 5–6 days/week.
+              A gym close enough to attend 5&ndash;6 days per week matters more than a higher-rated gym you skip because the commute is long.
             </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -159,7 +159,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
               <ClipboardList className="h-4 w-4 text-[#003580]" aria-hidden /> Verify entities
             </div>
             <p className="mt-2 text-sm text-gray-700">
-              Recovery and visa guidance should be explicit — not “we can help with anything.”
+              Recovery and visa guidance should be explicit, not a vague promise to help with anything.
             </p>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
               <li><strong>Is accommodation on-site?</strong> If not, how far?</li>
               <li><strong>Recovery facilities?</strong> (ice bath, sauna, physio, massage)</li>
               <li><strong>What gear is required?</strong> (gloves/shins, gi, rashguards)</li>
-              <li><strong>Visa guidance?</strong> Ask what they actually provide and what documents, if any.</li>
+              <li><strong>Visa guidance?</strong> Ask what they provide and what documents, if any.</li>
             </ul>
           </div>
         </div>
@@ -200,18 +200,18 @@ export default function DontGetBurnedThailandTrainingTripPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Semantic gap coverage</p>
         <h2 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">Recovery &amp; legality blocks (what Google misses)</h2>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-gray-700">
-          Visa and recovery entities are high-intent. Most competitors avoid specifics; we make them explicit and link to deeper guides.
+          Visa and recovery details matter for long stays. We link to deeper guides on both.
         </p>
         <GuideLogisticsBlocks cityLabel="Thailand" />
       </GuideSection>
 
       <GuideSection id="week" variant="slate" className="mb-14">
-        <GuideAccentIntro icon={CheckCircle2} title="A sustainable week (so you don’t burn out)" subtitle="Repeatable beats heroic" />
+        <GuideAccentIntro icon={CheckCircle2} title="A sustainable week (so you don’t burn out)" subtitle="Repeatable over heroic" />
         <GuideThreeCards
           items={[
             { title: 'Days 1–3', body: '1 session/day + mobility + early sleep. Adapt to heat and volume.' },
             { title: 'Days 4–6', body: 'Add a second session only if sleep and soreness are stable. Keep sparring controlled.' },
-            { title: 'Day 7', body: 'Full rest or easy walk/swim. Tours count as load—don’t stack with hard sparring.' },
+            { title: 'Day 7', body: 'Full rest or easy walk/swim. Tours count as load. Do not stack them with hard sparring.' },
           ]}
         />
         <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -225,7 +225,7 @@ export default function DontGetBurnedThailandTrainingTripPage() {
                 sizes="(max-width: 768px) 100vw, 520px"
               />
             </div>
-            <figcaption className="px-4 py-3 text-xs text-gray-600">Treat recovery like training—it’s what lets you train again tomorrow.</figcaption>
+            <figcaption className="px-4 py-3 text-xs text-gray-600">Recovery supports tomorrow&apos;s session. Treat it as part of training.</figcaption>
           </figure>
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900">Where to start next</h3>

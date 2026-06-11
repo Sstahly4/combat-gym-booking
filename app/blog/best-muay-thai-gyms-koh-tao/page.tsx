@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   },
   {
     q: `When is the best time of year to train on Koh Tao?`,
-    a: `It depends on weather and crowds. Check official patterns before long stays—humidity and heat change recovery and training volume.`,
+    a: `It depends on weather and crowds. Check official patterns before long stays, humidity and heat change recovery and training volume.`,
   },
   {
     q: `Is Koh Tao beginner-friendly for Muay Thai?`,
@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the Koh Tao filter. Compare schedules and class structure.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified/trusted listings—differences are often review recency and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified listings. Differences usually come down to review recency and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific area.</p> },
   { title: `More gyms`, body: <p>Expand beyond whatever one blog repeats.</p> },
   { title: `Final ranked slots`, body: <p>Completes a deeper ranked list so you can compare more options.</p> },
@@ -124,7 +124,7 @@ export default async function BestMuayThaiGymsKohTaoPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Koh Tao Thailand beach"
         priority
-        overlayText="Koh Tao Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Koh Tao ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -145,7 +145,7 @@ export default async function BestMuayThaiGymsKohTaoPage() {
         <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${CITY}?`} subtitle="Small island, big consistency" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            People searching <strong>best Muay Thai gyms in {CITY}</strong> often want a simple island routine. The advantage
+            If you are comparing <strong>best Muay Thai gyms in {CITY}</strong>, you probably want a simple island routine. The advantage
             is fewer big-city distractions. The challenge is planning intensity so you can stay healthy and train consistently.
           </p>
           <p>
@@ -156,10 +156,10 @@ export default async function BestMuayThaiGymsKohTaoPage() {
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Koh Tao training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Koh Tao training stay for a long stay</h2>
         <GuideThreeCards
           items={[
-            { title: 'Pick a schedule', body: 'Decide 1 vs 2 sessions/day based on experience. Consistency beats intensity spikes.' },
+            { title: 'Pick a schedule', body: 'Decide 1 vs 2 sessions/day based on experience. Steady sessions outlast intensity spikes.' },
             { title: 'Recovery days', body: 'Keep one true rest day per week. It makes week 2–4 much stronger.' },
             { title: 'Mixing activities', body: 'If you’re diving or hiking, scale training volume to avoid overload.' },
           ]}
@@ -333,7 +333,7 @@ export default async function BestMuayThaiGymsKohTaoPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Koh Tao Muay Thai camp?"
-        subtitle="Compare every verified Koh Tao camp — live prices, reviews, dates — and book directly."
+        subtitle="Compare every verified Koh Tao camp, live prices, reviews, dates, and book directly."
         href="/search?country=Thailand&location=Koh%20Tao&discipline=Muay%20Thai"
         buttonLabel="Find your Koh Tao camp"
       />

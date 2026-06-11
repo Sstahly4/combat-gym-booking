@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: `Is Koh Phangan good for Muay Thai training?`,
-    a: `It can be—especially for travelers who want island life with training. Your success depends on routine: choose accommodation for sleep and a gym you can reach consistently for weeks.`,
+    a: `It can be, especially for travelers who want island life with training. Your success depends on routine: choose accommodation for sleep and a gym you can reach consistently for weeks.`,
   },
   {
     q: `How are Koh Phangan gyms ranked?`,
@@ -53,11 +53,11 @@ const FAQ_ITEMS = [
   },
   {
     q: `Can I train hard on Koh Phangan and still enjoy the island?`,
-    a: `Yes—plan your week. Train hard 4–6 days, keep one recovery day, and protect sleep. If you overdo nightlife, your training quality drops fast.`,
+    a: `Yes, plan your week. Train hard 4–6 days, keep one recovery day, and protect sleep. If you overdo nightlife, your training quality drops fast.`,
   },
   {
     q: `When is the best time of year to train on Koh Phangan?`,
-    a: `It depends on weather and crowds. Check official patterns before a long stay—humidity affects recovery and training volume.`,
+    a: `It depends on weather and crowds. Check official patterns before a long stay, humidity affects recovery and training volume.`,
   },
   {
     q: `Is Koh Phangan beginner-friendly for Muay Thai?`,
@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
 
 const EDITORIAL: Array<{ title: string; body: ReactNode }> = [
   { title: `Top ${CITY} picks`, body: <p>Highest review momentum inside the Koh Phangan filter. Compare schedule fit and class structure.</p> },
-  { title: `Strong alternatives`, body: <p>Still verified/trusted listings—differences are often review recency and availability.</p> },
+  { title: `Strong alternatives`, body: <p>Still verified listings. Differences usually come down to review recency and availability.</p> },
   { title: `Mid-list options`, body: <p>Useful when you prioritize dates, budget, or a specific area.</p> },
   { title: `More gyms`, body: <p>Expand beyond whatever one blog repeats.</p> },
   { title: `Final ranked slots`, body: <p>Completes the ranked list so you can compare more options.</p> },
@@ -108,7 +108,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="Koh Phangan can support long-stay training—if you plan your schedule and protect sleep. Use this guide to shortlist verified camps and compare routines."
+      subtitle="Koh Phangan can support long-stay training, if you plan your schedule and protect sleep. Use this guide to shortlist verified camps and compare routines."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -124,7 +124,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
         imageSrc={HERO_IMAGE}
         imageAlt="Koh Phangan Thailand beach and palm trees"
         priority
-        overlayText="Koh Phangan Muay Thai camps ranked from verified listings—compare schedules, prices, and reviews, then book the right fit."
+        overlayText="Verified Muay Thai camps in Koh Phangan ranked by reviews. Compare schedules, prices, and book on CombatStay."
       />
 
       <GuideLeadRow
@@ -145,7 +145,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
         <GuideAccentIntro icon={Moon} title={`Why train Muay Thai in ${CITY}?`} subtitle="Island life + discipline" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">
           <p>
-            Searchers looking for <strong>best Muay Thai gyms in {CITY}</strong> want a training base that still feels like an island.
+            If you are comparing <strong>best Muay Thai gyms in {CITY}</strong>, you want a training base that still feels like an island.
             The tradeoff is distractions. You’ll improve fastest if you pick a routine and keep it consistent for weeks.
           </p>
           <p>
@@ -155,11 +155,11 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
       </section>
 
       <GuideSection id="plan" variant="slate" className="mb-14">
-        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Koh Phangan training stay that actually works</h2>
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">Plan a Koh Phangan training stay for a long stay</h2>
         <GuideThreeCards
           items={[
             { title: 'Sleep wins', body: 'If you’re training hard, protect sleep. Late nights destroy morning sessions.' },
-            { title: 'Recovery day', body: 'Keep one true recovery day per week—walk, swim, stretch, and eat well.' },
+            { title: 'Recovery day', body: 'Keep one true recovery day per week, walk, swim, stretch, and eat well.' },
             { title: 'Beginner ramp', body: 'Start with one session/day for a few days, then scale up if your body adapts.' },
           ]}
         />
@@ -225,7 +225,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
                 <strong>1 recovery day:</strong> protect joints and sleep.
               </li>
               <li>
-                <strong>Nightlife:</strong> schedule it—don’t let it schedule you.
+                <strong>Nightlife:</strong> schedule it, don’t let it schedule you.
               </li>
             </ul>
           </div>
@@ -240,7 +240,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
             <div className="mt-3 space-y-3 text-base leading-relaxed text-gray-700">
               <p>
                 On islands, transport and convenience can matter more than a small price difference. A camp that’s easier to reach
-                can lead to more sessions—and better results—over a month.
+                can lead to more sessions, and better results, over a month.
               </p>
               <p>
                 Pack wraps + mouthguard, and consider buying gloves/shin guards locally. Confirm gym expectations on the listing.
@@ -332,7 +332,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
       </GuideSection>
       <GuideCtaStrip
         title="Ready to pick your Koh Phangan Muay Thai camp?"
-        subtitle="Filter verified Koh Phangan gyms by dates, price, and amenities — book directly on CombatStay."
+        subtitle="Filter verified Koh Phangan gyms by dates, price, and amenities, book directly on CombatStay."
         href="/search?country=Thailand&location=Koh%20Phangan&discipline=Muay%20Thai"
         buttonLabel="Find your Koh Phangan camp"
       />

@@ -46,15 +46,15 @@ function money(n: number | null | undefined, currency?: string | null) {
 const FAQ_ITEMS = [
   {
     q: 'What does “fight prep camp” mean in Thailand?',
-    a: 'A fight-prep camp typically means higher intensity, more sparring/clinch volume, stronger conditioning blocks, and a schedule oriented around competition. The exact definition varies by gym—confirm sparring days and coaching focus on each profile.',
+    a: 'A fight-prep camp typically means higher intensity, more sparring/clinch volume, stronger conditioning blocks, and a schedule oriented around competition. The exact definition varies by gym. Confirm sparring days and coaching focus on each profile.',
   },
   {
     q: 'Is on-site physiotherapy worth paying extra for?',
-    a: 'Often yes—especially for long stays or when you arrive with existing injuries. But sleep, nutrition, and sane weekly load are still the biggest drivers of injury risk and performance.',
+    a: 'Often yes, especially for long stays or when you arrive with existing injuries. Sleep, nutrition, and sane weekly load are still the biggest drivers of injury risk and performance.',
   },
   {
     q: 'How many days per week do most fight camps train?',
-    a: 'Many run 6 days/week, often 2 sessions/day, with one rest day. Some athletes add extra clinch/strength sessions—do not copy that volume unless you have the recovery base for it.',
+    a: 'Many run 6 days/week, often 2 sessions/day, with one rest day. Some athletes add extra clinch/strength sessions. Do not copy that volume unless you have the recovery base for it.',
   },
   {
     q: 'What injuries are most common in Thai fight camps?',

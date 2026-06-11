@@ -46,7 +46,7 @@ function money(n: number | null | undefined, currency?: string | null) {
 const FAQ_ITEMS = [
   {
     q: 'Is Thailand safe for female solo travelers training Muay Thai?',
-    a: 'For most travelers, yes—Thailand is one of the most common destinations for women training solo. The key is choosing a gym with professional staff, clear class structure, and a location/accommodation setup that supports recovery and comfort.',
+    a: 'For most travelers, yes. Thailand is one of the most common destinations for women training solo. The key is choosing a gym with professional staff, clear class structure, and a location/accommodation setup that supports recovery and comfort.',
   },
   {
     q: 'What matters most in a gym for women training solo?',
@@ -100,7 +100,7 @@ export default async function BestMuayThaiGymFemaleSoloTravelers2026Page() {
   return (
     <ArticleShell
       title={TITLE}
-      subtitle="This is a trust and routine problem, not a hype problem. Use the table to compare quickly, then open each profile for the details that actually matter."
+      subtitle="This is a trust and routine problem, not a hype problem. Use the table to compare quickly, then open each profile for the details that matter."
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -114,7 +114,7 @@ export default async function BestMuayThaiGymFemaleSoloTravelers2026Page() {
         imageSrc={HERO_IMAGE}
         imageAlt="Female solo travelers training Muay Thai in Thailand"
         priority
-        overlayText="Professional coaching culture, clear class structure, and a routine you can sustain—those are the real safety features."
+        overlayText="Professional coaching culture, clear class structure, and a routine you can sustain. Those are the real safety features."
       />
 
       <GuideLeadRow
@@ -231,7 +231,7 @@ export default async function BestMuayThaiGymFemaleSoloTravelers2026Page() {
             },
             {
               t: 'No review history + no transparency',
-              d: 'New gyms can be great—but “no reviews” plus vague info is not a risk worth taking when you’re solo.',
+              d: 'New gyms can be great, but “no reviews” plus vague info is not a risk worth taking when you’re solo.',
             },
           ].map((x) => (
             <div key={x.t} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
