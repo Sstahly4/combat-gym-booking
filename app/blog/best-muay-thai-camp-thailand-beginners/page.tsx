@@ -481,6 +481,8 @@ export default function BestMuayThaiCampThailandBeginnersPage() {
         guides={[
           { title: '25 best Muay Thai camps in Thailand (2026)', href: '/blog/best-muay-thai-camps-thailand-2026' },
           { title: "Beginner's guide to Muay Thai in Chiang Mai", href: '/blog/beginners-guide-muay-thai-chiang-mai' },
+          { title: 'Muay Thai trip from Australia', href: '/blog/muay-thai-trip-from-australia' },
+          { title: 'Thailand training holiday for Australians', href: '/blog/thailand-training-holiday-australia' },
           { title: 'How much does a Muay Thai camp in Thailand cost?', href: '/blog/muay-thai-camp-thailand-cost' },
           { title: '1-week vs 1-month Muay Thai camps', href: '/blog/muay-thai-camp-1-week-vs-1-month' },
           { title: 'Best Muay Thai gym for female solo travelers', href: '/blog/best-muay-thai-gym-female-solo-travelers-2026' },

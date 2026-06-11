@@ -37,6 +37,19 @@ export default function BlogPage() {
     },
   ]
 
+  const australiaGuides = [
+    {
+      title: 'Muay Thai Trip from Australia (2026)',
+      excerpt: 'Flights, visas, AUD budget, jet lag, and a 14-day trip template for Sydney, Melbourne, and Brisbane departures.',
+      href: '/blog/muay-thai-trip-from-australia',
+    },
+    {
+      title: 'Thailand Training Holiday from Australia (2026)',
+      excerpt: 'Balance pads and beach time: annual leave math, partner-friendly bases, and a sample holiday week.',
+      href: '/blog/thailand-training-holiday-australia',
+    },
+  ]
+
   const trainingBasics = [
     {
       title: 'What Is the Best Muay Thai Camp in Thailand for Beginners? (2026)',
@@ -334,6 +347,26 @@ export default function BlogPage() {
         <p className="mt-4 text-xs text-gray-500">
           New suburbs automatically become indexable as soon as gyms appear with matching city/suburb values.
         </p>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <Plane className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">Australia → Thailand</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {australiaGuides.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="mb-14">
