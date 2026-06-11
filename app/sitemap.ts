@@ -39,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/blog/packing-list-combat-sports-camp-thailand',
     '/blog/beginners-guide-muay-thai-chiang-mai',
     '/blog/best-muay-thai-camp-thailand-beginners',
+    '/blog/thailand-training-camp-with-accommodation',
     '/blog/muay-thai-trip-from-australia',
     '/blog/thailand-training-holiday-australia',
     '/blog/koh-tao-vs-koh-phangan-muay-thai',

@@ -99,6 +99,12 @@ export default function BlogPage() {
       href: '/blog/muay-thai-krabi-private-ac-rooms',
     },
     {
+      title: 'Thailand Training Camp with Accommodation (2026)',
+      excerpt:
+        'Train-and-stay packages explained: inclusion types, live comparison table, city price bands, and a ten-point booking checklist.',
+      href: '/blog/thailand-training-camp-with-accommodation',
+    },
+    {
       title: 'Best Muay Thai Gym for Female Solo Travelers (2026)',
       excerpt: 'Trust-first checklist + frictionless top-5 comparison built from verified listings.',
       href: '/blog/best-muay-thai-gym-female-solo-travelers-2026',
