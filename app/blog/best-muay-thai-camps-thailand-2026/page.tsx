@@ -491,6 +491,9 @@ export default async function BestMuayThaiCampsThailand2026Page() {
             <Link href="/blog/muay-thai-camp-1-week-vs-1-month" className="font-medium text-[#003580] underline">
               1-week vs 1-month Muay Thai camps: what to expect
             </Link>
+            <Link href="/blog/best-muay-thai-camp-thailand-beginners" className="font-medium text-[#003580] underline">
+              Best Muay Thai camp in Thailand for beginners
+            </Link>
             <Link href="/blog/beginners-guide-muay-thai-chiang-mai" className="font-medium text-[#003580] underline">
               Beginner&apos;s guide to Muay Thai in Chiang Mai
             </Link>

@@ -38,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/blog/muay-thai-camp-1-week-vs-1-month',
     '/blog/packing-list-combat-sports-camp-thailand',
     '/blog/beginners-guide-muay-thai-chiang-mai',
+    '/blog/best-muay-thai-camp-thailand-beginners',
     '/blog/koh-tao-vs-koh-phangan-muay-thai',
     '/blog/bjj-in-thailand-rise-top-camps',
     '/blog/western-boxing-bangkok',

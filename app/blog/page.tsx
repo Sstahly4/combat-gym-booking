@@ -39,6 +39,12 @@ export default function BlogPage() {
 
   const trainingBasics = [
     {
+      title: 'What Is the Best Muay Thai Camp in Thailand for Beginners? (2026)',
+      excerpt:
+        'No single camp wins for everyone. City fit, commute, coaching style, and a booking checklist for your first trip.',
+      href: '/blog/best-muay-thai-camp-thailand-beginners',
+    },
+    {
       title: 'How Much Does a Muay Thai Camp in Thailand Cost? (2026)',
       excerpt: 'Real 2026 numbers with a summary pricing table + hidden costs to budget for.',
       href: '/blog/muay-thai-camp-thailand-cost',
