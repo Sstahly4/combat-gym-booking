@@ -2,13 +2,18 @@ import type { Metadata } from 'next'
 import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideStayTrainListingBlock } from '@/components/guides/guide-stay-train-listing-block'
-import { GuideCtaStrip, GuideFaqList } from '@/components/guides/guide-page-blocks'
+import { GuideStayTrainPhotoStrip } from '@/components/guides/guide-stay-train-photo-strip'
+import { GuideCtaStrip, GuideFaqList, GuideHero, GuideLeadRow } from '@/components/guides/guide-page-blocks'
+import { getStayTrainShortlist, pickCityHeroImage } from '@/lib/guides/stay-train-shortlist'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
+import { BedDouble } from 'lucide-react'
 
 const TITLE = 'Bangkok Muay Thai Train and Stay: Top Packages [2026]'
 const PATH = '/blog/bangkok-muay-thai-train-and-stay'
+const CITY = 'Bangkok'
 const DATE_PUBLISHED = '2026-06-11'
 const DATE_MODIFIED = '2026-06-11'
+const HERO_FALLBACK = '/1296749132.jpg'
 const DESCRIPTION =
   'Discover premier Muay Thai train and stay packages in Bangkok. Filter by on-site accommodation, AC rooms, gym reviews, and live rates.'
 
@@ -43,14 +48,17 @@ const FAQ_ITEMS = [
   },
 ]
 
-export default function BangkokMuayThaiTrainAndStayPage() {
+export default async function BangkokMuayThaiTrainAndStayPage() {
+  const listings = await getStayTrainShortlist({ city: CITY, accommodation: true, limit: 12 })
+  const heroImage = pickCityHeroImage(listings, HERO_FALLBACK)
+
   const articleLd = buildArticleLd({
     title: TITLE,
     description: DESCRIPTION,
     path: PATH,
     datePublished: DATE_PUBLISHED,
     dateModified: DATE_MODIFIED,
-    imagePath: '/1296749132.jpg',
+    imagePath: heroImage,
   })
 
   return (
@@ -78,23 +86,44 @@ export default function BangkokMuayThaiTrainAndStayPage() {
         }}
       />
 
+      <GuideHero
+        imageSrc={heroImage}
+        imageAlt={`Muay Thai train-and-stay camp in ${CITY}, Thailand`}
+        priority
+        overlayText={
+          listings[0]?.name
+            ? `Featured: ${listings[0].name} and ${Math.max(listings.length - 1, 0)} more Bangkok camps with on-site accommodation.`
+            : `Bangkok train-and-stay packages with live rates and instant booking.`
+        }
+      />
+
+      <GuideLeadRow
+        tocItems={[
+          { href: '#listings', label: 'Compare packages' },
+          { href: '#faq', label: 'FAQ' },
+        ]}
+        statValue={listings.length}
+        statDescription={`${CITY} Muay Thai gyms on CombatStay listing on-site accommodation.`}
+        statIcon={<BedDouble className="h-5 w-5" />}
+      />
+
+      <GuideStayTrainPhotoStrip gyms={listings} city={CITY} />
+
       <div className="mb-10 max-w-3xl space-y-4 text-base leading-relaxed text-gray-800">
         <p>
-          Bangkok train-and-stay packages suit fighters who want stadium access and maximum gym choice. On-site rooms
-          are less common than Phuket, but several gyms bundle hostel beds or partner hotels within a short ride of the
-          mat.
+          Bangkok train-and-stay packages suit fighters who want stadium access and maximum gym choice. On-site rooms are
+          less common than Phuket, but several gyms bundle hostel beds or partner hotels within a short ride of the mat.
         </p>
         <p>
-          Pick housing before you pick a famous gym name. Traffic between Sukhumvit condos and a gym in another district
-          will cost you afternoon sessions by week two. The listings below show verified Bangkok camps that list
-          on-site accommodation with live package prices.
+          Pick housing before you pick a famous gym name. Traffic between districts will cost you afternoon sessions by
+          week two. The cards below pull photos directly from verified Bangkok listings with accommodation flagged on
+          CombatStay.
         </p>
       </div>
 
       <GuideStayTrainListingBlock
-        city="Bangkok"
-        accommodation
-        limit={12}
+        gyms={listings}
+        id="listings"
         title="Bangkok Muay Thai train-and-stay packages"
         subtitle="Verified listings with on-site accommodation. Confirm AC on the room you book."
         ctaUrl="/search?country=Thailand&location=Bangkok&discipline=Muay%20Thai&accommodation=true"

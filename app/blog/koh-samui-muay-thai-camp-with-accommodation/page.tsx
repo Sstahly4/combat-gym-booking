@@ -2,13 +2,18 @@ import type { Metadata } from 'next'
 import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideStayTrainListingBlock } from '@/components/guides/guide-stay-train-listing-block'
-import { GuideCtaStrip, GuideFaqList } from '@/components/guides/guide-page-blocks'
+import { GuideStayTrainPhotoStrip } from '@/components/guides/guide-stay-train-photo-strip'
+import { GuideCtaStrip, GuideFaqList, GuideHero, GuideLeadRow } from '@/components/guides/guide-page-blocks'
+import { getStayTrainShortlist, pickCityHeroImage } from '@/lib/guides/stay-train-shortlist'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
+import { BedDouble } from 'lucide-react'
 
 const TITLE = 'Koh Samui Muay Thai Camp With Accommodation: 2026 Stays'
 const PATH = '/blog/koh-samui-muay-thai-camp-with-accommodation'
+const CITY = 'Koh Samui'
 const DATE_PUBLISHED = '2026-06-11'
 const DATE_MODIFIED = '2026-06-11'
+const HERO_FALLBACK = '/training-center-1.avif'
 const DESCRIPTION =
   'Compare Koh Samui Muay Thai camps with on-site accommodation. View real prices, island packages, and book stay-and-train deals directly.'
 
@@ -43,14 +48,17 @@ const FAQ_ITEMS = [
   },
 ]
 
-export default function KohSamuiMuayThaiCampWithAccommodationPage() {
+export default async function KohSamuiMuayThaiCampWithAccommodationPage() {
+  const listings = await getStayTrainShortlist({ city: CITY, accommodation: true, limit: 10 })
+  const heroImage = pickCityHeroImage(listings, HERO_FALLBACK)
+
   const articleLd = buildArticleLd({
     title: TITLE,
     description: DESCRIPTION,
     path: PATH,
     datePublished: DATE_PUBLISHED,
     dateModified: DATE_MODIFIED,
-    imagePath: '/training-center-1.avif',
+    imagePath: heroImage,
   })
 
   return (
@@ -78,22 +86,43 @@ export default function KohSamuiMuayThaiCampWithAccommodationPage() {
         }}
       />
 
+      <GuideHero
+        imageSrc={heroImage}
+        imageAlt={`Muay Thai train-and-stay camp in ${CITY}, Thailand`}
+        priority
+        overlayText={
+          listings[0]?.name
+            ? `Featured: ${listings[0].name}${listings.length > 1 ? ` and ${listings.length - 1} more Samui camps with on-site rooms.` : '.'}`
+            : `Koh Samui train-and-stay listings with live package prices.`
+        }
+      />
+
+      <GuideLeadRow
+        tocItems={[
+          { href: '#listings', label: 'Compare camps' },
+          { href: '#faq', label: 'FAQ' },
+        ]}
+        statValue={listings.length}
+        statDescription={`${CITY} Muay Thai gyms on CombatStay listing on-site accommodation.`}
+        statIcon={<BedDouble className="h-5 w-5" />}
+      />
+
+      <GuideStayTrainPhotoStrip gyms={listings} city={CITY} max={4} />
+
       <div className="mb-10 max-w-3xl space-y-4 text-base leading-relaxed text-gray-800">
         <p>
           Koh Samui has a smaller train-and-stay market than Phuket, but the camps that list on-site rooms pair island
           beach time with morning pad work. Inventory is limited, so book dates early in peak season.
         </p>
         <p>
-          Flights often route through Bangkok or Surat Thani. Pick a camp with housing close to the mat so ferry and
-          taxi days do not eat your first training week. Listings below show verified Samui gyms with accommodation
-          flagged on CombatStay.
+          Flights often route through Bangkok or Surat Thani. Pick a camp with housing close to the mat so travel days
+          do not eat your first training week. Photos on each card come from verified Samui gym listings.
         </p>
       </div>
 
       <GuideStayTrainListingBlock
-        city="Koh Samui"
-        accommodation
-        limit={10}
+        gyms={listings}
+        id="listings"
         title="Koh Samui Muay Thai camps with accommodation"
         subtitle="Verified island listings with on-site housing."
         ctaUrl="/search?country=Thailand&location=Koh%20Samui&discipline=Muay%20Thai&accommodation=true"
@@ -116,7 +145,7 @@ export default function KohSamuiMuayThaiCampWithAccommodationPage() {
       <RelatedGuides
         guides={[
           { title: 'Best Muay Thai gyms in Koh Samui', href: '/blog/best-muay-thai-gyms-koh-samui' },
-          { title: 'Thailand training holiday guides', href: '/blog/thailand-training-camp-with-accommodation' },
+          { title: 'Thailand training camp with accommodation', href: '/blog/thailand-training-camp-with-accommodation' },
           { title: 'Best Muay Thai gyms in Koh Phangan', href: '/blog/best-muay-thai-gyms-koh-phangan' },
         ]}
       />

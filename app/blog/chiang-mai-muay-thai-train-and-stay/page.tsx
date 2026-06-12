@@ -2,13 +2,18 @@ import type { Metadata } from 'next'
 import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideStayTrainListingBlock } from '@/components/guides/guide-stay-train-listing-block'
-import { GuideCtaStrip, GuideFaqList } from '@/components/guides/guide-page-blocks'
+import { GuideStayTrainPhotoStrip } from '@/components/guides/guide-stay-train-photo-strip'
+import { GuideCtaStrip, GuideFaqList, GuideHero, GuideLeadRow } from '@/components/guides/guide-page-blocks'
+import { getStayTrainShortlist, pickCityHeroImage } from '@/lib/guides/stay-train-shortlist'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
+import { BedDouble } from 'lucide-react'
 
 const TITLE = 'Chiang Mai Muay Thai Train and Stay: Compare 2026 Stays'
 const PATH = '/blog/chiang-mai-muay-thai-train-and-stay'
+const CITY = 'Chiang Mai'
 const DATE_PUBLISHED = '2026-06-11'
 const DATE_MODIFIED = '2026-06-11'
+const HERO_FALLBACK = '/e079bedfbf7e870f827b4fda7ce2132f.avif'
 const DESCRIPTION =
   'Find all-inclusive Muay Thai packages in Chiang Mai. Compare top-rated training camps featuring on-site rooms, gym facilities, and instant booking.'
 
@@ -43,14 +48,17 @@ const FAQ_ITEMS = [
   },
 ]
 
-export default function ChiangMaiMuayThaiTrainAndStayPage() {
+export default async function ChiangMaiMuayThaiTrainAndStayPage() {
+  const listings = await getStayTrainShortlist({ city: CITY, accommodation: true, limit: 12 })
+  const heroImage = pickCityHeroImage(listings, HERO_FALLBACK)
+
   const articleLd = buildArticleLd({
     title: TITLE,
     description: DESCRIPTION,
     path: PATH,
     datePublished: DATE_PUBLISHED,
     dateModified: DATE_MODIFIED,
-    imagePath: '/e079bedfbf7e870f827b4fda7ce2132f.avif',
+    imagePath: heroImage,
   })
 
   return (
@@ -78,21 +86,43 @@ export default function ChiangMaiMuayThaiTrainAndStayPage() {
         }}
       />
 
+      <GuideHero
+        imageSrc={heroImage}
+        imageAlt={`Muay Thai train-and-stay camp in ${CITY}, Thailand`}
+        priority
+        overlayText={
+          listings[0]?.name
+            ? `Featured: ${listings[0].name} and ${Math.max(listings.length - 1, 0)} more Chiang Mai camps with on-site accommodation.`
+            : `Chiang Mai bungalows and dorm stays attached to verified Muay Thai camps.`
+        }
+      />
+
+      <GuideLeadRow
+        tocItems={[
+          { href: '#listings', label: 'Compare stays' },
+          { href: '#faq', label: 'FAQ' },
+        ]}
+        statValue={listings.length}
+        statDescription={`${CITY} Muay Thai gyms on CombatStay listing on-site accommodation.`}
+        statIcon={<BedDouble className="h-5 w-5" />}
+      />
+
+      <GuideStayTrainPhotoStrip gyms={listings} city={CITY} />
+
       <div className="mb-10 max-w-3xl space-y-4 text-base leading-relaxed text-gray-800">
         <p>
           Chiang Mai camps sell train-and-stay packages to travelers who want cooler mornings and lower daily burn than
           Phuket. Bungalows and dorm beds on gym property are common; commute is rarely the problem it is in Bangkok.
         </p>
         <p>
-          Most northern packages run on twice-daily group schedules with Sunday rest. Compare room tier, meal count,
-          and minimum stay on each listing below before you lock a month.
+          Most northern packages run on twice-daily group schedules with Sunday rest. Compare room tier, meal count, and
+          minimum stay on each card below. Photos come from live Chiang Mai listings on CombatStay.
         </p>
       </div>
 
       <GuideStayTrainListingBlock
-        city="Chiang Mai"
-        accommodation
-        limit={12}
+        gyms={listings}
+        id="listings"
         title="Chiang Mai Muay Thai train-and-stay packages"
         subtitle="Verified listings with on-site accommodation in northern Thailand."
         ctaUrl="/search?country=Thailand&location=Chiang%20Mai&discipline=Muay%20Thai&accommodation=true"

@@ -3,13 +3,18 @@ import Link from 'next/link'
 import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideStayTrainListingBlock } from '@/components/guides/guide-stay-train-listing-block'
-import { GuideCtaStrip, GuideFaqList } from '@/components/guides/guide-page-blocks'
+import { GuideStayTrainPhotoStrip } from '@/components/guides/guide-stay-train-photo-strip'
+import { GuideCtaStrip, GuideFaqList, GuideHero, GuideLeadRow } from '@/components/guides/guide-page-blocks'
+import { getStayTrainShortlist, pickCityHeroImage } from '@/lib/guides/stay-train-shortlist'
 import { buildArticleLd, buildBreadcrumbLd, buildFaqLd } from '@/lib/seo/guide-schema'
+import { BedDouble } from 'lucide-react'
 
 const TITLE = 'Muay Thai Camp Phuket With Accommodation: 2026 Stays'
 const PATH = '/blog/muay-thai-camp-phuket-with-accommodation'
+const CITY = 'Phuket'
 const DATE_PUBLISHED = '2026-06-11'
 const DATE_MODIFIED = '2026-06-11'
+const HERO_FALLBACK = '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg'
 const DESCRIPTION =
   'Compare the best Muay Thai camps in Phuket with on-site accommodation. View real prices, fighter housing amenities, and book packages directly.'
 
@@ -44,14 +49,17 @@ const FAQ_ITEMS = [
   },
 ]
 
-export default function MuayThaiCampPhuketWithAccommodationPage() {
+export default async function MuayThaiCampPhuketWithAccommodationPage() {
+  const listings = await getStayTrainShortlist({ city: CITY, accommodation: true, meals: true, limit: 12 })
+  const heroImage = pickCityHeroImage(listings, HERO_FALLBACK)
+
   const articleLd = buildArticleLd({
     title: TITLE,
     description: DESCRIPTION,
     path: PATH,
     datePublished: DATE_PUBLISHED,
     dateModified: DATE_MODIFIED,
-    imagePath: '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg',
+    imagePath: heroImage,
   })
 
   return (
@@ -79,6 +87,29 @@ export default function MuayThaiCampPhuketWithAccommodationPage() {
         }}
       />
 
+      <GuideHero
+        imageSrc={heroImage}
+        imageAlt={`Muay Thai train-and-stay camp in ${CITY}, Thailand`}
+        priority
+        overlayText={
+          listings[0]?.name
+            ? `Featured: ${listings[0].name} and ${Math.max(listings.length - 1, 0)} more Phuket camps with on-site accommodation.`
+            : `Phuket train-and-stay camps with on-site rooms and live package prices.`
+        }
+      />
+
+      <GuideLeadRow
+        tocItems={[
+          { href: '#listings', label: 'Compare camps' },
+          { href: '#faq', label: 'FAQ' },
+        ]}
+        statValue={listings.length}
+        statDescription={`${CITY} Muay Thai gyms on CombatStay listing on-site accommodation.`}
+        statIcon={<BedDouble className="h-5 w-5" />}
+      />
+
+      <GuideStayTrainPhotoStrip gyms={listings} city={CITY} />
+
       <div className="mb-10 max-w-3xl space-y-4 text-base leading-relaxed text-gray-800">
         <p>
           Phuket runs the largest train-and-stay market in Thailand: on-site dorms, private AC rooms, and full-board
@@ -86,7 +117,7 @@ export default function MuayThaiCampPhuketWithAccommodationPage() {
           without a daily taxi bill.
         </p>
         <p>
-          Camps cluster in Chalong and Rawai on the south coast. If you already know your neighborhood, drill into{' '}
+          Camps cluster in Chalong and Rawai on the south coast. Drill into{' '}
           <Link href="/blog/best-muay-thai-gyms/chalong" className="font-medium text-[#003580] underline">
             Chalong
           </Link>
@@ -102,16 +133,13 @@ export default function MuayThaiCampPhuketWithAccommodationPage() {
           <Link href="/blog/best-muay-thai-gyms/kamala" className="font-medium text-[#003580] underline">
             Kamala
           </Link>{' '}
-          suburb guides. The listings below filter verified Phuket gyms with accommodation; Phuket packages with meals
-          sort first.
+          if you already know your neighborhood. Cards below use photos from live listings; packages with meals sort first.
         </p>
       </div>
 
       <GuideStayTrainListingBlock
-        city="Phuket"
-        accommodation
-        meals
-        limit={12}
+        gyms={listings}
+        id="listings"
         title="Phuket Muay Thai camps with accommodation"
         subtitle="Verified listings with on-site housing. All-inclusive packages prioritized."
         ctaUrl="/search?country=Thailand&location=Phuket&discipline=Muay%20Thai&accommodation=true"
