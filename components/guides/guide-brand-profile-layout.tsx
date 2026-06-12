@@ -168,6 +168,7 @@ export async function GuideBrandProfileLayout({ config }: { config: BrandProfile
             subtitle="Verified listings with on-site accommodation and instant checkout."
             ctaUrl={config.alternativeCtaUrl}
             ctaLabel={config.alternativeCtaLabel}
+            sourceBrandSlug={config.path.replace(/^\/blog\//, '')}
           />
         </>
       )}

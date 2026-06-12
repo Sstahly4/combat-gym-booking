@@ -1,5 +1,9 @@
+'use client'
+
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
+import type { MouseEvent, ReactNode } from 'react'
+import { trackInlineCalloutClick } from '@/lib/telemetry/guide-click-tracking'
 
 export function GuideStayOnSiteCallout({
   city,
@@ -10,8 +14,19 @@ export function GuideStayOnSiteCallout({
   href: string
   children?: ReactNode
 }) {
+  const pathname = usePathname()
+
+  function handleClick(event: MouseEvent<HTMLDivElement>) {
+    const anchor = (event.target as HTMLElement).closest('a')
+    if (!anchor) return
+    trackInlineCalloutClick({ originPage: pathname })
+  }
+
   return (
-    <div className="mb-8 rounded-xl border border-[#003580]/20 bg-[#003580]/5 p-5 md:p-6">
+    <div
+      className="mb-8 rounded-xl border border-[#003580]/20 bg-[#003580]/5 p-5 md:p-6"
+      onClick={handleClick}
+    >
       <p className="text-sm leading-relaxed text-gray-800">
         {children ?? (
           <>

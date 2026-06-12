@@ -20,6 +20,8 @@ export type GuideStayTrainListingBlockProps = {
   ctaLabel?: string
   /** Pass pre-fetched listings to avoid a duplicate query (e.g. from hub page hero). */
   gyms?: StayTrainGym[]
+  /** When set, gym card clicks are tracked as brand-page alternative selections. */
+  sourceBrandSlug?: string
 }
 
 export async function GuideStayTrainListingBlock({
@@ -34,6 +36,7 @@ export async function GuideStayTrainListingBlock({
   ctaUrl,
   ctaLabel = 'Browse all stay-and-train camps',
   gyms: gymsProp,
+  sourceBrandSlug,
 }: GuideStayTrainListingBlockProps) {
   const area = location || city
   const searchHref =
@@ -72,7 +75,14 @@ export async function GuideStayTrainListingBlock({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {shortlist.map((g, i) => (
-            <GuideStayTrainGymCard key={g.id} gym={g} priorityImage={i < 3} />
+            <GuideStayTrainGymCard
+              key={g.id}
+              gym={g}
+              priorityImage={i < 3}
+              trackingLocation={sourceBrandSlug ? undefined : area}
+              cardIndex={i}
+              sourceBrandSlug={sourceBrandSlug}
+            />
           ))}
         </div>
       )}

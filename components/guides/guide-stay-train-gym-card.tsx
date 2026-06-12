@@ -1,8 +1,14 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import type { StayTrainGym } from '@/lib/guides/stay-train-shortlist'
 import { stayTrainGymImages } from '@/lib/guides/stay-train-shortlist'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
+import {
+  trackAlternativeCampClick,
+  trackGymCardClick,
+} from '@/lib/telemetry/guide-click-tracking'
 
 const FALLBACK_GYM = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 const FALLBACK_ROOM = '/training-center-1.avif'
@@ -29,10 +35,42 @@ function amenityBadges(g: StayTrainGym) {
   return out
 }
 
-export function GuideStayTrainGymCard({ gym, priorityImage }: { gym: StayTrainGym; priorityImage?: boolean }) {
+export function GuideStayTrainGymCard({
+  gym,
+  priorityImage,
+  trackingLocation,
+  cardIndex = 0,
+  sourceBrandSlug,
+}: {
+  gym: StayTrainGym
+  priorityImage?: boolean
+  trackingLocation?: string
+  cardIndex?: number
+  sourceBrandSlug?: string
+}) {
   const imgs = stayTrainGymImages(gym)
   const badges = amenityBadges(gym)
   const fromDay = money(gym.price_per_day, gym.currency)
+  const gymHref = gymCanonicalPath(gym)
+
+  function handleClick() {
+    if (sourceBrandSlug) {
+      trackAlternativeCampClick({
+        sourceBrandPage: sourceBrandSlug,
+        destinationGym: gym.name,
+      })
+      return
+    }
+
+    const location = trackingLocation || gym.city
+    if (location) {
+      trackGymCardClick({
+        location,
+        gymName: gym.name,
+        position: cardIndex + 1,
+      })
+    }
+  }
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -64,7 +102,11 @@ export function GuideStayTrainGymCard({ gym, priorityImage }: { gym: StayTrainGy
         </div>
       </div>
       <div className="p-4 md:p-5">
-        <Link href={gymCanonicalPath(gym)} className="text-base font-semibold text-[#003580] underline md:text-lg">
+        <Link
+          href={gymHref}
+          onClick={handleClick}
+          className="text-base font-semibold text-[#003580] underline md:text-lg"
+        >
           {gym.name}
         </Link>
         <p className="mt-1 text-xs text-gray-500">{gym.city ? `${gym.city}, Thailand` : 'Thailand'}</p>
@@ -89,7 +131,8 @@ export function GuideStayTrainGymCard({ gym, priorityImage }: { gym: StayTrainGy
           )}
         </div>
         <Link
-          href={gymCanonicalPath(gym)}
+          href={gymHref}
+          onClick={handleClick}
           className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#003580] px-4 text-sm font-semibold text-white hover:bg-[#003580]/90"
         >
           View packages
