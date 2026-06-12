@@ -61,6 +61,8 @@ import {
   BOOKING_DATES_EXPIRED_ERROR,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
+import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
+import { prepareCheckoutExitToGym } from '@/lib/utils/review-checkout-chrome'
 import {
   clearGuestCheckoutSession,
   readGuestDetails,
@@ -457,13 +459,14 @@ function CheckoutForm({
 
         {priceDetailsSection}
 
-        <div ref={confirmCtaRef as Ref<HTMLDivElement>} className="space-y-2">
+        <div className="space-y-2">
           <CheckoutPaymentConsent />
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
               {error}
             </div>
           )}
+          <div ref={confirmCtaRef as Ref<HTMLDivElement>}>
           {isKlarnaCheckout ? (
             <Button
               type="submit"
@@ -525,6 +528,7 @@ function CheckoutForm({
               </div>
             )
           ) : null}
+          </div>
           <PaymentHoldExplainer />
         </div>
       </div>
@@ -599,6 +603,7 @@ type BookingWithExtras = Booking & {
 export default function PaymentPage() {
   const params = useParams()
   const router = useRouter()
+  const { showReviewChrome } = useReviewCheckoutChrome()
   const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
   const bookingId = params.id as string
   const [clientSecret, setClientSecret] = useState<string | null>(() => {
@@ -1220,9 +1225,15 @@ export default function PaymentPage() {
   const gymListingHref = booking ? `/gyms/${booking.gym.slug || booking.gym.id}` : '#'
 
   const handleExitToGym = () => {
-    if (booking?.gym_id) clearGuestCheckoutSession(booking.gym_id)
-    try { sessionStorage.removeItem('review_modal_restore') } catch {}
-    try { sessionStorage.removeItem('booking_prefill') } catch {}
+    if (!booking?.gym_id) {
+      router.replace(gymListingHref)
+      return
+    }
+    prepareCheckoutExitToGym(
+      { id: booking.gym_id, slug: booking.gym.slug },
+      { clearBookingPrefill: true }
+    )
+    showReviewChrome()
     router.replace(gymListingHref)
   }
 
@@ -1269,10 +1280,9 @@ export default function PaymentPage() {
         </button>
         <Link
           href={gymListingHref}
-          onClick={() => {
-            if (booking.gym_id) clearGuestCheckoutSession(booking.gym_id)
-            try { sessionStorage.removeItem('review_modal_restore') } catch {}
-            try { sessionStorage.removeItem('booking_prefill') } catch {}
+          onClick={(e) => {
+            e.preventDefault()
+            handleExitToGym()
           }}
           className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           aria-label="Return to gym listing"
@@ -1286,13 +1296,6 @@ export default function PaymentPage() {
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6">
           <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
-
-          <CheckoutReviewNudge
-            bookingId={bookingId}
-            scrollRootRef={scrollRootRef}
-            confirmCtaRef={confirmCtaRef}
-            ready={!!clientSecret}
-          />
 
           <div className="space-y-4">
             <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -1852,6 +1855,13 @@ export default function PaymentPage() {
         </div>
         </div>
       </div>
+
+      <CheckoutReviewNudge
+        bookingId={bookingId}
+        scrollRootRef={scrollRootRef}
+        confirmCtaRef={confirmCtaRef}
+        ready={!!clientSecret}
+      />
 
       {whatsIncludedSheetOpen && booking.package && (
         <CheckoutWhatsIncludedSheet

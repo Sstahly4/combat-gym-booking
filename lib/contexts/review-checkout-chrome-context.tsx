@@ -14,6 +14,7 @@ import {
   clearReviewCheckoutChromeHidden,
   isReviewCheckoutChromeHidden,
   setReviewCheckoutChromeHidden,
+  shouldForceShowChromeOnGymListing,
   syncReviewCheckoutChromeHtmlFlag,
 } from '@/lib/utils/review-checkout-chrome'
 
@@ -50,6 +51,12 @@ export function ReviewCheckoutChromeProvider({ children }: { children: ReactNode
 
   // Keep in sync on route changes (back-nav, shared links).
   useEffect(() => {
+    if (shouldForceShowChromeOnGymListing()) {
+      clearReviewCheckoutChromeHidden()
+      setIsHidden(false)
+      syncReviewCheckoutChromeHtmlFlag(false)
+      return
+    }
     const hidden = isReviewCheckoutChromeHidden()
     setIsHidden(hidden)
     syncReviewCheckoutChromeHtmlFlag(hidden)

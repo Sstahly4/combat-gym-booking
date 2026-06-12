@@ -78,10 +78,10 @@ const config = {
           "0%": { opacity: "0", transform: "scale(0.88)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
-        /** Bounce arrow upward to hint scrolling down the page */
+        /** Bounce chevron downward to hint scrolling down the page */
         "checkout-review-nudge-arrow": {
           "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-5px)" },
+          "50%": { transform: "translateY(4px)" },
         },
       },
       animation: {

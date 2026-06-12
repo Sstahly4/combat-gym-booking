@@ -23,8 +23,7 @@ import {
 } from '@/lib/utils/booking-prefill'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
-  clearReviewModalRestore,
-  setCheckoutExitToGym,
+  prepareCheckoutExitToGym,
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
@@ -37,7 +36,6 @@ import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
 import {
-  clearGuestCheckoutSession,
   detailsFromProfile,
   readGuestDetails,
   readGuestFlowSession,
@@ -85,10 +83,8 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
   if (!gym) return <div className="w-8 h-8 shrink-0" aria-hidden />
 
   const handleExit = () => {
+    prepareCheckoutExitToGym(gym)
     showReviewChrome()
-    clearReviewModalRestore()
-    clearGuestCheckoutSession(gym.id)
-    setCheckoutExitToGym(gym.slug || gym.id, gym.id)
     router.replace(`/gyms/${gym.slug || gym.id}`)
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, type RefObject } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   dismissCheckoutReviewNudge,
@@ -32,8 +32,9 @@ export function CheckoutReviewNudge({
   useEffect(() => {
     if (!visible || !ready || isCheckoutReviewNudgeDismissed(bookingId)) return
 
+    const root = scrollRootRef.current
     const target = confirmCtaRef.current
-    if (!target) return
+    if (!root || !target) return
 
     let dismissed = false
     const dismiss = () => {
@@ -46,11 +47,13 @@ export function CheckoutReviewNudge({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) dismiss()
+        if (!entry?.isIntersecting || entry.intersectionRatio < 0.55) return
+        dismiss()
       },
       {
-        root: scrollRootRef.current,
-        threshold: 0.12,
+        root,
+        threshold: [0, 0.25, 0.55, 0.75, 1],
+        rootMargin: '0px 0px -8% 0px',
       }
     )
 
@@ -59,32 +62,45 @@ export function CheckoutReviewNudge({
   }, [visible, ready, bookingId, scrollRootRef, confirmCtaRef])
 
   const handleClick = useCallback(() => {
-    confirmCtaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [confirmCtaRef])
+    const root = scrollRootRef.current
+    const target = confirmCtaRef.current
+    if (!target) return
+    if (root) {
+      const rootTop = root.getBoundingClientRect().top
+      const targetTop = target.getBoundingClientRect().top
+      root.scrollTo({
+        top: root.scrollTop + (targetTop - rootTop) - 16,
+        behavior: 'smooth',
+      })
+      return
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [confirmCtaRef, scrollRootRef])
 
   if (!visible) return null
 
   return (
     <div
       className={cn(
-        'md:hidden sticky top-0 z-20 -mx-4 px-4 pt-1 pb-2',
-        'bg-gradient-to-b from-white from-70% to-transparent pointer-events-none'
+        'md:hidden fixed inset-x-0 z-[280] flex justify-center pointer-events-none',
+        'pb-[max(1.25rem,env(safe-area-inset-bottom))]'
       )}
+      style={{ bottom: 0 }}
     >
       <button
         type="button"
         onClick={handleClick}
-        aria-label="Scroll to review payment and confirm booking"
+        aria-label="Scroll down to review payment and confirm booking"
         className={cn(
-          'pointer-events-auto mx-auto flex items-center justify-center gap-2 rounded-full',
-          'bg-[#003580] px-5 py-2.5 text-sm font-semibold text-white',
-          'shadow-lg shadow-[#003580]/20',
+          'pointer-events-auto flex items-center justify-center gap-2 rounded-full',
+          'bg-[#003580] px-6 py-3 text-sm font-semibold text-white',
+          'shadow-[0_8px_24px_rgba(0,53,128,0.35)]',
           leaving
             ? 'scale-95 opacity-0 transition-all duration-300 ease-in'
             : 'animate-checkout-review-nudge-enter'
         )}
       >
-        <ArrowUp
+        <ChevronDown
           className="h-4 w-4 motion-reduce:animate-none animate-checkout-review-nudge-arrow"
           aria-hidden
         />

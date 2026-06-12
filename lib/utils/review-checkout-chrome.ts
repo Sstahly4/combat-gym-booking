@@ -1,5 +1,5 @@
-import { clearBookingPrefillIfForeignGym } from '@/lib/utils/booking-prefill'
-import { clearGuestDetailsIfForeignGym } from '@/lib/utils/checkout-details-prefill'
+import { clearBookingPrefillIfForeignGym, clearBookingPrefill } from '@/lib/utils/booking-prefill'
+import { clearGuestDetailsIfForeignGym, clearGuestCheckoutSession } from '@/lib/utils/checkout-details-prefill'
 
 export interface ReviewModalRestoreParams {
   gymId: string
@@ -140,4 +140,47 @@ export function clearReviewModalRestore(): void {
   try {
     sessionStorage.removeItem(REVIEW_RESTORE_KEY)
   } catch {}
+}
+
+/** Shared cleanup when abandoning checkout back to a gym listing (steps 2–3 X button). */
+export function prepareCheckoutExitToGym(
+  gym: { id: string; slug?: string | null },
+  options?: { clearBookingPrefill?: boolean }
+): void {
+  clearReviewCheckoutChromeHidden()
+  syncReviewCheckoutChromeHtmlFlag(false)
+  clearReviewModalRestore()
+  clearGuestCheckoutSession(gym.id)
+  setCheckoutExitToGym(gym.slug?.trim() || gym.id, gym.id)
+  if (options?.clearBookingPrefill) {
+    clearBookingPrefill()
+  }
+}
+
+function gymListingHasReviewIntent(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const path = window.location.pathname
+    if (!path.startsWith('/gyms/')) return false
+    const sp = new URLSearchParams(window.location.search)
+    return sp.get('review') === '1' && !!sp.get('pkg')
+  } catch {
+    return false
+  }
+}
+
+/**
+ * When the gym listing URL has no review intent, stale `hide_site_chrome=review`
+ * from checkout must not keep global chrome hidden (navbar / mobile nav).
+ */
+export function shouldForceShowChromeOnGymListing(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const path = window.location.pathname
+    if (!path.startsWith('/gyms/')) return false
+    if (gymListingHasReviewIntent()) return false
+    return sessionStorage.getItem(HIDE_SITE_CHROME_KEY) === 'review'
+  } catch {
+    return false
+  }
 }
