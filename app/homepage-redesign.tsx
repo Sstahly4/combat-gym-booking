@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase/public-server'
 import { unstable_cache } from 'next/cache'
 import { attachReviewStatsPublic } from '@/lib/reviews/attach-review-stats-public'
@@ -7,6 +8,7 @@ import { FeaturedCarousel } from '@/components/featured-carousel'
 import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
 import { HomepageHero } from '@/components/homepage-hero'
+import { HomepageCarouselSkeleton } from '@/components/homepage-carousel-skeleton'
 import { OffersSection } from '@/components/offers-section'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import type { Offer } from '@/lib/types/database'
@@ -214,61 +216,14 @@ async function getGymsWithPackages() {
   })
 }
 
-async function getTopRatedGyms(limit: number = 10) {
-  const supabase = createPublicClient()
-  
-  const { data: allGyms } = await supabase
-    .from('gyms')
-    .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
-    .in('verification_status', ['verified', 'trusted'])
-  
-  if (!allGyms) return []
-  
-  allGyms.forEach((gym: any) => {
-    if (gym.images && Array.isArray(gym.images)) {
-      gym.images.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-    }
-  })
-  
-  const { data: allReviews } = await supabase
-    .from('reviews')
-    .select('gym_id, rating')
-  
-  const reviewsByGym: Record<string, number[]> = {}
-  allReviews?.forEach((review: any) => {
-    if (review.gym_id && review.rating) {
-      if (!reviewsByGym[review.gym_id]) {
-        reviewsByGym[review.gym_id] = []
-      }
-      reviewsByGym[review.gym_id].push(review.rating)
-    }
-  })
-  
-  const gymsWithRatings = allGyms.map((gym: any) => {
-    const ratings = reviewsByGym[gym.id] || []
-    const averageRating = ratings.length > 0
-      ? ratings.reduce((sum: number, r: number) => sum + r, 0) / ratings.length
-      : 0
-    
-    return {
-      ...gym,
-      averageRating,
-      reviewCount: ratings.length,
-      images: gym.images || []
-    }
-  })
-  
-  const sorted = gymsWithRatings.sort((a: any, b: any) => {
-    if (b.averageRating !== a.averageRating) {
-      return b.averageRating - a.averageRating
-    }
-    if (b.reviewCount !== a.reviewCount) {
-      return b.reviewCount - a.reviewCount
-    }
-    return a.name.localeCompare(b.name)
-  })
-  
-  return sorted.slice(0, limit)
+function deriveTopRatedGyms(gyms: HomepageGym[], limit: number): HomepageGym[] {
+  return [...gyms]
+    .sort((a, b) => {
+      if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
+      if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
+      return String(a.name ?? '').localeCompare(String(b.name ?? ''))
+    })
+    .slice(0, limit)
 }
 
 async function getGymCountsByDiscipline() {
@@ -321,21 +276,36 @@ async function getOffers() {
 
 const getHomepageDataCached = unstable_cache(
   async () => {
-    const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers] = await Promise.all([
+    const topRatedLimit = Math.max(HOMEPAGE_ROW_SIZE_DESKTOP, HOMEPAGE_ROW_SIZE_MOBILE)
+    const [allGyms, allGymsWithPackages, disciplineCounts, offers] = await Promise.all([
       getGyms(20),
       getGymsWithPackages(),
-      getTopRatedGyms(Math.max(HOMEPAGE_ROW_SIZE_DESKTOP, HOMEPAGE_ROW_SIZE_MOBILE)),
       getGymCountsByDiscipline(),
       getOffers(),
     ])
 
+    const topRatedGyms = deriveTopRatedGyms(allGymsWithPackages, topRatedLimit)
+
     return { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers }
   },
-  ['homepage-redesign-data-v3'],
+  ['homepage-redesign-data-v4'],
   { revalidate: 300 }
 )
 
 export default async function HomepageRedesign({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
+  return (
+    <BookingProvider>
+      <main className="min-h-screen bg-white">
+        <HomepageHero />
+        <Suspense fallback={<HomepageCarouselSkeleton />}>
+          <HomepageCarouselContent searchParams={searchParams} />
+        </Suspense>
+      </main>
+    </BookingProvider>
+  )
+}
+
+async function HomepageCarouselContent({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
   const { allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts, offers } = await getHomepageDataCached()
 
   const formatDateForDisplay = (dateString: string) => {
@@ -477,10 +447,7 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
   })
 
   return (
-    <BookingProvider>
-    <main className="min-h-screen bg-white">
-      <HomepageHero />
-
+    <>
       <OffersSection offers={offers} />
 
       {/* Mobile: streamlined shelves. Desktop: original flex order (order-[5]…order-[50]) restores pre-redesign visual sequence. */}
@@ -681,7 +648,6 @@ export default async function HomepageRedesign({ searchParams }: { searchParams?
           </div>
         </div>
       </section>
-    </main>
-    </BookingProvider>
+    </>
   )
 }
