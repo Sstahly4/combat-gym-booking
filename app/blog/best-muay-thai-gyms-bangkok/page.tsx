@@ -192,6 +192,16 @@ export default async function BestMuayThaiGymsBangkokPage() {
         .
       </GuideStayOnSiteCallout>
 
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-sm leading-relaxed text-gray-800">
+          Researching a famous camp by name? Read our{' '}
+          <Link href="/blog/krudam-gym-bangkok-review" className="font-semibold text-[#003580] underline">
+            Krudam Gym Bangkok review and packages
+          </Link>{' '}
+          guide for quick facts, pricing context, and bookable train-and-stay alternatives.
+        </p>
+      </div>
+
       <GuideSection variant="slate" className="mb-14">
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>

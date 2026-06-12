@@ -12,6 +12,8 @@ export type GuideStayTrainListingBlockProps = {
   subtitle?: string
   limit?: number
   city?: string
+  /** Alias for `city` (e.g. suburb "Chalong"). */
+  location?: string
   accommodation?: boolean
   meals?: boolean
   ctaUrl?: string
@@ -26,30 +28,33 @@ export async function GuideStayTrainListingBlock({
   subtitle = 'Live verified listings. Filter defaults to on-site accommodation.',
   limit = 8,
   city,
+  location,
   accommodation = true,
   meals = false,
   ctaUrl,
   ctaLabel = 'Browse all stay-and-train camps',
   gyms: gymsProp,
 }: GuideStayTrainListingBlockProps) {
+  const area = location || city
   const searchHref =
     ctaUrl ||
-    (city
-      ? `/search?country=Thailand&location=${encodeURIComponent(city)}&discipline=Muay%20Thai&accommodation=true`
+    (area
+      ? `/search?country=Thailand&location=${encodeURIComponent(area)}&discipline=Muay%20Thai&accommodation=true`
       : DEFAULT_SEARCH_HREF)
 
   const shortlist =
     gymsProp ??
     (await getStayTrainShortlist({
       city,
+      location,
       accommodation,
       meals,
       limit,
     }))
 
   const emptyMessage = meals
-    ? `No ${city ? `${city} ` : ''}listings currently show both accommodation and meals. Browse filtered search and confirm package inclusions on each gym profile.`
-    : `No ${city ? `${city} ` : ''}listings currently show on-site accommodation. Browse filtered search and confirm room type on each gym profile.`
+    ? `No ${area ? `${area} ` : ''}listings currently show both accommodation and meals. Browse filtered search and confirm package inclusions on each gym profile.`
+    : `No ${area ? `${area} ` : ''}listings currently show on-site accommodation. Browse filtered search and confirm room type on each gym profile.`
 
   return (
     <section id={id} className="mb-14 scroll-mt-24">

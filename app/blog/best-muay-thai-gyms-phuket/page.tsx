@@ -243,8 +243,19 @@ export default async function BestMuayThaiGymsPhuketPage() {
             <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
               LUDUS Sports Complex
             </Link>{' '}
-            , a 5,000 m² resort-style gym with on-site hotel, spa, and Muay Thai/MMA classes, and how it compares to Tiger and
-            Unit 27 on the same soi.
+            , a 5,000 m² resort-style gym with on-site hotel, spa, and Muay Thai/MMA classes, and how it compares to{' '}
+            <Link href="/blog/tiger-muay-thai-review-packages" className="font-medium text-[#003580] underline">
+              Tiger Muay Thai
+            </Link>{' '}
+            and Unit 27 on the same soi. For Bang Tao west-coast camps, see{' '}
+            <Link href="/blog/bangtao-muay-thai-mma-prices" className="font-medium text-[#003580] underline">
+              Bangtao Muay Thai &amp; MMA prices
+            </Link>{' '}
+            and{' '}
+            <Link href="/blog/aka-thailand-reviews-booking" className="font-medium text-[#003580] underline">
+              AKA Thailand packages
+            </Link>
+            .
           </p>
         </div>
       </section>

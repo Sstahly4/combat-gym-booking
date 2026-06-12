@@ -133,3 +133,84 @@ export function buildGymItemListLd(args: {
     }),
   }
 }
+
+/** Brand profile pages: Article + optional SportsActivityLocation review entity when gym is bookable. */
+export function buildBrandReviewLd(args: {
+  title: string
+  description: string
+  path: string
+  datePublished: string
+  dateModified?: string
+  imagePath?: string
+  brandName: string
+  gym?: {
+    id: string
+    slug?: string | null
+    name: string
+    city?: string | null
+    country?: string | null
+    averageRating?: number
+    reviewCount?: number
+  } | null
+}) {
+  const imageUrl =
+    args.imagePath && (args.imagePath.startsWith('http://') || args.imagePath.startsWith('https://'))
+      ? args.imagePath
+      : args.imagePath
+        ? absoluteUrl(args.imagePath)
+        : undefined
+
+  const graph: Record<string, unknown>[] = [
+    {
+      '@type': 'Article',
+      headline: args.title,
+      description: args.description,
+      mainEntityOfPage: absoluteUrl(args.path),
+      datePublished: args.datePublished,
+      dateModified: args.dateModified || args.datePublished,
+      image: imageUrl ? [imageUrl] : undefined,
+      author: { '@type': 'Organization', name: BRAND_NAME, url: siteUrl },
+      publisher,
+      about: { '@type': 'SportsActivityLocation', name: args.brandName },
+    },
+  ]
+
+  if (args.gym) {
+    const hasRating =
+      typeof args.gym.averageRating === 'number' &&
+      typeof args.gym.reviewCount === 'number' &&
+      args.gym.averageRating > 0 &&
+      args.gym.reviewCount > 0
+
+    const location: Record<string, unknown> = {
+      '@type': 'SportsActivityLocation',
+      name: args.gym.name,
+      url: absoluteUrl(gymCanonicalPath(args.gym)),
+    }
+
+    if (args.gym.city || args.gym.country) {
+      location.address = {
+        '@type': 'PostalAddress',
+        addressLocality: args.gym.city || undefined,
+        addressCountry: args.gym.country || undefined,
+      }
+    }
+
+    if (hasRating) {
+      location.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: Number(args.gym.averageRating!.toFixed(2)),
+        reviewCount: args.gym.reviewCount,
+        bestRating: 5,
+        worstRating: 1,
+      }
+    }
+
+    graph.push(location)
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': graph,
+  }
+}

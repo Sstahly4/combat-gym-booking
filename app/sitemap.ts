@@ -72,6 +72,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/blog/best-kickboxing-gyms-thailand',
     '/blog/best-judo-gyms-thailand',
     '/blog/ludus-sports-complex-chalong-phuket',
+    '/blog/tiger-muay-thai-review-packages',
+    '/blog/bangtao-muay-thai-mma-prices',
+    '/blog/aka-thailand-reviews-booking',
+    '/blog/fairtex-training-center-pattaya-packages',
+    '/blog/krudam-gym-bangkok-review',
   ]
 
   const staticRoutes: MetadataRoute.Sitemap = staticPaths.map((path) => ({

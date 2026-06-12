@@ -7,6 +7,8 @@ export type StayTrainGym = GuideGym & {
 
 export type StayTrainShortlistOptions = {
   city?: string
+  /** Alias for `city` (e.g. suburb filter "Chalong"). */
+  location?: string
   accommodation?: boolean
   meals?: boolean
   limit?: number
@@ -14,13 +16,15 @@ export type StayTrainShortlistOptions = {
 
 export async function getStayTrainShortlist({
   city,
+  location,
   accommodation = true,
   meals = false,
   limit = 12,
 }: StayTrainShortlistOptions = {}): Promise<StayTrainGym[]> {
+  const area = location || city
   const gyms = await getThailandGymsForGuide({
     discipline: 'Muay Thai',
-    ...(city ? { city } : {}),
+    ...(area ? { city: area } : {}),
   })
 
   return gyms

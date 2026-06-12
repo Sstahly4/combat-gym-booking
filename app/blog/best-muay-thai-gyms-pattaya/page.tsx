@@ -132,6 +132,16 @@ export default async function BestMuayThaiGymsPattayaPage() {
         statIcon={<Waves className="h-5 w-5" />}
       />
 
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-sm leading-relaxed text-gray-800">
+          Comparing a famous camp by name? See our{' '}
+          <Link href="/blog/fairtex-training-center-pattaya-packages" className="font-semibold text-[#003580] underline">
+            Fairtex Training Center Pattaya packages and review
+          </Link>{' '}
+          for quick facts, pricing context, and bookable train-and-stay alternatives.
+        </p>
+      </div>
+
       <section id="why" className="mb-14 scroll-mt-24">
         <GuideAccentIntro icon={MapPin} title={`Why train Muay Thai in ${CITY}?`} subtitle="Beach lifestyle + consistency" />
         <div className="prose prose-gray max-w-none space-y-4 text-base leading-relaxed text-gray-800 md:prose-lg">

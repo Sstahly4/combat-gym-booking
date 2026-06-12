@@ -218,6 +218,34 @@ export default function BlogPage() {
     },
   ]
 
+  const brandProfileGuides = [
+    {
+      title: 'Tiger Muay Thai Review & Packages: 2026 Price Guide',
+      excerpt: 'Quick facts, package pricing context, and bookable Chalong alternatives.',
+      href: '/blog/tiger-muay-thai-review-packages',
+    },
+    {
+      title: 'Bangtao Muay Thai & MMA: 2026 Prices & Stays',
+      excerpt: 'Bang Tao camp costs, facilities, and instantly bookable west-coast options.',
+      href: '/blog/bangtao-muay-thai-mma-prices',
+    },
+    {
+      title: 'AKA Thailand Reviews, Packages & Booking Guide [2026]',
+      excerpt: 'Fighter-focused review with package breakdown and Phuket train-and-stay alternatives.',
+      href: '/blog/aka-thailand-reviews-booking',
+    },
+    {
+      title: 'Fairtex Training Center Pattaya: Packages & Review',
+      excerpt: 'Legendary Pattaya camp: on-site hotel rates, training tiers, and booking path.',
+      href: '/blog/fairtex-training-center-pattaya-packages',
+    },
+    {
+      title: 'Krudam Gym Bangkok: Review & Training Packages [2026]',
+      excerpt: 'Bangkok quick facts, class reviews context, and live stay-and-train listings.',
+      href: '/blog/krudam-gym-bangkok-review',
+    },
+  ]
+
   const microLocations = [
     {
       title: 'Best Muay Thai gyms in Bang Tao',
@@ -388,6 +416,26 @@ export default function BlogPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           {cityAccommodationHubs.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <BookOpen className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">Brand profiles &amp; reviews</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {brandProfileGuides.map((article) => (
             <Link key={article.href} href={article.href} className="block h-full">
               <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col p-6">
