@@ -1,13 +1,13 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type ComponentProps,
   type ReactNode,
-  type Ref,
-  type RefObject,
+  type RefCallback,
 } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
@@ -244,7 +244,7 @@ function CheckoutForm({
   mobileCheckoutDisabled = false,
   payWhen = 'now',
   priceDetailsSection,
-  confirmCtaRef,
+  dismissAnchorRef,
 }: {
   booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
@@ -258,7 +258,7 @@ function CheckoutForm({
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
   priceDetailsSection?: ReactNode
-  confirmCtaRef?: RefObject<HTMLDivElement | null>
+  dismissAnchorRef?: RefCallback<HTMLDivElement>
 }) {
   const router = useRouter()
   const params = useParams()
@@ -457,6 +457,7 @@ function CheckoutForm({
           )}
         </form>
 
+        <div ref={dismissAnchorRef} className="space-y-6">
         {priceDetailsSection}
 
         <div className="space-y-2">
@@ -466,7 +467,7 @@ function CheckoutForm({
               {error}
             </div>
           )}
-          <div ref={confirmCtaRef as Ref<HTMLDivElement>}>
+          <div>
           {isKlarnaCheckout ? (
             <Button
               type="submit"
@@ -530,6 +531,7 @@ function CheckoutForm({
           ) : null}
           </div>
           <PaymentHoldExplainer />
+        </div>
         </div>
       </div>
     )
@@ -672,7 +674,10 @@ export default function PaymentPage() {
   const [draftCheckin, setDraftCheckin] = useState('')
   const [draftCheckout, setDraftCheckout] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
-  const confirmCtaRef = useRef<HTMLDivElement>(null)
+  const [reviewNudgeDismissTarget, setReviewNudgeDismissTarget] = useState<HTMLElement | null>(null)
+  const reviewNudgeDismissAnchorRef = useCallback((node: HTMLDivElement | null) => {
+    setReviewNudgeDismissTarget(node)
+  }, [])
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -1544,7 +1549,7 @@ export default function PaymentPage() {
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
-                confirmCtaRef={confirmCtaRef}
+                dismissAnchorRef={reviewNudgeDismissAnchorRef}
                 priceDetailsSection={
                   priceInfo && rawTotal > 0 ? (
                     <CheckoutPriceDetailsInline
@@ -1859,8 +1864,8 @@ export default function PaymentPage() {
       <CheckoutReviewNudge
         bookingId={bookingId}
         scrollRootRef={scrollRootRef}
-        confirmCtaRef={confirmCtaRef}
-        ready={!!clientSecret}
+        dismissTarget={reviewNudgeDismissTarget}
+        ready={!!clientSecret && !!reviewNudgeDismissTarget}
       />
 
       {whatsIncludedSheetOpen && booking.package && (

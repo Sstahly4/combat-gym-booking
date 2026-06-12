@@ -11,13 +11,14 @@ import {
 export function CheckoutReviewNudge({
   bookingId,
   scrollRootRef,
-  confirmCtaRef,
+  dismissTarget,
   ready = true,
 }: {
   bookingId: string
   scrollRootRef: RefObject<HTMLElement | null>
-  confirmCtaRef: RefObject<HTMLElement | null>
-  /** When false, the confirm CTA is not mounted yet (e.g. Stripe still loading). */
+  /** Price details + confirm CTA block — observed for auto-dismiss. */
+  dismissTarget: HTMLElement | null
+  /** When false, the dismiss target is not mounted yet (e.g. Stripe still loading). */
   ready?: boolean
 }) {
   const [visible, setVisible] = useState(false)
@@ -30,11 +31,10 @@ export function CheckoutReviewNudge({
   }, [bookingId])
 
   useEffect(() => {
-    if (!visible || !ready || isCheckoutReviewNudgeDismissed(bookingId)) return
+    if (!visible || !ready || !dismissTarget || isCheckoutReviewNudgeDismissed(bookingId)) return
 
     const root = scrollRootRef.current
-    const target = confirmCtaRef.current
-    if (!root || !target) return
+    if (!root) return
 
     let dismissed = false
     const dismiss = () => {
@@ -47,23 +47,24 @@ export function CheckoutReviewNudge({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry?.isIntersecting || entry.intersectionRatio < 0.55) return
+        if (!entry?.isIntersecting || entry.intersectionRatio < 0.1) return
         dismiss()
       },
       {
         root,
-        threshold: [0, 0.25, 0.55, 0.75, 1],
-        rootMargin: '0px 0px -8% 0px',
-      }
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        // Shrink root bottom by ~nudge height so we dismiss once content is visible above the pill.
+        rootMargin: '0px 0px -5rem 0px',
+      },
     )
 
-    observer.observe(target)
+    observer.observe(dismissTarget)
     return () => observer.disconnect()
-  }, [visible, ready, bookingId, scrollRootRef, confirmCtaRef])
+  }, [visible, ready, bookingId, scrollRootRef, dismissTarget])
 
   const handleClick = useCallback(() => {
     const root = scrollRootRef.current
-    const target = confirmCtaRef.current
+    const target = dismissTarget
     if (!target) return
     if (root) {
       const rootTop = root.getBoundingClientRect().top
@@ -75,7 +76,7 @@ export function CheckoutReviewNudge({
       return
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [confirmCtaRef, scrollRootRef])
+  }, [dismissTarget, scrollRootRef])
 
   if (!visible) return null
 
