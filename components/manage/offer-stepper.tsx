@@ -11,6 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { GymStepper } from './gym-stepper'
 import { AccommodationQuickModal } from './accommodation-quick-modal'
 import type { CanonicalOfferType, Package } from '@/lib/types/database'
+import {
+  inferCancellationPresetFromDays,
+  isCancellationPolicySelectionValid,
+  resolvePackageCancellationDays,
+  getOwnerCancellationPreviewLine,
+  type PackageCancellationPresetId,
+} from '@/lib/manage/package-cancellation-policy-presets'
+import { PackageCancellationPolicyFields } from '@/components/manage/package-cancellation-policy-fields'
 import { 
   Dumbbell, 
   BedDouble, 
@@ -127,6 +135,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   
   // Step 5: Review
   const [bookingMode, setBookingMode] = useState<'request_to_book' | 'instant'>('request_to_book')
+  const [cancellationPresetId, setCancellationPresetId] =
+    useState<PackageCancellationPresetId>('flexible')
+  const [customCancellationDays, setCustomCancellationDays] = useState('')
 
   // Image upload (all offer types)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -161,7 +172,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     { id: 'type', label: 'Offer Type', number: 1 },
     { id: 'basic', label: 'Basic Info', number: 2 },
     { id: 'pricing', label: 'Pricing & Accommodation', number: 3 },
-    { id: 'availability', label: 'Availability', number: 4 },
+    { id: 'availability', label: 'Policy & availability', number: 4 },
     { id: 'review', label: 'Review', number: 5 },
   ]
   
@@ -176,6 +187,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setAvailableYearRound(existingPackage.available_year_round ?? true)
       setBlackoutDates(existingPackage.blackout_dates || [])
       setBookingMode(existingPackage.booking_mode || 'request_to_book')
+
+      const cancellation = inferCancellationPresetFromDays(existingPackage.cancellation_policy_days)
+      setCancellationPresetId(cancellation.presetId)
+      setCustomCancellationDays(cancellation.customDays)
 
       // Load pricing - day/week/month rates
       setPricePerDay(existingPackage.price_per_day?.toString() || '')
@@ -303,6 +318,11 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       return
     }
 
+    if (!isCancellationPolicySelectionValid(cancellationPresetId, customCancellationDays)) {
+      alert('Please choose a cancellation policy. If using custom, enter at least 1 day before check-in.')
+      return
+    }
+
     // Validate pricing based on offer type
     if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
       if (!eventDate) {
@@ -372,6 +392,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? 'all_inclusive' : 'training',
       includes_accommodation: selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE',
       includes_meals: selectedOfferType === 'TYPE_ALL_INCLUSIVE',
+      cancellation_policy_days: resolvePackageCancellationDays(
+        cancellationPresetId,
+        customCancellationDays
+      ),
     }
 
     // Helper to build a datetime string from separate date + time inputs
@@ -550,7 +574,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         }
         return pricePerWeek !== ''
       case 4:
-        return true
+        return isCancellationPolicySelectionValid(cancellationPresetId, customCancellationDays)
       case 5:
         return true
       default:
@@ -1149,6 +1173,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   </div>
                 )}
               </div>
+
+              <div className="border-t pt-6">
+                <PackageCancellationPolicyFields
+                  presetId={cancellationPresetId}
+                  customDays={customCancellationDays}
+                  onPresetChange={setCancellationPresetId}
+                  onCustomDaysChange={setCustomCancellationDays}
+                />
+              </div>
             </div>
           )
         }
@@ -1157,9 +1190,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Availability & Operations</h3>
+              <h3 className="text-lg font-semibold mb-2">Availability & cancellation</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Set when your offer is available and any blackout dates.
+                Set when your offer is available, your cancellation rules, and any blackout dates.
               </p>
             </div>
             <div className="space-y-4">
@@ -1231,6 +1264,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   </div>
                 </div>
               </div>
+
+              <div className="border-t pt-6">
+                <PackageCancellationPolicyFields
+                  presetId={cancellationPresetId}
+                  customDays={customCancellationDays}
+                  onPresetChange={setCancellationPresetId}
+                  onCustomDaysChange={setCustomCancellationDays}
+                />
+              </div>
             </div>
           </div>
         )
@@ -1300,6 +1342,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                           <span className="font-medium">{parseInt(maxAttendees).toLocaleString()} attendees</span>
                         </div>
                       )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Cancellation:</span>
+                        <span className="font-medium text-right max-w-[60%]">
+                          {getOwnerCancellationPreviewLine(cancellationPresetId, customCancellationDays).replace(
+                            'Guests will see: ',
+                            ''
+                          )}
+                        </span>
+                      </div>
                       {pricingExtras.length > 0 && (
                         <>
                           <div className="flex justify-between pt-1 border-t mt-1">
@@ -1341,6 +1392,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         <span className="text-gray-600">Availability:</span>
                         <span className="font-medium">
                           {availableYearRound ? 'Year-round' : 'Limited'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Cancellation:</span>
+                        <span className="font-medium text-right max-w-[60%]">
+                          {getOwnerCancellationPreviewLine(cancellationPresetId, customCancellationDays).replace(
+                            'Guests will see: ',
+                            ''
+                          )}
                         </span>
                       </div>
                       {blackoutDates.length > 0 && (
@@ -1628,6 +1688,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
               )}
             </div>
           )}
+
+          <div className="pt-2 border-t">
+            <p className="text-xs text-gray-600">
+              {getOwnerCancellationPreviewLine(cancellationPresetId, customCancellationDays).replace(
+                'Guests will see: ',
+                ''
+              )}
+            </p>
+          </div>
 
           {/* Minimum Stay & Rate Tags (non-event types only) */}
           {selectedOfferType !== 'TYPE_ONE_TIME_EVENT' && (

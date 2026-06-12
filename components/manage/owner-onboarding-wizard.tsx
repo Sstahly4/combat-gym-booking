@@ -1198,8 +1198,18 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
 
   const savePolicyPreference = async () => {
     if (!sessionId) return
-    await saveStepCompletion(true)
+    const gymId = editorGymId ?? activeGymId
     const supabase = createClient()
+    if (
+      gymId &&
+      ['flexible', 'moderate', 'strict'].includes(policyPreference)
+    ) {
+      await supabase
+        .from('gyms')
+        .update({ cancellation_policy_tone: policyPreference })
+        .eq('id', gymId)
+    }
+    await saveStepCompletion(true)
     await supabase
       .from('owner_onboarding_steps')
       .upsert(

@@ -9,6 +9,7 @@ import { useBooking } from '@/lib/contexts/booking-context'
 import { useReviewModal } from '@/lib/contexts/review-modal-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
+import { packageShowsFreeCancellation } from '@/lib/manage/package-cancellation-policy-presets'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
 import {
   Check,
@@ -1022,7 +1023,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                                     {!isValidDuration && <p className="text-[10px] text-gray-500 mt-0.5">/ {variantAnchorUnit}</p>}
                                   </div>
                                   <div className="text-right">
-                                    <p className="text-[10px] text-green-600 font-medium"><Check className="w-3 h-3 inline mr-0.5" />Free cancellation</p>
+                                    {packageShowsFreeCancellation(activePackage?.cancellation_policy_days) && (
+                                      <p className="text-[10px] text-green-600 font-medium"><Check className="w-3 h-3 inline mr-0.5" />Free cancellation</p>
+                                    )}
                                     <p className="text-[10px] text-gray-400 mt-0.5">Incl. taxes & fees</p>
                                   </div>
                                 </div>
@@ -1382,7 +1385,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                           ) : (
                             <>
                               <div className="flex-1">
-                                <div className="text-xs text-green-600 font-medium mb-2"><Check className="w-3 h-3 inline mr-1" />Free cancellation</div>
+                                {packageShowsFreeCancellation(activePackage?.cancellation_policy_days) && (
+                                  <div className="text-xs text-green-600 font-medium mb-2"><Check className="w-3 h-3 inline mr-1" />Free cancellation</div>
+                                )}
                                 <div className="text-xs text-gray-500">Includes taxes and charges</div>
                               </div>
                               <div className="text-right flex-shrink-0">
