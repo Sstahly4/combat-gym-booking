@@ -50,6 +50,32 @@ export default function BlogPage() {
     },
   ]
 
+  const usaGuides = [
+    {
+      title: 'Muay Thai Trip From USA: Complete 2026 Guide & Booking',
+      excerpt: 'Flights, 60-day visa exemption, USD budget ranges, and stay-and-train camp comparison for US travelers.',
+      href: '/blog/muay-thai-trip-from-usa',
+    },
+    {
+      title: 'Thailand Training Holiday USA: Packages & Prices [2026]',
+      excerpt: 'All-inclusive Muay Thai holiday packages with live prices, recovery amenities, and instant booking.',
+      href: '/blog/thailand-training-holiday-usa',
+    },
+  ]
+
+  const ukGuides = [
+    {
+      title: 'Muay Thai Trip From UK: 2026 Planning & Camp Booking',
+      excerpt: 'Flight hubs, 60-day entry, GBP budgeting, DTV pointers, and bookable camp listings for UK travelers.',
+      href: '/blog/muay-thai-trip-from-uk',
+    },
+    {
+      title: 'Thailand Training Holiday UK: Compare Stays & Reviews',
+      excerpt: 'Fight-camp vs holiday pace, package pricing in GBP, and live stay-and-train listings with reviews.',
+      href: '/blog/thailand-training-holiday-uk',
+    },
+  ]
+
   const trainingBasics = [
     {
       title: 'What Is the Best Muay Thai Camp in Thailand for Beginners? (2026)',
@@ -362,6 +388,46 @@ export default function BlogPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           {australiaGuides.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <Plane className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">USA → Thailand</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {usaGuides.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <Plane className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">UK → Thailand</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {ukGuides.map((article) => (
             <Link key={article.href} href={article.href} className="block h-full">
               <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col p-6">

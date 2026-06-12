@@ -142,6 +142,32 @@ export default function CombatSportsTravelGuideThailand2026Page() {
             </Link>
           </div>
         </div>
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">Origin market hubs</p>
+          <p className="mt-2 text-sm leading-relaxed text-gray-700">
+            Flights, visa rules, and local currency budgeting for travelers booking from specific countries.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <Link href="/blog/muay-thai-trip-from-australia" className="font-medium text-[#003580] underline">
+              Muay Thai trip from Australia
+            </Link>
+            <Link href="/blog/thailand-training-holiday-australia" className="font-medium text-[#003580] underline">
+              Training holiday from Australia
+            </Link>
+            <Link href="/blog/muay-thai-trip-from-usa" className="font-medium text-[#003580] underline">
+              Muay Thai trip from USA
+            </Link>
+            <Link href="/blog/thailand-training-holiday-usa" className="font-medium text-[#003580] underline">
+              Training holiday USA
+            </Link>
+            <Link href="/blog/muay-thai-trip-from-uk" className="font-medium text-[#003580] underline">
+              Muay Thai trip from UK
+            </Link>
+            <Link href="/blog/thailand-training-holiday-uk" className="font-medium text-[#003580] underline">
+              Training holiday UK
+            </Link>
+          </div>
+        </div>
       </GuideSection>
 
       <section id="choose" className="mb-14 scroll-mt-24">
