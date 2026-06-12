@@ -201,6 +201,7 @@ export const AKA_THAILAND: BrandProfileConfig = {
     { label: 'Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
   ],
   relatedGuides: [
+    { title: 'Best Muay Thai gyms in Chalong', href: '/blog/best-muay-thai-gyms/chalong' },
     { title: 'Best MMA camps in Thailand', href: '/blog/best-mma-camps-thailand' },
     { title: 'Muay Thai camp Phuket with accommodation', href: '/blog/muay-thai-camp-phuket-with-accommodation' },
     { title: 'Phuket fighter conditioning gyms', href: '/blog/phuket-fighter-conditioning-gyms' },

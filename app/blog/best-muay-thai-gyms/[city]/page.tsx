@@ -156,13 +156,30 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
             Thai. Rankings follow the same review-first methodology as the rest of CombatStay’s guides.
           </p>
           {city.toLowerCase() === 'chalong' && (
-            <p>
-              For Soi Ta Iad’s newest full-scale option, read our{' '}
-              <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
-                LUDUS Sports Complex guide
-              </Link>{' '}
-              (prices, coaches, spa/hotel amenities, and Tiger vs Unit 27 comparison).
-            </p>
+            <>
+              <p>
+                Chalong’s Soi Ta Iad (Fitness Street) packs more fight camps into one kilometer than anywhere else in
+                Thailand. Tiger Muay Thai, Unit 27, and newer full-scale campuses like LUDUS sit on the same strip. Most
+                international travelers search a gym name before they search a neighborhood, and this soi is where those
+                searches land.
+              </p>
+              <p>
+                Comparing the big names? Read our{' '}
+                <Link href="/blog/tiger-muay-thai-review-packages" className="font-medium text-[#003580] underline">
+                  Tiger Muay Thai review and packages
+                </Link>{' '}
+                guide for 2026 pricing, housing tiers, and bookable Chalong alternatives. Fighters cross-shopping resort
+                camps should also see{' '}
+                <Link href="/blog/aka-thailand-reviews-booking" className="font-medium text-[#003580] underline">
+                  AKA Thailand reviews and booking
+                </Link>
+                . For Soi Ta Iad’s newest full-scale option, read our{' '}
+                <Link href="/blog/ludus-sports-complex-chalong-phuket" className="font-medium text-[#003580] underline">
+                  LUDUS Sports Complex guide
+                </Link>{' '}
+                (prices, coaches, spa/hotel amenities, and Tiger vs Unit 27 comparison).
+              </p>
+            </>
           )}
         </div>
       </section>
@@ -283,12 +300,22 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
       />
 
       <RelatedGuides
-        guides={[
-          { title: 'Best Muay Thai camps in Thailand (2026)', href: '/blog/best-muay-thai-camps-thailand-2026' },
-          { title: 'Best Muay Thai gyms in Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
-          { title: 'Best Muay Thai gyms in Bangkok', href: '/blog/best-muay-thai-gyms-bangkok' },
-          { title: 'Training guides hub', href: '/blog' },
-        ]}
+        guides={
+          city.toLowerCase() === 'chalong'
+            ? [
+                { title: 'Tiger Muay Thai review & packages (2026)', href: '/blog/tiger-muay-thai-review-packages' },
+                { title: 'AKA Thailand reviews & booking guide', href: '/blog/aka-thailand-reviews-booking' },
+                { title: 'LUDUS Sports Complex Chalong guide', href: '/blog/ludus-sports-complex-chalong-phuket' },
+                { title: 'Best Muay Thai gyms in Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
+                { title: 'Muay Thai camp Phuket with accommodation', href: '/blog/muay-thai-camp-phuket-with-accommodation' },
+              ]
+            : [
+                { title: 'Best Muay Thai camps in Thailand (2026)', href: '/blog/best-muay-thai-camps-thailand-2026' },
+                { title: 'Best Muay Thai gyms in Phuket', href: '/blog/best-muay-thai-gyms-phuket' },
+                { title: 'Best Muay Thai gyms in Bangkok', href: '/blog/best-muay-thai-gyms-bangkok' },
+                { title: 'Training guides hub', href: '/blog' },
+              ]
+        }
       />
     </ArticleShell>
   )
