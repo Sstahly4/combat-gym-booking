@@ -18,23 +18,23 @@ function PaymentMethodTile({
   ariaLabel: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 min-w-0">
+    <div className="flex flex-col items-center gap-1.5 min-w-0">
       <button
         type="button"
         role="radio"
         aria-checked={selected}
         aria-label={ariaLabel}
         onClick={onSelect}
-        className={`relative w-full aspect-[5/4] rounded-xl border-2 bg-white flex items-center justify-center touch-manipulation transition-colors ${
+        className={`relative w-full h-12 rounded-lg border-2 bg-white flex items-center justify-center touch-manipulation transition-colors ${
           selected ? 'border-blue-600' : 'border-gray-200 hover:border-gray-300'
         }`}
       >
         {selected && (
           <span
-            className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded bg-blue-600"
+            className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded bg-blue-600"
             aria-hidden
           >
-            <Check className="h-3 w-3 text-white stroke-[3]" />
+            <Check className="h-2.5 w-2.5 text-white stroke-[3]" />
           </span>
         )}
         {icon}
@@ -52,7 +52,7 @@ export function PaymentMethodTiles({
   onChange: (method: PaymentMethodChoice) => void
 }) {
   return (
-    <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="How would you like to pay?">
+    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="How would you like to pay?">
       <PaymentMethodTile
         selected={value === 'card'}
         onSelect={() => onChange('card')}

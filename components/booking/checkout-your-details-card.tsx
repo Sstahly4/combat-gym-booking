@@ -2,17 +2,6 @@
 
 import { formatCheckoutSummaryValue } from '@/components/booking/checkout-ui'
 
-function condensedDetailsLine(
-  name: string | null | undefined,
-  email: string | null | undefined,
-  phone: string | null | undefined
-): string {
-  return [name, email, phone]
-    .map((value) => formatCheckoutSummaryValue(value))
-    .filter((value) => value !== '—')
-    .join(' · ')
-}
-
 export function CheckoutYourDetailsCard({
   name,
   email,
@@ -24,7 +13,11 @@ export function CheckoutYourDetailsCard({
   phone: string | null | undefined
   onEdit: () => void
 }) {
-  const summary = condensedDetailsLine(name, email, phone)
+  const displayName = formatCheckoutSummaryValue(name)
+  const displayEmail = formatCheckoutSummaryValue(email)
+  const displayPhone = formatCheckoutSummaryValue(phone)
+  const hasAnyDetails =
+    displayName !== '—' || displayEmail !== '—' || displayPhone !== '—'
 
   return (
     <div>
@@ -38,9 +31,17 @@ export function CheckoutYourDetailsCard({
           Change
         </button>
       </div>
-      <p className="mt-2 text-sm text-gray-600 leading-snug line-clamp-2">
-        {summary || 'Add your name, email, and phone'}
-      </p>
+      {hasAnyDetails ? (
+        <div className="mt-2 space-y-0.5 text-sm text-gray-600 leading-snug">
+          <p>{displayName}</p>
+          <p>{displayEmail}</p>
+          <p>{displayPhone}</p>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-gray-600 leading-snug">
+          Add your name, email, and phone
+        </p>
+      )}
     </div>
   )
 }

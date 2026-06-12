@@ -60,7 +60,7 @@ export type PriceLine = {
   qty: number           // 2
   unitPrice: number     // 1400
   subtotal: number      // 2800
-  kind: 'month' | 'week' | 'night'
+  kind: 'month' | 'week' | 'night' | 'day'
 }
 
 export type PriceBreakdown = {
@@ -213,11 +213,11 @@ export function calculatePackagePrice(
       price,
       lines: [
         {
-          label: durationDays === 1 ? '1 session' : `${durationDays} sessions`,
+          label: durationDays === 1 ? '1 day' : `${durationDays} days`,
           qty: durationDays,
           unitPrice: nightly,
           subtotal: price,
-          kind: 'night',
+          kind: 'day',
         },
       ],
       unit: 'day',

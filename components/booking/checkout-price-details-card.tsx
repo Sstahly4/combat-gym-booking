@@ -5,9 +5,7 @@ import { formatCheckoutAmountOnly, formatCheckoutPriceWithCode } from '@/compone
 import type { PriceLine } from '@/lib/utils'
 
 function lineUnitLabel(line: PriceLine): string {
-  if (line.label.toLowerCase().includes('session')) {
-    return line.qty === 1 ? 'session' : 'sessions'
-  }
+  if (line.kind === 'day') return line.qty === 1 ? 'day' : 'days'
   if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
   if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
   return line.qty === 1 ? 'night' : 'nights'
