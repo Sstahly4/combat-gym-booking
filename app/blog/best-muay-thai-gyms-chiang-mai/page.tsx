@@ -13,6 +13,7 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
+import { GuideStayOnSiteCallout } from '@/components/guides/guide-stay-on-site-callout'
 import {
   GuideAccentIntro,
   GuideCtaStrip,
@@ -184,6 +185,14 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
         statDescription={`Verified/trusted Muay Thai gyms matching this ${CITY} guide.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
+
+      <GuideStayOnSiteCallout city="Chiang Mai" href="/blog/chiang-mai-muay-thai-train-and-stay">
+        Looking to stay on-site? Check out our dedicated guide to{' '}
+        <Link href="/blog/chiang-mai-muay-thai-train-and-stay" className="font-semibold text-[#003580] underline">
+          Chiang Mai Muay Thai train and stay packages
+        </Link>
+        .
+      </GuideStayOnSiteCallout>
 
       <GuideSection variant="slate" className="mb-14">
         <div className="grid gap-8 md:grid-cols-2 md:items-center">

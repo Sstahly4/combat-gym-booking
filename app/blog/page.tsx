@@ -195,6 +195,29 @@ export default function BlogPage() {
     },
   ]
 
+  const cityAccommodationHubs = [
+    {
+      title: 'Muay Thai Camp Phuket With Accommodation: 2026 Stays',
+      excerpt: 'Phuket train-and-stay listings with on-site housing and all-inclusive sort.',
+      href: '/blog/muay-thai-camp-phuket-with-accommodation',
+    },
+    {
+      title: 'Bangkok Muay Thai Train and Stay: Top Packages [2026]',
+      excerpt: 'Bangkok packages with on-site accommodation and live rates.',
+      href: '/blog/bangkok-muay-thai-train-and-stay',
+    },
+    {
+      title: 'Chiang Mai Muay Thai Train and Stay: Compare 2026 Stays',
+      excerpt: 'Northern train-and-stay packages with bungalows and long-stay pricing.',
+      href: '/blog/chiang-mai-muay-thai-train-and-stay',
+    },
+    {
+      title: 'Koh Samui Muay Thai Camp With Accommodation: 2026 Stays',
+      excerpt: 'Island stay-and-train listings with live package prices.',
+      href: '/blog/koh-samui-muay-thai-camp-with-accommodation',
+    },
+  ]
+
   const microLocations = [
     {
       title: 'Best Muay Thai gyms in Bang Tao',
@@ -345,6 +368,26 @@ export default function BlogPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {cityGuides.map((article) => (
+            <Link key={article.href} href={article.href} className="block h-full">
+              <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col p-6">
+                  <h3 className="text-lg font-semibold text-gray-900">{article.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-gray-600">{article.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[#003580]">Read guide →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-14">
+        <div className="mb-6 flex items-center gap-2 border-b border-gray-200 pb-3">
+          <MapPin className="h-6 w-6 text-[#003580]" aria-hidden />
+          <h2 className="text-2xl font-bold text-gray-900">City train-and-stay hubs</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {cityAccommodationHubs.map((article) => (
             <Link key={article.href} href={article.href} className="block h-full">
               <Card className="h-full border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col p-6">

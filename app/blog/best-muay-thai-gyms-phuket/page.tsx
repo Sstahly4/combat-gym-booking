@@ -13,6 +13,7 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
+import { GuideStayOnSiteCallout } from '@/components/guides/guide-stay-on-site-callout'
 import {
   GuideAccentIntro,
   GuideCtaStrip,
@@ -182,6 +183,14 @@ export default async function BestMuayThaiGymsPhuketPage() {
         statDescription={`Verified/trusted Muay Thai camps matching this ${CITY} guide on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
+
+      <GuideStayOnSiteCallout city="Phuket" href="/blog/muay-thai-camp-phuket-with-accommodation">
+        Looking to stay on-site? Check out our dedicated guide to{' '}
+        <Link href="/blog/muay-thai-camp-phuket-with-accommodation" className="font-semibold text-[#003580] underline">
+          Phuket Muay Thai camps with accommodation
+        </Link>{' '}
+        and live train-and-stay packages.
+      </GuideStayOnSiteCallout>
 
       <GuideSection variant="slate" className="mb-14">
         <div className="grid gap-8 md:grid-cols-2 md:items-center">

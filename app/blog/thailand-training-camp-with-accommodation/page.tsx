@@ -90,12 +90,14 @@ const CITY_NOTES: Array<{
   city: string
   searchHref: string
   guideHref?: string
+  accommodationHubHref?: string
   blurb: string
 }> = [
   {
     city: 'Chiang Mai',
     searchHref: '/search?country=Thailand&location=Chiang%20Mai&discipline=Muay%20Thai',
     guideHref: '/blog/best-muay-thai-gyms-chiang-mai',
+    accommodationHubHref: '/blog/chiang-mai-muay-thai-train-and-stay',
     blurb:
       'Northern camps often bundle dorm or bungalow stays with twice-daily group sessions. Mornings run cooler from November through February. Long-stay travelers use the slower city pace to stack weeks without burning out on logistics.',
   },
@@ -103,6 +105,7 @@ const CITY_NOTES: Array<{
     city: 'Phuket',
     searchHref: '/search?country=Thailand&location=Phuket&discipline=Muay%20Thai',
     guideHref: '/blog/best-muay-thai-gyms-phuket',
+    accommodationHubHref: '/blog/muay-thai-camp-phuket-with-accommodation',
     blurb:
       'Phuket has the deepest stay-and-train market: on-site rooms, pool villas a short ride from Chalong, and camps that sell training-only or full board. High season pushes standalone hotel rates up, so fixed package pricing can beat booking room and gym separately.',
   },
@@ -124,6 +127,7 @@ const CITY_NOTES: Array<{
     city: 'Bangkok',
     searchHref: '/search?country=Thailand&location=Bangkok&discipline=Muay%20Thai',
     guideHref: '/blog/best-muay-thai-gyms-bangkok',
+    accommodationHubHref: '/blog/bangkok-muay-thai-train-and-stay',
     blurb:
       'Fewer true on-site camp villages than Phuket, but several gyms partner with nearby hotels or run hostel floors. Budget extra time for BTS, taxi, or motorbike commutes. Stadium nights and day trips to Rajadamnern or Lumpinee are the payoff.',
   },
@@ -346,6 +350,11 @@ export default async function ThailandTrainingCampWithAccommodationPage() {
                   {c.guideHref && (
                     <Link href={c.guideHref} className="font-medium text-gray-700 underline">
                       {c.city} city guide
+                    </Link>
+                  )}
+                  {c.accommodationHubHref && (
+                    <Link href={c.accommodationHubHref} className="font-medium text-gray-700 underline">
+                      {c.city} train-and-stay hub
                     </Link>
                   )}
                   {c.city === 'Krabi' && (

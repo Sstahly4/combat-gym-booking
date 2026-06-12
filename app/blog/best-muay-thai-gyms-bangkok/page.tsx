@@ -13,6 +13,7 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
+import { GuideStayOnSiteCallout } from '@/components/guides/guide-stay-on-site-callout'
 import {
   GuideAccentIntro,
   GuideCtaStrip,
@@ -182,6 +183,14 @@ export default async function BestMuayThaiGymsBangkokPage() {
         statDescription={`Verified/trusted Muay Thai listings matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
+
+      <GuideStayOnSiteCallout city="Bangkok" href="/blog/bangkok-muay-thai-train-and-stay">
+        Looking to stay on-site? Check out our dedicated guide to{' '}
+        <Link href="/blog/bangkok-muay-thai-train-and-stay" className="font-semibold text-[#003580] underline">
+          Bangkok Muay Thai train and stay packages
+        </Link>
+        .
+      </GuideStayOnSiteCallout>
 
       <GuideSection variant="slate" className="mb-14">
         <div className="grid gap-8 md:grid-cols-2 md:items-center">

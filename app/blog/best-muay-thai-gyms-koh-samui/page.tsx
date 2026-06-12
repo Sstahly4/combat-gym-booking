@@ -13,6 +13,7 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
+import { GuideStayOnSiteCallout } from '@/components/guides/guide-stay-on-site-callout'
 import {
   GuideAccentIntro,
   GuideCtaStrip,
@@ -140,6 +141,14 @@ export default async function BestMuayThaiGymsKohSamuiPage() {
         statDescription={`Verified/trusted Muay Thai camps matching ${CITY} on CombatStay.`}
         statIcon={<Sun className="h-5 w-5" />}
       />
+
+      <GuideStayOnSiteCallout city="Koh Samui" href="/blog/koh-samui-muay-thai-camp-with-accommodation">
+        Looking to stay on-site? Check out our dedicated guide to{' '}
+        <Link href="/blog/koh-samui-muay-thai-camp-with-accommodation" className="font-semibold text-[#003580] underline">
+          Koh Samui Muay Thai camps with accommodation
+        </Link>
+        .
+      </GuideStayOnSiteCallout>
 
       <section id="why" className="mb-14 scroll-mt-24">
         <GuideAccentIntro icon={Anchor} title={`Why train Muay Thai in ${CITY}?`} subtitle="Island life + repeatable weeks" />
