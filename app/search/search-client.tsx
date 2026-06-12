@@ -36,6 +36,26 @@ interface GymWithImages extends Gym {
   review_count?: number
 }
 
+/** Search list payload — explicit columns + one thumbnail image per gym (not select *). */
+const SEARCH_GYM_SELECT = `
+  id,
+  name,
+  slug,
+  city,
+  country,
+  address,
+  tagline,
+  description,
+  price_per_day,
+  price_per_week,
+  price_per_month,
+  currency,
+  disciplines,
+  amenities,
+  created_at,
+  images:gym_images(url, variants, order)
+`
+
 const MIN_DESCRIPTION_SNIPPET = 32
 /** ~one handset line at 13px; CSS truncate still applies if needed */
 const MAX_DESCRIPTION_SNIPPET = 78
@@ -391,10 +411,12 @@ function SearchPageContent() {
     const supabase = createClient()
     let query = supabase
       .from('gyms')
-      .select('*, images:gym_images(url, variants, order, focus_x, focus_y)')
+      .select(SEARCH_GYM_SELECT)
       .eq('verification_status', 'verified')
       .eq('status', 'approved')
       .eq('is_live', true)
+      .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
+      .limit(1, { foreignTable: 'gym_images' })
 
     if (filters.location) query = query.or(`city.ilike.%${filters.location}%,country.ilike.%${filters.location}%`)
     if (filters.country) query = query.ilike('country', `%${filters.country}%`)
