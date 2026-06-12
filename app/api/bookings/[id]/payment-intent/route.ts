@@ -8,6 +8,10 @@ import {
   resolveCancellationPolicy,
 } from '@/lib/booking/cancellation-policy'
 import type { GymCancellationPolicyTone } from '@/lib/booking/cancellation-policy'
+import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
 
 type PayTiming = 'now' | 'klarna'
 
@@ -81,6 +85,10 @@ export async function POST(
         { error: 'Booking already processed', details: `status=${booking.status}` },
         { status: 400 }
       )
+    }
+
+    if (booking.status === 'pending' && isBookingStartDateInPast(booking.start_date)) {
+      return NextResponse.json({ error: BOOKING_DATES_EXPIRED_ERROR }, { status: 410 })
     }
 
     const gym = booking.gym as {

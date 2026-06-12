@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { provisionGuestAccountFromBooking } from '@/lib/auth/provision-guest-account-from-booking'
+import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
 
 async function tryProvisionGuestAccount(bookingId: string, appOrigin: string) {
   try {
@@ -51,6 +55,10 @@ export async function POST(
 
     if (booking.status !== 'pending') {
       return NextResponse.json({ error: 'Booking is not in a payable state' }, { status: 400 })
+    }
+
+    if (isBookingStartDateInPast(booking.start_date)) {
+      return NextResponse.json({ error: BOOKING_DATES_EXPIRED_ERROR }, { status: 410 })
     }
 
     // Require a non-empty payment_intent string.

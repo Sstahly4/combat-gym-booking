@@ -8,6 +8,10 @@ import {
   resolveCancellationPolicy,
 } from '@/lib/booking/cancellation-policy'
 import type { GymCancellationPolicyTone } from '@/lib/booking/cancellation-policy'
+import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
 
 /**
  * Fetch a single booking with its related gym/package/variant.
@@ -86,6 +90,10 @@ export async function PATCH(
 
     if (new Date(end_date) <= new Date(start_date)) {
       return NextResponse.json({ error: 'checkout must be after checkin' }, { status: 400 })
+    }
+
+    if (isBookingStartDateInPast(start_date)) {
+      return NextResponse.json({ error: BOOKING_DATES_EXPIRED_ERROR }, { status: 400 })
     }
 
     const supabase = await createClient()

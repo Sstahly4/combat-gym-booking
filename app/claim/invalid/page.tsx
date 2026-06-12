@@ -7,7 +7,7 @@ import Link from 'next/link'
 
 const REASON_COPY: Record<string, { title: string; body: string }> = {
   not_found:  { title: 'This claim link is not valid', body: 'The link you opened is not recognised. Ask the CombatStay team to resend a fresh one.' },
-  used:       { title: 'This claim link has already been used', body: 'Your gym account has already been claimed. Sign in below — if it wasn\u2019t you, contact us right away.' },
+  used:       { title: 'This gym account is already set up', body: 'You\u2019ve already completed claim setup. Sign in with the email and password you chose — if it wasn\u2019t you, contact us right away.' },
   revoked:    { title: 'This claim link has been revoked', body: 'The previous link has been cancelled. Ask us to send you a new one.' },
   expired:    { title: 'This claim link has expired', body: 'For your security, claim links only work for a short window. Ask us to send a fresh link.' },
   missing:    { title: 'This claim link is incomplete', body: 'The URL is missing the security token. Open the original link from us again.' },

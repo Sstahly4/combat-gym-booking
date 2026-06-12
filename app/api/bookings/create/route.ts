@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { randomBytes } from 'crypto'
+import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
 const PLATFORM_COMMISSION_RATE = parseFloat(
   process.env.PLATFORM_COMMISSION_RATE || '0.15'
 )
@@ -52,6 +56,10 @@ export async function POST(request: NextRequest) {
       total_price === ''
     ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    if (isBookingStartDateInPast(start_date)) {
+      return NextResponse.json({ error: BOOKING_DATES_EXPIRED_ERROR }, { status: 400 })
     }
 
     // Server is the source of truth for commission. Never trust client-supplied

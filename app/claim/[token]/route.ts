@@ -5,11 +5,12 @@
  *   1. Hash the token from the URL and look it up in gym_claim_tokens.
  *   2. Verify it's not claimed, revoked, or expired.
  *   3. Resolve the placeholder owner's email via Supabase auth admin.
- *   4. Generate a one-time magic link for that email and verify it server-side
- *      so the response sets the auth cookies for the placeholder user.
- *   5. Mark the token claimed_at = now() (single-use).
- *   6. Redirect to /manage?claimed=1 — the hard-prompt modal in the manage
- *      shell will then force them to set a real password.
+ *   4. Generate a recovery link for that email and verify it server-side so
+ *      the response sets the auth cookies for the placeholder user.
+ *   5. Redirect to /manage?claimed=1 — the hard-prompt modal forces them to
+ *      set a real password. The token stays reusable until that step completes
+ *      (claimed_at is set in complete-claim), so owners can reopen the same link
+ *      if they drop out mid-flow.
  *
  * If anything fails we redirect to /claim/invalid?reason=... so the public
  * page can render a friendly "ask your admin to resend the link" message.
@@ -114,6 +115,16 @@ export async function GET(request: NextRequest, { params }: Params) {
     .single()
   if (gymErr || !gym) return fail(request, 'gym_missing', gymErr?.message)
 
+  const { data: ownerProfile } = await admin
+    .from('profiles')
+    .select('claim_password_set, placeholder_account')
+    .eq('id', gym.owner_id)
+    .maybeSingle()
+
+  if (!ownerProfile?.placeholder_account && ownerProfile?.claim_password_set) {
+    return fail(request, 'used')
+  }
+
   const { data: ownerLookup, error: ownerErr } =
     await admin.auth.admin.getUserById(gym.owner_id)
   if (ownerErr || !ownerLookup?.user?.email) {
@@ -189,18 +200,11 @@ export async function GET(request: NextRequest, { params }: Params) {
     })
   }
 
-  // Single-use: mark claimed only after the session is established.
-  await admin
-    .from('gym_claim_tokens')
-    .update({ claimed_at: new Date().toISOString() })
-    .eq('id', token.id)
-    .is('claimed_at', null)
-
   await recordOwnerEvent(admin as never, {
     event_type: 'gym_claim_link_redeemed',
     user_id: gym.owner_id,
     gym_id: gym.id,
-    metadata: { gym_name: gym.name },
+    metadata: { gym_name: gym.name, credentials_pending: true },
   })
 
   return redirectResponse

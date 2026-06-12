@@ -250,7 +250,7 @@ export default function AdminOverviewPage() {
           <ActionCard
             href="/admin/orphan-gyms"
             title="Issue claim links"
-            description="Generate single-use links so pre-listed owners can take over their account."
+            description="Generate invitation links so pre-listed owners can take over their account."
             icon={KeyRound}
             tone="attention"
           />

@@ -56,6 +56,10 @@ import {
 } from '@/lib/utils/booking-prefill'
 import { DateRangePicker } from '@/components/date-range-picker'
 import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
+import {
   clearGuestCheckoutSession,
   readGuestDetails,
   writeGuestDetails,
@@ -972,6 +976,16 @@ export default function PaymentPage() {
 
       if (bookingResponse.ok) {
         const bookingApiData = await bookingResponse.json()
+
+        if (
+          bookingApiData.status === 'pending' &&
+          isBookingStartDateInPast(bookingApiData.start_date)
+        ) {
+          setError(BOOKING_DATES_EXPIRED_ERROR)
+          setLoading(false)
+          return
+        }
+
         const gymCurrency = bookingApiData.gym?.currency ?? 'USD'
         if (payWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)) {
           effectivePayWhen = 'now'
@@ -1096,6 +1110,12 @@ export default function PaymentPage() {
   // Hard error only — missing clientSecret while loading is normal and
   // handled by the overlay + conditional Elements render below.
   if (error) {
+    const datesExpired = error === BOOKING_DATES_EXPIRED_ERROR
+    const restartUrl =
+      booking?.gym_id && booking.package_id
+        ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}`
+        : null
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -1105,7 +1125,9 @@ export default function PaymentPage() {
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CreditCard className="w-8 h-8 text-red-600" />
                 </div>
-                <h2 className="text-xl font-bold mb-2">Payment Unavailable</h2>
+                <h2 className="text-xl font-bold mb-2">
+                  {datesExpired ? 'Booking no longer available' : 'Payment Unavailable'}
+                </h2>
                 <p className="text-gray-600 mb-2">{error}</p>
                 {error.includes('not configured') && (
                   <p className="text-sm text-gray-500 mt-2">
@@ -1114,8 +1136,14 @@ export default function PaymentPage() {
                 )}
               </div>
               <div className="flex gap-3 justify-center">
-                <Button onClick={() => router.back()} variant="outline">Go Back</Button>
-                <Button onClick={() => window.location.reload()}>Try Again</Button>
+                {datesExpired && restartUrl ? (
+                  <Button onClick={() => router.replace(restartUrl)}>Choose new dates</Button>
+                ) : (
+                  <>
+                    <Button onClick={() => router.back()} variant="outline">Go Back</Button>
+                    <Button onClick={() => window.location.reload()}>Try Again</Button>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>

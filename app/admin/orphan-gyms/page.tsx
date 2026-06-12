@@ -165,7 +165,7 @@ export default function OrphanGymsPage() {
           <p className="mt-1 max-w-prose text-sm text-stone-600">
             Pre-listed gyms ready to be handed over to a real owner. Generating
             a link mints a placeholder owner (first time only) and gives you a
-            single-use URL to send the gym owner.
+            secure invitation URL to send the gym owner (valid until they set a password or it expires).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export default function OrphanGymsPage() {
               {linkModal?.regenerated ? 'New claim link generated' : 'Claim link ready'}
             </DialogTitle>
             <DialogDescription>
-              Send this single-use URL to the owner of{' '}
+              Send this invitation URL to the owner of{' '}
               <span className="font-medium text-stone-900">{linkModal?.gymName}</span>.
               We won&apos;t show it again — copy it now.
             </DialogDescription>
@@ -366,12 +366,14 @@ function OrphanCard({
   const t = gym.latest_token
   const isPreListed = gym.state === 'pre_listed'
 
+  const isActivated = gym.claim_password_set || Boolean(t?.claimed_at)
+
   const status = isPreListed && !t
     ? 'Awaiting first link'
-    : t?.active
-      ? 'Active link'
-      : t?.claimed_at
-        ? 'Claimed (password not yet set)'
+    : isActivated
+      ? 'Activated'
+      : t?.active
+        ? 'Active link'
         : t?.revoked_at
           ? 'Revoked'
           : t?.expired
@@ -381,13 +383,15 @@ function OrphanCard({
   const statusClass =
     isPreListed && !t
       ? 'bg-stone-200 text-stone-800'
-      : t?.active
-        ? 'bg-emerald-100 text-emerald-800'
-        : t?.expired
-          ? 'bg-amber-100 text-amber-800'
-          : t?.revoked_at
-            ? 'bg-stone-200 text-stone-700'
-            : 'bg-stone-100 text-stone-600'
+      : isActivated
+        ? 'bg-blue-100 text-blue-800'
+        : t?.active
+          ? 'bg-emerald-100 text-emerald-800'
+          : t?.expired
+            ? 'bg-amber-100 text-amber-800'
+            : t?.revoked_at
+              ? 'bg-stone-200 text-stone-700'
+              : 'bg-stone-100 text-stone-600'
 
   return (
     <Card className="overflow-hidden">
@@ -420,7 +424,7 @@ function OrphanCard({
           <p className="text-xs text-stone-500">
             Last link issued {new Date(t.created_at).toLocaleString()},
             {' '}expires {new Date(t.expires_at).toLocaleString()}
-            {t.claimed_at ? ` · claimed ${new Date(t.claimed_at).toLocaleString()}` : ''}
+            {t.claimed_at ? ` · activated ${new Date(t.claimed_at).toLocaleString()}` : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
           </p>
         )}

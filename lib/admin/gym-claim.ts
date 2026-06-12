@@ -1,6 +1,7 @@
 /**
  * Gym claim helpers — admin-issued, regeneratable claim links that let a real
  * owner take over a gym account that the platform pre-created on their behalf.
+ * Links remain valid until the owner sets their password (or the token expires).
  *
  * Plaintext tokens are 32 bytes hex (64 chars). We store SHA-256 of the token,
  * never the plaintext. The plaintext is only shown to the admin once at

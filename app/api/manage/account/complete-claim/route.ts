@@ -6,7 +6,8 @@
  * the user has never seen, so we deliberately do NOT require a current
  * password here — gating is "you are signed in AND your profile is still in
  * placeholder state". The moment they pick a password we flip
- * claim_password_set = true and the modal goes away.
+ * claim_password_set = true, burn the gym claim token (claimed_at), and the
+ * modal goes away. The invitation link stays valid until this step succeeds.
  *
  * Requires a real email; we update the auth email via service role (skipping
  * the verification round-trip — they're already authenticated through the
@@ -23,6 +24,7 @@ import { validatePasswordRules } from '@/lib/auth/password-rules'
 import { recordOwnerEvent } from '@/lib/telemetry/owner-events'
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 import { trySendPartnerWelcomeSequenceStart } from '@/lib/partner-emails/partner-email-sequence'
+import { burnActiveClaimTokenForOwner } from '@/lib/admin/burn-claim-token'
 
 function isValidEmail(value: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)
@@ -262,11 +264,20 @@ export async function POST(request: NextRequest) {
       claimGymId = null
     }
 
+    const tokenBurn = await burnActiveClaimTokenForOwner(admin, user.id)
+    if (!tokenBurn.burned) {
+      console.warn('[complete-claim] claim token not burned after password set', {
+        user_id: user.id,
+        gym_id: tokenBurn.gymId,
+        token_id: tokenBurn.tokenId,
+      })
+    }
+
     await recordOwnerEvent(admin as never, {
       event_type: 'gym_claim_password_set',
       user_id: user.id,
-      gym_id: claimGymId,
-      metadata: { email_changed: emailChanged },
+      gym_id: claimGymId ?? tokenBurn.gymId,
+      metadata: { email_changed: emailChanged, claim_token_burned: tokenBurn.burned },
     })
     if (emailChanged) {
       await recordOwnerEvent(admin as never, {

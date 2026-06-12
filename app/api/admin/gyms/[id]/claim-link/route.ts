@@ -12,6 +12,7 @@
  * new placeholder. Subsequent generations just rotate the token.
  *
  * The plaintext token is returned to the admin ONCE (not stored anywhere).
+ * Tokens are consumed when the owner completes password setup, not on first open.
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

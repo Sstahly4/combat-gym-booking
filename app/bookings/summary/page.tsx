@@ -28,6 +28,10 @@ import {
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
+import {
+  BOOKING_DATES_EXPIRED_ERROR,
+  isBookingStartDateInPast,
+} from '@/lib/booking/validate-booking-dates'
 import { CHECKOUT_PAY_BUTTON_CLASS, CheckoutStepTitle } from '@/components/booking/checkout-ui'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -514,6 +518,10 @@ function BookingSummaryPageContent() {
 
   const handleSubmit = async () => {
     if (!gym || !package_) return
+    if (checkin && isBookingStartDateInPast(checkin)) {
+      setError(BOOKING_DATES_EXPIRED_ERROR)
+      return
+    }
     if (!isValidDuration) {
       setError('Please select valid dates')
       return
