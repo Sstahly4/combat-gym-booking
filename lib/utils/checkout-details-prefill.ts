@@ -1,4 +1,5 @@
 import type { Profile } from '@/lib/types/database'
+import { clearAllCheckoutReviewNudges } from '@/lib/utils/checkout-review-nudge'
 
 const GUEST_DETAILS_PREFIX = 'guest_details_'
 const GUEST_FLOW_PREFIX = 'booking_session_'
@@ -167,4 +168,5 @@ export function clearGuestFlowSession(gymId: string): void {
 export function clearGuestCheckoutSession(gymId: string): void {
   clearGuestDetails(gymId)
   clearGuestFlowSession(gymId)
+  clearAllCheckoutReviewNudges()
 }

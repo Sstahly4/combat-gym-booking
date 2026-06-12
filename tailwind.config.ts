@@ -73,12 +73,26 @@ const config = {
           "40%": { transform: "scale(1.07)" },
           "100%": { transform: "scale(1)" },
         },
+        /** Confirm-and-pay mobile review nudge — grow in on load */
+        "checkout-review-nudge-enter": {
+          "0%": { opacity: "0", transform: "scale(0.88)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        /** Bounce arrow upward to hint scrolling down the page */
+        "checkout-review-nudge-arrow": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "bottom-nav-icon-pop":
           "bottom-nav-icon-pop 0.26s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "checkout-review-nudge-enter":
+          "checkout-review-nudge-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "checkout-review-nudge-arrow":
+          "checkout-review-nudge-arrow 2.2s ease-in-out infinite",
       },
     },
   },

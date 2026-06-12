@@ -1,4 +1,5 @@
 import { prefillMatchesGymRoute } from '@/lib/utils/gym-route'
+import { clearAllCheckoutReviewNudges } from '@/lib/utils/checkout-review-nudge'
 
 /**
  * Booking prefill cache — written when the user taps Continue on the review
@@ -36,6 +37,7 @@ export function writeBookingPrefill(
   data: Omit<BookingPrefillData, 'writtenAt'>
 ): void {
   try {
+    clearAllCheckoutReviewNudges()
     const payload: BookingPrefillData = { ...data, writtenAt: Date.now() }
     sessionStorage.setItem(PREFILL_KEY, JSON.stringify(payload))
   } catch {}

@@ -6,6 +6,8 @@ import {
   useState,
   type ComponentProps,
   type ReactNode,
+  type Ref,
+  type RefObject,
 } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
@@ -106,6 +108,7 @@ import {
   CheckoutArrivalInfoRow,
   CheckoutArrivalInfoSheet,
 } from '@/components/booking/checkout-arrival-info'
+import { CheckoutReviewNudge } from '@/components/booking/checkout-review-nudge'
 import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -239,6 +242,7 @@ function CheckoutForm({
   mobileCheckoutDisabled = false,
   payWhen = 'now',
   priceDetailsSection,
+  confirmCtaRef,
 }: {
   booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
@@ -252,6 +256,7 @@ function CheckoutForm({
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
   priceDetailsSection?: ReactNode
+  confirmCtaRef?: RefObject<HTMLDivElement | null>
 }) {
   const router = useRouter()
   const params = useParams()
@@ -452,7 +457,7 @@ function CheckoutForm({
 
         {priceDetailsSection}
 
-        <div className="space-y-2">
+        <div ref={confirmCtaRef as Ref<HTMLDivElement>} className="space-y-2">
           <CheckoutPaymentConsent />
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -661,6 +666,8 @@ export default function PaymentPage() {
   const [draftGuestCount, setDraftGuestCount] = useState(1)
   const [draftCheckin, setDraftCheckin] = useState('')
   const [draftCheckout, setDraftCheckout] = useState('')
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+  const confirmCtaRef = useRef<HTMLDivElement>(null)
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -1274,11 +1281,18 @@ export default function PaymentPage() {
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto md:pb-0">
+      <div ref={scrollRootRef} className="flex-1 overflow-y-auto md:pb-0">
         <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6">
           <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
+
+          <CheckoutReviewNudge
+            bookingId={bookingId}
+            scrollRootRef={scrollRootRef}
+            confirmCtaRef={confirmCtaRef}
+            ready={!!clientSecret}
+          />
 
           <div className="space-y-4">
             <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -1527,6 +1541,7 @@ export default function PaymentPage() {
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
+                confirmCtaRef={confirmCtaRef}
                 priceDetailsSection={
                   priceInfo && rawTotal > 0 ? (
                     <CheckoutPriceDetailsInline
