@@ -11,13 +11,13 @@ import {
 export function CheckoutReviewNudge({
   bookingId,
   scrollRootRef,
-  dismissTarget,
+  dismissAnchorRef,
   ready = true,
 }: {
   bookingId: string
   scrollRootRef: RefObject<HTMLElement | null>
   /** Price details + confirm CTA block — observed for auto-dismiss. */
-  dismissTarget: HTMLElement | null
+  dismissAnchorRef: RefObject<HTMLElement | null>
   /** When false, the dismiss target is not mounted yet (e.g. Stripe still loading). */
   ready?: boolean
 }) {
@@ -31,12 +31,13 @@ export function CheckoutReviewNudge({
   }, [bookingId])
 
   useEffect(() => {
-    if (!visible || !ready || !dismissTarget || isCheckoutReviewNudgeDismissed(bookingId)) return
-
-    const root = scrollRootRef.current
-    if (!root) return
+    if (!visible || !ready || isCheckoutReviewNudgeDismissed(bookingId)) return
 
     let dismissed = false
+    let observer: IntersectionObserver | null = null
+    let raf = 0
+    let cancelled = false
+
     const dismiss = () => {
       if (dismissed || isCheckoutReviewNudgeDismissed(bookingId)) return
       dismissed = true
@@ -45,26 +46,46 @@ export function CheckoutReviewNudge({
       window.setTimeout(() => setVisible(false), 280)
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting || entry.intersectionRatio < 0.1) return
-        dismiss()
-      },
-      {
-        root,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        // Shrink root bottom by ~nudge height so we dismiss once content is visible above the pill.
-        rootMargin: '0px 0px -5rem 0px',
-      },
-    )
+    const attachObserver = () => {
+      if (cancelled || dismissed) return
 
-    observer.observe(dismissTarget)
-    return () => observer.disconnect()
-  }, [visible, ready, bookingId, scrollRootRef, dismissTarget])
+      const root = scrollRootRef.current
+      const target = dismissAnchorRef.current
+      if (!root || !target) {
+        raf = requestAnimationFrame(attachObserver)
+        return
+      }
+
+      try {
+        observer = new IntersectionObserver(
+          ([entry]) => {
+            if (!entry?.isIntersecting || entry.intersectionRatio < 0.1) return
+            dismiss()
+          },
+          {
+            root,
+            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+            rootMargin: '0px 0px -80px 0px',
+          },
+        )
+        observer.observe(target)
+      } catch (err) {
+        console.warn('[checkout-review-nudge] IntersectionObserver failed', err)
+      }
+    }
+
+    attachObserver()
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+      observer?.disconnect()
+    }
+  }, [visible, ready, bookingId, scrollRootRef, dismissAnchorRef])
 
   const handleClick = useCallback(() => {
     const root = scrollRootRef.current
-    const target = dismissTarget
+    const target = dismissAnchorRef.current
     if (!target) return
     if (root) {
       const rootTop = root.getBoundingClientRect().top
@@ -76,7 +97,7 @@ export function CheckoutReviewNudge({
       return
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [dismissTarget, scrollRootRef])
+  }, [dismissAnchorRef, scrollRootRef])
 
   if (!visible) return null
 
@@ -84,7 +105,7 @@ export function CheckoutReviewNudge({
     <div
       className={cn(
         'md:hidden fixed inset-x-0 z-[280] flex justify-center pointer-events-none',
-        'pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+        'pb-[max(1.25rem,env(safe-area-inset-bottom))]',
       )}
       style={{ bottom: 0 }}
     >
@@ -98,7 +119,7 @@ export function CheckoutReviewNudge({
           'shadow-[0_8px_24px_rgba(0,53,128,0.35)]',
           leaving
             ? 'scale-95 opacity-0 transition-all duration-300 ease-in'
-            : 'animate-checkout-review-nudge-enter'
+            : 'animate-checkout-review-nudge-enter',
         )}
       >
         <ChevronDown

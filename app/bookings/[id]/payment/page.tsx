@@ -1,13 +1,12 @@
 'use client'
 
 import {
-  useCallback,
   useEffect,
   useRef,
   useState,
   type ComponentProps,
   type ReactNode,
-  type RefCallback,
+  type RefObject,
 } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadStripe, type StripeError } from '@stripe/stripe-js'
@@ -258,7 +257,7 @@ function CheckoutForm({
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
   priceDetailsSection?: ReactNode
-  dismissAnchorRef?: RefCallback<HTMLDivElement>
+  dismissAnchorRef?: RefObject<HTMLDivElement | null>
 }) {
   const router = useRouter()
   const params = useParams()
@@ -457,7 +456,7 @@ function CheckoutForm({
           )}
         </form>
 
-        <div ref={dismissAnchorRef} className="space-y-6">
+        <div ref={dismissAnchorRef as RefObject<HTMLDivElement>} className="space-y-6">
         {priceDetailsSection}
 
         <div className="space-y-2">
@@ -674,10 +673,7 @@ export default function PaymentPage() {
   const [draftCheckin, setDraftCheckin] = useState('')
   const [draftCheckout, setDraftCheckout] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
-  const [reviewNudgeDismissTarget, setReviewNudgeDismissTarget] = useState<HTMLElement | null>(null)
-  const reviewNudgeDismissAnchorRef = useCallback((node: HTMLDivElement | null) => {
-    setReviewNudgeDismissTarget(node)
-  }, [])
+  const dismissAnchorRef = useRef<HTMLDivElement | null>(null)
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -1549,7 +1545,7 @@ export default function PaymentPage() {
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
-                dismissAnchorRef={reviewNudgeDismissAnchorRef}
+                dismissAnchorRef={dismissAnchorRef}
                 priceDetailsSection={
                   priceInfo && rawTotal > 0 ? (
                     <CheckoutPriceDetailsInline
@@ -1864,8 +1860,8 @@ export default function PaymentPage() {
       <CheckoutReviewNudge
         bookingId={bookingId}
         scrollRootRef={scrollRootRef}
-        dismissTarget={reviewNudgeDismissTarget}
-        ready={!!clientSecret && !!reviewNudgeDismissTarget}
+        dismissAnchorRef={dismissAnchorRef}
+        ready={!!clientSecret}
       />
 
       {whatsIncludedSheetOpen && booking.package && (
