@@ -133,7 +133,8 @@ export const getHomepageDataCached = unstable_cache(
     ])
 
     const topRatedGyms = deriveTopRatedGyms(allGymsWithPackages, topRatedLimit)
-    const firstRowIds = new Set(firstRowGyms.map((gym) => gym.id).filter(Boolean))
+    // Must be a plain array — unstable_cache JSON-serializes values; Set becomes {} and breaks spread.
+    const firstRowIds = firstRowGyms.map((gym) => gym.id).filter(Boolean) as string[]
 
     return {
       allGymsWithPackages,
