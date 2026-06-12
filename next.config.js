@@ -88,20 +88,20 @@ const nextConfig = {
       // next/script chunks (self), Stripe payment JS, Stripe Connect embedded
       // components, Vercel Analytics/Speed Insights (served via /_vercel/ on
       // Vercel, i.e. self — va.vercel-scripts.com is the CDN fallback in dev),
-      // Microsoft Clarity session replay.
+      // Microsoft Clarity session replay, Google Analytics (gtag.js).
       // 'unsafe-inline' is required here because @stripe/react-connect-js
       // (the payout onboarding UI) injects dynamically generated inline scripts
       // whose content changes on every load — per-load hashes are not feasible
       // and Stripe does not expose a nonce hook. This is a known limitation of
       // Stripe Connect embedded components; all other script sources are locked.
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com https://www.clarity.ms https://scripts.clarity.ms https://*.clarity.ms",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://va.vercel-scripts.com https://www.clarity.ms https://scripts.clarity.ms https://*.clarity.ms https://www.googletagmanager.com",
       // Stripe Elements iframe, Stripe Connect iframe, Google Maps embed iframe.
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com",
       // Supabase REST/Auth/Storage/Realtime, Stripe API, Vercel vitals beacon.
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com https://*.clarity.ms",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com https://*.clarity.ms https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
       // next/image optimised URLs (self + blob), Supabase Storage, all five
       // remotePatterns from next.config.js images section, Google Maps tiles.
-      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com https://flagcdn.com https://hatscripts.github.io https://c.bing.com https://*.clarity.ms",
+      "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com https://flagcdn.com https://hatscripts.github.io https://c.bing.com https://*.clarity.ms https://www.google-analytics.com https://www.googletagmanager.com",
       // Tailwind and Radix component inline styles.
       "style-src 'self' 'unsafe-inline'",
       // next/font/google downloads Inter at build time and self-hosts it —
