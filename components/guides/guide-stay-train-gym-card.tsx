@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import type { StayTrainGym } from '@/lib/guides/stay-train-shortlist'
-import { stayTrainGymImages } from '@/lib/guides/stay-train-shortlist'
+import type { StayTrainGym } from '@/lib/guides/stay-train-gym-utils'
+import { stayTrainGymImages } from '@/lib/guides/stay-train-gym-utils'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import {
   trackAlternativeCampClick,

@@ -1,5 +1,9 @@
 import { getThailandGymsForGuide, type GuideGym } from '@/lib/guides/thailand-gyms'
 import { mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
+import {
+  pickCityHeroImage,
+  stayTrainGymImages,
+} from '@/lib/guides/stay-train-gym-utils'
 
 export type StayTrainGym = GuideGym & {
   _amenities: ReturnType<typeof mergeGymAmenitiesFromDb>
@@ -51,19 +55,4 @@ export async function getStayTrainShortlist({
     .slice(0, limit)
 }
 
-export function stayTrainGymImages(g: GuideGym) {
-  const urls = (g.images || []).map((img) => img.url).filter(Boolean) as string[]
-  return {
-    gym: urls[0] || null,
-    room: urls[1] || urls[0] || null,
-    all: urls,
-  }
-}
-
-export function pickCityHeroImage(gyms: StayTrainGym[], fallback: string) {
-  for (const g of gyms) {
-    const img = stayTrainGymImages(g).gym
-    if (img) return img
-  }
-  return fallback
-}
+export { pickCityHeroImage, stayTrainGymImages }
