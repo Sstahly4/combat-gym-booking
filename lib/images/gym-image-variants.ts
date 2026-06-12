@@ -149,6 +149,11 @@ export function gymImageSrc(image: Pick<GymImage, 'url' | 'variants'> | null | u
   return image?.variants?.w800 || image?.variants?.w1200 || image?.variants?.w400 || image?.url || ''
 }
 
+/** Card/thumbnail contexts — prefer smallest variant to minimize CDN egress. */
+export function gymImageCardSrc(image: Pick<GymImage, 'url' | 'variants'> | null | undefined): string {
+  return image?.variants?.w400 || image?.variants?.w800 || image?.variants?.w1200 || image?.url || ''
+}
+
 export function gymImageSrcSet(image: Pick<GymImage, 'url' | 'variants'> | null | undefined): string | undefined {
   const v = image?.variants
   if (!v) return undefined

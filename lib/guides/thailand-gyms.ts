@@ -1,10 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
-import { attachReviewStats } from '@/lib/reviews/attach-review-stats'
+import { unstable_cache } from 'next/cache'
+import { createPublicClient } from '@/lib/supabase/public-server'
+import { attachReviewStatsPublic } from '@/lib/reviews/attach-review-stats-public'
 import { gymListsDiscipline } from '@/lib/guides/discipline-match'
 import type { Gym, GymImage, VerificationStatus } from '@/lib/types/database'
 
 export type GuideGym = Gym & {
-  images?: Array<Pick<GymImage, 'url' | 'order'>>
+  images?: Array<Pick<GymImage, 'url' | 'variants' | 'order'>>
   /** Present when column exists on row */
   training_schedule?: Record<string, Array<{ time: string; type?: string }>>
   averageRating: number
@@ -24,27 +25,6 @@ function normalizeDiscipline(discipline: string) {
   return discipline.trim().toLowerCase()
 }
 
-function quoteArrayLiteralValue(value: string) {
-  const escaped = value.replaceAll('"', '\\"')
-  return `"${escaped}"`
-}
-
-// Broad DB pre-filter; we always apply gymListsDiscipline() after fetch for accuracy.
-function disciplineVariants(discipline: string): string[] {
-  const d = normalizeDiscipline(discipline)
-  if (d === 'muay thai') return ['Muay Thai', 'muay thai', 'MuayThai', 'Muay-Thai']
-  if (d === 'mma') return ['MMA', 'Mixed Martial Arts', 'mixed martial arts', 'mma']
-  if (d === 'bjj' || d === 'jiu jitsu' || d === 'brazilian jiu jitsu') {
-    return ['BJJ', 'bjj', 'Brazilian Jiu Jitsu', 'Brazilian Jiu-Jitsu', 'Jiu Jitsu', 'Jiu-Jitsu', 'No-Gi']
-  }
-  if (d === 'boxing') return ['Boxing', 'boxing']
-  if (d === 'kickboxing' || d === 'kick boxing' || d === 'k1' || d === 'k-1') {
-    return ['Kickboxing', 'kickboxing', 'Kick Boxing', 'kick boxing', 'K-1', 'K1']
-  }
-  if (d === 'judo') return ['Judo', 'judo']
-  return [discipline]
-}
-
 function postFilterByDiscipline(gyms: GuideGym[], discipline?: string): GuideGym[] {
   if (!discipline) return gyms
   const d = normalizeDiscipline(discipline)
@@ -59,46 +39,53 @@ function postFilterByDiscipline(gyms: GuideGym[], discipline?: string): GuideGym
   return gyms
 }
 
-export async function getThailandGymsForGuide(filters: ThailandGuideFilters = {}): Promise<GuideGym[]> {
-  const supabase = await createClient()
-
-  let query = supabase
-    .from('gyms')
-    .select('*, images:gym_images(url, variants, order)')
-    .in('verification_status', LIVE_STATUSES)
-    .ilike('country', '%Thailand%')
-
-  if (filters.city) {
-    const c = filters.city.trim()
-    query = query.ilike('city', `%${c}%`)
-  }
-
-  if (filters.discipline) {
-    const variants = disciplineVariants(filters.discipline)
-    const orExpr = variants.map((v) => `disciplines.cs.{${quoteArrayLiteralValue(v)}}`).join(',')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    query = (query as any).or(orExpr)
-  }
-
-  const { data } = await query
-
-  let gyms = (data || []) as GuideGym[]
-
-  gyms.forEach((gym) => {
-    if (gym.images && Array.isArray(gym.images)) {
-      gym.images.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-    }
-  })
-
-  // Guarantee discipline relevance (only BJJ gyms on BJJ page, etc.)
-  gyms = postFilterByDiscipline(gyms, filters.discipline)
-
-  const withReviews = await attachReviewStats(gyms as any)
-  const sorted = withReviews.sort((a: any, b: any) => {
+function sortGuideGyms(gyms: GuideGym[]): GuideGym[] {
+  return [...gyms].sort((a, b) => {
     if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating
     if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
     return (a.name || '').localeCompare(b.name || '')
-  }) as GuideGym[]
+  })
+}
+
+function sortGymImages(gyms: GuideGym[]): GuideGym[] {
+  gyms.forEach((gym) => {
+    if (gym.images && Array.isArray(gym.images)) {
+      gym.images.sort((a, b) => (a.order || 0) - (b.order || 0))
+    }
+  })
+  return gyms
+}
+
+/** One cached Thailand pool — all guide pages filter in memory instead of re-querying. */
+const getThailandGuidePoolCached = unstable_cache(
+  async (): Promise<GuideGym[]> => {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from('gyms')
+      .select('*, images:gym_images(url, variants, order)')
+      .in('verification_status', LIVE_STATUSES)
+      .ilike('country', '%Thailand%')
+
+    const gyms = sortGymImages((data || []) as GuideGym[])
+    return (await attachReviewStatsPublic(gyms)) as GuideGym[]
+  },
+  ['thailand-guide-pool-v1'],
+  { revalidate: 3600 },
+)
+
+export async function getThailandGymsForGuide(filters: ThailandGuideFilters = {}): Promise<GuideGym[]> {
+  let gyms = await getThailandGuidePoolCached()
+
+  if (filters.city) {
+    const needle = filters.city.trim().toLowerCase()
+    gyms = gyms.filter((g) => (g.city || '').toLowerCase().includes(needle))
+  }
+
+  if (filters.discipline) {
+    gyms = postFilterByDiscipline(gyms, filters.discipline)
+  }
+
+  const sorted = sortGuideGyms(gyms)
 
   const limit = typeof filters.limit === 'number' ? filters.limit : undefined
   return typeof limit === 'number' ? sorted.slice(0, Math.max(0, limit)) : sorted

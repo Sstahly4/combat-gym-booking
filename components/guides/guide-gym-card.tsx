@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { Clock, MapPin, Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { GuideGym } from '@/lib/guides/thailand-gyms'
+import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import { trainingScheduleSnippet } from '@/lib/guides/schedule-snippet'
 import { labelGymAmenity, mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
@@ -44,7 +45,8 @@ function buildSignalLine(gym: GuideGym): string | null {
 }
 
 export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: GuideGymCardProps) {
-  const imageSrc = gym.images?.[0]?.url || fallbackImageSrc || '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
+  const imageSrc =
+    gymImageCardSrc(gym.images?.[0]) || fallbackImageSrc || '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
   const priceLine = gym.price_per_week
     ? `${formatMoney(gym.price_per_day, gym.currency)}/day · ${formatMoney(gym.price_per_week, gym.currency)}/week`

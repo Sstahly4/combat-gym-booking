@@ -1,4 +1,5 @@
 import type { GymImage } from '@/lib/types/database'
+import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 
 /** Client-safe gym shape for stay-and-train cards and photo strips. */
 export type StayTrainGym = {
@@ -6,7 +7,7 @@ export type StayTrainGym = {
   slug?: string | null
   name: string
   city?: string | null
-  images?: Array<Pick<GymImage, 'url' | 'order'>>
+  images?: Array<Pick<GymImage, 'url' | 'variants' | 'order'>>
   averageRating: number
   reviewCount: number
   price_per_day?: number | null
@@ -16,11 +17,12 @@ export type StayTrainGym = {
 }
 
 export function stayTrainGymImages(g: Pick<StayTrainGym, 'images'>) {
-  const urls = (g.images || []).map((img) => img.url).filter(Boolean) as string[]
+  const sorted = [...(g.images || [])].sort((a, b) => (a.order || 0) - (b.order || 0))
+  const cardUrls = sorted.map((img) => gymImageCardSrc(img)).filter(Boolean)
   return {
-    gym: urls[0] || null,
-    room: urls[1] || urls[0] || null,
-    all: urls,
+    gym: cardUrls[0] || null,
+    room: cardUrls[1] || cardUrls[0] || null,
+    all: cardUrls,
   }
 }
 

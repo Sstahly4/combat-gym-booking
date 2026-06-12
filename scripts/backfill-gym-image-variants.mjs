@@ -1,0 +1,288 @@
+/**
+ * Backfill gym_images.variants (w400/w800/w1200 WebP) for rows still on `{}`.
+ *
+ * Paths + JSONB keys must match lib/images/gym-image-variants.ts uploadGymImageWithVariants().
+ *
+ * Prerequisites (.env.local):
+ *   NEXT_PUBLIC_SUPABASE_URL
+ *   SUPABASE_SERVICE_ROLE_KEY
+ *
+ * Usage:
+ *   pnpm run backfill:gym-image-variants -- --dry-run
+ *   pnpm run backfill:gym-image-variants -- --limit 5
+ *   pnpm run backfill:gym-image-variants
+ *
+ * Options:
+ *   --dry-run       Log actions only; no uploads or DB writes
+ *   --limit N       Process at most N rows (default: all pending)
+ *   --batch-size N  Rows per batch (default: 25)
+ *   --delay-ms N    Pause between batches (default: 750)
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
+import { createClient } from '@supabase/supabase-js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const ROOT = path.join(__dirname, '..')
+
+/** Must stay in sync with lib/images/gym-image-variants.ts */
+const GYM_IMAGE_VARIANT_WIDTHS = [400, 800, 1200]
+const BUCKET = 'gym-images'
+const WEBP_QUALITY = 78
+
+function loadEnvLocal() {
+  const envPath = path.join(ROOT, '.env.local')
+  if (!fs.existsSync(envPath)) return
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq <= 0) continue
+    const key = trimmed.slice(0, eq).trim()
+    let value = trimmed.slice(eq + 1).trim()
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+    if (process.env[key] === undefined) process.env[key] = value
+  }
+}
+
+function parseArgs(argv) {
+  const opts = {
+    dryRun: false,
+    limit: Infinity,
+    batchSize: 25,
+    delayMs: 750,
+  }
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--dry-run') opts.dryRun = true
+    else if (arg === '--limit') opts.limit = Number(argv[++i])
+    else if (arg.startsWith('--limit=')) opts.limit = Number(arg.split('=')[1])
+    else if (arg === '--batch-size') opts.batchSize = Number(argv[++i])
+    else if (arg.startsWith('--batch-size=')) opts.batchSize = Number(arg.split('=')[1])
+    else if (arg === '--delay-ms') opts.delayMs = Number(argv[++i])
+    else if (arg.startsWith('--delay-ms=')) opts.delayMs = Number(arg.split('=')[1])
+  }
+  return opts
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function parseStoragePath(publicUrl) {
+  const marker = `/storage/v1/object/public/${BUCKET}/`
+  const idx = publicUrl.indexOf(marker)
+  if (idx === -1) return null
+  return decodeURIComponent(publicUrl.slice(idx + marker.length).split('?')[0])
+}
+
+function stemFromStoragePath(storagePath) {
+  const base = path.posix.basename(storagePath)
+  const ext = path.posix.extname(base)
+  return ext ? base.slice(0, -ext.length) : base
+}
+
+function variantStoragePath(gymId, stem, widthKey) {
+  return `${gymId}/variants/${stem}-${widthKey}.webp`
+}
+
+function needsBackfill(variants) {
+  if (!variants || typeof variants !== 'object') return true
+  return !variants.w400 && !variants.w800 && !variants.w1200
+}
+
+function mergeVariants(existing, generated) {
+  return { ...(existing || {}), ...generated }
+}
+
+async function downloadOriginal(url) {
+  const res = await fetch(url, { redirect: 'follow' })
+  if (!res.ok) throw new Error(`Download failed (${res.status}): ${url}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (buf.length === 0) throw new Error(`Empty download: ${url}`)
+  return buf
+}
+
+async function generateVariantBuffers(originalBuffer) {
+  const pipeline = sharp(originalBuffer, { failOn: 'none' }).rotate()
+  const meta = await pipeline.metadata()
+  const sourceWidth = meta.width || 0
+  if (sourceWidth <= 0) throw new Error('Could not read image width')
+
+  const out = {}
+  for (const width of GYM_IMAGE_VARIANT_WIDTHS) {
+    if (width > sourceWidth) continue
+    const key = `w${width}`
+    const buffer = await sharp(originalBuffer, { failOn: 'none' })
+      .rotate()
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: WEBP_QUALITY, effort: 4 })
+      .toBuffer()
+    out[key] = buffer
+  }
+  return out
+}
+
+async function fetchPendingRows(supabase, limit) {
+  const pageSize = 200
+  const rows = []
+  let from = 0
+
+  while (rows.length < limit) {
+    const { data, error } = await supabase
+      .from('gym_images')
+      .select('id, gym_id, url, variants')
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1)
+
+    if (error) throw error
+    if (!data?.length) break
+
+    for (const row of data) {
+      if (needsBackfill(row.variants)) {
+        rows.push(row)
+        if (rows.length >= limit) break
+      }
+    }
+
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+
+  return rows
+}
+
+async function processRow(supabase, row, dryRun) {
+  const storagePath = parseStoragePath(row.url)
+  if (!storagePath) {
+    return { id: row.id, status: 'skipped', reason: 'unparseable url' }
+  }
+
+  const stem = stemFromStoragePath(storagePath)
+  if (!stem) {
+    return { id: row.id, status: 'skipped', reason: 'empty stem' }
+  }
+
+  const originalBuffer = await downloadOriginal(row.url)
+  const variantBuffers = await generateVariantBuffers(originalBuffer)
+  const keys = Object.keys(variantBuffers)
+  if (keys.length === 0) {
+    return { id: row.id, status: 'skipped', reason: 'no applicable widths' }
+  }
+
+  const bucket = supabase.storage.from(BUCKET)
+  const generatedVariants = {}
+
+  for (const key of keys) {
+    const variantPath = variantStoragePath(row.gym_id, stem, key)
+    if (dryRun) {
+      generatedVariants[key] = `(dry-run) ${variantPath}`
+      continue
+    }
+
+    const { error: uploadError } = await bucket.upload(variantPath, variantBuffers[key], {
+      cacheControl: '31536000',
+      contentType: 'image/webp',
+      upsert: true,
+    })
+    if (uploadError) {
+      throw new Error(`Upload failed for ${variantPath}: ${uploadError.message}`)
+    }
+    generatedVariants[key] = bucket.getPublicUrl(variantPath).data.publicUrl
+  }
+
+  const nextVariants = mergeVariants(row.variants, generatedVariants)
+
+  if (!dryRun) {
+    const { error: updateError } = await supabase
+      .from('gym_images')
+      .update({ variants: nextVariants })
+      .eq('id', row.id)
+    if (updateError) {
+      throw new Error(`DB update failed for ${row.id}: ${updateError.message}`)
+    }
+  }
+
+  return {
+    id: row.id,
+    status: dryRun ? 'dry-run' : 'ok',
+    keys,
+    stem,
+  }
+}
+
+async function main() {
+  loadEnvLocal()
+  const opts = parseArgs(process.argv.slice(2))
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local',
+    )
+    process.exit(1)
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+
+  const pending = await fetchPendingRows(supabase, opts.limit)
+  console.log(
+    `Found ${pending.length} gym_images row(s) without variants` +
+      (opts.dryRun ? ' (dry-run)' : ''),
+  )
+
+  if (pending.length === 0) return
+
+  let ok = 0
+  let skipped = 0
+  let failed = 0
+
+  for (let i = 0; i < pending.length; i += opts.batchSize) {
+    const batch = pending.slice(i, i + opts.batchSize)
+    console.log(
+      `\nBatch ${Math.floor(i / opts.batchSize) + 1}: rows ${i + 1}-${i + batch.length} of ${pending.length}`,
+    )
+
+    for (const row of batch) {
+      try {
+        const result = await processRow(supabase, row, opts.dryRun)
+        if (result.status === 'skipped') {
+          skipped++
+          console.warn(`  skip ${row.id}: ${result.reason}`)
+        } else {
+          ok++
+          console.log(
+            `  ${result.status} ${row.id} stem=${result.stem} keys=${result.keys.join(',')}`,
+          )
+        }
+      } catch (err) {
+        failed++
+        console.error(`  fail ${row.id}:`, err instanceof Error ? err.message : err)
+      }
+    }
+
+    if (i + opts.batchSize < pending.length && opts.delayMs > 0) {
+      await sleep(opts.delayMs)
+    }
+  }
+
+  console.log(`\nDone. ok=${ok} skipped=${skipped} failed=${failed}`)
+  if (failed > 0) process.exitCode = 1
+}
+
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
