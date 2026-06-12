@@ -29,11 +29,10 @@ function SectionSkeleton({ titleWidth = 'w-48' }: { titleWidth?: string }) {
   )
 }
 
-/** Placeholder while homepage catalog data streams in after the hero paints. */
+/** Placeholder while homepage catalog data streams in after the hero + fast row paint. */
 export function HomepageCarouselSkeleton() {
   return (
     <>
-      <SectionSkeleton titleWidth="w-24" />
       <SectionSkeleton titleWidth="w-40" />
       <SectionSkeleton titleWidth="w-36" />
       <section className="pt-4 pb-8 md:pt-6 md:pb-12 bg-white">
