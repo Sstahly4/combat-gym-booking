@@ -43,6 +43,8 @@ const STATIC_HITS: Hit[] = [
   { id: 'admin-claim', title: 'Claim links', subtitle: 'Admin · owner handoff', href: '/admin/orphan-gyms', keywords: ['claim', 'links', 'orphan', 'handoff', 'placeholder'] },
   { id: 'admin-reviews', title: 'Reviews', subtitle: 'Admin · manual reviews', href: '/admin/reviews', keywords: ['reviews', 'manual', 'backfill'] },
   { id: 'admin-offers', title: 'Offers', subtitle: 'Admin · homepage promos', href: '/admin/offers', keywords: ['offers', 'promotions', 'promos', 'homepage'] },
+  { id: 'admin-affiliates', title: 'Affiliates', subtitle: 'Admin · referral partners', href: '/admin/affiliates', keywords: ['affiliates', 'referral', 'partners', 'commission'] },
+  { id: 'admin-affiliate-payouts', title: 'Affiliate payouts', subtitle: 'Admin · monthly referral payments', href: '/admin/affiliates/payouts', keywords: ['affiliate', 'payouts', 'commission', 'payments'] },
 ]
 
 function score(hit: Hit, q: string): number {

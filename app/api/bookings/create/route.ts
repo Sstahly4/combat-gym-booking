@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { randomBytes } from 'crypto'
 import {
   BOOKING_DATES_EXPIRED_ERROR,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
-const PLATFORM_COMMISSION_RATE = parseFloat(
-  process.env.PLATFORM_COMMISSION_RATE || '0.15'
-)
+import { readAffiliateRefCookie } from '@/lib/affiliates/cookie'
+import { affiliatePayoutAud } from '@/lib/affiliates/commission'
+import { PLATFORM_COMMISSION_RATE } from '@/lib/affiliates/constants'
 
 // Generate booking reference (e.g., "BK-ABC123")
 function generateBookingReference(): string {
@@ -169,6 +170,33 @@ export async function POST(request: NextRequest) {
       ? experience_level
       : 'beginner'
 
+    // Affiliate attribution from first-touch cs_ref cookie (30-day window).
+    let affiliateFields: Record<string, unknown> = {}
+    try {
+      const refCode = await readAffiliateRefCookie()
+      if (refCode) {
+        const admin = createAdminClient()
+        const { data: affiliate } = await admin
+          .from('affiliates')
+          .select('code, commission_rate, status')
+          .eq('code', refCode)
+          .maybeSingle()
+
+        if (affiliate?.status === 'active') {
+          affiliateFields = {
+            affiliate_code: affiliate.code,
+            affiliate_payout_aud: affiliatePayoutAud(
+              Number(total_price),
+              Number(affiliate.commission_rate)
+            ),
+            affiliate_payout_status: 'pending',
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[bookings/create] affiliate attribution skipped (non-fatal)', e)
+    }
+
     // Create booking (guest or authenticated)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -191,6 +219,7 @@ export async function POST(request: NextRequest) {
         guest_name: guest_name || null,
         booking_reference: bookingReference,
         booking_pin: bookingPin,
+        ...affiliateFields,
       })
       .select()
       .single()

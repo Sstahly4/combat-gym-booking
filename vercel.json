@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/partner-onboarding-emails",
       "schedule": "45 4 * * *"
+    },
+    {
+      "path": "/api/cron/approve-affiliate-bookings",
+      "schedule": "30 4 * * *"
     }
   ]
 }

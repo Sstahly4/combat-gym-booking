@@ -25,6 +25,8 @@ import {
   Sparkles,
   Star,
   Upload,
+  Link2,
+  Users,
 } from 'lucide-react'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF, buildFreshAdminCreateGymHref } from '@/lib/admin/admin-routes'
 import { cn } from '@/lib/utils'
@@ -114,6 +116,20 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         icon: Sparkles,
         isActive: (p) => p === '/admin/offers' || p.startsWith('/admin/offers/'),
         badge: counts?.offers ?? null,
+      },
+      {
+        href: '/admin/affiliates',
+        label: 'Affiliates',
+        icon: Users,
+        isActive: (p) =>
+          p === '/admin/affiliates' ||
+          (p.startsWith('/admin/affiliates/') && !p.startsWith('/admin/affiliates/payouts')),
+      },
+      {
+        href: '/admin/affiliates/payouts',
+        label: 'Affiliate payouts',
+        icon: Link2,
+        isActive: (p) => p.startsWith('/admin/affiliates/payouts'),
       },
       {
         href: '/admin/platform-payouts',

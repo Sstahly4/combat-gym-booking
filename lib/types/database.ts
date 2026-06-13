@@ -6,6 +6,11 @@ export type AccountHolderPropertyRole = 'owner' | 'manager' | 'authorised_operat
 export type GymStatus = 'pending' | 'approved' | 'rejected'
 export type VerificationStatus = 'draft' | 'verified' | 'trusted'
 export type BookingStatus = 'pending' | 'confirmed' | 'paid' | 'completed' | 'declined' | 'cancelled'
+export type AffiliateTier = 'founding' | 'standard'
+export type AffiliateStatus = 'active' | 'paused' | 'inactive'
+export type AffiliatePayoutMethod = 'bank' | 'paypal'
+export type AffiliateBookingPayoutStatus = 'pending' | 'approved' | 'paid'
+export type AffiliatePayoutRunStatus = 'pending' | 'paid'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export interface Profile {
@@ -352,6 +357,12 @@ export interface Booking {
   platform_payout_id?: string | null
   /** When the host share was marked paid out on the platform payout rail. */
   platform_paid_out_at?: string | null
+  /** First-touch affiliate referral code at booking creation. */
+  affiliate_code?: string | null
+  affiliate_payout_aud?: number | null
+  affiliate_payout_status?: AffiliateBookingPayoutStatus | null
+  affiliate_approved_at?: string | null
+  affiliate_paid_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -369,6 +380,57 @@ export interface GymPlatformPayout {
   metadata: Record<string, unknown>
   created_at: string
   completed_at: string | null
+}
+
+export interface Affiliate {
+  id: string
+  name: string
+  email: string
+  code: string
+  commission_rate: number
+  tier: AffiliateTier
+  payout_method: AffiliatePayoutMethod
+  payout_details_encrypted: string | null
+  payout_details_submitted_at?: string | null
+  status: AffiliateStatus
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AffiliateClick {
+  id: string
+  affiliate_code: string
+  clicked_at: string
+  landing_url: string | null
+  user_agent: string | null
+}
+
+export interface AffiliateIntakeToken {
+  id: string
+  affiliate_id: string
+  token_hash: string
+  expires_at: string
+  completed_at: string | null
+  revoked_at: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface AffiliatePayoutRun {
+  id: string
+  affiliate_id: string
+  period_start: string
+  period_end: string
+  total_bookings: number
+  gross_booking_value: number
+  combatstay_commission: number
+  affiliate_payout: number
+  status: AffiliatePayoutRunStatus
+  paid_at: string | null
+  payment_reference: string | null
+  notes: string | null
+  created_at: string
 }
 
 export interface Review {
