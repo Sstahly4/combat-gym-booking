@@ -6,7 +6,8 @@
  *   - Brand band at top (#003580) with CombatStay wordmark + contextual eyebrow
  *   - Primary CTA button with the same blue, 44px tap target, 8px radius
  *   - Muted support copy in #4b5563, meta in #6b7280/#9ca3af
- *   - Single rounded card (12px) on a #f4f6f9 page background
+ *   - Single rounded card (12px) on a #f4f6f9 page background (desktop);
+ *     full-bleed edge-to-edge card on mobile (≤620px)
  *   - Inline styles only (required by email clients)
  *   - Bulletproof CTA pattern (table + bgcolor) for Outlook compatibility
  *
@@ -54,7 +55,7 @@ export function preheader(text: string): string {
 /** Brand band at the top of every email. */
 export function brandBand(eyebrow: string): string {
   return `<tr>
-    <td style="background-color:${BRAND.color};padding:24px 32px;">
+    <td class="email-brand-band" style="background-color:${BRAND.color};padding:24px 32px;">
       <p style="margin:0;color:${BRAND.colorOnBrand};font-size:15px;font-weight:700;letter-spacing:-0.2px;">${BRAND.name}.com</p>
       <p style="margin:4px 0 0 0;color:${BRAND.colorMutedOnBrand};font-size:12px;font-weight:500;letter-spacing:0.3px;text-transform:uppercase;">${escape(eyebrow)}</p>
     </td>
@@ -275,22 +276,33 @@ export function renderEmail(opts: {
   <meta name="color-scheme" content="light only">
   <meta name="supported-color-schemes" content="light only">
   <title>${escape(opts.title)}</title>
+  <style type="text/css">
+    @media only screen and (max-width: 620px) {
+      body { background-color: ${BRAND.cardBg} !important; }
+      .email-outer { padding: 0 !important; background-color: ${BRAND.cardBg} !important; }
+      .email-card { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; box-shadow: none !important; }
+      .email-brand-band { padding: 20px 20px !important; }
+      .email-body { padding: 28px 20px 8px 20px !important; }
+      .email-footer-note { padding: 0 20px 20px 20px !important; }
+      .email-footer { padding: 0 20px 24px 20px !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background-color:${BRAND.pageBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
   ${preheader(opts.preheader)}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.pageBg};padding:32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer" style="background-color:${BRAND.pageBg};padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:${BRAND.cardBg};border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(17,24,39,0.04);">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="email-card" style="max-width:600px;width:100%;background-color:${BRAND.cardBg};border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(17,24,39,0.04);">
           ${brandBand(opts.eyebrow)}
           <tr>
-            <td style="padding:36px 32px 8px 32px;">
+            <td class="email-body" style="padding:36px 32px 8px 32px;">
               ${opts.innerHtml}
             </td>
           </tr>
           ${
             opts.footerNote
-              ? `<tr><td style="padding:0 32px 24px 32px;">
+              ? `<tr><td class="email-footer-note" style="padding:0 32px 24px 32px;">
                   <div style="background-color:${BRAND.subtleBg};border:1px solid ${BRAND.subtleBorder};border-radius:8px;padding:14px 16px;">
                     <p style="margin:0;color:${BRAND.bodyText};font-size:13px;line-height:1.6;">${opts.footerNote}</p>
                   </div>
@@ -298,7 +310,7 @@ export function renderEmail(opts: {
               : ''
           }
           <tr>
-            <td style="padding:0 32px 32px 32px;text-align:center;">
+            <td class="email-footer" style="padding:0 32px 32px 32px;text-align:center;">
               <p style="margin:0 0 6px 0;color:${BRAND.fineText};font-size:12px;line-height:1.5;">
                 Sent by ${BRAND.name}.com — ${BRAND.tagline}
               </p>
