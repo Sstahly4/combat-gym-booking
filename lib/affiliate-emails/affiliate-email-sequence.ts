@@ -40,6 +40,18 @@ import {
 const TAG_WELCOME = 'affiliate-welcome'
 const TAG_TIPS = 'affiliate-tips'
 
+/** Shared copy — balance checks until self-serve dashboard ships. */
+const BALANCE_UPDATE_HTML =
+  "We're building out a full affiliate dashboard — in the meantime, just reply to this email anytime and we'll send you a balance update within 24 hours."
+
+const BALANCE_UPDATE_TEXT =
+  "We're building out a full affiliate dashboard — in the meantime, just reply to this email anytime and we'll send you a balance update within 24 hours."
+
+const QUESTIONS_HELP_HTML = `<strong style="color:#1e40af;">Questions?</strong> Reply to this email anytime — a real person on our team will get back to you, usually within one business day. Founding Partners get priority.`
+
+const CAPTION_HELP_HTML = (tierLabel: string) =>
+  `<strong style="color:#1e40af;">Want help with a caption?</strong> Reply with your platform (Instagram, TikTok, or YouTube) and we'll suggest a line that fits your voice — especially for ${escape(tierLabel)}s in the early cohort.`
+
 /** ~36 hours after welcome — cron runs daily so delivery is typically 36–48h. */
 const TIPS_DELAY_MS = 36 * 60 * 60 * 1000
 
@@ -116,7 +128,7 @@ export async function sendAffiliateWelcomeEmail(data: AffiliateEmailPayload): Pr
           callout({
             tone: 'info',
             title: 'Founding Partner',
-            bodyHtml: `You are in our founding partner cohort — higher commission, early access to new gyms, and a direct line to our team. We are building this with people who live combat sports, not generic influencers.`,
+            bodyHtml: `You're in our founding partner cohort — higher commission, early access to new gyms, and a direct line to our team. We're building this with people who live combat sports, not generic influencers.`,
           }),
         ]
       : []),
@@ -160,25 +172,23 @@ export async function sendAffiliateWelcomeEmail(data: AffiliateEmailPayload): Pr
     divider(),
     sectionLabel('What happens next'),
     numberedList([
-      `When a referred booking completes, commission is <strong>confirmed 14 days after the cancellation window closes</strong> — standard hold for chargebacks and date changes.`,
-      `We run <strong>monthly payouts</strong> once your approved balance clears <strong>$${AFFILIATE_MIN_PAYOUT_AUD} AUD</strong>. Smaller amounts roll forward.`,
-      `We track every click and booking on our side. Reply to this email anytime if you want a balance check — a promoter tips email is coming in a day or two with caption ideas.`,
+      `When a referred booking completes, commission is <strong>confirmed 14 days after the cancellation window closes</strong> — our standard hold for chargebacks and date changes.`,
+      `We run <strong>monthly payouts</strong> once your approved balance clears <strong>$${AFFILIATE_MIN_PAYOUT_AUD} AUD</strong>. Smaller amounts roll forward to the next month.`,
+      `${BALANCE_UPDATE_HTML} You'll also get a follow-up email in the next day or two with caption ideas for your bio.`,
     ]),
     partnerStatTilesRow([
       { figure: `${pct}%`, caption: 'Of our commission on each referred booking.' },
       { figure: '30d', caption: 'Attribution window from first click.' },
       { figure: `$${AFFILIATE_MIN_PAYOUT_AUD}`, caption: 'Minimum monthly payout (AUD).' },
     ]),
-    partnerHelpCallout(
-      `<strong style="color:#1e40af;">Questions?</strong> Reply to this email — ${escape(name)}, we answer affiliates personally. Founding Partners get priority.`,
-    ),
+    partnerHelpCallout(QUESTIONS_HELP_HTML),
     partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 
   const html = renderEmail({
     eyebrow: isFounding ? 'Founding Partner' : 'Affiliate program',
     title: tierProgramTitle(tier),
-    preheader: `${name}, your link ${shareUrl} is live — here is how to share it.`,
+    preheader: `${name}, your link ${shareUrl} is live — here's how to share it.`,
     innerHtml: inner,
   })
 
@@ -201,7 +211,7 @@ What to do now:
 What happens next:
 - Commissions confirm 14 days after the cancellation window closes
 - Monthly payouts when balance clears $${AFFILIATE_MIN_PAYOUT_AUD} AUD
-- Reply anytime for a balance check
+- ${BALANCE_UPDATE_TEXT}
 
 ${PARTNER_LIFECYCLE_SIGNOFF_LINE}`
 
@@ -224,11 +234,11 @@ export async function sendAffiliateTipsEmail(data: AffiliateEmailPayload): Promi
   const bioSample = sampleBioLine(tier, shareUrl)
 
   const inner = [
-    heading(isFounding ? `${escape(name)}, here is what converts.` : `Quick wins for your link, ${escape(name)}.`),
+    heading(isFounding ? `${escape(name)}, here's what converts.` : `Quick wins for your link, ${escape(name)}.`),
     paragraph(
       isFounding
-        ? `Founding Partners who earn consistently do not spam their link — they <strong>recommend specific gyms and trips</strong> they believe in, then leave ${escape(shareUrl)} where people can act. A few patterns that work in combat sports:`
-        : `The affiliates who earn are not passive link-droppers. They talk about <strong>real trips and gyms</strong>, then leave ${escape(shareUrl)} where followers can book. Here is what works:`,
+        ? `Founding Partners who earn consistently don't spam their link — they <strong>recommend specific gyms and trips</strong> they believe in, then leave ${escape(shareUrl)} where people can act. A few patterns that work in combat sports:`
+        : `The affiliates who earn aren't passive link-droppers. They talk about <strong>real trips and gyms</strong>, then leave ${escape(shareUrl)} where followers can book. Here's what works:`,
     ),
     checkList([
       `<strong>Personal proof</strong> — "I trained at [gym] in [city] last month — booked through my link below." Fighters trust fighters.`,
@@ -247,15 +257,13 @@ export async function sendAffiliateTipsEmail(data: AffiliateEmailPayload): Promi
     divider(),
     sectionLabel('Tracking & payouts'),
     numberedList([
-      `We log clicks and bookings against <strong>${escape(data.code)}</strong> automatically — no dashboard login required yet.`,
-      `Commissions confirm after the cancellation window + 14 days. Payouts run monthly above <strong>$${AFFILIATE_MIN_PAYOUT_AUD} AUD</strong>.`,
-      `Want to know how you are tracking? Reply to this email with "balance check" and we will look you up.`,
+      `We log clicks and bookings against <strong>${escape(data.code)}</strong> automatically on our side.`,
+      `Commissions confirm after the cancellation window plus 14 days. Payouts run monthly once your balance clears <strong>$${AFFILIATE_MIN_PAYOUT_AUD} AUD</strong>.`,
+      BALANCE_UPDATE_HTML,
     ]),
-    primaryButton(refUrl, 'Copy — open your link'),
+    primaryButton(refUrl, 'Open your referral link'),
     linkFallback(refUrl),
-    partnerHelpCallout(
-      `<strong style="color:#1e40af;">Want help with a caption or post?</strong> Reply with your platform (IG, TikTok, YouTube) and we will suggest a line that fits your voice — especially for ${escape(programLabel(tier))}s in the early cohort.`,
-    ),
+    partnerHelpCallout(CAPTION_HELP_HTML(programLabel(tier))),
     partnerFounderSignoff(PARTNER_LIFECYCLE_SIGNOFF_LINE),
   ].join('')
 
@@ -281,8 +289,10 @@ What converts:
 Sample bio:
 ${bioSample}
 
-Tracking: we log clicks/bookings for code ${data.code}. Reply "balance check" anytime.
-Commission: ${pct}% of our commission. Monthly payouts above $${AFFILIATE_MIN_PAYOUT_AUD} AUD.
+Tracking & payouts:
+- We log clicks and bookings for code ${data.code} automatically
+- Commissions confirm after the cancellation window plus 14 days; monthly payouts above $${AFFILIATE_MIN_PAYOUT_AUD} AUD
+- ${BALANCE_UPDATE_TEXT}
 
 ${refUrl}
 
