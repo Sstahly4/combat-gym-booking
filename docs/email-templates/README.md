@@ -50,8 +50,13 @@ Apple-clean layout:
 - Primary CTA button with the same blue, 44px tap target
 - Muted support copy in grey (`#6b7280`)
 - Footer with legal line + sender address
-- Mobile-safe tables (600px max-width, fluid on narrow viewports)
+- Mobile-safe tables (600px max-width card on desktop; full-bleed edge-to-edge on
+  mobile ≤620px — same as `renderEmail()` in `lib/email-layout.ts`)
 - Inline styles only (required by email clients)
+
+When updating mobile shell styles, edit `EMAIL_SHELL_MOBILE_STYLE_BLOCK` in
+`lib/email-layout.ts` and mirror the change in each file here (or copy from
+`_shell-mobile-styles.html`).
 
 ## Preview / test
 

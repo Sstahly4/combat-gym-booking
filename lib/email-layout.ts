@@ -256,6 +256,22 @@ export function panel(innerHtml: string): string {
 // ----------------------------------------------------------------------------
 
 /**
+ * Mobile full-bleed styles for the email card shell.
+ * Keep in sync with docs/email-templates/*.html (Supabase auth emails).
+ */
+export const EMAIL_SHELL_MOBILE_STYLE_BLOCK = `<style type="text/css">
+    @media only screen and (max-width: 620px) {
+      body { background-color: ${BRAND.cardBg} !important; }
+      .email-outer { padding: 0 !important; background-color: ${BRAND.cardBg} !important; }
+      .email-card { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; box-shadow: none !important; }
+      .email-brand-band { padding: 20px 20px !important; }
+      .email-body { padding: 28px 20px 8px 20px !important; }
+      .email-footer-note { padding: 0 20px 20px 20px !important; }
+      .email-footer { padding: 0 20px 24px 20px !important; }
+    }
+  </style>`
+
+/**
  * Full-document HTML wrapper. Pass the `eyebrow` (small uppercase label in the
  * brand band), `title` used as <title>, `preheader` for inbox preview text,
  * and `innerHtml` — already-composed body blocks.
@@ -276,17 +292,7 @@ export function renderEmail(opts: {
   <meta name="color-scheme" content="light only">
   <meta name="supported-color-schemes" content="light only">
   <title>${escape(opts.title)}</title>
-  <style type="text/css">
-    @media only screen and (max-width: 620px) {
-      body { background-color: ${BRAND.cardBg} !important; }
-      .email-outer { padding: 0 !important; background-color: ${BRAND.cardBg} !important; }
-      .email-card { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; box-shadow: none !important; }
-      .email-brand-band { padding: 20px 20px !important; }
-      .email-body { padding: 28px 20px 8px 20px !important; }
-      .email-footer-note { padding: 0 20px 20px 20px !important; }
-      .email-footer { padding: 0 20px 24px 20px !important; }
-    }
-  </style>
+  ${EMAIL_SHELL_MOBILE_STYLE_BLOCK}
 </head>
 <body style="margin:0;padding:0;background-color:${BRAND.pageBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
   ${preheader(opts.preheader)}
