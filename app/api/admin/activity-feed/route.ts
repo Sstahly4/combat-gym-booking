@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { AdminActivityItem } from '@/lib/admin/admin-activity-types'
+import { tierWelcomeHeadline } from '@/lib/affiliates/program-copy'
+import { affiliateReferralShareUrl } from '@/lib/affiliates/urls'
+import { payoutRailLabel } from '@/lib/affiliates/payout-region'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * Recent platform activity for the admin navbar bell (bookings + new gyms).
+ * Recent platform activity for the admin navbar bell (bookings, gyms, affiliates).
  * Uses service role after session admin check — do not expose without requireAdmin.
  */
 export async function GET() {
@@ -27,7 +30,7 @@ export async function GET() {
 
   const sinceIso = since.toISOString()
 
-  const [bookingsRes, gymsRes, claimRes, payoutsRes] = await Promise.all([
+  const [bookingsRes, gymsRes, claimRes, payoutsRes, affiliatesRes] = await Promise.all([
     supabase
       .from('bookings')
       .select('id, created_at, status, total_price, gym_id, guest_name')
@@ -54,6 +57,13 @@ export async function GET() {
       .gte('created_at', sinceIso)
       .in('event_type', ['payouts_details_set'])
       .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('affiliates')
+      .select('id, name, email, code, tier, payout_country, payout_region, setup_completed_at')
+      .gte('setup_completed_at', sinceIso)
+      .not('setup_completed_at', 'is', null)
+      .order('setup_completed_at', { ascending: false })
       .limit(25),
   ])
 
@@ -83,6 +93,9 @@ export async function GET() {
     if (!missing) {
       console.error('[admin/activity-feed] payouts telemetry', payoutsRes.error)
     }
+  }
+  if (affiliatesRes.error) {
+    console.error('[admin/activity-feed] affiliates', affiliatesRes.error)
   }
 
   const bookingRows = (bookingsRes.data || []) as {
@@ -267,6 +280,43 @@ export async function GET() {
       href,
       gym_name: gymName,
       status: null,
+    })
+  }
+
+  for (const row of affiliatesRes.data || []) {
+    const a = row as {
+      id: string
+      name: string | null
+      email: string | null
+      code: string | null
+      tier: string | null
+      payout_country: string | null
+      payout_region: string | null
+      setup_completed_at: string
+    }
+    if (!a.code) continue
+    const tier = a.tier === 'standard' ? 'standard' : 'founding'
+    const rail = a.payout_region
+      ? payoutRailLabel(a.payout_region === 'international' ? 'international' : 'au')
+      : null
+    const subtitle = [
+      affiliateReferralShareUrl(a.code),
+      tierWelcomeHeadline(tier),
+      a.email?.trim() || null,
+      a.payout_country?.trim() || null,
+      rail,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    items.push({
+      kind: 'affiliate_ready',
+      id: a.id,
+      created_at: a.setup_completed_at,
+      title: 'Affiliate setup complete',
+      subtitle: subtitle || null,
+      href: `/admin/affiliates/${encodeURIComponent(a.id)}`,
+      gym_name: a.name?.trim() || a.code,
+      status: tier,
     })
   }
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPartnerOnboardingEmailCron } from '@/lib/partner-emails/partner-email-sequence'
+import { runAffiliateOnboardingEmailCron } from '@/lib/affiliate-emails/affiliate-email-sequence'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * Daily job (Vercel Hobby allows at most one cron invocation per day): partner
- * checklist email (dynamic readiness) and day-3 nudge for owners still not live.
- * On Pro+, you could move vercel.json to a tighter schedule. Secured with CRON_SECRET.
+ * checklist + nudge emails, and affiliate promoter tips (~36h after welcome).
+ * Secured with CRON_SECRET.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -28,8 +29,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runPartnerOnboardingEmailCron(admin)
-    return NextResponse.json({ ok: true, ...result })
+    const [partner, affiliate] = await Promise.all([
+      runPartnerOnboardingEmailCron(admin),
+      runAffiliateOnboardingEmailCron(admin),
+    ])
+    return NextResponse.json({ ok: true, partner, affiliate })
   } catch (e: unknown) {
     console.error('[cron/partner-onboarding-emails]', e)
     return NextResponse.json(

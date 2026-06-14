@@ -39,3 +39,13 @@ export type AdminActivityItem =
       gym_name: string | null
       status: string | null
     }
+  | {
+      kind: 'affiliate_ready'
+      id: string
+      created_at: string
+      title: string
+      subtitle: string | null
+      href: string
+      gym_name: string | null
+      status: string | null
+    }

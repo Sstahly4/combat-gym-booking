@@ -396,6 +396,9 @@ export interface Affiliate {
   payout_details_encrypted: string | null
   payout_details_submitted_at?: string | null
   setup_completed_at?: string | null
+  welcome_email_sent_at?: string | null
+  tips_email_sent_at?: string | null
+  email_sequence_anchor_at?: string | null
   status: AffiliateStatus
   notes: string | null
   created_at: string

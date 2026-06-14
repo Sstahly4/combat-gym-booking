@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * Admin Hub navbar bell — recent bookings + newly created gyms (activity feed).
+ * Admin Hub navbar bell — recent bookings, gyms, and affiliate completions.
  * Read state is per-browser (localStorage) so multiple admins each have their own cursor.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bell, Building2, CalendarCheck, CheckCheck, CreditCard, Loader2, UserCheck } from 'lucide-react'
+import { Bell, Building2, CalendarCheck, CheckCheck, CreditCard, Link2, Loader2, UserCheck } from 'lucide-react'
 import type { AdminActivityItem } from '@/lib/admin/admin-activity-types'
 
 const STORAGE_KEY = 'combatstay_admin_activity_seen_v1'
@@ -146,7 +146,7 @@ export function AdminNotificationBell() {
             <div>
               <p className="text-sm font-semibold text-stone-900">Admin activity</p>
               <p className="mt-0.5 text-[11px] text-stone-500">
-                Recent bookings and new gym listings (last ~3 weeks).
+                Recent bookings, gym listings, and affiliate sign-ups (last ~3 weeks).
               </p>
             </div>
             <button
@@ -180,7 +180,9 @@ export function AdminNotificationBell() {
                         ? UserCheck
                         : it.kind === 'payouts_ready'
                           ? CreditCard
-                          : Building2
+                          : it.kind === 'affiliate_ready'
+                            ? Link2
+                            : Building2
                   return (
                     <li key={k}>
                       <button
@@ -198,7 +200,9 @@ export function AdminNotificationBell() {
                                 ? 'bg-violet-50 text-violet-900'
                                 : it.kind === 'payouts_ready'
                                   ? 'bg-amber-50 text-amber-900'
-                                : 'bg-sky-50 text-sky-800'
+                                  : it.kind === 'affiliate_ready'
+                                    ? 'bg-indigo-50 text-indigo-900'
+                                    : 'bg-sky-50 text-sky-800'
                           }`}
                         >
                           <Icon className="h-4 w-4" aria-hidden />
@@ -240,6 +244,13 @@ export function AdminNotificationBell() {
             </Link>
             <Link href="/admin/gyms" onClick={() => setOpen(false)} className="font-medium text-[#003580] hover:underline">
               All gyms
+            </Link>
+            <Link
+              href="/admin/affiliates"
+              onClick={() => setOpen(false)}
+              className="font-medium text-[#003580] hover:underline"
+            >
+              Affiliates
             </Link>
             <Link href="/admin" onClick={() => setOpen(false)} className="text-stone-500 hover:text-stone-700">
               Admin Hub

@@ -18,6 +18,7 @@ import {
 } from '@/lib/affiliates/code'
 import { affiliateReferralUrl } from '@/lib/affiliates/urls'
 import { tierDisplayName } from '@/lib/affiliates/program-copy'
+import { trySendAffiliateWelcomeAfterSetup } from '@/lib/affiliate-emails/affiliate-email-sequence'
 
 interface Params {
   params: { token: string }
@@ -168,6 +169,19 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const referralUrl = affiliateReferralUrl(code)
+
+  void trySendAffiliateWelcomeAfterSetup(admin, {
+    affiliateId: validation.affiliateId,
+    name,
+    email,
+    code,
+    tier: validation.tier,
+    payoutCountry,
+    payoutRegion,
+    payoutMethod,
+  }).catch((err) => {
+    console.warn('[affiliate/setup] welcome email failed', err)
+  })
 
   return NextResponse.json({ ok: true, referral_url: referralUrl, code })
 }
