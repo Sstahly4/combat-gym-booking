@@ -13,6 +13,7 @@ import {
   affiliateCodeValidationError,
   normalizeAffiliateCode,
 } from '@/lib/affiliates/code'
+import { affiliateReferralShareUrl } from '@/lib/affiliates/urls'
 import type { AffiliateStatus, AffiliateTier } from '@/lib/types/database'
 
 export type AffiliateFormValues = {
@@ -33,13 +34,6 @@ const emptyForm: AffiliateFormValues = {
   payout_details: '',
   notes: '',
   status: 'active',
-}
-
-function appOrigin(): string {
-  if (typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return 'https://www.combatstay.com'
 }
 
 type Props = {
@@ -74,7 +68,7 @@ export function AffiliateForm({
   const codePreview = useMemo(() => {
     const code = normalizeAffiliateCode(form.code)
     if (!code) return null
-    return `${appOrigin()}/ref/${code}`
+    return affiliateReferralShareUrl(code)
   }, [form.code])
 
   const checkCode = useCallback(async () => {

@@ -18,6 +18,7 @@ import {
   affiliateCodeValidationError,
   normalizeAffiliateCode,
 } from '@/lib/affiliates/code'
+import { affiliateReferralShareUrl } from '@/lib/affiliates/urls'
 import {
   AFFILIATE_INVITE_INVALID_REASON_COPY,
   affiliateInviteLinkPartnerNote,
@@ -41,11 +42,6 @@ type LoadState =
 
 const REASON_COPY = AFFILIATE_INVITE_INVALID_REASON_COPY
 
-function appOrigin(): string {
-  if (typeof window !== 'undefined') return window.location.origin
-  return 'https://www.combatstay.com'
-}
-
 export function AffiliateIntakeClient({ token }: { token: string }) {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [name, setName] = useState('')
@@ -67,7 +63,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
   const codePreview = useMemo(() => {
     const normalized = normalizeAffiliateCode(code)
     if (!normalized) return null
-    return `${appOrigin()}/ref/${normalized}`
+    return affiliateReferralShareUrl(normalized)
   }, [code])
 
   const checkCode = useCallback(async () => {
@@ -210,9 +206,6 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
               Your referral link
             </p>
             <div className="mt-3 flex flex-col items-center gap-3">
-              <code className="break-all text-base font-semibold text-[#003580] sm:text-lg">
-                {load.referralUrl}
-              </code>
               <CopyReferralLink url={load.referralUrl} label="Copy referral link" prominent />
             </div>
           </div>
