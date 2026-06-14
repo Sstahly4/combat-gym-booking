@@ -19,6 +19,15 @@ type AffiliateRow = {
   total_earnings: number
   pending_balance: number
   last_booking_at: string | null
+  deleted_at?: string | null
+  retired_code?: string | null
+  email?: string
+}
+
+function rowDisplayName(row: AffiliateRow) {
+  if (row.name?.trim()) return row.name.trim()
+  if (row.email?.trim()) return row.email.trim()
+  return 'Pending setup'
 }
 
 function formatAud(n: number) {
@@ -42,7 +51,14 @@ function pendingBadge() {
   )
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string, deleted?: boolean) {
+  if (deleted) {
+    return (
+      <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+        Removed
+      </span>
+    )
+  }
   const styles =
     status === 'active'
       ? 'bg-emerald-100 text-emerald-800'
@@ -158,19 +174,18 @@ export default function AdminAffiliatesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {rows.map((row) => {
+                    const deleted = Boolean(row.deleted_at)
+                    const displayName = rowDisplayName(row)
+                    return (
                     <tr key={row.id} className="border-b border-stone-100 hover:bg-stone-50/80">
                       <td className="px-4 py-3 font-medium text-stone-900">
                         <Link href={`/admin/affiliates/${row.id}`} className="hover:underline">
-                          {row.setup_pending ? (
-                            <span className="text-stone-500">Pending setup</span>
-                          ) : (
-                            row.name
-                          )}
+                          {displayName}
                         </Link>
                       </td>
                       <td className="px-4 py-3 font-mono text-stone-700">
-                        {row.setup_pending ? '—' : row.code}
+                        {row.code || row.retired_code || '—'}
                       </td>
                       <td className="px-4 py-3 text-stone-600">{row.payout_country || '—'}</td>
                       <td className="px-4 py-3 text-stone-600">
@@ -182,7 +197,9 @@ export default function AdminAffiliatesPage() {
                       </td>
                       <td className="px-4 py-3 capitalize text-stone-600">{row.tier}</td>
                       <td className="px-4 py-3">
-                        {row.setup_pending ? pendingBadge() : statusBadge(row.status)}
+                        {row.setup_pending && !deleted
+                          ? pendingBadge()
+                          : statusBadge(row.status, deleted)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatAud(row.total_earnings)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatAud(row.pending_balance)}</td>
@@ -195,13 +212,16 @@ export default function AdminAffiliatesPage() {
                           <Button variant="ghost" size="sm" asChild>
                             <Link href={`/admin/affiliates/${row.id}/edit`}>Edit</Link>
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => toggleStatus(row)}>
-                            {row.status === 'active' ? 'Pause' : 'Activate'}
-                          </Button>
+                          {!deleted && (
+                            <Button variant="ghost" size="sm" onClick={() => toggleStatus(row)}>
+                              {row.status === 'active' ? 'Pause' : 'Activate'}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

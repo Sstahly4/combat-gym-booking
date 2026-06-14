@@ -178,11 +178,11 @@ export async function POST(request: NextRequest) {
         const admin = createAdminClient()
         const { data: affiliate } = await admin
           .from('affiliates')
-          .select('code, commission_rate, status')
+          .select('code, commission_rate, status, deleted_at')
           .eq('code', refCode)
           .maybeSingle()
 
-        if (affiliate?.status === 'active') {
+        if (affiliate?.status === 'active' && !affiliate.deleted_at) {
           affiliateFields = {
             affiliate_code: affiliate.code,
             affiliate_payout_aud: affiliatePayoutAud(

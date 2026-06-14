@@ -403,6 +403,8 @@ export interface Affiliate {
   notes: string | null
   created_at: string
   updated_at: string
+  deleted_at?: string | null
+  retired_code?: string | null
 }
 
 export interface AffiliateClick {

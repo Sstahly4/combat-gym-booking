@@ -28,13 +28,13 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const { data: affiliate } = await admin
     .from('affiliates')
-    .select('code, status')
+    .select('code, status, deleted_at')
     .eq('code', code)
     .maybeSingle()
 
   const redirect = NextResponse.redirect(new URL('/', request.url))
 
-  if (!affiliate || affiliate.status !== 'active') {
+  if (!affiliate || affiliate.status !== 'active' || affiliate.deleted_at) {
     return redirect
   }
 

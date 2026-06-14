@@ -8,6 +8,7 @@ import { affiliateReferralUrl } from '@/lib/affiliates/urls'
 import { AFFILIATE_TIER_COMMISSION } from '@/lib/affiliates/constants'
 import {
   encryptPayoutDetailsForStorage,
+  retireAffiliate,
   serializeAffiliate,
 } from '@/lib/affiliates/admin'
 import type { AffiliateTier } from '@/lib/types/database'
@@ -28,7 +29,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({
-    affiliate: serializeAffiliate(row, affiliateReferralUrl(row.code)),
+    affiliate: serializeAffiliate(row, row.code ? affiliateReferralUrl(row.code) : ''),
   })
 }
 
@@ -86,6 +87,25 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({
-    affiliate: serializeAffiliate(row, affiliateReferralUrl(row.code)),
+    affiliate: serializeAffiliate(row, row.code ? affiliateReferralUrl(row.code) : ''),
+  })
+}
+
+export async function DELETE(_request: NextRequest, { params }: Params) {
+  const auth = await requireAdmin()
+  if (!auth.ok) return auth.response
+
+  const admin = createAdminClient()
+  const result = await retireAffiliate(admin, params.id)
+
+  if (!result.ok) {
+    const status = result.error === 'Affiliate not found' ? 404 : 400
+    return NextResponse.json({ error: result.error }, { status })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    retired_code: result.retired_code,
+    unpaid_balance: result.unpaid_balance,
   })
 }

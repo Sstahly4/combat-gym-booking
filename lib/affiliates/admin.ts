@@ -9,6 +9,8 @@ import { payoutRailLabel } from '@/lib/affiliates/payout-region'
 import { isAffiliateSetupPending } from '@/lib/affiliates/program-copy'
 import { affiliateReferralUrl } from '@/lib/affiliates/urls'
 
+import { revokeActiveAffiliateIntakeTokens } from '@/lib/affiliates/intake'
+
 export type AffiliatePublic = Omit<Affiliate, 'payout_details_encrypted'> & {
   payout_details: string
   referral_url: string
@@ -24,6 +26,144 @@ export function serializeAffiliate(row: Affiliate, referralUrl: string): Affilia
     payout_details: decryptAffiliatePayoutDetails(payout_details_encrypted),
     referral_url: row.code ? referralUrl || affiliateReferralUrl(row.code) : '',
   }
+}
+
+/** Live or retired referral codes used to join clicks/bookings to this affiliate. */
+export function affiliateTrackingCodes(row: {
+  code?: string | null
+  retired_code?: string | null
+}): string[] {
+  const codes = [row.code, row.retired_code].filter((c): c is string => Boolean(c))
+  return [...new Set(codes)]
+}
+
+export type AffiliateDetailStats = {
+  total_clicks: number
+  total_bookings: number
+  conversion_rate: number | null
+  lifetime_gross_value: number
+  lifetime_commission: number
+  pending_commission: number
+  approved_commission: number
+  total_paid_out: number
+  last_click_at: string | null
+}
+
+export async function fetchAffiliateDetailStats(
+  admin: SupabaseClient,
+  row: Pick<Affiliate, 'code' | 'retired_code'>
+): Promise<AffiliateDetailStats> {
+  const codes = affiliateTrackingCodes(row)
+  if (codes.length === 0) {
+    return {
+      total_clicks: 0,
+      total_bookings: 0,
+      conversion_rate: null,
+      lifetime_gross_value: 0,
+      lifetime_commission: 0,
+      pending_commission: 0,
+      approved_commission: 0,
+      total_paid_out: 0,
+      last_click_at: null,
+    }
+  }
+
+  const [
+    { count: clickCount },
+    { count: bookingCount },
+    { data: lastClick },
+    { data: bookingRows },
+  ] = await Promise.all([
+    admin
+      .from('affiliate_clicks')
+      .select('id', { count: 'exact', head: true })
+      .in('affiliate_code', codes),
+    admin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .in('affiliate_code', codes),
+    admin
+      .from('affiliate_clicks')
+      .select('clicked_at')
+      .in('affiliate_code', codes)
+      .order('clicked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from('bookings')
+      .select('total_price, affiliate_payout_aud, affiliate_payout_status')
+      .in('affiliate_code', codes),
+  ])
+
+  const clicks = clickCount ?? 0
+  const bookings = bookingCount ?? 0
+  let lifetime_gross_value = 0
+  let lifetime_commission = 0
+  let pending_commission = 0
+  let approved_commission = 0
+  let total_paid_out = 0
+
+  for (const b of bookingRows || []) {
+    lifetime_gross_value += Number(b.total_price || 0)
+    const payout = Number(b.affiliate_payout_aud || 0)
+    lifetime_commission += payout
+    if (b.affiliate_payout_status === 'pending') pending_commission += payout
+    if (b.affiliate_payout_status === 'approved') approved_commission += payout
+    if (b.affiliate_payout_status === 'paid') total_paid_out += payout
+  }
+
+  const conversion_rate = clicks > 0 ? Number(((bookings / clicks) * 100).toFixed(1)) : null
+
+  return {
+    total_clicks: clicks,
+    total_bookings: bookings,
+    conversion_rate,
+    lifetime_gross_value: Number(lifetime_gross_value.toFixed(2)),
+    lifetime_commission: Number(lifetime_commission.toFixed(2)),
+    pending_commission: Number(pending_commission.toFixed(2)),
+    approved_commission: Number(approved_commission.toFixed(2)),
+    total_paid_out: Number(total_paid_out.toFixed(2)),
+    last_click_at: (lastClick?.clicked_at as string | undefined) ?? null,
+  }
+}
+
+/** Soft-delete: retire code, deactivate link, keep history. */
+export async function retireAffiliate(
+  admin: SupabaseClient,
+  affiliateId: string
+): Promise<{ ok: true; retired_code: string | null; unpaid_balance: number } | { ok: false; error: string }> {
+  const { data: row, error: fetchErr } = await admin
+    .from('affiliates')
+    .select('*')
+    .eq('id', affiliateId)
+    .maybeSingle()
+
+  if (fetchErr || !row) return { ok: false, error: 'Affiliate not found' }
+  if (row.deleted_at) return { ok: false, error: 'Affiliate already removed' }
+
+  const stats = await fetchAffiliateDetailStats(admin, row)
+  const unpaid_balance = stats.pending_commission + stats.approved_commission
+
+  const now = new Date().toISOString()
+  const retiredCode = row.code as string | null
+
+  await revokeActiveAffiliateIntakeTokens(admin, affiliateId)
+
+  const { error: updateErr } = await admin
+    .from('affiliates')
+    .update({
+      status: 'inactive',
+      deleted_at: now,
+      retired_code: retiredCode || row.retired_code || null,
+      code: null,
+      updated_at: now,
+    })
+    .eq('id', affiliateId)
+    .is('deleted_at', null)
+
+  if (updateErr) return { ok: false, error: updateErr.message }
+
+  return { ok: true, retired_code: retiredCode, unpaid_balance }
 }
 
 export function encryptPayoutDetailsForStorage(details: string | null | undefined): string | null {
@@ -47,7 +187,11 @@ export async function fetchAffiliateListStats(
 ): Promise<AffiliateListRow[]> {
   if (affiliates.length === 0) return []
 
-  const codes = affiliates.map((a) => a.code).filter((c): c is string => Boolean(c))
+  const codes = [
+    ...new Set(
+      affiliates.flatMap((a) => affiliateTrackingCodes(a))
+    ),
+  ]
 
   const { data: bookings } =
     codes.length > 0
@@ -87,14 +231,27 @@ export async function fetchAffiliateListStats(
   }
 
   return affiliates.map((row) => {
-    const stats = agg.get(row.code || '') || { paid: 0, pending: 0, lastAt: null }
+    const codes = affiliateTrackingCodes(row)
+    const stats = codes.length
+      ? codes.reduce(
+          (acc, code) => {
+            const s = agg.get(code) || { paid: 0, pending: 0, lastAt: null }
+            acc.paid += s.paid
+            acc.pending += s.pending
+            if (s.lastAt && (!acc.lastAt || s.lastAt > acc.lastAt)) acc.lastAt = s.lastAt
+            return acc
+          },
+          { paid: 0, pending: 0, lastAt: null as string | null }
+        )
+      : { paid: 0, pending: 0, lastAt: null }
+    const clickTotal = codes.reduce((n, code) => n + (clickCounts.get(code) || 0), 0)
     const url = row.code ? referralUrlFn(row.code) : ''
     return {
       ...serializeAffiliate(row, url),
       total_earnings: Number(stats.paid.toFixed(2)),
       pending_balance: Number(stats.pending.toFixed(2)),
       last_booking_at: stats.lastAt,
-      total_clicks: row.code ? clickCounts.get(row.code) || 0 : 0,
+      total_clicks: clickTotal,
       setup_pending: isAffiliateSetupPending(row),
     }
   })
@@ -186,9 +343,14 @@ export async function buildPayoutReport(
   const { data: affiliates } = await admin
     .from('affiliates')
     .select('*')
-    .in('code', codes)
+    .or(`code.in.(${codes.join(',')}),retired_code.in.(${codes.join(',')})`)
 
-  const affiliateByCode = new Map((affiliates || []).map((a) => [a.code, a as Affiliate]))
+  const affiliateByCode = new Map<string, Affiliate>()
+  for (const a of affiliates || []) {
+    const row = a as Affiliate
+    if (row.code) affiliateByCode.set(row.code, row)
+    if (row.retired_code) affiliateByCode.set(row.retired_code, row)
+  }
 
   const rows: PayoutReportRow[] = []
   for (const [code, stats] of byCode) {
@@ -229,16 +391,19 @@ export async function markAffiliatePayoutPaid(params: {
 
   const { data: affiliate } = await admin
     .from('affiliates')
-    .select('code')
+    .select('code, retired_code')
     .eq('id', affiliateId)
     .single()
 
   if (!affiliate) throw new Error('Affiliate not found')
 
+  const codes = affiliateTrackingCodes(affiliate)
+  if (codes.length === 0) throw new Error('Affiliate has no referral code')
+
   const { data: bookings, error: bErr } = await admin
     .from('bookings')
     .select('id, total_price, platform_fee, affiliate_payout_aud, affiliate_approved_at')
-    .eq('affiliate_code', affiliate.code)
+    .in('affiliate_code', codes)
     .eq('affiliate_payout_status', 'approved')
 
   if (bErr) throw new Error(bErr.message)
