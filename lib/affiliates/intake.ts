@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AffiliateTier } from '@/lib/types/database'
 import {
   affiliateIntakeExpiryDaysFromNowIso,
   generateAffiliateIntakeTokenPlain,
@@ -10,9 +11,11 @@ export type IntakeTokenValidation =
       ok: true
       tokenId: string
       affiliateId: string
-      affiliateName: string
+      tier: AffiliateTier
+      commissionRate: number
+      expiresAt: string
     }
-  | { ok: false; reason: 'not_found' | 'used' | 'revoked' | 'expired' }
+  | { ok: false; reason: 'not_found' | 'used' | 'revoked' | 'expired' | 'already_setup' }
 
 export async function validateAffiliateIntakeToken(
   admin: SupabaseClient,
@@ -22,7 +25,9 @@ export async function validateAffiliateIntakeToken(
 
   const { data: row } = await admin
     .from('affiliate_intake_tokens')
-    .select('id, affiliate_id, expires_at, completed_at, revoked_at, affiliate:affiliates(name)')
+    .select(
+      'id, affiliate_id, expires_at, completed_at, revoked_at, affiliate:affiliates(tier, commission_rate, setup_completed_at)'
+    )
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
@@ -31,13 +36,40 @@ export async function validateAffiliateIntakeToken(
   if (row.completed_at) return { ok: false, reason: 'used' }
   if (new Date(row.expires_at) <= new Date()) return { ok: false, reason: 'expired' }
 
-  const affiliate = row.affiliate as unknown as { name: string } | null
+  const affiliate = row.affiliate as unknown as {
+    tier: AffiliateTier
+    commission_rate: number
+    setup_completed_at: string | null
+  } | null
+
+  if (affiliate?.setup_completed_at) {
+    return { ok: false, reason: 'already_setup' }
+  }
+
   return {
     ok: true,
     tokenId: row.id,
     affiliateId: row.affiliate_id,
-    affiliateName: affiliate?.name || '',
+    tier: affiliate?.tier === 'standard' ? 'standard' : 'founding',
+    commissionRate: Number(affiliate?.commission_rate || 0.3),
+    expiresAt: row.expires_at,
   }
+}
+
+export async function isAffiliateCodeAvailable(
+  admin: SupabaseClient,
+  code: string,
+  excludeAffiliateId?: string
+): Promise<boolean> {
+  const { data } = await admin
+    .from('affiliates')
+    .select('id')
+    .eq('code', code)
+    .maybeSingle()
+
+  if (!data) return true
+  if (excludeAffiliateId && data.id === excludeAffiliateId) return true
+  return false
 }
 
 export async function revokeActiveAffiliateIntakeTokens(

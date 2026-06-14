@@ -147,7 +147,8 @@ export function AffiliateForm({
           <p className="text-sm font-medium text-blue-900">Payout setup link</p>
           <p className="mt-1 text-xs text-blue-800">
             Send this private link — they choose their country and enter bank details (Australia) or
-            PayPal email (everywhere else). Expires in 14 days, works once.
+            PayPal email (everywhere else). Reusable until they submit; expires in 14 days unless you
+            generate a new link.
           </p>
           <div className="mt-3">
             <CopyReferralLink url={intakeUrl} label="Copy setup link" />
@@ -250,9 +251,9 @@ export function AffiliateForm({
       {mode === 'edit' ? (
         <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 space-y-4">
           <p className="text-sm text-stone-700">
-            Payout details are collected via a secure one-time link — avoid taking BSB or PayPal
-            details over WhatsApp or email. Generate a new link if the affiliate needs to update
-            their details.
+            Payout details are collected via a secure invite link — avoid taking BSB or PayPal details
+            over WhatsApp or email. Partners can reopen the link until they finish; generate a new link
+            only if they need to update details or lost the latest invite.
           </p>
           {affiliateId && (
             <AffiliateIntakeLinkButton

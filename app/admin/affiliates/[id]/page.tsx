@@ -16,6 +16,7 @@ import {
 } from '@/lib/affiliates/payout-region'
 
 type DetailPayload = {
+  setup_pending?: boolean
   affiliate: {
     id: string
     name: string
@@ -29,6 +30,7 @@ type DetailPayload = {
     payout_method: string
     payout_details: string
     payout_details_submitted_at?: string | null
+    setup_completed_at?: string | null
   }
   stats: {
     total_clicks: number
@@ -119,6 +121,9 @@ export default function AdminAffiliateDetailPage() {
   }
 
   const { affiliate, stats, bookings, payouts } = data
+  const setupPending =
+    data.setup_pending ?? (!affiliate.setup_completed_at || !affiliate.code)
+  const displayName = setupPending ? 'Pending setup' : affiliate.name
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -133,10 +138,19 @@ export default function AdminAffiliateDetailPage() {
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Admin</p>
-          <h1 className="mt-1 text-2xl font-semibold text-stone-900">{affiliate.name}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-stone-900">{displayName}</h1>
           <p className="mt-1 text-sm text-stone-600">
-            {affiliate.email} · <span className="capitalize">{affiliate.tier}</span> ·{' '}
-            <span className="capitalize">{affiliate.status}</span>
+            {setupPending ? (
+              <>
+                <span className="capitalize">{affiliate.tier}</span> invite — waiting for them to
+                complete onboarding
+              </>
+            ) : (
+              <>
+                {affiliate.email} · <span className="capitalize">{affiliate.tier}</span> ·{' '}
+                <span className="capitalize">{affiliate.status}</span>
+              </>
+            )}
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -149,12 +163,30 @@ export default function AdminAffiliateDetailPage() {
 
       <Card className="mb-6">
         <CardContent className="space-y-4 pt-6">
-          <div>
-            <p className="text-sm font-medium text-stone-800">Referral link</p>
-            <div className="mt-2">
-              <CopyReferralLink url={affiliate.referral_url} />
+          {setupPending ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">Waiting for partner to complete setup</p>
+              <p className="mt-1 text-sm text-amber-800">
+                They still need to choose their referral code and enter payout details. The same invite
+                link works if they close the tab — until they finish or it expires. Regenerate only if
+                they lost the link or you need a fresh one (that cancels the old link).
+              </p>
+              <div className="mt-3">
+                <AffiliateIntakeLinkButton
+                  affiliateId={id}
+                  affiliateName={displayName}
+                  setupPending
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <p className="text-sm font-medium text-stone-800">Referral link</p>
+              <div className="mt-2">
+                <CopyReferralLink url={affiliate.referral_url} />
+              </div>
+            </div>
+          )}
           <div className="border-t border-stone-100 pt-4">
             <p className="text-sm font-medium text-stone-800">Payout details</p>
             {affiliate.payout_country ? (
@@ -208,16 +240,20 @@ export default function AdminAffiliateDetailPage() {
               </>
             ) : (
               <p className="mt-1 text-sm text-amber-700">
-                Waiting for affiliate to complete the secure payout form.
+                {setupPending
+                  ? 'Payout details appear here once they finish the invite form.'
+                  : 'Waiting for affiliate to complete the secure payout form.'}
               </p>
             )}
-            <div className="mt-3">
-              <AffiliateIntakeLinkButton
-                affiliateId={id}
-                affiliateName={affiliate.name}
-                payoutSubmittedAt={affiliate.payout_details_submitted_at}
-              />
-            </div>
+            {!setupPending && (
+              <div className="mt-3">
+                <AffiliateIntakeLinkButton
+                  affiliateId={id}
+                  affiliateName={affiliate.name}
+                  payoutSubmittedAt={affiliate.payout_details_submitted_at}
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

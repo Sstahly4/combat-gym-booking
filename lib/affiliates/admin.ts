@@ -6,6 +6,8 @@ import {
   encryptAffiliatePayoutDetails,
 } from '@/lib/affiliates/encryption'
 import { payoutRailLabel } from '@/lib/affiliates/payout-region'
+import { isAffiliateSetupPending } from '@/lib/affiliates/program-copy'
+import { affiliateReferralUrl } from '@/lib/affiliates/urls'
 
 export type AffiliatePublic = Omit<Affiliate, 'payout_details_encrypted'> & {
   payout_details: string
@@ -16,8 +18,11 @@ export function serializeAffiliate(row: Affiliate, referralUrl: string): Affilia
   const { payout_details_encrypted, ...rest } = row
   return {
     ...rest,
+    name: row.name || '',
+    email: row.email || '',
+    code: row.code || '',
     payout_details: decryptAffiliatePayoutDetails(payout_details_encrypted),
-    referral_url: referralUrl,
+    referral_url: row.code ? referralUrl || affiliateReferralUrl(row.code) : '',
   }
 }
 
@@ -32,6 +37,7 @@ export type AffiliateListRow = AffiliatePublic & {
   pending_balance: number
   last_booking_at: string | null
   total_clicks: number
+  setup_pending: boolean
 }
 
 export async function fetchAffiliateListStats(
@@ -39,19 +45,28 @@ export async function fetchAffiliateListStats(
   affiliates: Affiliate[],
   referralUrlFn: (code: string) => string
 ): Promise<AffiliateListRow[]> {
-  const codes = affiliates.map((a) => a.code)
-  if (codes.length === 0) return []
+  if (affiliates.length === 0) return []
 
-  const { data: bookings } = await admin
-    .from('bookings')
-    .select('affiliate_code, affiliate_payout_aud, affiliate_payout_status, created_at')
-    .in('affiliate_code', codes)
-    .not('affiliate_code', 'is', null)
+  const codes = affiliates.map((a) => a.code).filter((c): c is string => Boolean(c))
 
-  const { data: clicks } = await admin
-    .from('affiliate_clicks')
-    .select('affiliate_code')
-    .in('affiliate_code', codes)
+  const { data: bookings } =
+    codes.length > 0
+      ? await admin
+          .from('bookings')
+          .select('affiliate_code, affiliate_payout_aud, affiliate_payout_status, created_at')
+          .in('affiliate_code', codes)
+          .not('affiliate_code', 'is', null)
+      : { data: [] as Array<{
+          affiliate_code: string
+          affiliate_payout_aud: number | null
+          affiliate_payout_status: string | null
+          created_at: string
+        }> }
+
+  const { data: clicks } =
+    codes.length > 0
+      ? await admin.from('affiliate_clicks').select('affiliate_code').in('affiliate_code', codes)
+      : { data: [] as Array<{ affiliate_code: string }> }
 
   const clickCounts = new Map<string, number>()
   for (const c of clicks || []) {
@@ -72,13 +87,15 @@ export async function fetchAffiliateListStats(
   }
 
   return affiliates.map((row) => {
-    const stats = agg.get(row.code) || { paid: 0, pending: 0, lastAt: null }
+    const stats = agg.get(row.code || '') || { paid: 0, pending: 0, lastAt: null }
+    const url = row.code ? referralUrlFn(row.code) : ''
     return {
-      ...serializeAffiliate(row, referralUrlFn(row.code)),
+      ...serializeAffiliate(row, url),
       total_earnings: Number(stats.paid.toFixed(2)),
       pending_balance: Number(stats.pending.toFixed(2)),
       last_booking_at: stats.lastAt,
-      total_clicks: clickCounts.get(row.code) || 0,
+      total_clicks: row.code ? clickCounts.get(row.code) || 0 : 0,
+      setup_pending: isAffiliateSetupPending(row),
     }
   })
 }
@@ -180,7 +197,7 @@ export async function buildPayoutReport(
     const payout = Number(stats.payout.toFixed(2))
     rows.push({
       affiliate_id: affiliate.id,
-      affiliate_name: affiliate.name,
+      affiliate_name: affiliate.name || 'Unknown',
       affiliate_code: code,
       payout_country: affiliate.payout_country,
       payout_region: affiliate.payout_region,

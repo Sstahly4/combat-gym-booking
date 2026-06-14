@@ -19,6 +19,7 @@ function isHiddenRoute(pathname: string) {
   return (
     pathname.startsWith('/manage') ||
     pathname.startsWith('/admin') ||
+    pathname.startsWith('/affiliate/setup') ||
     pathname.startsWith('/bookings/review') ||
     pathname.startsWith('/bookings/summary') ||
     pathname.startsWith('/bookings/request-access') ||

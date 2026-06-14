@@ -18,6 +18,7 @@ export function ConditionalFooter() {
     pathname.startsWith('/manage/') ||
     pathname === '/admin' ||
     pathname.startsWith('/admin/') ||
+    pathname.startsWith('/affiliate/setup') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/bookings/review') ||
     isCheckoutStep ||

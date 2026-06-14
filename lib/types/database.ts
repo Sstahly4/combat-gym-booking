@@ -385,9 +385,9 @@ export interface GymPlatformPayout {
 
 export interface Affiliate {
   id: string
-  name: string
-  email: string
-  code: string
+  name: string | null
+  email: string | null
+  code: string | null
   commission_rate: number
   tier: AffiliateTier
   payout_method: AffiliatePayoutMethod
@@ -395,6 +395,7 @@ export interface Affiliate {
   payout_country: string | null
   payout_details_encrypted: string | null
   payout_details_submitted_at?: string | null
+  setup_completed_at?: string | null
   status: AffiliateStatus
   notes: string | null
   created_at: string

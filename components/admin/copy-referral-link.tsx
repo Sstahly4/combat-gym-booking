@@ -4,7 +4,15 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 
-export function CopyReferralLink({ url, label = 'Copy link' }: { url: string; label?: string }) {
+export function CopyReferralLink({
+  url,
+  label = 'Copy link',
+  prominent = false,
+}: {
+  url: string
+  label?: string
+  prominent?: boolean
+}) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
@@ -15,6 +23,20 @@ export function CopyReferralLink({ url, label = 'Copy link' }: { url: string; la
     } catch {
       /* ignore */
     }
+  }
+
+  if (prominent) {
+    return (
+      <Button
+        type="button"
+        size="lg"
+        className="h-14 w-full max-w-sm text-base font-semibold shadow-md"
+        onClick={copy}
+      >
+        {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
+        {copied ? 'Copied!' : label}
+      </Button>
+    )
   }
 
   return (

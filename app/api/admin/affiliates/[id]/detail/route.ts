@@ -26,6 +26,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   const from = request.nextUrl.searchParams.get('from')
   const to = request.nextUrl.searchParams.get('to')
 
+  const affiliateCode = row.code as string | null
+  const hasCode = Boolean(affiliateCode)
+
   let bookingsQuery = admin
     .from('bookings')
     .select(
@@ -46,14 +49,20 @@ export async function GET(request: NextRequest, { params }: Params) {
         package:packages(name)
       `
     )
-    .eq('affiliate_code', row.code)
     .order('created_at', { ascending: false })
+    .limit(hasCode ? 1000 : 0)
+
+  if (hasCode) {
+    bookingsQuery = bookingsQuery.eq('affiliate_code', affiliateCode!)
+  }
 
   if (statusFilter && ['pending', 'approved', 'paid'].includes(statusFilter)) {
     bookingsQuery = bookingsQuery.eq('affiliate_payout_status', statusFilter)
   }
   if (from) bookingsQuery = bookingsQuery.gte('created_at', `${from}T00:00:00.000Z`)
   if (to) bookingsQuery = bookingsQuery.lte('created_at', `${to}T23:59:59.999Z`)
+
+  const emptyBookings = Promise.resolve({ data: [] as never[], count: 0 })
 
   const [
     { count: clickCount },
@@ -63,30 +72,38 @@ export async function GET(request: NextRequest, { params }: Params) {
     paidAgg,
     pendingAgg,
   ] = await Promise.all([
-    admin
-      .from('affiliate_clicks')
-      .select('id', { count: 'exact', head: true })
-      .eq('affiliate_code', row.code),
-    admin
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('affiliate_code', row.code),
+    hasCode
+      ? admin
+          .from('affiliate_clicks')
+          .select('id', { count: 'exact', head: true })
+          .eq('affiliate_code', affiliateCode!)
+      : emptyBookings,
+    hasCode
+      ? admin
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .eq('affiliate_code', affiliateCode!)
+      : emptyBookings,
     bookingsQuery,
     admin
       .from('affiliate_payouts')
       .select('*')
       .eq('affiliate_id', params.id)
       .order('period_end', { ascending: false }),
-    admin
-      .from('bookings')
-      .select('affiliate_payout_aud')
-      .eq('affiliate_code', row.code)
-      .eq('affiliate_payout_status', 'paid'),
-    admin
-      .from('bookings')
-      .select('affiliate_payout_aud')
-      .eq('affiliate_code', row.code)
-      .eq('affiliate_payout_status', 'approved'),
+    hasCode
+      ? admin
+          .from('bookings')
+          .select('affiliate_payout_aud')
+          .eq('affiliate_code', affiliateCode!)
+          .eq('affiliate_payout_status', 'paid')
+      : emptyBookings,
+    hasCode
+      ? admin
+          .from('bookings')
+          .select('affiliate_payout_aud')
+          .eq('affiliate_code', affiliateCode!)
+          .eq('affiliate_payout_status', 'approved')
+      : emptyBookings,
   ])
 
   const totalPaidOut = (paidAgg.data || []).reduce(
@@ -99,7 +116,8 @@ export async function GET(request: NextRequest, { params }: Params) {
   )
 
   return NextResponse.json({
-    affiliate: serializeAffiliate(row, affiliateReferralUrl(row.code)),
+    affiliate: serializeAffiliate(row, row.code ? affiliateReferralUrl(row.code) : ''),
+    setup_pending: !row.setup_completed_at || !row.code,
     stats: {
       total_clicks: clickCount ?? 0,
       total_bookings: bookingCount ?? 0,

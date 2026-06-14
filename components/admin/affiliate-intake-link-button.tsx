@@ -10,12 +10,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CopyReferralLink } from '@/components/admin/copy-referral-link'
+import { affiliateInviteLinkAdminNote } from '@/lib/affiliates/program-copy'
 import { KeyRound } from 'lucide-react'
 
 type Props = {
   affiliateId: string
   affiliateName: string
   payoutSubmittedAt?: string | null
+  setupPending?: boolean
   variant?: 'default' | 'outline'
 }
 
@@ -23,6 +25,7 @@ export function AffiliateIntakeLinkButton({
   affiliateId,
   affiliateName,
   payoutSubmittedAt,
+  setupPending,
   variant = 'outline',
 }: Props) {
   const [busy, setBusy] = useState(false)
@@ -56,7 +59,11 @@ export function AffiliateIntakeLinkButton({
       <div className="space-y-1">
         <Button type="button" variant={variant} size="sm" onClick={generate} disabled={busy}>
           <KeyRound className="mr-1.5 h-4 w-4" />
-          {busy ? 'Generating…' : payoutSubmittedAt ? 'New payout setup link' : 'Payout setup link'}
+          {busy ? 'Generating…' : setupPending
+            ? 'Generate invite link'
+            : payoutSubmittedAt
+              ? 'New payout setup link'
+              : 'Payout setup link'}
         </Button>
         {payoutSubmittedAt && (
           <p className="text-xs text-stone-500">
@@ -74,23 +81,30 @@ export function AffiliateIntakeLinkButton({
       <Dialog open={Boolean(modal)} onOpenChange={(open) => !open && setModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Payout setup link — {affiliateName}</DialogTitle>
+            <DialogTitle>
+              {setupPending ? 'Invite link' : 'Payout setup link'} — {affiliateName}
+            </DialogTitle>
             <DialogDescription>
-              Send this private link so {affiliateName} can enter their own bank or PayPal details.
-              It works once and expires{' '}
-              {modal?.expiresAt
-                ? new Date(modal.expiresAt).toLocaleDateString('en-AU', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })
-                : 'in 14 days'}
-              . The URL is only shown here — copy it now.
+              {setupPending ? (
+                <>
+                  Send this private link so they can complete onboarding — name, email, referral code,
+                  and payout details.{' '}
+                </>
+              ) : (
+                <>
+                  Send this private link so {affiliateName} can enter their own bank or PayPal details.{' '}
+                </>
+              )}
+              {affiliateInviteLinkAdminNote(modal?.expiresAt)}
+              {' '}The URL is only shown here — copy it now.
             </DialogDescription>
           </DialogHeader>
           {modal && (
             <div className="mt-2">
-              <CopyReferralLink url={modal.url} label="Copy setup link" />
+              <CopyReferralLink
+                url={modal.url}
+                label={setupPending ? 'Copy invite link' : 'Copy setup link'}
+              />
             </div>
           )}
         </DialogContent>

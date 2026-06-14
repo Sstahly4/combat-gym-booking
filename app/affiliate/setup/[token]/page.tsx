@@ -4,8 +4,8 @@ import { AffiliateIntakeClient } from './intake-client'
 
 export const metadata: Metadata = {
   ...privateRouteMetadata,
-  title: 'Affiliate payout setup | CombatStay',
-  description: 'Secure one-time form to submit your payout details.',
+  title: 'Affiliate onboarding | CombatStay',
+  description: 'Complete your CombatStay affiliate setup — choose your referral code and payout details.',
 }
 
 export default function AffiliateIntakePage({ params }: { params: { token: string } }) {

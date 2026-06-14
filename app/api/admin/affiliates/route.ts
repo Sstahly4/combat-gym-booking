@@ -6,13 +6,6 @@ import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { affiliateReferralUrl } from '@/lib/affiliates/urls'
 import {
-  affiliateCodeValidationError,
-  generateAffiliateCodeFromName,
-  normalizeAffiliateCode,
-} from '@/lib/affiliates/code'
-import { AFFILIATE_TIER_COMMISSION } from '@/lib/affiliates/constants'
-import {
-  encryptPayoutDetailsForStorage,
   fetchAffiliateListStats,
   serializeAffiliate,
 } from '@/lib/affiliates/admin'
@@ -21,6 +14,7 @@ import {
   buildAffiliateIntakeUrl,
   isAffiliateIntakePepperConfigured,
 } from '@/lib/affiliates/intake-token'
+import { AFFILIATE_TIER_COMMISSION } from '@/lib/affiliates/constants'
 import type { AffiliateTier } from '@/lib/types/database'
 
 function appOrigin(request: NextRequest): string {
@@ -45,59 +39,33 @@ export async function GET() {
   return NextResponse.json({ affiliates: rows })
 }
 
+/** Create a pending affiliate (tier only) and return a reusable invite link. */
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return auth.response
 
-  const body = await request.json()
-  const name = (body.name || '').toString().trim()
-  const email = (body.email || '').toString().trim().toLowerCase()
-  let code = normalizeAffiliateCode((body.code || '').toString())
-  const tier = (body.tier || 'standard') as AffiliateTier
-  const payoutDetails = (body.payout_details || '').toString()
-  const notes = (body.notes || '').toString().trim() || null
-  const status = ['active', 'paused', 'inactive'].includes(body.status) ? body.status : 'active'
-  const generateIntakeLink = body.generate_intake_link !== false
-
-  if (!name || !email) {
-    return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
+  if (!isAffiliateIntakePepperConfigured()) {
+    return NextResponse.json(
+      { error: 'Affiliate invite links are not configured on this server.' },
+      { status: 503 }
+    )
   }
 
-  if (!code) code = generateAffiliateCodeFromName(name)
-  const codeError = affiliateCodeValidationError(code)
-  if (codeError) return NextResponse.json({ error: codeError }, { status: 400 })
-
+  const body = await request.json()
+  const tier = (body.tier === 'standard' ? 'standard' : 'founding') as AffiliateTier
   const commissionRate =
     tier === 'founding' ? AFFILIATE_TIER_COMMISSION.founding : AFFILIATE_TIER_COMMISSION.standard
 
   const admin = createAdminClient()
 
-  const { data: existing } = await admin.from('affiliates').select('id').eq('code', code).maybeSingle()
-  if (existing) {
-    return NextResponse.json({ error: 'This referral code is already taken' }, { status: 409 })
-  }
-
-  let encrypted: string | null = null
-  try {
-    encrypted = encryptPayoutDetailsForStorage(payoutDetails)
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Encryption failed'
-    return NextResponse.json({ error: message }, { status: 503 })
-  }
-
   const { data: row, error } = await admin
     .from('affiliates')
     .insert({
-      name,
-      email,
-      code,
       tier,
       commission_rate: commissionRate,
       payout_method: 'bank',
       payout_region: 'au',
-      payout_details_encrypted: encrypted,
-      notes,
-      status,
+      status: 'active',
     })
     .select()
     .single()
@@ -106,25 +74,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  let intakeLink: { url: string; expires_at: string } | null = null
-  if (generateIntakeLink && isAffiliateIntakePepperConfigured()) {
-    try {
-      const { plain, expiresAt } = await createAffiliateIntakeToken({
-        admin,
-        affiliateId: row.id,
-        createdBy: auth.user.id,
-      })
-      intakeLink = {
+  try {
+    const { plain, expiresAt } = await createAffiliateIntakeToken({
+      admin,
+      affiliateId: row.id,
+      createdBy: auth.user.id,
+    })
+
+    return NextResponse.json({
+      affiliate: serializeAffiliate(row, ''),
+      invite_link: {
         url: buildAffiliateIntakeUrl(appOrigin(request), plain),
         expires_at: expiresAt,
-      }
-    } catch (e) {
-      console.warn('[affiliates/create] intake link generation failed', e)
-    }
+      },
+    })
+  } catch (e) {
+    await admin.from('affiliates').delete().eq('id', row.id)
+    const message = e instanceof Error ? e.message : 'Failed to generate invite'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  return NextResponse.json({
-    affiliate: serializeAffiliate(row, affiliateReferralUrl(code)),
-    intake_link: intakeLink,
-  })
 }

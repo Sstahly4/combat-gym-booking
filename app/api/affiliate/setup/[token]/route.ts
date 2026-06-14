@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { validateAffiliateIntakeToken } from '@/lib/affiliates/intake'
+import { validateAffiliateIntakeToken, isAffiliateCodeAvailable } from '@/lib/affiliates/intake'
 import { encryptPayoutDetailsForStorage } from '@/lib/affiliates/admin'
 import { isAffiliateEncryptionConfigured } from '@/lib/affiliates/encryption'
 import { formatAffiliatePayoutDetails } from '@/lib/affiliates/intake-token'
@@ -12,6 +12,12 @@ import {
   payoutMethodForCountry,
   regionFromCountry,
 } from '@/lib/affiliates/payout-region'
+import {
+  affiliateCodeValidationError,
+  normalizeAffiliateCode,
+} from '@/lib/affiliates/code'
+import { affiliateReferralUrl } from '@/lib/affiliates/urls'
+import { tierDisplayName } from '@/lib/affiliates/program-copy'
 
 interface Params {
   params: { token: string }
@@ -37,7 +43,11 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     valid: true,
-    affiliate_name: result.affiliateName,
+    affiliate_id: result.affiliateId,
+    tier: result.tier,
+    tier_label: tierDisplayName(result.tier),
+    commission_rate: result.commissionRate,
+    expires_at: result.expiresAt,
   })
 }
 
@@ -60,16 +70,29 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const validation = await validateAffiliateIntakeToken(admin, plain)
   if (!validation.ok) {
-    const status = validation.reason === 'used' ? 410 : 404
+    const status = validation.reason === 'used' || validation.reason === 'already_setup' ? 410 : 404
     return NextResponse.json({ error: 'This link is no longer valid', reason: validation.reason }, { status })
   }
 
   const body = await request.json()
   const name = (body.name || '').toString().trim()
+  const email = (body.email || '').toString().trim().toLowerCase()
+  const code = normalizeAffiliateCode((body.code || '').toString())
   const payoutCountry = (body.payout_country || '').toString().trim()
 
   if (!name || name.length < 2) {
     return NextResponse.json({ error: 'Please enter your full name' }, { status: 400 })
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
+  }
+
+  const codeError = affiliateCodeValidationError(code)
+  if (codeError) return NextResponse.json({ error: codeError }, { status: 400 })
+
+  const codeAvailable = await isAffiliateCodeAvailable(admin, code, validation.affiliateId)
+  if (!codeAvailable) {
+    return NextResponse.json({ error: 'This referral code is already taken — try another' }, { status: 409 })
   }
 
   if (!payoutCountry || !isValidAffiliatePayoutCountry(payoutCountry)) {
@@ -118,11 +141,15 @@ export async function POST(request: NextRequest, { params }: Params) {
     .from('affiliates')
     .update({
       name,
+      email,
+      code,
       payout_country: payoutCountry,
       payout_region: payoutRegion,
       payout_method: payoutMethod,
       payout_details_encrypted: encrypted,
       payout_details_submitted_at: now,
+      setup_completed_at: now,
+      status: 'active',
     })
     .eq('id', validation.affiliateId)
 
@@ -140,5 +167,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Failed to finalise submission' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  const referralUrl = affiliateReferralUrl(code)
+
+  return NextResponse.json({ ok: true, referral_url: referralUrl, code })
 }

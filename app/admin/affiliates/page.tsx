@@ -12,6 +12,7 @@ type AffiliateRow = {
   code: string
   tier: string
   status: string
+  setup_pending?: boolean
   payout_region?: string
   payout_country?: string | null
   referral_url: string
@@ -31,6 +32,14 @@ function formatDate(iso: string | null) {
     month: 'short',
     year: 'numeric',
   })
+}
+
+function pendingBadge() {
+  return (
+    <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+      Pending setup
+    </span>
+  )
 }
 
 function statusBadge(status: string) {
@@ -91,9 +100,8 @@ export default function AdminAffiliatesPage() {
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Admin</p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">Affiliates</h1>
           <p className="mt-2 max-w-2xl text-sm text-stone-600">
-          Manage referral partners, copy their links, and track attributed bookings. Send each new
-          partner the secure payout setup link — never collect BSB or PayPal details over WhatsApp.
-          Payouts run monthly from the{' '}
+            Pick a tier, generate an invite link, send it. Partners complete their own setup — name,
+            email, referral code, and payout details. Payouts run monthly from the{' '}
             <Link href="/admin/affiliates/payouts" className="text-[#003580] underline">
               payout report
             </Link>
@@ -108,7 +116,7 @@ export default function AdminAffiliatesPage() {
           <Button asChild>
             <Link href="/admin/affiliates/new">
               <Plus className="mr-1.5 h-4 w-4" />
-              Add affiliate
+              Invite affiliate
             </Link>
           </Button>
         </div>
@@ -154,10 +162,16 @@ export default function AdminAffiliatesPage() {
                     <tr key={row.id} className="border-b border-stone-100 hover:bg-stone-50/80">
                       <td className="px-4 py-3 font-medium text-stone-900">
                         <Link href={`/admin/affiliates/${row.id}`} className="hover:underline">
-                          {row.name}
+                          {row.setup_pending ? (
+                            <span className="text-stone-500">Pending setup</span>
+                          ) : (
+                            row.name
+                          )}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 font-mono text-stone-700">{row.code}</td>
+                      <td className="px-4 py-3 font-mono text-stone-700">
+                        {row.setup_pending ? '—' : row.code}
+                      </td>
                       <td className="px-4 py-3 text-stone-600">{row.payout_country || '—'}</td>
                       <td className="px-4 py-3 text-stone-600">
                         {row.payout_country
@@ -167,7 +181,9 @@ export default function AdminAffiliatesPage() {
                           : '—'}
                       </td>
                       <td className="px-4 py-3 capitalize text-stone-600">{row.tier}</td>
-                      <td className="px-4 py-3">{statusBadge(row.status)}</td>
+                      <td className="px-4 py-3">
+                        {row.setup_pending ? pendingBadge() : statusBadge(row.status)}
+                      </td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatAud(row.total_earnings)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatAud(row.pending_balance)}</td>
                       <td className="px-4 py-3 text-stone-600">{formatDate(row.last_booking_at)}</td>
