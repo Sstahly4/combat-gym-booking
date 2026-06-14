@@ -5,10 +5,6 @@ export function tierCommissionPercent(tier: AffiliateTier): number {
   return Math.round((AFFILIATE_TIER_COMMISSION[tier] || 0.3) * 100)
 }
 
-export function tierEffectiveRateLabel(tier: AffiliateTier): string {
-  return tier === 'founding' ? '~6% of each booking' : '~4.5% of each booking'
-}
-
 export function tierDisplayName(tier: AffiliateTier): string {
   return tier === 'founding' ? 'Founding Partner' : 'Standard Partner'
 }
@@ -18,12 +14,17 @@ export function tierWelcomeHeadline(tier: AffiliateTier): string {
   return tier === 'founding' ? 'Founding Partner' : 'Affiliate'
 }
 
+/** Card title inside the program info box on intake. */
+export function tierProgramTitle(tier: AffiliateTier): string {
+  return tier === 'founding' ? 'Founding Partner Program' : 'Affiliate Program'
+}
+
 export function affiliateWelcomeBullets(tier: AffiliateTier): string[] {
   const pct = tierCommissionPercent(tier)
   return [
-    `${tierWelcomeHeadline(tier)} — you earn ${pct}% of CombatStay's commission (${tierEffectiveRateLabel(tier)}).`,
-    'Share your unique link — when someone books within 30 days, you get the credit (first click wins).',
-    'Commissions unlock 14 days after each booking clears the cancellation window.',
+    `Earn ${pct}% of CombatStay's commission on every booking you refer.`,
+    'Share your unique link — anyone who books within 30 days gets you the credit (first click wins).',
+    'Commissions are confirmed 14 days after the cancellation window closes.',
     `Monthly payouts via bank transfer (Australia) or PayPal (international). Minimum $${AFFILIATE_MIN_PAYOUT_AUD} AUD.`,
   ]
 }

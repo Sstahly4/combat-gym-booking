@@ -23,6 +23,7 @@ import {
   AFFILIATE_INVITE_INVALID_REASON_COPY,
   affiliateSpotSavedExpiryNote,
   affiliateWelcomeBullets,
+  tierProgramTitle,
   tierWelcomeHeadline,
 } from '@/lib/affiliates/program-copy'
 import type { AffiliateTier } from '@/lib/types/database'
@@ -241,7 +242,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
           <div className="border-b border-gray-100 px-4 pb-3 pt-4">
             <p className="text-base font-bold leading-snug text-gray-900">
-              {tierWelcomeHeadline(tier)} program
+              {tierProgramTitle(tier)}
             </p>
             <p className="mt-1 text-sm text-gray-600">
               Complete the form below to claim your referral code and set up payouts.
