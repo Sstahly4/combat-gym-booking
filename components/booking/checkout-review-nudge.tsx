@@ -8,6 +8,23 @@ import {
   isCheckoutReviewNudgeDismissed,
 } from '@/lib/utils/checkout-review-nudge'
 
+/** Ignore dismiss until the guest has scrolled down from the page top. */
+const MIN_SCROLL_BEFORE_DISMISS_PX = 40
+
+function shouldDismissForConfirmCta(root: HTMLElement, target: HTMLElement): boolean {
+  if (root.scrollTop < MIN_SCROLL_BEFORE_DISMISS_PX) return false
+
+  const rootRect = root.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+  const overlapTop = Math.max(targetRect.top, rootRect.top)
+  const overlapBottom = Math.min(targetRect.bottom, rootRect.bottom)
+  const visibleHeight = overlapBottom - overlapTop
+  if (visibleHeight < 36) return false
+
+  const targetHeight = Math.max(targetRect.height, 1)
+  return visibleHeight / targetHeight >= 0.55
+}
+
 export function CheckoutReviewNudge({
   bookingId,
   scrollRootRef,
@@ -16,7 +33,7 @@ export function CheckoutReviewNudge({
 }: {
   bookingId: string
   scrollRootRef: RefObject<HTMLElement | null>
-  /** Price details + confirm CTA block — observed for auto-dismiss. */
+  /** Confirm booking CTA row only — not price details or consent copy. */
   dismissAnchorRef: RefObject<HTMLElement | null>
   /** When false, the dismiss target is not mounted yet (e.g. Stripe still loading). */
   ready?: boolean
@@ -46,40 +63,44 @@ export function CheckoutReviewNudge({
       window.setTimeout(() => setVisible(false), 280)
     }
 
-    const attachObserver = () => {
+    const maybeDismiss = () => {
+      const root = scrollRootRef.current
+      const target = dismissAnchorRef.current
+      if (!root || !target) return
+      if (shouldDismissForConfirmCta(root, target)) dismiss()
+    }
+
+    const attach = () => {
       if (cancelled || dismissed) return
 
       const root = scrollRootRef.current
       const target = dismissAnchorRef.current
       if (!root || !target) {
-        raf = requestAnimationFrame(attachObserver)
+        raf = requestAnimationFrame(attach)
         return
       }
 
+      root.addEventListener('scroll', maybeDismiss, { passive: true })
+
       try {
-        observer = new IntersectionObserver(
-          ([entry]) => {
-            if (!entry?.isIntersecting || entry.intersectionRatio < 0.1) return
-            dismiss()
-          },
-          {
-            root,
-            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-            rootMargin: '0px 0px -80px 0px',
-          },
-        )
+        observer = new IntersectionObserver(() => maybeDismiss(), {
+          root,
+          threshold: [0, 0.25, 0.55, 0.75, 1],
+          rootMargin: '0px 0px -12% 0px',
+        })
         observer.observe(target)
       } catch (err) {
         console.warn('[checkout-review-nudge] IntersectionObserver failed', err)
       }
     }
 
-    attachObserver()
+    attach()
 
     return () => {
       cancelled = true
       cancelAnimationFrame(raf)
       observer?.disconnect()
+      scrollRootRef.current?.removeEventListener('scroll', maybeDismiss)
     }
   }, [visible, ready, bookingId, scrollRootRef, dismissAnchorRef])
 

@@ -456,7 +456,6 @@ function CheckoutForm({
           )}
         </form>
 
-        <div ref={dismissAnchorRef as RefObject<HTMLDivElement>} className="space-y-6">
         {priceDetailsSection}
 
         <div className="space-y-2">
@@ -466,7 +465,7 @@ function CheckoutForm({
               {error}
             </div>
           )}
-          <div>
+          <div ref={dismissAnchorRef as RefObject<HTMLDivElement>}>
           {isKlarnaCheckout ? (
             <Button
               type="submit"
@@ -530,7 +529,6 @@ function CheckoutForm({
           ) : null}
           </div>
           <PaymentHoldExplainer />
-        </div>
         </div>
       </div>
     )
