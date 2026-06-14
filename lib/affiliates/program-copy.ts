@@ -13,10 +13,15 @@ export function tierDisplayName(tier: AffiliateTier): string {
   return tier === 'founding' ? 'Founding Partner' : 'Standard Partner'
 }
 
+/** Partner-facing welcome headline on the intake form. */
+export function tierWelcomeHeadline(tier: AffiliateTier): string {
+  return tier === 'founding' ? 'Founding Partner' : 'Affiliate'
+}
+
 export function affiliateWelcomeBullets(tier: AffiliateTier): string[] {
   const pct = tierCommissionPercent(tier)
   return [
-    `${tierDisplayName(tier)} — you earn ${pct}% of CombatStay's commission (${tierEffectiveRateLabel(tier)}).`,
+    `${tierWelcomeHeadline(tier)} — you earn ${pct}% of CombatStay's commission (${tierEffectiveRateLabel(tier)}).`,
     'Share your unique link — when someone books within 30 days, you get the credit (first click wins).',
     'Commissions unlock 14 days after each booking clears the cancellation window.',
     `Monthly payouts via bank transfer (Australia) or PayPal (international). Minimum $${AFFILIATE_MIN_PAYOUT_AUD} AUD.`,
@@ -39,6 +44,19 @@ export function formatAffiliateInviteExpiry(iso: string): string {
   })
 }
 
+/** Partner-facing expiry under the submit button, e.g. 28 Jun 2026 */
+export function formatAffiliateSpotExpiry(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export function affiliateSpotSavedExpiryNote(expiresAt: string): string {
+  return `Your spot is saved — link expires ${formatAffiliateSpotExpiry(expiresAt)}`
+}
+
 /** Admin-facing note: invite links are reusable until setup is submitted. */
 export function affiliateInviteLinkAdminNote(expiresAt?: string | null): string {
   const expiry = expiresAt
@@ -52,7 +70,7 @@ export function affiliateInviteLinkAdminNote(expiresAt?: string | null): string 
 
 /** Partner-facing note on the onboarding form. */
 export function affiliateInviteLinkPartnerNote(expiresAt: string): string {
-  return `You can close this page and come back anytime before ${formatAffiliateInviteExpiry(expiresAt)} to finish setup.`
+  return affiliateSpotSavedExpiryNote(expiresAt)
 }
 
 export const AFFILIATE_INVITE_INVALID_REASON_COPY: Record<string, string> = {

@@ -21,9 +21,9 @@ import {
 import { affiliateReferralShareUrl } from '@/lib/affiliates/urls'
 import {
   AFFILIATE_INVITE_INVALID_REASON_COPY,
-  affiliateInviteLinkPartnerNote,
+  affiliateSpotSavedExpiryNote,
   affiliateWelcomeBullets,
-  tierDisplayName,
+  tierWelcomeHeadline,
 } from '@/lib/affiliates/program-copy'
 import type { AffiliateTier } from '@/lib/types/database'
 import { Check, Sparkles } from 'lucide-react'
@@ -35,7 +35,6 @@ type LoadState =
       status: 'ready'
       affiliateId: string
       tier: AffiliateTier
-      tierLabel: string
       expiresAt: string
     }
   | { status: 'done'; referralUrl: string; code: string }
@@ -107,7 +106,6 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
           status: 'ready',
           affiliateId: data.affiliate_id,
           tier: data.tier === 'standard' ? 'standard' : 'founding',
-          tierLabel: data.tier_label || tierDisplayName(data.tier),
           expiresAt: data.expires_at,
         })
       } catch {
@@ -236,25 +234,27 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
       {/* Section 1 — Welcome */}
       <header className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-[#003580]">CombatStay affiliates</p>
-        <h1 className="mt-2 text-2xl font-semibold text-stone-900 sm:text-3xl">
-          Welcome, {load.tierLabel}
+        <h1 className="mt-2 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+          Welcome, {tierWelcomeHeadline(tier)}
         </h1>
-        <p className="mt-2 text-sm text-stone-600">
-          Complete the form below to claim your referral code and set up payouts.
-        </p>
-        {load.expiresAt && (
-          <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            {affiliateInviteLinkPartnerNote(load.expiresAt)}
-          </p>
-        )}
-        <ul className="mt-5 space-y-2.5 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
-          {welcomeBullets.map((bullet) => (
-            <li key={bullet} className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#003580]" aria-hidden />
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
+
+        <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
+          <div className="border-b border-gray-100 px-4 pb-3 pt-4">
+            <p className="text-base font-bold leading-snug text-gray-900">
+              {tierWelcomeHeadline(tier)} program
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              Complete the form below to claim your referral code and set up payouts.
+            </p>
+          </div>
+          <ul className="divide-y divide-gray-100 px-4">
+            {welcomeBullets.map((bullet) => (
+              <li key={bullet} className="py-3.5 text-sm leading-relaxed text-gray-700">
+                {bullet}
+              </li>
+            ))}
+          </ul>
+        </div>
       </header>
 
       <form onSubmit={onSubmit} className="space-y-8">
@@ -265,7 +265,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         )}
 
         {/* Section 2 — Your details */}
-        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+        <section className="space-y-4 overflow-hidden rounded-xl border border-gray-200 bg-white p-6">
           <div>
             <h2 className="text-base font-semibold text-stone-900">Your details</h2>
             <p className="mt-1 text-xs text-stone-500">How we&apos;ll contact you about payouts.</p>
@@ -331,7 +331,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         </section>
 
         {/* Section 3 — Payout details */}
-        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+        <section className="space-y-4 overflow-hidden rounded-xl border border-gray-200 bg-white p-6">
           <div>
             <h2 className="text-base font-semibold text-stone-900">Payout details</h2>
             <p className="mt-1 text-xs text-stone-500">Encrypted at rest — only used for commission payouts.</p>
@@ -400,11 +400,16 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
 
         <Button
           type="submit"
-          className="h-12 w-full text-base"
+          className="h-12 w-full rounded-xl text-base"
           disabled={submitting || codeAvailable === false || checkingCode}
         >
           {submitting ? 'Setting up your account…' : 'Complete setup'}
         </Button>
+        {load.expiresAt && (
+          <p className="text-center text-sm text-gray-500">
+            {affiliateSpotSavedExpiryNote(load.expiresAt)}
+          </p>
+        )}
       </form>
     </main>
   )
