@@ -26,22 +26,23 @@ export function affiliateIntakeExpiryDaysFromNowIso(days = AFFILIATE_INTAKE_DEFA
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 }
 
-/** Compose the encrypted payout_details payload from intake form fields. */
 export function formatAffiliatePayoutDetails(params: {
   payout_method: 'bank' | 'paypal'
   name: string
+  country: string
   bsb?: string
   account_number?: string
   paypal_email?: string
 }): string {
   const name = params.name.trim()
+  const country = params.country.trim()
   if (params.payout_method === 'paypal') {
     const email = (params.paypal_email || '').trim().toLowerCase()
-    return `PayPal: ${email}\nAccount name: ${name}`
+    return `Country: ${country}\nPayPal: ${email}\nAccount name: ${name}`
   }
   const bsb = (params.bsb || '').trim()
   const account = (params.account_number || '').trim()
-  return `Account name: ${name}\nBSB: ${bsb}\nAccount: ${account}`
+  return `Country: ${country}\nAccount name: ${name}\nBSB: ${bsb}\nAccount: ${account}`
 }
 
 export function isAffiliateIntakePepperConfigured(): boolean {

@@ -20,7 +20,6 @@ export type AffiliateFormValues = {
   email: string
   code: string
   tier: AffiliateTier
-  payout_method: 'bank' | 'paypal'
   payout_details: string
   notes: string
   status: AffiliateStatus
@@ -31,7 +30,6 @@ const emptyForm: AffiliateFormValues = {
   email: '',
   code: '',
   tier: 'founding',
-  payout_method: 'bank',
   payout_details: '',
   notes: '',
   status: 'active',
@@ -148,8 +146,8 @@ export function AffiliateForm({
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-medium text-blue-900">Payout setup link</p>
           <p className="mt-1 text-xs text-blue-800">
-            Send this private link so the affiliate can enter their own BSB/account or PayPal email.
-            It expires in 14 days and works once.
+            Send this private link — they choose their country and enter bank details (Australia) or
+            PayPal email (everywhere else). Expires in 14 days, works once.
           </p>
           <div className="mt-3">
             <CopyReferralLink url={intakeUrl} label="Copy setup link" />
@@ -264,37 +262,21 @@ export function AffiliateForm({
           )}
           <details className="text-sm">
             <summary className="cursor-pointer text-stone-600">Admin override (manual entry)</summary>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Payout method</Label>
-                <Select
-                  value={form.payout_method}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, payout_method: e.target.value as 'bank' | 'paypal' }))
-                  }
-                >
-                  <option value="bank">Bank transfer</option>
-                  <option value="paypal">PayPal</option>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payout_details">
-                  {form.payout_method === 'paypal' ? 'PayPal email' : 'BSB / account details'}
-                </Label>
-                <Input
-                  id="payout_details"
-                  value={form.payout_details}
-                  onChange={(e) => setForm((f) => ({ ...f, payout_details: e.target.value }))}
-                />
-              </div>
+            <div className="mt-3 space-y-2">
+              <Label htmlFor="payout_details">Payout details (manual)</Label>
+              <Input
+                id="payout_details"
+                value={form.payout_details}
+                onChange={(e) => setForm((f) => ({ ...f, payout_details: e.target.value }))}
+                placeholder="BSB/account or PayPal email"
+              />
             </div>
           </details>
         </div>
       ) : (
         <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
-          After you create this affiliate, a secure payout setup link is generated automatically.
-          Send it privately so they can enter their own bank or PayPal details — no need to collect
-          that over WhatsApp.
+          A secure payout setup link is generated automatically. Partners pick their country on that
+          form — Australia gets bank fields; all other countries get PayPal.
         </div>
       )}
 

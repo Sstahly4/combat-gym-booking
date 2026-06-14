@@ -1,12 +1,19 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { ShieldCheck } from 'lucide-react'
+import { PayPalMark } from '@/components/affiliate/paypal-mark'
+import {
+  AFFILIATE_PAYOUT_COUNTRIES,
+  AUSTRALIA_COUNTRY,
+  intakePayoutDescription,
+  isAustraliaCountry,
+} from '@/lib/affiliates/payout-region'
 
 type LoadState =
   | { status: 'loading' }
@@ -25,13 +32,15 @@ const REASON_COPY: Record<string, string> = {
 
 export function AffiliateIntakeClient({ token }: { token: string }) {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
-  const [payoutMethod, setPayoutMethod] = useState<'bank' | 'paypal'>('bank')
   const [name, setName] = useState('')
+  const [payoutCountry, setPayoutCountry] = useState(AUSTRALIA_COUNTRY)
   const [bsb, setBsb] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [paypalEmail, setPaypalEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isAu = useMemo(() => isAustraliaCountry(payoutCountry), [payoutCountry])
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +66,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
   }, [token])
 
   async function onSubmit(e: FormEvent) {
+    if (load.status !== 'ready') return
     e.preventDefault()
     setSubmitting(true)
     setError(null)
@@ -66,7 +76,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          payout_method: payoutMethod,
+          payout_country: payoutCountry,
           bsb,
           account_number: accountNumber,
           paypal_email: paypalEmail,
@@ -126,7 +136,7 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">CombatStay affiliates</p>
         <h1 className="mt-2 text-2xl font-semibold text-stone-900">Payout setup</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Submit your bank or PayPal details once. They are encrypted at rest and only used for
+          Tell us where you are based and how to pay you. Details are encrypted and only used for
           commission payouts.
         </p>
       </header>
@@ -153,18 +163,23 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="payout_method">Preferred payout method</Label>
+          <Label htmlFor="payout_country">Country of residence</Label>
           <Select
-            id="payout_method"
-            value={payoutMethod}
-            onChange={(e) => setPayoutMethod(e.target.value as 'bank' | 'paypal')}
+            id="payout_country"
+            required
+            value={payoutCountry}
+            onChange={(e) => setPayoutCountry(e.target.value)}
           >
-            <option value="bank">Australian bank transfer</option>
-            <option value="paypal">PayPal</option>
+            {AFFILIATE_PAYOUT_COUNTRIES.map((country) => (
+              <option key={country} value={country}>
+                {country}
+              </option>
+            ))}
           </Select>
+          <p className="text-xs text-stone-500">{intakePayoutDescription(payoutCountry)}</p>
         </div>
 
-        {payoutMethod === 'bank' ? (
+        {isAu ? (
           <>
             <div className="space-y-2">
               <Label htmlFor="bsb">BSB</Label>
@@ -190,16 +205,23 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
             </div>
           </>
         ) : (
-          <div className="space-y-2">
-            <Label htmlFor="paypal_email">PayPal email</Label>
-            <Input
-              id="paypal_email"
-              type="email"
-              required
-              autoComplete="email"
-              value={paypalEmail}
-              onChange={(e) => setPaypalEmail(e.target.value)}
-            />
+          <div className="space-y-3 rounded-lg border border-stone-200 bg-stone-50 p-4">
+            <PayPalMark />
+            <div className="space-y-2">
+              <Label htmlFor="paypal_email">PayPal email</Label>
+              <Input
+                id="paypal_email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={paypalEmail}
+                onChange={(e) => setPaypalEmail(e.target.value)}
+              />
+              <p className="text-xs text-stone-500">
+                Must match the email on your PayPal account. Payouts are sent from CombatStay via PayPal.
+              </p>
+            </div>
           </div>
         )}
 

@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
   const email = (body.email || '').toString().trim().toLowerCase()
   let code = normalizeAffiliateCode((body.code || '').toString())
   const tier = (body.tier || 'standard') as AffiliateTier
-  const payoutMethod = body.payout_method === 'paypal' ? 'paypal' : 'bank'
   const payoutDetails = (body.payout_details || '').toString()
   const notes = (body.notes || '').toString().trim() || null
   const status = ['active', 'paused', 'inactive'].includes(body.status) ? body.status : 'active'
@@ -94,7 +93,8 @@ export async function POST(request: NextRequest) {
       code,
       tier,
       commission_rate: commissionRate,
-      payout_method: payoutMethod,
+      payout_method: 'bank',
+      payout_region: 'au',
       payout_details_encrypted: encrypted,
       notes,
       status,

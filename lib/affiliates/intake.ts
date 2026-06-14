@@ -6,7 +6,12 @@ import {
 } from '@/lib/affiliates/intake-token'
 
 export type IntakeTokenValidation =
-  | { ok: true; tokenId: string; affiliateId: string; affiliateName: string }
+  | {
+      ok: true
+      tokenId: string
+      affiliateId: string
+      affiliateName: string
+    }
   | { ok: false; reason: 'not_found' | 'used' | 'revoked' | 'expired' }
 
 export async function validateAffiliateIntakeToken(

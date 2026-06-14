@@ -9,6 +9,7 @@ export type BookingStatus = 'pending' | 'confirmed' | 'paid' | 'completed' | 'de
 export type AffiliateTier = 'founding' | 'standard'
 export type AffiliateStatus = 'active' | 'paused' | 'inactive'
 export type AffiliatePayoutMethod = 'bank' | 'paypal'
+export type AffiliatePayoutRegion = 'au' | 'international'
 export type AffiliateBookingPayoutStatus = 'pending' | 'approved' | 'paid'
 export type AffiliatePayoutRunStatus = 'pending' | 'paid'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
@@ -390,6 +391,8 @@ export interface Affiliate {
   commission_rate: number
   tier: AffiliateTier
   payout_method: AffiliatePayoutMethod
+  payout_region: AffiliatePayoutRegion
+  payout_country: string | null
   payout_details_encrypted: string | null
   payout_details_submitted_at?: string | null
   status: AffiliateStatus

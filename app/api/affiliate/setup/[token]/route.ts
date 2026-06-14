@@ -7,6 +7,11 @@ import { validateAffiliateIntakeToken } from '@/lib/affiliates/intake'
 import { encryptPayoutDetailsForStorage } from '@/lib/affiliates/admin'
 import { isAffiliateEncryptionConfigured } from '@/lib/affiliates/encryption'
 import { formatAffiliatePayoutDetails } from '@/lib/affiliates/intake-token'
+import {
+  isValidAffiliatePayoutCountry,
+  payoutMethodForCountry,
+  regionFromCountry,
+} from '@/lib/affiliates/payout-region'
 
 interface Params {
   params: { token: string }
@@ -61,11 +66,18 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const body = await request.json()
   const name = (body.name || '').toString().trim()
-  const payoutMethod = body.payout_method === 'paypal' ? 'paypal' : 'bank'
+  const payoutCountry = (body.payout_country || '').toString().trim()
 
   if (!name || name.length < 2) {
     return NextResponse.json({ error: 'Please enter your full name' }, { status: 400 })
   }
+
+  if (!payoutCountry || !isValidAffiliatePayoutCountry(payoutCountry)) {
+    return NextResponse.json({ error: 'Please select your country' }, { status: 400 })
+  }
+
+  const payoutRegion = regionFromCountry(payoutCountry)
+  const payoutMethod = payoutMethodForCountry(payoutCountry)
 
   if (payoutMethod === 'paypal') {
     const paypalEmail = (body.paypal_email || '').toString().trim().toLowerCase()
@@ -89,6 +101,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       formatAffiliatePayoutDetails({
         payout_method: payoutMethod,
         name,
+        country: payoutCountry,
         bsb: body.bsb,
         account_number: body.account_number,
         paypal_email: body.paypal_email,
@@ -105,6 +118,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     .from('affiliates')
     .update({
       name,
+      payout_country: payoutCountry,
+      payout_region: payoutRegion,
       payout_method: payoutMethod,
       payout_details_encrypted: encrypted,
       payout_details_submitted_at: now,

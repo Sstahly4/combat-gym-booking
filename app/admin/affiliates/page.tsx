@@ -12,6 +12,8 @@ type AffiliateRow = {
   code: string
   tier: string
   status: string
+  payout_region?: string
+  payout_country?: string | null
   referral_url: string
   total_earnings: number
   pending_balance: number
@@ -137,6 +139,8 @@ export default function AdminAffiliatesPage() {
                   <tr className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
                     <th className="px-4 py-3 font-medium">Name</th>
                     <th className="px-4 py-3 font-medium">Code</th>
+                    <th className="px-4 py-3 font-medium">Country</th>
+                    <th className="px-4 py-3 font-medium">Rail</th>
                     <th className="px-4 py-3 font-medium">Tier</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium text-right">Total earned</th>
@@ -154,6 +158,14 @@ export default function AdminAffiliatesPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 font-mono text-stone-700">{row.code}</td>
+                      <td className="px-4 py-3 text-stone-600">{row.payout_country || '—'}</td>
+                      <td className="px-4 py-3 text-stone-600">
+                        {row.payout_country
+                          ? row.payout_region === 'international'
+                            ? 'PayPal'
+                            : 'Bank'
+                          : '—'}
+                      </td>
                       <td className="px-4 py-3 capitalize text-stone-600">{row.tier}</td>
                       <td className="px-4 py-3">{statusBadge(row.status)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatAud(row.total_earnings)}</td>

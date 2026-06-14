@@ -28,7 +28,6 @@ export default function AdminEditAffiliatePage() {
         email: a.email,
         code: a.code,
         tier: a.tier,
-        payout_method: a.payout_method,
         payout_details: a.payout_details,
         notes: a.notes || '',
         status: a.status,

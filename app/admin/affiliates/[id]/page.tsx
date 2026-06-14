@@ -10,6 +10,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CopyReferralLink } from '@/components/admin/copy-referral-link'
 import { AffiliateIntakeLinkButton } from '@/components/admin/affiliate-intake-link-button'
+import {
+  extractPayPalEmail,
+  payoutRailLabel,
+} from '@/lib/affiliates/payout-region'
 
 type DetailPayload = {
   affiliate: {
@@ -20,6 +24,8 @@ type DetailPayload = {
     tier: string
     status: string
     referral_url: string
+    payout_region: string
+    payout_country: string | null
     payout_method: string
     payout_details: string
     payout_details_submitted_at?: string | null
@@ -151,16 +157,55 @@ export default function AdminAffiliateDetailPage() {
           </div>
           <div className="border-t border-stone-100 pt-4">
             <p className="text-sm font-medium text-stone-800">Payout details</p>
-            {affiliate.payout_details_submitted_at ? (
-              <p className="mt-1 text-sm text-emerald-700">
-                Submitted securely on{' '}
-                {new Date(affiliate.payout_details_submitted_at).toLocaleDateString('en-AU', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })}
-                {affiliate.payout_details ? ` · ${affiliate.payout_method}` : ''}
+            {affiliate.payout_country ? (
+              <p className="mt-1 text-sm text-stone-700">
+                {affiliate.payout_country} ·{' '}
+                <span className="font-medium">
+                  {payoutRailLabel(
+                    affiliate.payout_region === 'international' ? 'international' : 'au'
+                  )}
+                </span>
               </p>
+            ) : (
+              <p className="mt-1 text-xs text-stone-500">
+                Country and rail are set when the affiliate completes the secure setup form.
+              </p>
+            )}
+            {affiliate.payout_details_submitted_at ? (
+              <>
+                <p className="mt-1 text-sm text-emerald-700">
+                  Submitted securely on{' '}
+                  {new Date(affiliate.payout_details_submitted_at).toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </p>
+                {affiliate.payout_details ? (
+                  <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    {affiliate.payout_region === 'international' ||
+                    affiliate.payout_method === 'paypal' ? (
+                      <>
+                        <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                          PayPal email
+                        </p>
+                        <p className="mt-1 font-mono text-sm text-stone-900">
+                          {extractPayPalEmail(affiliate.payout_details) || affiliate.payout_details}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Bank details
+                        </p>
+                        <pre className="mt-1 whitespace-pre-wrap font-mono text-sm text-stone-900">
+                          {affiliate.payout_details}
+                        </pre>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </>
             ) : (
               <p className="mt-1 text-sm text-amber-700">
                 Waiting for affiliate to complete the secure payout form.

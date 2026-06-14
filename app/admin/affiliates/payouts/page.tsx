@@ -13,6 +13,8 @@ type ReportRow = {
   affiliate_id: string
   affiliate_name: string
   affiliate_code: string
+  payout_country: string | null
+  payout_rail: string
   payout_method: string
   payout_details: string
   bookings_count: number
@@ -170,13 +172,14 @@ export default function AdminAffiliatePayoutsPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full min-w-[960px] text-left text-sm">
                 <thead>
                   <tr className="border-b text-xs uppercase text-stone-500">
                     <th className="px-4 py-3">Affiliate</th>
+                    <th className="px-4 py-3">Country</th>
+                    <th className="px-4 py-3">Rail</th>
                     <th className="px-4 py-3 text-right">Bookings</th>
                     <th className="px-4 py-3 text-right">Payout</th>
-                    <th className="px-4 py-3">Method</th>
                     <th className="px-4 py-3">Payout details</th>
                     <th className="px-4 py-3">Payment reference</th>
                     <th className="px-4 py-3">Action</th>
@@ -194,12 +197,15 @@ export default function AdminAffiliatePayoutsPage() {
                         </Link>
                         <p className="font-mono text-xs text-stone-500">{row.affiliate_code}</p>
                       </td>
+                      <td className="px-4 py-3 text-stone-600">{row.payout_country || '—'}</td>
+                      <td className="px-4 py-3 font-medium text-stone-800">{row.payout_rail}</td>
                       <td className="px-4 py-3 text-right">{row.bookings_count}</td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">
                         {formatAud(row.affiliate_payout)}
                       </td>
-                      <td className="px-4 py-3 capitalize">{row.payout_method}</td>
-                      <td className="px-4 py-3 text-stone-600">{row.payout_details || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-stone-600">
+                        {row.payout_details || '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <Input
                           className="h-8 min-w-[140px]"

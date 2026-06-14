@@ -55,9 +55,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.email !== undefined) updates.email = body.email.toString().trim().toLowerCase()
   if (body.notes !== undefined) updates.notes = body.notes?.toString().trim() || null
   if (['active', 'paused', 'inactive'].includes(body.status)) updates.status = body.status
-  if (body.payout_method === 'paypal' || body.payout_method === 'bank') {
-    updates.payout_method = body.payout_method
-  }
 
   if (body.tier === 'founding' || body.tier === 'standard') {
     const tier = body.tier as AffiliateTier

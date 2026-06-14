@@ -5,6 +5,7 @@ import {
   decryptAffiliatePayoutDetails,
   encryptAffiliatePayoutDetails,
 } from '@/lib/affiliates/encryption'
+import { payoutRailLabel } from '@/lib/affiliates/payout-region'
 
 export type AffiliatePublic = Omit<Affiliate, 'payout_details_encrypted'> & {
   payout_details: string
@@ -86,7 +87,10 @@ export type PayoutReportRow = {
   affiliate_id: string
   affiliate_name: string
   affiliate_code: string
+  payout_country: string | null
+  payout_region: Affiliate['payout_region']
   payout_method: Affiliate['payout_method']
+  payout_rail: string
   payout_details: string
   bookings_count: number
   gross_booking_value: number
@@ -178,7 +182,10 @@ export async function buildPayoutReport(
       affiliate_id: affiliate.id,
       affiliate_name: affiliate.name,
       affiliate_code: code,
+      payout_country: affiliate.payout_country,
+      payout_region: affiliate.payout_region,
       payout_method: affiliate.payout_method,
+      payout_rail: payoutRailLabel(affiliate.payout_region),
       payout_details: decryptAffiliatePayoutDetails(affiliate.payout_details_encrypted),
       bookings_count: stats.period_booking_ids.length,
       gross_booking_value: Number(stats.gross.toFixed(2)),
@@ -299,6 +306,8 @@ export function payoutReportToCsv(
   const header = [
     'Affiliate',
     'Code',
+    'Country',
+    'Payout rail',
     'Bookings',
     'Gross booking value (AUD)',
     'CombatStay commission (AUD)',
@@ -313,6 +322,8 @@ export function payoutReportToCsv(
       [
         csvEscape(r.affiliate_name),
         csvEscape(r.affiliate_code),
+        csvEscape(r.payout_country || '—'),
+        csvEscape(r.payout_rail),
         r.bookings_count,
         r.gross_booking_value.toFixed(2),
         r.combatstay_commission.toFixed(2),
