@@ -27,7 +27,6 @@ import {
   tierWelcomeHeadline,
 } from '@/lib/affiliates/program-copy'
 import type { AffiliateTier } from '@/lib/types/database'
-import { Check, Sparkles } from 'lucide-react'
 
 type LoadState =
   | { status: 'loading' }
@@ -188,42 +187,28 @@ export function AffiliateIntakeClient({ token }: { token: string }) {
   if (load.status === 'done') {
     return (
       <main className="mx-auto min-h-[calc(100svh-5rem)] max-w-lg px-4 py-10 sm:py-16">
-        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-8 text-center shadow-sm sm:p-10">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            <Sparkles className="h-7 w-7" aria-hidden />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
-            You&apos;re in — here&apos;s your link
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-stone-600">
-            Payout details saved securely. Share the link below anywhere you talk about CombatStay —
-            bio, email, social posts, DMs.
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
+          You&apos;re in — here&apos;s your link
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-stone-600">
+          Payout details saved securely. Share the link below anywhere you talk about CombatStay —
+          bio, email, social posts, DMs.
+        </p>
+
+        <div className="mt-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            Your referral link
           </p>
-
-          <div className="mt-8 rounded-xl border border-emerald-300/60 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
-              Your referral link
-            </p>
-            <div className="mt-3 flex flex-col items-center gap-3">
-              <CopyReferralLink url={load.referralUrl} label="Copy referral link" prominent />
-            </div>
+          <div className="mt-3">
+            <CopyReferralLink url={load.referralUrl} label="Copy referral link" prominent />
           </div>
-
-          <ul className="mt-8 space-y-2 text-left text-sm text-stone-600">
-            <li className="flex gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              Anyone who books within 30 days of clicking earns you commission.
-            </li>
-            <li className="flex gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              Payouts run monthly once your balance clears the minimum.
-            </li>
-            <li className="flex gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              Screenshot this page if you want a backup — we&apos;ve got your details on file.
-            </li>
-          </ul>
         </div>
+
+        <ul className="mt-8 list-disc space-y-2 pl-5 text-sm text-stone-600">
+          <li>Anyone who books within 30 days of clicking earns you commission.</li>
+          <li>Payouts run monthly once your balance clears the minimum.</li>
+          <li>Screenshot this page if you want a backup — we&apos;ve got your details on file.</li>
+        </ul>
       </main>
     )
   }

@@ -29,11 +29,11 @@ export function CopyReferralLink({
 
   if (prominent) {
     return (
-      <div className="flex w-full max-w-sm flex-col items-center gap-3">
+      <div className="flex w-full flex-col gap-3">
         <button
           type="button"
           onClick={copy}
-          className="w-full break-all rounded-lg border border-emerald-300/60 bg-white px-4 py-3 text-left font-mono text-base font-semibold text-[#003580] transition hover:bg-emerald-50/80 sm:text-lg"
+          className="w-full break-all rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-left font-mono text-base font-semibold text-[#003580] transition hover:bg-stone-100 sm:text-lg"
           title="Click to copy"
         >
           {shareUrl}
@@ -42,7 +42,7 @@ export function CopyReferralLink({
         <Button
           type="button"
           size="lg"
-          className="h-14 w-full text-base font-semibold shadow-md"
+          className="h-12 w-full text-base font-semibold sm:max-w-xs"
           onClick={copy}
         >
           {copied ? <Check className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
