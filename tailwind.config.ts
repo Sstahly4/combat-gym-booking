@@ -73,15 +73,17 @@ const config = {
           "40%": { transform: "scale(1.07)" },
           "100%": { transform: "scale(1)" },
         },
-        /** Confirm-and-pay mobile review nudge — grow in on load */
+        /** Confirm-and-pay mobile review nudge — grow in from nothing on load */
         "checkout-review-nudge-enter": {
-          "0%": { opacity: "0", transform: "scale(0.88)" },
+          "0%": { opacity: "0", transform: "scale(0.52)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
-        /** Bounce chevron downward to hint scrolling down the page */
+        /** Scroll hint: lift up, then snap down */
         "checkout-review-nudge-arrow": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(4px)" },
+          "0%, 28%, 100%": { transform: "translateY(0)" },
+          "8%": { transform: "translateY(-7px)" },
+          "16%": { transform: "translateY(2px)" },
+          "22%": { transform: "translateY(0)" },
         },
       },
       animation: {
@@ -90,9 +92,9 @@ const config = {
         "bottom-nav-icon-pop":
           "bottom-nav-icon-pop 0.26s cubic-bezier(0.22, 1, 0.36, 1) both",
         "checkout-review-nudge-enter":
-          "checkout-review-nudge-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+          "checkout-review-nudge-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
         "checkout-review-nudge-arrow":
-          "checkout-review-nudge-arrow 2.2s ease-in-out infinite",
+          "checkout-review-nudge-arrow 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite",
       },
     },
   },

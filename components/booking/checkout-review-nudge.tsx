@@ -1,41 +1,71 @@
 'use client'
 
 import { useCallback, useEffect, useState, type RefObject } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   dismissCheckoutReviewNudge,
   isCheckoutReviewNudgeDismissed,
 } from '@/lib/utils/checkout-review-nudge'
 
-/** Ignore dismiss until the guest has scrolled down from the page top. */
-const MIN_SCROLL_BEFORE_DISMISS_PX = 40
+/** Reserve space for the fixed FAB + safe area when testing visibility. */
+const FAB_ZONE_PX = 104
 
-function shouldDismissForConfirmCta(root: HTMLElement, target: HTMLElement): boolean {
-  if (root.scrollTop < MIN_SCROLL_BEFORE_DISMISS_PX) return false
+function ReviewScrollArrow({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 14 22"
+      fill="none"
+      aria-hidden
+      className={className}
+    >
+      <path
+        d="M7 2v13"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.5 13.5 7 17.5 10.5 13.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
+/** How close to max scroll counts as "at the bottom" (iOS rubber-band tolerance). */
+const SCROLL_BOTTOM_TOLERANCE_PX = 32
+
+function isScrolledToBottom(root: HTMLElement): boolean {
+  return root.scrollTop + root.clientHeight >= root.scrollHeight - SCROLL_BOTTOM_TOLERANCE_PX
+}
+
+function isCheckoutEndVisible(root: HTMLElement, end: HTMLElement): boolean {
   const rootRect = root.getBoundingClientRect()
-  const targetRect = target.getBoundingClientRect()
-  const overlapTop = Math.max(targetRect.top, rootRect.top)
-  const overlapBottom = Math.min(targetRect.bottom, rootRect.bottom)
-  const visibleHeight = overlapBottom - overlapTop
-  if (visibleHeight < 36) return false
+  const endRect = end.getBoundingClientRect()
+  const visibleBottom = rootRect.bottom - FAB_ZONE_PX
+  return endRect.top <= visibleBottom && endRect.bottom >= rootRect.top
+}
 
-  const targetHeight = Math.max(targetRect.height, 1)
-  return visibleHeight / targetHeight >= 0.55
+function shouldDismiss(root: HTMLElement, checkoutEnd: HTMLElement | null): boolean {
+  if (isScrolledToBottom(root)) return true
+  if (!checkoutEnd) return false
+  return isCheckoutEndVisible(root, checkoutEnd)
 }
 
 export function CheckoutReviewNudge({
   bookingId,
   scrollRootRef,
-  dismissAnchorRef,
+  checkoutEndRef,
   ready = true,
 }: {
   bookingId: string
   scrollRootRef: RefObject<HTMLElement | null>
-  /** Confirm booking CTA row only — not price details or consent copy. */
-  dismissAnchorRef: RefObject<HTMLElement | null>
-  /** When false, the dismiss target is not mounted yet (e.g. Stripe still loading). */
+  /** 1px sentinel at the bottom of mobile checkout content. */
+  checkoutEndRef: RefObject<HTMLElement | null>
+  /** When false, payment content below the fold is not mounted yet (e.g. Stripe loading). */
   ready?: boolean
 }) {
   const [visible, setVisible] = useState(false)
@@ -52,6 +82,7 @@ export function CheckoutReviewNudge({
 
     let dismissed = false
     let observer: IntersectionObserver | null = null
+    let scrollStopTimer = 0
     let raf = 0
     let cancelled = false
 
@@ -65,30 +96,42 @@ export function CheckoutReviewNudge({
 
     const maybeDismiss = () => {
       const root = scrollRootRef.current
-      const target = dismissAnchorRef.current
-      if (!root || !target) return
-      if (shouldDismissForConfirmCta(root, target)) dismiss()
+      const end = checkoutEndRef.current
+      if (!root) return
+      if (shouldDismiss(root, end)) dismiss()
+    }
+
+    const onScroll = () => {
+      maybeDismiss()
+      window.clearTimeout(scrollStopTimer)
+      scrollStopTimer = window.setTimeout(maybeDismiss, 120)
     }
 
     const attach = () => {
       if (cancelled || dismissed) return
 
       const root = scrollRootRef.current
-      const target = dismissAnchorRef.current
-      if (!root || !target) {
+      const end = checkoutEndRef.current
+      if (!root || !end) {
         raf = requestAnimationFrame(attach)
         return
       }
 
-      root.addEventListener('scroll', maybeDismiss, { passive: true })
+      maybeDismiss()
+
+      root.addEventListener('scroll', onScroll, { passive: true })
+      root.addEventListener('scrollend', maybeDismiss)
 
       try {
-        observer = new IntersectionObserver(() => maybeDismiss(), {
-          root,
-          threshold: [0, 0.25, 0.55, 0.75, 1],
-          rootMargin: '0px 0px -12% 0px',
-        })
-        observer.observe(target)
+        observer = new IntersectionObserver(
+          () => maybeDismiss(),
+          {
+            root,
+            threshold: 0,
+            rootMargin: `0px 0px -${FAB_ZONE_PX}px 0px`,
+          },
+        )
+        observer.observe(end)
       } catch (err) {
         console.warn('[checkout-review-nudge] IntersectionObserver failed', err)
       }
@@ -99,26 +142,21 @@ export function CheckoutReviewNudge({
     return () => {
       cancelled = true
       cancelAnimationFrame(raf)
+      window.clearTimeout(scrollStopTimer)
       observer?.disconnect()
-      scrollRootRef.current?.removeEventListener('scroll', maybeDismiss)
+      const root = scrollRootRef.current
+      root?.removeEventListener('scroll', onScroll)
+      root?.removeEventListener('scrollend', maybeDismiss)
     }
-  }, [visible, ready, bookingId, scrollRootRef, dismissAnchorRef])
+  }, [visible, ready, bookingId, scrollRootRef, checkoutEndRef])
 
   const handleClick = useCallback(() => {
     const root = scrollRootRef.current
-    const target = dismissAnchorRef.current
-    if (!target) return
-    if (root) {
-      const rootTop = root.getBoundingClientRect().top
-      const targetTop = target.getBoundingClientRect().top
-      root.scrollTo({
-        top: root.scrollTop + (targetTop - rootTop) - 16,
-        behavior: 'smooth',
-      })
-      return
-    }
-    target.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [dismissAnchorRef, scrollRootRef])
+    if (!root) return
+
+    const maxScroll = Math.max(0, root.scrollHeight - root.clientHeight)
+    root.scrollTo({ top: maxScroll, behavior: 'smooth' })
+  }, [scrollRootRef])
 
   if (!visible) return null
 
@@ -135,17 +173,17 @@ export function CheckoutReviewNudge({
         onClick={handleClick}
         aria-label="Scroll down to review payment and confirm booking"
         className={cn(
-          'pointer-events-auto flex items-center justify-center gap-2 rounded-full',
-          'bg-[#003580] px-6 py-3 text-sm font-semibold text-white',
-          'shadow-[0_8px_24px_rgba(0,53,128,0.35)]',
+          'pointer-events-auto flex items-center justify-center gap-3 rounded-full',
+          'min-w-[9.5rem] bg-[#003580] px-8 py-4 text-base font-semibold text-white',
+          'shadow-[0_2px_10px_rgba(0,0,0,0.14)]',
+          'origin-bottom',
           leaving
             ? 'scale-95 opacity-0 transition-all duration-300 ease-in'
             : 'animate-checkout-review-nudge-enter',
         )}
       >
-        <ChevronDown
-          className="h-4 w-4 motion-reduce:animate-none animate-checkout-review-nudge-arrow"
-          aria-hidden
+        <ReviewScrollArrow
+          className="h-[1.375rem] w-[0.875rem] shrink-0 motion-reduce:animate-none animate-checkout-review-nudge-arrow"
         />
         Review
       </button>

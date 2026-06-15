@@ -243,7 +243,6 @@ function CheckoutForm({
   mobileCheckoutDisabled = false,
   payWhen = 'now',
   priceDetailsSection,
-  dismissAnchorRef,
 }: {
   booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
@@ -257,7 +256,6 @@ function CheckoutForm({
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
   priceDetailsSection?: ReactNode
-  dismissAnchorRef?: RefObject<HTMLDivElement | null>
 }) {
   const router = useRouter()
   const params = useParams()
@@ -465,7 +463,7 @@ function CheckoutForm({
               {error}
             </div>
           )}
-          <div ref={dismissAnchorRef as RefObject<HTMLDivElement>}>
+          <div>
           {isKlarnaCheckout ? (
             <Button
               type="submit"
@@ -671,7 +669,7 @@ export default function PaymentPage() {
   const [draftCheckin, setDraftCheckin] = useState('')
   const [draftCheckout, setDraftCheckout] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
-  const dismissAnchorRef = useRef<HTMLDivElement | null>(null)
+  const checkoutEndRef = useRef<HTMLDivElement>(null)
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -1293,7 +1291,7 @@ export default function PaymentPage() {
       <div ref={scrollRootRef} className="flex-1 overflow-y-auto md:pb-0">
         <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
-        <div className="md:hidden space-y-6">
+        <div className="md:hidden space-y-6 pb-32">
           <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
 
           <div className="space-y-4">
@@ -1543,7 +1541,6 @@ export default function PaymentPage() {
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
-                dismissAnchorRef={dismissAnchorRef}
                 priceDetailsSection={
                   priceInfo && rawTotal > 0 ? (
                     <CheckoutPriceDetailsInline
@@ -1561,6 +1558,8 @@ export default function PaymentPage() {
               />
             </Elements>
           ) : null}
+
+          <div ref={checkoutEndRef} className="h-px w-full shrink-0" aria-hidden />
         </div>
 
       {/* Desktop Layout */}
@@ -1858,7 +1857,7 @@ export default function PaymentPage() {
       <CheckoutReviewNudge
         bookingId={bookingId}
         scrollRootRef={scrollRootRef}
-        dismissAnchorRef={dismissAnchorRef}
+        checkoutEndRef={checkoutEndRef}
         ready={!!clientSecret}
       />
 
