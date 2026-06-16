@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OfferStepper } from './offer-stepper'
+import { PackageEditShell } from './package-edit-shell'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import {
@@ -41,6 +42,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
   const [loading, setLoading] = useState(true)
   const [showStepper, setShowStepper] = useState(false)
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
+  const [editShellPackage, setEditShellPackage] = useState<Package | null>(null)
 
   useEffect(() => {
     fetchPackages()
@@ -72,8 +74,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
   }
 
   const openEdit = (pkg: Package) => {
-    setEditingPackage(pkg)
-    setShowStepper(true)
+    setEditShellPackage(pkg)
   }
 
   const handleComplete = () => {
@@ -87,7 +88,20 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
     setEditingPackage(null)
   }
 
-  // ── Full-screen stepper overlay ──────────────────────────────────────────
+  // ── Tabbed package editor (Details / Media / Pricing & Seasons) ─────────
+  if (editShellPackage) {
+    return (
+      <PackageEditShell
+        gymId={gymId}
+        currency={currency}
+        package={editShellPackage}
+        onClose={() => setEditShellPackage(null)}
+        onUpdated={fetchPackages}
+      />
+    )
+  }
+
+  // ── Full-screen stepper (new offer only) ───────────────────────────────
   if (showStepper) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">

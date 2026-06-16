@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeBookingPriceFromDates, type PriceBreakdown } from '@/lib/booking/recalculate-booking-price'
-import type { Package, PackageVariant } from '@/lib/types/database'
+import { computeBookingPriceWithSeasons } from '@/lib/booking/resolve-seasonal-prices'
+import type { Package, PackageSeasonalRate, PackageVariant } from '@/lib/types/database'
 
 export type ResolveBookingPriceResult =
   | {
@@ -26,12 +27,42 @@ type PackagePricingRow = Pick<
   | 'price_per_week'
   | 'price_per_month'
   | 'booking_mode'
->
+> & { id: string }
 
 type VariantPricingRow = Pick<
   PackageVariant,
-  'package_id' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+  'id' | 'package_id' | 'price_per_day' | 'price_per_week' | 'price_per_month'
 >
+
+/** Shared pricing path for create + checkout date updates. */
+export function computeBreakdownForStay(
+  packageId: string,
+  pkg: Pick<
+    Package,
+    'type' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+  >,
+  variant: VariantPricingRow | null,
+  seasonalRates: PackageSeasonalRate[],
+  startDate: string,
+  endDate: string
+): PriceBreakdown | null {
+  if (seasonalRates.length > 0) {
+    return computeBookingPriceWithSeasons(
+      startDate,
+      endDate,
+      {
+        id: packageId,
+        type: pkg.type,
+        price_per_day: pkg.price_per_day,
+        price_per_week: pkg.price_per_week,
+        price_per_month: pkg.price_per_month,
+      },
+      seasonalRates,
+      variant
+    )
+  }
+  return computeBookingPriceFromDates(startDate, endDate, pkg, variant)
+}
 
 /**
  * Server-side source of truth for booking totals. Fetches package/variant rows,
@@ -59,7 +90,7 @@ export async function resolveBookingPrice(
 
   const { data: packageData, error: pkgError } = await supabase
     .from('packages')
-    .select('gym_id, type, price_per_day, price_per_week, price_per_month, booking_mode')
+    .select('id, gym_id, type, price_per_day, price_per_week, price_per_month, booking_mode')
     .eq('id', packageId)
     .single()
 
@@ -76,7 +107,7 @@ export async function resolveBookingPrice(
   if (packageVariantId) {
     const { data: variantData, error: variantError } = await supabase
       .from('package_variants')
-      .select('package_id, price_per_day, price_per_week, price_per_month')
+      .select('id, package_id, price_per_day, price_per_week, price_per_month')
       .eq('id', packageVariantId)
       .single()
 
@@ -90,7 +121,23 @@ export async function resolveBookingPrice(
     }
   }
 
-  const breakdown = computeBookingPriceFromDates(startDate, endDate, pkg, variant)
+  const { data: seasonalRows } = await supabase
+    .from('package_seasonal_rates')
+    .select('*')
+    .eq('package_id', packageId)
+    .lte('start_date', endDate)
+    .gte('end_date', startDate)
+
+  const seasonalRates = (seasonalRows ?? []) as PackageSeasonalRate[]
+
+  const breakdown = computeBreakdownForStay(
+    packageId,
+    pkg,
+    variant,
+    seasonalRates,
+    startDate,
+    endDate
+  )
   if (!breakdown) {
     return { ok: false, status: 400, error: 'Invalid date range for pricing' }
   }

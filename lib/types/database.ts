@@ -303,6 +303,21 @@ export interface PackageVariant {
   updated_at: string
 }
 
+/** Date-range tier overrides for a package (optionally per variant). */
+export interface PackageSeasonalRate {
+  id: string
+  package_id: string
+  variant_id: string | null
+  name: string
+  start_date: string
+  end_date: string
+  price_per_day: number | null
+  price_per_week: number | null
+  price_per_month: number | null
+  created_at: string
+  updated_at: string
+}
+
 // Standalone Accommodation (independent of packages)
 export interface Accommodation {
   id: string

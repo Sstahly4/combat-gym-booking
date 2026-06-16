@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe, PLATFORM_COMMISSION_RATE } from '@/lib/stripe'
-import { computeBookingPriceFromDates } from '@/lib/booking/recalculate-booking-price'
+import { computeBreakdownForStay } from '@/lib/booking/resolve-booking-price'
 import {
   cancellationPolicyToStripeMetadata,
   resolveCancellationPolicy,
@@ -130,6 +130,7 @@ export async function PATCH(
     }
 
     const pkg = booking.package as {
+      id: string
       type: 'training' | 'accommodation' | 'all_inclusive'
       price_per_day: number | null
       price_per_week: number | null
@@ -142,12 +143,28 @@ export async function PATCH(
     }
 
     const variant = booking.variant as {
+      id: string
       price_per_day: number | null
       price_per_week: number | null
       price_per_month: number | null
     } | null
 
-    const priceInfo = computeBookingPriceFromDates(start_date, end_date, pkg, variant)
+    const dbForRates = booking.user_id && user ? supabase : createAdminClient()
+    const { data: seasonalRows } = await dbForRates
+      .from('package_seasonal_rates')
+      .select('*')
+      .eq('package_id', pkg.id)
+      .lte('start_date', end_date)
+      .gte('end_date', start_date)
+
+    const priceInfo = computeBreakdownForStay(
+      pkg.id,
+      pkg,
+      variant,
+      seasonalRows ?? [],
+      start_date,
+      end_date
+    )
     if (!priceInfo || priceInfo.price <= 0) {
       return NextResponse.json({ error: 'Invalid date range for pricing' }, { status: 400 })
     }
