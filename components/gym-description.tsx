@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import { FacilitiesList } from './facilities-list'
+import { renderGymDescriptionText } from '@/lib/text/render-gym-description'
 
 const MAX_PREVIEW_CHARS = 300
 
@@ -38,6 +39,18 @@ export function GymDescription({ gymName, description, landmarksText, amenities,
   const previewText = useMemo(() => (description ? getPreview(description) : ''), [description])
   const needsTruncation = !!description && description.length > MAX_PREVIEW_CHARS
 
+  const formattedDescription = useMemo(
+    () => (description ? renderGymDescriptionText(description) : null),
+    [description],
+  )
+
+  const previewNodes = useMemo((): ReactNode[] | null => {
+    if (!description) return null
+    const preview = getPreview(description)
+    if (preview === description) return formattedDescription
+    return renderGymDescriptionText(preview)
+  }, [description, formattedDescription])
+
   return (
     <div className="pt-2">
       <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-3 text-gray-900">About {gymName}</h2>
@@ -54,9 +67,9 @@ export function GymDescription({ gymName, description, landmarksText, amenities,
                 {description}
               </span>
             )}
-            <p className="whitespace-pre-wrap">
-              {isExpanded ? description : previewText}
-            </p>
+            <div className="space-y-3 md:space-y-4">
+              {isExpanded ? formattedDescription : previewNodes}
+            </div>
             {(needsTruncation || isExpanded) && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}

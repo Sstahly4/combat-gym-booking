@@ -58,6 +58,8 @@ import {
 import { DateRangePicker } from '@/components/date-range-picker'
 import {
   BOOKING_DATES_EXPIRED_ERROR,
+  BOOKING_DATES_EXPIRED_INLINE,
+  isBookingDatesExpiredError,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
@@ -71,7 +73,9 @@ import { splitGuestName } from '@/lib/booking/guest-name'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
   CHECKOUT_WALLET_BUTTON_HEIGHT,
+  CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
+  CheckoutSummaryFieldError,
   CheckoutSummaryRow,
   formatCheckoutAmountOnly,
   formatCheckoutDateRange,
@@ -986,15 +990,6 @@ export default function PaymentPage() {
       if (bookingResponse.ok) {
         const bookingApiData = await bookingResponse.json()
 
-        if (
-          bookingApiData.status === 'pending' &&
-          isBookingStartDateInPast(bookingApiData.start_date)
-        ) {
-          setError(BOOKING_DATES_EXPIRED_ERROR)
-          setLoading(false)
-          return
-        }
-
         const gymCurrency = bookingApiData.gym?.currency ?? 'USD'
         if (payWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)) {
           effectivePayWhen = 'now'
@@ -1064,6 +1059,15 @@ export default function PaymentPage() {
           } as BookingWithExtras
         })
 
+        if (
+          bookingApiData.status === 'pending' &&
+          isBookingStartDateInPast(bookingApiData.start_date)
+        ) {
+          setError(BOOKING_DATES_EXPIRED_ERROR)
+          setLoading(false)
+          return
+        }
+
         try {
           await loadPaymentIntent(effectivePayWhen)
         } catch (err: unknown) {
@@ -1116,15 +1120,8 @@ export default function PaymentPage() {
   }
 
 
-  // Hard error only — missing clientSecret while loading is normal and
-  // handled by the overlay + conditional Elements render below.
-  if (error) {
-    const datesExpired = error === BOOKING_DATES_EXPIRED_ERROR
-    const restartUrl =
-      booking?.gym_id && booking.package_id
-        ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}`
-        : null
-
+  // Hard error for non-date failures — dates expired uses the checkout shell below.
+  if (error && !isBookingDatesExpiredError(error)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -1134,9 +1131,7 @@ export default function PaymentPage() {
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CreditCard className="w-8 h-8 text-red-600" />
                 </div>
-                <h2 className="text-xl font-bold mb-2">
-                  {datesExpired ? 'Booking no longer available' : 'Payment Unavailable'}
-                </h2>
+                <h2 className="text-xl font-bold mb-2">Payment Unavailable</h2>
                 <p className="text-gray-600 mb-2">{error}</p>
                 {error.includes('not configured') && (
                   <p className="text-sm text-gray-500 mt-2">
@@ -1145,14 +1140,8 @@ export default function PaymentPage() {
                 )}
               </div>
               <div className="flex gap-3 justify-center">
-                {datesExpired && restartUrl ? (
-                  <Button onClick={() => router.replace(restartUrl)}>Choose new dates</Button>
-                ) : (
-                  <>
-                    <Button onClick={() => router.back()} variant="outline">Go Back</Button>
-                    <Button onClick={() => window.location.reload()}>Try Again</Button>
-                  </>
-                )}
+                <Button onClick={() => router.back()} variant="outline">Go Back</Button>
+                <Button onClick={() => window.location.reload()}>Try Again</Button>
               </div>
             </div>
           </CardContent>
@@ -1234,6 +1223,16 @@ export default function PaymentPage() {
     router.replace(gymListingHref)
   }
 
+  const datesExpired = isBookingDatesExpiredError(error)
+  const chooseDatesUrl =
+    booking?.gym_id && booking.package_id
+      ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}`
+      : null
+
+  const openChooseDates = () => {
+    if (chooseDatesUrl) router.replace(chooseDatesUrl)
+  }
+
   // During loading or while booking is null the overlay covers the page.
   // We still render the shell so the page isn't blank underneath the blur.
   if (!booking) {
@@ -1253,7 +1252,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
-      <LoadingOverlay show={loading || !clientSecret} />
+      <LoadingOverlay show={loading || (!datesExpired && !clientSecret)} />
 
       <div className="hidden md:block">
         <BookingProgressBar currentStep={3} />
@@ -1325,13 +1324,15 @@ export default function PaymentPage() {
               <CheckoutSummaryRow
                 label="Dates"
                 value={formatCheckoutDateRange(booking.start_date, booking.end_date)}
-                onEdit={openDatePicker}
+                onEdit={datesExpired ? openChooseDates : openDatePicker}
+                fieldError={datesExpired ? BOOKING_DATES_EXPIRED_INLINE : undefined}
               />
               <CheckoutSummaryRow
                 label="Guests"
                 value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
-                onEdit={openGuestSheet}
+                onEdit={datesExpired ? undefined : openGuestSheet}
               />
+              {!datesExpired && (
               <CheckoutSummaryRow
                 label="Total price"
                 value={
@@ -1354,9 +1355,14 @@ export default function PaymentPage() {
                 onEdit={priceInfo && rawTotal > 0 ? () => setPriceSheetOpen(true) : undefined}
                 editLabel="Details"
               />
+              )}
             </div>
             </div>
 
+            {datesExpired ? (
+              <CheckoutDatesUnavailableAlert onGoToListing={handleExitToGym} />
+            ) : (
+            <>
             {booking.package && (
               <CheckoutWhatsIncludedRow
                 package_={booking.package}
@@ -1405,9 +1411,11 @@ export default function PaymentPage() {
               phone={guestDisplayPhone || null}
               onEdit={openDetailsSheet}
             />
+            </>
+            )}
           </div>
 
-          {detailsSheetOpen && (
+          {!datesExpired && detailsSheetOpen && (
             <CheckoutBottomSheet
               onClose={handleDetailsDismiss}
               onCancel={handleDetailsDismiss}
@@ -1429,7 +1437,7 @@ export default function PaymentPage() {
             </CheckoutBottomSheet>
           )}
 
-          {datePickerOpen && (
+          {!datesExpired && datePickerOpen && (
             <CheckoutBottomSheet
               onClose={handleDatePickerCancel}
               onCancel={handleDatePickerCancel}
@@ -1451,7 +1459,7 @@ export default function PaymentPage() {
             </CheckoutBottomSheet>
           )}
 
-          {guestSheetOpen && (
+          {!datesExpired && guestSheetOpen && (
             <CheckoutBottomSheet
               onClose={handleGuestSheetCancel}
               onCancel={handleGuestSheetCancel}
@@ -1489,7 +1497,7 @@ export default function PaymentPage() {
             </CheckoutBottomSheet>
           )}
 
-          {payWhenSheetOpen && displayTotalPrice != null && (
+          {!datesExpired && payWhenSheetOpen && displayTotalPrice != null && (
             <CheckoutBottomSheet
               onClose={handlePayWhenDismiss}
               onCancel={handlePayWhenDismiss}
@@ -1513,7 +1521,7 @@ export default function PaymentPage() {
             </CheckoutBottomSheet>
           )}
 
-          {rawTotal > 0 && klarnaAvailable && (
+          {!datesExpired && rawTotal > 0 && klarnaAvailable && (
             <KlarnaInfoSheet
               open={klarnaInfoOpen}
               onClose={() => setKlarnaInfoOpen(false)}
@@ -1522,6 +1530,7 @@ export default function PaymentPage() {
             />
           )}
 
+          {!datesExpired && (
           <CurrencyModal
             open={currencyModalOpen}
             onOpenChange={setCurrencyModalOpen}
@@ -1530,8 +1539,9 @@ export default function PaymentPage() {
             confirmSelection
             checkoutSheet
           />
+          )}
 
-          {clientSecret && stripePromise ? (
+          {!datesExpired && clientSecret && stripePromise ? (
             <Elements key={clientSecret} stripe={stripePromise} options={options}>
               <CheckoutForm
                 booking={booking}
@@ -1559,7 +1569,9 @@ export default function PaymentPage() {
             </Elements>
           ) : null}
 
+          {!datesExpired && (
           <div ref={checkoutEndRef} className="h-px w-full shrink-0" aria-hidden />
+          )}
         </div>
 
       {/* Desktop Layout */}
@@ -1688,6 +1700,18 @@ export default function PaymentPage() {
                     <div className="text-xs text-gray-600 mt-1">00:00 – 12:00</div>
                   </div>
                 </div>
+                {datesExpired ? (
+                  <CheckoutSummaryFieldError>{BOOKING_DATES_EXPIRED_INLINE}</CheckoutSummaryFieldError>
+                ) : null}
+                {datesExpired ? (
+                  <button
+                    type="button"
+                    onClick={openChooseDates}
+                    className="text-sm text-[#003580] hover:underline font-medium"
+                  >
+                    Change dates
+                  </button>
+                ) : null}
                 
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Total length of stay:</div>
@@ -1715,7 +1739,13 @@ export default function PaymentPage() {
               </CardContent>
             </Card>
 
+            {datesExpired ? (
+              <CheckoutDatesUnavailableAlert onGoToListing={handleExitToGym} />
+            ) : null}
+
             {/* Price Summary */}
+            {!datesExpired ? (
+            <>
             <Card className="border border-gray-300 rounded-lg shadow-sm">
               <CardHeader className="bg-gray-50 border-b border-gray-300 pb-3">
                 <CardTitle className="text-lg font-semibold">Your price summary</CardTitle>
@@ -1814,9 +1844,12 @@ export default function PaymentPage() {
                 />
               </>
             )}
+            </>
+            ) : null}
           </div>
 
           {/* Right Column - Payment Form */}
+          {!datesExpired ? (
           <div className="lg:col-span-2 space-y-4">
             <div>
               <CheckoutStepTitle className="mb-3">Pay online</CheckoutStepTitle>
@@ -1850,16 +1883,19 @@ export default function PaymentPage() {
               </CardContent>
             </Card>
           </div>
+          ) : null}
         </div>
         </div>
       </div>
 
+      {!datesExpired && (
       <CheckoutReviewNudge
         bookingId={bookingId}
         scrollRootRef={scrollRootRef}
         checkoutEndRef={checkoutEndRef}
         ready={!!clientSecret}
       />
+      )}
 
       {whatsIncludedSheetOpen && booking.package && (
         <CheckoutWhatsIncludedSheet

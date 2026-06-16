@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { sendBookingConfirmedEmail, sendOwnerPayoutDisabledEmail } from '@/lib/email'
 import { sendOwnerPayoutPaidEmail } from '@/lib/email-owner-notifications'
+import { recordPaymentFailedForIntent } from '@/lib/bookings/record-payment-failed'
 import { normalizeOwnerNotificationPrefs } from '@/lib/manage/owner-notification-prefs'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 
@@ -298,6 +299,54 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+    }
+
+    if (event.type === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent
+      console.log(`📦 Processing payment_intent.payment_failed for: ${paymentIntent.id}`)
+
+      try {
+        let supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>
+        try {
+          supabase = createAdminClient()
+        } catch {
+          supabase = await createClient()
+        }
+
+        const result = await recordPaymentFailedForIntent(supabase, paymentIntent)
+
+        if (!result.ok) {
+          if (result.reason === 'not_found') {
+            console.warn('⚠️  No booking for failed payment intent:', paymentIntent.id)
+            return NextResponse.json({ received: true, booking_not_found: true })
+          }
+          if (result.reason === 'ineligible_status') {
+            console.log(
+              `ℹ️  Skipped payment_failed — booking ineligible (${result.detail})`,
+            )
+            return NextResponse.json({ received: true, skipped: result.detail })
+          }
+          console.error('❌ payment_failed update error:', result.detail)
+          return NextResponse.json(
+            { error: result.detail || 'Failed to record payment failure' },
+            { status: 500 },
+          )
+        }
+
+        console.log(
+          `✅ Booking ${result.booking_id} marked payment_failed${result.already_recorded ? ' (already)' : ''}`,
+        )
+
+        return NextResponse.json({
+          received: true,
+          booking_id: result.booking_id,
+          status_updated: !result.already_recorded,
+        })
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to process payment failure'
+        console.error('❌ Error processing payment_intent.payment_failed:', error)
+        return NextResponse.json({ error: message }, { status: 500 })
+      }
     }
 
     // Stripe Connect source-of-truth: sync payout capability from account updates.

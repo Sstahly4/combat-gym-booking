@@ -13,17 +13,32 @@ const PENDING_STATUSES = new Set<string>([
   'pending_payment',
   'pending_confirmation',
   'awaiting_approval',
+  'checkout_initiated',
+  'payment_failed',
+  'abandoned',
 ])
 
 const CONFIRMED_STATUSES = new Set<string>(['gym_confirmed', 'confirmed'])
+
+const CANCELLED_STATUSES = new Set<string>([
+  'cancelled',
+  'declined',
+  'cancelled_by_traveller',
+  'cancelled_by_gym',
+  'no_show',
+  'refunded',
+  'disputed',
+])
 
 export function toCanonicalBookingStatus(status: BookingStatus | string): CanonicalBookingStatus {
   if (PENDING_STATUSES.has(status)) return 'pending'
   if (CONFIRMED_STATUSES.has(status)) return 'confirmed'
   if (status === 'paid') return 'paid'
   if (status === 'completed') return 'completed'
-  if (status === 'declined') return 'declined'
-  if (status === 'cancelled') return 'cancelled'
+  if (CANCELLED_STATUSES.has(status)) {
+    if (status === 'declined' || status === 'cancelled_by_gym') return 'declined'
+    return 'cancelled'
+  }
   return 'pending'
 }
 
@@ -45,3 +60,6 @@ export function canonicalBookingStatusLabel(status: CanonicalBookingStatus) {
       return 'Pending'
   }
 }
+
+/** @deprecated Import from `@/lib/bookings/admin-booking-filters` instead. */
+export { ADMIN_ACTIVITY_BOOKING_STATUSES } from '@/lib/bookings/admin-booking-filters'

@@ -1,7 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { AFFILIATE_APPROVAL_DAYS } from '@/lib/affiliates/constants'
 
-const TERMINAL_STATUSES = new Set(['cancelled', 'declined'])
+const TERMINAL_STATUSES = new Set([
+  'cancelled',
+  'declined',
+  'cancelled_by_gym',
+  'cancelled_by_traveller',
+  'refunded',
+  'disputed',
+])
 
 /**
  * Move affiliate-attributed bookings from pending → approved once the

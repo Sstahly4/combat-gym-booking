@@ -28,16 +28,24 @@ import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { BookingDetailsModal } from '@/components/admin/booking-details-modal'
+import { AdminBookingStatusFilter } from '@/components/admin/admin-booking-status-filter'
 import { ViewerMoneyLine } from '@/components/admin/viewer-money-line'
 import type { Booking, Gym } from '@/lib/types/database'
+import {
+  dbStatusesForAdminFilter,
+  DEFAULT_ADMIN_BOOKING_FILTER,
+  passesAdminBookingFilter,
+  type AdminBookingListFilter,
+} from '@/lib/bookings/admin-booking-filters'
 
-type BookingListRow = Booking & {
-  gym?: Pick<Gym, 'id' | 'name' | 'currency'> | null
-}
 import {
   canonicalBookingStatusLabel,
   toCanonicalBookingStatus,
 } from '@/lib/bookings/status-normalization'
+
+type BookingListRow = Booking & {
+  gym?: Pick<Gym, 'id' | 'name' | 'currency'> | null
+}
 
 interface OverviewStats {
   unverified: number
@@ -64,12 +72,16 @@ export default function AdminOverviewPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [bookingFilter, setBookingFilter] = useState<AdminBookingListFilter>(
+    DEFAULT_ADMIN_BOOKING_FILTER,
+  )
 
   const fetchData = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true)
     else setLoading(true)
     try {
       const supabase = createClient()
+      const statusFilter = bookingFilter
       const [
         unverifiedRes,
         pendingRes,
@@ -82,16 +94,21 @@ export default function AdminOverviewPage() {
         supabase.from('gyms').select('id', { count: 'exact', head: true }).eq('verification_status', 'draft'),
         supabase.from('gyms').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('gyms').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-        supabase
-          .from('bookings')
-          .select(
-            `
+        (async () => {
+          const statuses = dbStatusesForAdminFilter(statusFilter)
+          let q = supabase
+            .from('bookings')
+            .select(
+              `
             *,
             gym:gyms(id, name, currency)
-          `
-          )
-          .order('created_at', { ascending: false })
-          .limit(5),
+          `,
+            )
+            .order('created_at', { ascending: false })
+            .limit(statusFilter === 'live' ? 25 : 5)
+          if (statuses) q = q.in('status', [...statuses])
+          return q
+        })(),
         supabase.from('offers').select('id', { count: 'exact', head: true }),
         supabase
           .from('gyms')
@@ -104,7 +121,10 @@ export default function AdminOverviewPage() {
           .catch(() => ({ gyms: [] })),
       ])
 
-      const bookings = (bookingsRes.status === 'fulfilled' ? bookingsRes.value.data ?? [] : []) as BookingListRow[]
+      const bookingsRaw = (bookingsRes.status === 'fulfilled' ? bookingsRes.value.data ?? [] : []) as BookingListRow[]
+      const bookings = bookingsRaw
+        .filter((b) => passesAdminBookingFilter(b, statusFilter))
+        .slice(0, 5)
       const gyms = recentGymsRes.status === 'fulfilled' ? recentGymsRes.value.data ?? [] : []
 
       setRecentBookings(bookings)
@@ -124,11 +144,15 @@ export default function AdminOverviewPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [bookingFilter])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const handleBookingFilterChange = (next: AdminBookingListFilter) => {
+    setBookingFilter(next)
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -276,13 +300,24 @@ export default function AdminOverviewPage() {
       </section>
 
       <section className="mb-10">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">
-            Recent bookings
-          </h2>
-          <p className="text-[11px] text-stone-500">
-            Amounts use your selected currency (navbar). Change currency there to match your location.
-          </p>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">
+              Recent bookings
+            </h2>
+            <p className="mt-0.5 text-[11px] text-stone-500">
+              Amounts use your selected currency (navbar).
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <AdminBookingStatusFilter value={bookingFilter} onChange={handleBookingFilterChange} />
+            <Link
+              href={`/admin/bookings?filter=${bookingFilter}`}
+              className="text-sm font-medium text-[#003580] hover:underline pb-1"
+            >
+              View all
+            </Link>
+          </div>
         </div>
         {loading ? (
           <div className="grid gap-2">
@@ -292,7 +327,7 @@ export default function AdminOverviewPage() {
           </div>
         ) : recentBookings.length === 0 ? (
           <div className="rounded-xl border border-dashed border-stone-200 px-4 py-10 text-center text-sm text-stone-500">
-            No bookings yet.
+            No bookings match this filter.
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">

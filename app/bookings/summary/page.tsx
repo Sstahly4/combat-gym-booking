@@ -29,9 +29,16 @@ import {
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import {
   BOOKING_DATES_EXPIRED_ERROR,
+  BOOKING_DATES_EXPIRED_INLINE,
+  isBookingDatesExpiredError,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
-import { CHECKOUT_PAY_BUTTON_CLASS, CheckoutStepTitle } from '@/components/booking/checkout-ui'
+import {
+  CHECKOUT_PAY_BUTTON_CLASS,
+  CheckoutDatesUnavailableAlert,
+  CheckoutStepTitle,
+  CheckoutSummaryFieldError,
+} from '@/components/booking/checkout-ui'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -139,7 +146,7 @@ function CheckoutBottomBar({
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
       <StepProgressBar step={submitting ? 3 : 2} />
-      {error && (
+      {error && !isBookingDatesExpiredError(error) && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
         </div>
@@ -160,7 +167,7 @@ function BookingSummaryPageContent() {
   const searchParams = useSearchParams()
   const { user, profile, loading: authLoading } = useAuth()
   const { convertPrice, formatPrice } = useCurrency()
-  const { hideReviewChrome } = useReviewCheckoutChrome()
+  const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
 
   const initialPrefill = readSummaryPrefillFromUrl()
 
@@ -337,6 +344,12 @@ function BookingSummaryPageContent() {
     if (!gymId) return
     writeGuestFlowSession(gymId, { checkin, checkout, guestCount, bookingFor })
   }, [user, checkin, checkout, guestCount, bookingFor, searchParams])
+
+  useEffect(() => {
+    if (isBookingDatesExpiredError(error) && checkin && !isBookingStartDateInPast(checkin)) {
+      setError(null)
+    }
+  }, [checkin, error])
 
   /** Apply gym + package data to state and resolve variant/discipline */
   const applyGymPackageData = (
@@ -627,6 +640,16 @@ function BookingSummaryPageContent() {
     !email ||
     !phone
 
+  const datesExpired =
+    isBookingDatesExpiredError(error) || (!!checkin && isBookingStartDateInPast(checkin))
+
+  const goToGymListing = () => {
+    if (!gym) return
+    prepareCheckoutExitToGym(gym)
+    showReviewChrome()
+    router.replace(`/gyms/${gym.slug || gym.id}`)
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
       <LoadingOverlay show={submitting} zClass="z-[60]" />
@@ -664,9 +687,21 @@ function BookingSummaryPageContent() {
                   {checkin && checkout && (
                     <p className="text-xs text-gray-600 mt-1">{formatDateRange(checkin, checkout)}</p>
                   )}
+                  {datesExpired && (
+                    <div className="mt-2">
+                      <CheckoutSummaryFieldError>{BOOKING_DATES_EXPIRED_INLINE}</CheckoutSummaryFieldError>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {datesExpired && (
+              <CheckoutDatesUnavailableAlert
+                onGoToListing={goToGymListing}
+                className="mx-4 mb-4"
+              />
+            )}
 
             <div className="border-t border-gray-100 px-4 pt-5 pb-4 space-y-5">
               <h2 className="text-lg font-semibold text-gray-900">Enter your details</h2>

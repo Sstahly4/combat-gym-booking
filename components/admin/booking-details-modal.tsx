@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Booking, Gym, Package as PackageType, PackageVariant } from '@/lib/types/database'
+import { bookingStatusDisplayLabel } from '@/lib/bookings/booking-lifecycle'
 import { toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 import { useViewerMoneyFormatter } from '@/lib/hooks/use-viewer-money'
 
@@ -106,7 +107,9 @@ export function BookingDetailsModal({ bookingId, isOpen, onClose, onRefresh }: B
     }
 
     const config = statusConfig[canonicalStatus] || { label: canonicalStatus, className: 'bg-gray-100 text-gray-800 border-gray-200' }
-    return <Badge className={config.className}>{config.label}</Badge>
+    const label =
+      status !== canonicalStatus ? bookingStatusDisplayLabel(status) : config.label
+    return <Badge className={config.className}>{label}</Badge>
   }
 
   const handleCapturePayment = async () => {

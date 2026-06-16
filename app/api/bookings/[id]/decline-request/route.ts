@@ -5,10 +5,14 @@ import { sendBookingRequestDeclinedEmail } from '@/lib/email'
 import { sendOwnerBookingCancelledEmail } from '@/lib/email-owner-notifications'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import {
+  BOOKING_STATUS_CANCELLED_BY_GYM,
+  buildBookingStatusUpdate,
+} from '@/lib/bookings/booking-lifecycle'
 
 /**
  * Decline a booking request (Gym Owner Action)
- * Transitions: pending → declined
+ * Transitions: pending → cancelled_by_gym
  * This cancels the request and notifies the guest
  */
 export async function POST(
@@ -72,13 +76,9 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Update booking status to declined
     const { error: updateError } = await supabase
       .from('bookings')
-      .update({
-        status: 'declined',
-        updated_at: new Date().toISOString()
-      })
+      .update(buildBookingStatusUpdate(BOOKING_STATUS_CANCELLED_BY_GYM))
       .eq('id', bookingId)
 
     if (updateError) {
@@ -141,7 +141,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      status: 'declined',
+      status: BOOKING_STATUS_CANCELLED_BY_GYM,
       message: 'Booking request declined. Guest has been notified.'
     })
   } catch (error: any) {

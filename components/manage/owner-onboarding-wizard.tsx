@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { GymDescriptionField } from '@/components/manage/gym-description-field'
 import { Select } from '@/components/ui/select'
 import { OwnerWizardSidebar } from '@/components/manage/owner-wizard-sidebar'
 import { OnboardingPackagesPanel } from '@/components/manage/onboarding-packages-panel'
@@ -1547,15 +1548,17 @@ export function OwnerOnboardingWizard({ embedInAdmin = false }: { embedInAdmin?:
                           <Label className={labelClass} htmlFor="wiz-gym-desc">
                             {embedInAdmin ? 'Description (optional)' : 'Description *'}
                           </Label>
-                          <Textarea
+                          <GymDescriptionField
                             id="wiz-gym-desc"
                             className={fieldClass}
-                            rows={5}
+                            rows={8}
                             placeholder="A short paragraph: what makes your gym special, who it suits, what a typical day looks like."
                             value={gymBasics.description}
                             onChange={(event) => setGymBasics((prev) => ({ ...prev, description: event.target.value }))}
                           />
-                          <p className={wizHint}>2–4 sentences works best. You can polish this later.</p>
+                          <p className={wizHint}>
+                            2–4 sentences works best. Paste from Word or Google Docs — spacing is kept automatically.
+                          </p>
                         </div>
                       </div>
                     )}

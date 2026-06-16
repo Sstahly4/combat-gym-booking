@@ -67,7 +67,12 @@ export async function POST(
   if (row.status === 'paid' || row.status === 'completed') {
     return NextResponse.json({ success: true, already_paid: true })
   }
-  if (row.status === 'declined' || row.status === 'cancelled') {
+  if (
+    row.status === 'declined' ||
+    row.status === 'cancelled' ||
+    row.status === 'cancelled_by_gym' ||
+    row.status === 'cancelled_by_traveller'
+  ) {
     return NextResponse.json(
       { error: `Cannot mark a ${row.status} booking as paid.` },
       { status: 400 }

@@ -1,6 +1,19 @@
-/** User-facing copy when a pending checkout's check-in date is in the past. */
+/** API + client error token when a pending checkout's check-in date is in the past. */
 export const BOOKING_DATES_EXPIRED_ERROR =
   'This booking is no longer available. The selected dates have passed. Please choose new dates to continue.'
+
+export const BOOKING_DATES_EXPIRED_INLINE = 'Dates no longer available'
+
+export const BOOKING_DATES_EXPIRED_HEADING = 'Your dates are no longer available'
+
+export const BOOKING_DATES_EXPIRED_DESCRIPTION =
+  'Update your training dates to continue with this booking.'
+
+export const BOOKING_DATES_EXPIRED_LISTING_LINK = 'Go to listing'
+
+export function isBookingDatesExpiredError(error: string | null | undefined): boolean {
+  return error === BOOKING_DATES_EXPIRED_ERROR
+}
 
 /** Parse a yyyy-MM-dd booking day as local midnight (matches checkout date pickers). */
 export function parseBookingDay(dateString: string): Date {

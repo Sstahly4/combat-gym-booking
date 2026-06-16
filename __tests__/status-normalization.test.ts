@@ -16,6 +16,10 @@ describe('toCanonicalBookingStatus', () => {
     ['completed', 'completed'],
     ['declined', 'declined'],
     ['cancelled', 'cancelled'],
+    ['cancelled_by_gym', 'declined'],
+    ['payment_failed', 'pending'],
+    ['abandoned', 'pending'],
+    ['refunded', 'cancelled'],
     ['something_unknown', 'pending'],
   ])('maps %s -> %s', (input, expected) => {
     expect(toCanonicalBookingStatus(input)).toBe(expected)

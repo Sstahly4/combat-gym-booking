@@ -244,7 +244,7 @@ export default function AdminVerificationPage() {
                   <ViewerMoneyLine amount={gym.price_per_day} storedCurrency={gym.currency} suffix="/ day" align="start" />
                 </p>
                 {gym.description && (
-                  <p className="mt-2 text-sm text-stone-500">
+                  <p className="mt-2 text-sm text-stone-500 whitespace-pre-wrap line-clamp-4">
                     {gym.description.substring(0, 200)}
                     {gym.description.length > 200 ? '…' : ''}
                   </p>

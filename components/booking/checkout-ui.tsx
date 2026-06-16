@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  BOOKING_DATES_EXPIRED_DESCRIPTION,
+  BOOKING_DATES_EXPIRED_HEADING,
+  BOOKING_DATES_EXPIRED_LISTING_LINK,
+} from '@/lib/booking/validate-booking-dates'
 
 /** Primary checkout CTA — card confirm, step 2 continue, etc. */
 export const CHECKOUT_PAY_BUTTON_CLASS =
@@ -37,22 +43,34 @@ export function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
   )
 }
 
+export function CheckoutSummaryFieldError({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 text-sm text-[#c13515]">
+      <AlertCircle className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span>{children}</span>
+    </div>
+  )
+}
+
 export function CheckoutSummaryRow({
   label,
   value,
   onEdit,
   editLabel = 'Change',
+  fieldError,
 }: {
   label: string
   value: ReactNode
   onEdit?: () => void
   editLabel?: string
+  fieldError?: string
 }) {
   return (
     <div className="flex items-start justify-between py-4">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-gray-900 mb-0.5">{label}</div>
         <div className="text-sm text-gray-700">{value}</div>
+        {fieldError ? <CheckoutSummaryFieldError>{fieldError}</CheckoutSummaryFieldError> : null}
       </div>
       {onEdit && (
         <button
@@ -63,6 +81,42 @@ export function CheckoutSummaryRow({
           {editLabel}
         </button>
       )}
+    </div>
+  )
+}
+
+export function CheckoutDatesUnavailableAlert({
+  onGoToListing,
+  className,
+}: {
+  onGoToListing: () => void
+  className?: string
+}) {
+  return (
+    <div className={cn('border border-gray-200 rounded-xl px-4 py-4', className)}>
+      <div className="flex gap-3.5">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c13515]"
+          aria-hidden
+        >
+          <span className="text-[1.35rem] font-semibold leading-none text-white">!</span>
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="font-semibold text-[15px] text-gray-900 leading-snug">
+            {BOOKING_DATES_EXPIRED_HEADING}
+          </p>
+          <p className="mt-1 text-sm text-gray-700 leading-snug">
+            {BOOKING_DATES_EXPIRED_DESCRIPTION}
+          </p>
+          <button
+            type="button"
+            onClick={onGoToListing}
+            className="mt-3 text-sm font-medium text-gray-900 underline underline-offset-2 can-hover:hover:text-gray-700"
+          >
+            {BOOKING_DATES_EXPIRED_LISTING_LINK}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

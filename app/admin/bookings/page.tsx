@@ -6,10 +6,21 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ClipboardList, Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase/client'
+import {
+  dbStatusesForAdminFilter,
+  DEFAULT_ADMIN_BOOKING_FILTER,
+  passesAdminBookingFilter,
+  parseAdminBookingFilter,
+  ADMIN_BOOKING_FILTER_OPTIONS,
+  type AdminBookingListFilter,
+} from '@/lib/bookings/admin-booking-filters'
+import { AdminBookingStatusFilter } from '@/components/admin/admin-booking-status-filter'
+import { bookingStatusDisplayLabel } from '@/lib/bookings/booking-lifecycle'
+import { canonicalBookingStatusLabel, toCanonicalBookingStatus } from '@/lib/bookings/status-normalization'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -42,15 +53,17 @@ function formatMoney(n: number | null, cur: string) {
 
 export default function AdminBookingsPage() {
   const { profile, loading: authLoading } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const highlightId = searchParams.get('booking_id')?.trim().toLowerCase() || null
+  const statusFilter = parseAdminBookingFilter(searchParams.get('filter'))
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
 
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (filter: AdminBookingListFilter = statusFilter) => {
     if (profile?.role !== 'admin') return
     setLoading(true)
     setError(null)
@@ -59,7 +72,8 @@ export default function AdminBookingsPage() {
       const since = new Date()
       since.setDate(since.getDate() - 90)
 
-      const { data: bRows, error: bErr } = await supabase
+      const statuses = dbStatusesForAdminFilter(filter)
+      let q = supabase
         .from('bookings')
         .select(
           'id, created_at, status, start_date, end_date, total_price, platform_fee, gym_id, guest_name, guest_email',
@@ -67,6 +81,9 @@ export default function AdminBookingsPage() {
         .gte('created_at', since.toISOString())
         .order('created_at', { ascending: false })
         .limit(200)
+      if (statuses) q = q.in('status', [...statuses])
+
+      const { data: bRows, error: bErr } = await q
 
       if (bErr) throw new Error(bErr.message)
 
@@ -90,7 +107,9 @@ export default function AdminBookingsPage() {
       }
 
       setRows(
-        raw.map((r) => {
+        raw
+          .filter((r) => passesAdminBookingFilter(r, filter))
+          .map((r) => {
           const m = meta.get(r.gym_id)
           return {
             ...r,
@@ -99,7 +118,7 @@ export default function AdminBookingsPage() {
             gym_country: m?.country ?? null,
             gym_currency: m?.currency || 'USD',
           }
-        })
+        }),
       )
     } catch (e) {
       console.error(e)
@@ -108,13 +127,21 @@ export default function AdminBookingsPage() {
     } finally {
       setLoading(false)
     }
-  }, [profile?.role])
+  }, [profile?.role, statusFilter])
 
   useEffect(() => {
     if (authLoading) return
     if (profile?.role !== 'admin') return
-    void load()
-  }, [authLoading, profile?.role, load])
+    void load(statusFilter)
+  }, [authLoading, profile?.role, load, statusFilter])
+
+  const handleFilterChange = (next: AdminBookingListFilter) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === DEFAULT_ADMIN_BOOKING_FILTER) params.delete('filter')
+    else params.set('filter', next)
+    const qs = params.toString()
+    router.replace(qs ? `/admin/bookings?${qs}` : '/admin/bookings')
+  }
 
   useEffect(() => {
     if (!highlightId || loading) return
@@ -147,14 +174,20 @@ export default function AdminBookingsPage() {
           </h1>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-stone-600">
-          Recent bookings across all gyms (last 90 days, newest first). Use the activity bell in the header for the
-          same feed with quick links.
+          Bookings across all gyms (last 90 days). Default view is live &amp; upcoming — switch filters to
+          diagnose checkout drop-off, cancellations, or disputes.
         </p>
       </header>
 
+      <div className="mb-4">
+        <AdminBookingStatusFilter value={statusFilter} onChange={handleFilterChange} />
+      </div>
+
       <Card className="border-stone-200">
         <CardHeader>
-          <CardTitle>Recent activity</CardTitle>
+          <CardTitle>
+            {ADMIN_BOOKING_FILTER_OPTIONS.find((o) => o.value === statusFilter)?.label ?? 'Bookings'}
+          </CardTitle>
           <CardDescription>
             {loading ? 'Loading…' : `${rows.length} booking${rows.length === 1 ? '' : 's'} loaded`}
           </CardDescription>
@@ -232,7 +265,15 @@ export default function AdminBookingsPage() {
                         <td className="whitespace-nowrap px-3 py-2 text-xs text-stone-600">
                           {r.start_date} → {r.end_date}
                         </td>
-                        <td className="px-3 py-2 capitalize text-stone-700">{r.status}</td>
+                        <td className="px-3 py-2 text-stone-700">
+                          {bookingStatusDisplayLabel(r.status)}
+                          {r.status !== toCanonicalBookingStatus(r.status) &&
+                          !['declined', 'cancelled'].includes(r.status) ? (
+                            <span className="block text-[10px] text-stone-400">
+                              {canonicalBookingStatusLabel(toCanonicalBookingStatus(r.status))}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-3 py-2 text-right tabular-nums text-stone-900">
                           {formatMoney(r.total_price, r.gym_currency)}
                         </td>
@@ -250,7 +291,7 @@ export default function AdminBookingsPage() {
             </div>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <Button type="button" variant="outline" size="sm" onClick={() => void load(statusFilter)} disabled={loading}>
               Refresh
             </Button>
             <Link

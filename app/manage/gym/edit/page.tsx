@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { GymDescriptionField } from '@/components/manage/gym-description-field'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Gym, GymImage } from '@/lib/types/database'
@@ -1129,17 +1130,19 @@ function EditGymForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
-                <Textarea 
+                <GymDescriptionField 
                   id="description" 
                   name="description" 
                   defaultValue={gym.description || ''} 
                   required 
-                  rows={6}
+                  rows={10}
                   className="max-w-4xl"
                   placeholder="Describe your gym, training philosophy, facilities, and what makes it special..."
                 />
                 <p className="text-xs text-gray-500">
-                  Full description shown on your gym profile page.
+                  Full description shown on your gym profile page. Paste from Word or Google Docs — spacing and
+                  bold headings are preserved. Use a blank line between paragraphs; wrap titles in **double
+                  asterisks** for bold.
                 </p>
               </div>
 

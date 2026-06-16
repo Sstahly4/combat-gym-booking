@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import {
+  BOOKING_STATUS_CANCELLED_BY_GYM,
+  buildBookingStatusUpdate,
+} from '@/lib/bookings/booking-lifecycle'
 
 export async function POST(
   _request: NextRequest,
@@ -47,13 +51,12 @@ export async function POST(
       await stripe.paymentIntents.cancel(booking.stripe_payment_intent_id)
     }
 
-    // Update booking status
     await supabase
       .from('bookings')
-      .update({ status: 'declined' })
+      .update(buildBookingStatusUpdate(BOOKING_STATUS_CANCELLED_BY_GYM))
       .eq('id', bookingId)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, status: BOOKING_STATUS_CANCELLED_BY_GYM })
   } catch (error: any) {
     console.error('Booking decline error:', error)
     return NextResponse.json(

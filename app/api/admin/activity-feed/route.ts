@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { AdminActivityItem } from '@/lib/admin/admin-activity-types'
+import { ADMIN_ACTIVITY_BOOKING_STATUSES } from '@/lib/bookings/admin-booking-filters'
 import { tierWelcomeHeadline } from '@/lib/affiliates/program-copy'
 import { affiliateReferralShareUrl } from '@/lib/affiliates/urls'
 import { payoutRailLabel } from '@/lib/affiliates/payout-region'
@@ -35,7 +36,7 @@ export async function GET() {
       .from('bookings')
       .select('id, created_at, status, total_price, gym_id, guest_name')
       .gte('created_at', sinceIso)
-      .in('status', ['confirmed', 'paid', 'completed'])
+      .in('status', [...ADMIN_ACTIVITY_BOOKING_STATUSES])
       .order('created_at', { ascending: false })
       .limit(45),
     supabase
