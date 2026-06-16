@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import type { Gym } from '@/lib/types/database'
 import { differenceInDays } from 'date-fns'
-import { CheckoutReceiptBreakdown } from '@/components/booking/checkout-receipt-breakdown'
-import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { PriceBreakdown } from '@/lib/utils'
+import { PriceBreakdownReceipt } from '@/components/booking/price-details-sheet'
+import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
@@ -79,9 +79,6 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
   const receiptStayCount =
     initialData?.pricingDuration ??
     (isTraining && bookingDays >= 0 ? Math.max(1, bookingDays + 1) : bookingDays)
-
-  const formatReceiptAmount = (amount: number) =>
-    formatCheckoutPriceWithCode(convertPrice(amount, gym.currency), selectedCurrency)
 
   const handleSubmit = async () => {
     setError(null)
@@ -215,11 +212,19 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
           </div>
 
           {bookingData.start_date && bookingData.end_date && initialData?.priceBreakdown && (
-            <CheckoutReceiptBreakdown
-              breakdown={initialData.priceBreakdown}
-              stayUnitCount={receiptStayCount}
-              isTraining={isTraining}
-              formatAmount={formatReceiptAmount}
+            <PriceBreakdownReceipt
+              gymName={gym.name}
+              checkin={bookingData.start_date}
+              checkout={bookingData.end_date}
+              pricingDuration={receiptStayCount}
+              isTraining={!!isTraining}
+              total={initialData.priceBreakdown.price}
+              savedVsNightly={initialData.priceBreakdown.savedVsNightly}
+              has_seasonal_overlap={false}
+              gymCurrency={gym.currency}
+              displayCurrency={selectedCurrency}
+              convertPrice={convertPrice}
+              className="rounded-xl border border-gray-200 bg-white px-5 py-5 shadow-sm"
             />
           )}
 
@@ -239,7 +244,7 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
 
               <div className="flex justify-between font-semibold text-lg pt-2 border-t">
                 <span>Estimated Total</span>
-                <span>{formatReceiptAmount(calculateTotal())}</span>
+                <span>{formatCheckoutPriceWithCode(convertPrice(calculateTotal(), gym.currency), selectedCurrency)}</span>
               </div>
             </div>
           )}

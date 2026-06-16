@@ -23,6 +23,14 @@ export function formatBreakdownDateRange(from: string, to: string): string {
   return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'short' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'short' })}`
 }
 
+function formatReceiptDateRange(from: string, to: string): string {
+  const a = new Date(from + 'T00:00:00')
+  const b = new Date(to + 'T00:00:00')
+  const left = `${String(a.getDate()).padStart(2, '0')} ${a.toLocaleDateString('en-GB', { month: 'short' })}`
+  const right = `${String(b.getDate()).padStart(2, '0')} ${b.toLocaleDateString('en-GB', { month: 'short' })}`
+  return `${left} - ${right}`
+}
+
 function stayUnitLabel(count: number, isTraining: boolean): string {
   if (isTraining) return count === 1 ? 'day' : 'days'
   return count === 1 ? 'night' : 'nights'
@@ -45,10 +53,82 @@ export function buildPriceBreakdownSummaryLabel({
   return `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
 }
 
+export function PriceBreakdownReceipt({
+  gymName,
+  checkin,
+  checkout,
+  pricingDuration,
+  isTraining,
+  total,
+  savedVsNightly,
+  has_seasonal_overlap,
+  gymCurrency,
+  displayCurrency,
+  convertPrice,
+  className,
+}: {
+  gymName: string
+  checkin: string
+  checkout: string
+  pricingDuration: number
+  isTraining: boolean
+  total: number
+  savedVsNightly: number
+  has_seasonal_overlap: boolean
+  gymCurrency: string
+  displayCurrency: string
+  convertPrice: (amount: number, fromCurrency: string) => number
+  className?: string
+}) {
+  const formatDisplay = (amount: number) =>
+    formatCheckoutPriceWithCode(convertPrice(amount, gymCurrency), displayCurrency)
+
+  const preDiscountTotal = total + savedVsNightly
+  const datesLabel =
+    checkin && checkout && pricingDuration > 0
+      ? `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)} • ${formatReceiptDateRange(checkin, checkout)}`
+      : `${pricingDuration} ${stayUnitLabel(pricingDuration, isTraining)}`
+
+  return (
+    <div className={className ?? 'rounded-xl border border-gray-200 bg-white px-5 py-5 shadow-sm'}>
+      <div className="space-y-1">
+        <div className="text-sm text-gray-900">{datesLabel}</div>
+        <div className="text-2xl font-semibold text-gray-900 tabular-nums">
+          {formatDisplay(preDiscountTotal)}
+        </div>
+        {has_seasonal_overlap === true ? (
+          <div className="text-sm text-gray-600">{`Rates at ${gymName} vary across your selected dates.`}</div>
+        ) : null}
+      </div>
+
+      {savedVsNightly > 0 && (
+        <div className="mt-5 space-y-1.5">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-gray-900">Weekly bundle discount</span>
+            <span className="text-sm font-medium text-emerald-600 tabular-nums text-right">
+              -{formatDisplay(savedVsNightly)}
+            </span>
+          </div>
+          <div className="text-sm text-gray-600">{`${gymName} offers a lower package rate for extended stays.`}</div>
+        </div>
+      )}
+
+      <div className="border-t border-gray-200 mt-6 pt-4 flex items-baseline justify-between gap-6">
+        <span className="text-sm font-semibold text-gray-900">{`Total ${displayCurrency}`}</span>
+        <span className="text-base font-semibold text-gray-900 tabular-nums text-right">
+          {formatDisplay(total)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function PriceBreakdownSheet({
   summaryLabel,
   savedVsNightly,
   total,
+  gymName,
+  has_seasonal_overlap = false,
   gymCurrency,
   displayCurrency,
   convertPrice,
@@ -57,6 +137,8 @@ export function PriceBreakdownSheet({
   summaryLabel: string
   savedVsNightly: number
   total: number
+  gymName?: string
+  has_seasonal_overlap?: boolean
   gymCurrency: string
   displayCurrency: string
   convertPrice: (amount: number, fromCurrency: string) => number
@@ -118,6 +200,12 @@ export function PriceBreakdownSheet({
               </span>
             </div>
 
+            {has_seasonal_overlap === true && gymName ? (
+              <p className="text-sm leading-relaxed text-gray-600 pr-6">
+                {`Rates at ${gymName} vary across your selected dates.`}
+              </p>
+            ) : null}
+
             {savedVsNightly > 0 && (
               <div>
                 <div className="flex items-start justify-between gap-6">
@@ -126,10 +214,11 @@ export function PriceBreakdownSheet({
                     -{formatDisplay(savedVsNightly)}
                   </span>
                 </div>
-                <p className="mt-1.5 text-xs leading-relaxed text-gray-500 pr-6">
-                  Bundle pricing applied for your selected dates. Weekly and monthly rates can
-                  reduce your total compared with paying the nightly rate.
-                </p>
+                {gymName ? (
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-600 pr-6">
+                    {`${gymName} offers a lower package rate for extended stays.`}
+                  </p>
+                ) : null}
               </div>
             )}
           </div>
@@ -152,6 +241,8 @@ export function PriceDetailsSheet({
   lines,
   savedVsNightly,
   total,
+  gymName,
+  has_seasonal_overlap = false,
   gymCurrency,
   displayCurrency,
   convertPrice,
@@ -164,6 +255,8 @@ export function PriceDetailsSheet({
   lines: PriceLine[]
   savedVsNightly: number
   total: number
+  gymName?: string
+  has_seasonal_overlap?: boolean
   gymCurrency: string
   displayCurrency: string
   convertPrice: (amount: number, fromCurrency: string) => number
@@ -250,6 +343,12 @@ export function PriceDetailsSheet({
                 </span>
               </div>
             )}
+
+            {has_seasonal_overlap === true && gymName ? (
+              <p className="text-sm leading-relaxed text-gray-600 pr-6">
+                {`Rates at ${gymName} vary across your selected dates.`}
+              </p>
+            ) : null}
           </div>
 
           <div className="border-t border-gray-200 mt-6 pt-5 flex items-baseline justify-between gap-6">

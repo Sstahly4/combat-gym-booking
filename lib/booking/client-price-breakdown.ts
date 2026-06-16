@@ -1,10 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { computeBreakdownForStay } from '@/lib/booking/resolve-booking-price'
 import { calculatePackagePrice, type PriceBreakdown } from '@/lib/utils'
+import { calendarDatesForStay } from '@/lib/booking/resolve-seasonal-prices'
 import type { Package, PackageSeasonalRate, PackageVariant } from '@/lib/types/database'
-
-const SEASONAL_NOTE =
-  'Rates vary by season; blended pricing applies across your selected dates.'
 
 /**
  * Client-side pricing for checkout previews — mirrors server create/PATCH path
@@ -22,7 +20,7 @@ export async function resolveClientPriceBreakdown(input: {
   pricingDuration: number
   checkin: string
   checkout: string
-}): Promise<{ breakdown: PriceBreakdown; seasonalNote: string | null }> {
+}): Promise<{ breakdown: PriceBreakdown; has_seasonal_overlap: boolean }> {
   const { package_, variant, pricingDuration, checkin, checkout } = input
 
   const basePrices = {
@@ -34,7 +32,7 @@ export async function resolveClientPriceBreakdown(input: {
   const fallback = calculatePackagePrice(pricingDuration, package_.type, basePrices)
 
   if (!checkin || !checkout) {
-    return { breakdown: fallback, seasonalNote: null }
+    return { breakdown: fallback, has_seasonal_overlap: false }
   }
 
   const supabase = createClient()
@@ -47,7 +45,7 @@ export async function resolveClientPriceBreakdown(input: {
 
   const rates = (seasonalRows ?? []) as PackageSeasonalRate[]
   if (rates.length === 0) {
-    return { breakdown: fallback, seasonalNote: null }
+    return { breakdown: fallback, has_seasonal_overlap: false }
   }
 
   const seasonalBreakdown = computeBreakdownForStay(
@@ -60,8 +58,31 @@ export async function resolveClientPriceBreakdown(input: {
   )
 
   if (!seasonalBreakdown) {
-    return { breakdown: fallback, seasonalNote: null }
+    return { breakdown: fallback, has_seasonal_overlap: false }
   }
 
-  return { breakdown: seasonalBreakdown, seasonalNote: SEASONAL_NOTE }
+  const isTraining = package_.type === 'training'
+  const calendarDates = calendarDatesForStay(checkin, checkout, isTraining)
+  const activeRuleIds = new Set<string>()
+
+  for (const dateStr of calendarDates) {
+    const applicable = rates.filter((rule) => {
+      if (rule.variant_id && variant?.id && rule.variant_id !== variant.id) return false
+      if (rule.variant_id && !variant?.id) return false
+      return rule.start_date <= dateStr && rule.end_date >= dateStr
+    })
+    if (applicable.length === 0) continue
+    applicable.sort((a, b) => {
+      // Prefer variant-specific rules, then most recently-started rule.
+      const aSpecific = a.variant_id ? 1 : 0
+      const bSpecific = b.variant_id ? 1 : 0
+      if (aSpecific !== bSpecific) return bSpecific - aSpecific
+      if (a.start_date !== b.start_date) return b.start_date.localeCompare(a.start_date)
+      return String(b.id).localeCompare(String(a.id))
+    })
+    activeRuleIds.add(String(applicable[0].id))
+    if (activeRuleIds.size > 1) break
+  }
+
+  return { breakdown: seasonalBreakdown, has_seasonal_overlap: activeRuleIds.size > 1 }
 }

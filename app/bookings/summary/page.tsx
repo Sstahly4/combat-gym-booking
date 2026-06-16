@@ -40,9 +40,8 @@ import {
   CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
   CheckoutSummaryFieldError,
-  formatCheckoutPriceWithCode,
 } from '@/components/booking/checkout-ui'
-import { CheckoutReceiptBreakdown } from '@/components/booking/checkout-receipt-breakdown'
+import { PriceBreakdownReceipt } from '@/components/booking/price-details-sheet'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -208,7 +207,7 @@ function BookingSummaryPageContent() {
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
-  const [seasonalNote, setSeasonalNote] = useState<string | null>(null)
+  const [hasSeasonalOverlap, setHasSeasonalOverlap] = useState(false)
   // Tracks when initial data load is done; prevents persist from overwriting restored data.
   const sessionLoadedRef = useRef(!!initialPrefill)
   // Guest details / profile prefill applied — gates guest sessionStorage writes.
@@ -512,7 +511,7 @@ function BookingSummaryPageContent() {
   useEffect(() => {
     if (!package_ || !isValidDuration || !checkin || !checkout) {
       setPriceBreakdown(null)
-      setSeasonalNote(null)
+      setHasSeasonalOverlap(false)
       return
     }
 
@@ -531,10 +530,10 @@ function BookingSummaryPageContent() {
       pricingDuration,
       checkin,
       checkout,
-    }).then(({ breakdown, seasonalNote: note }) => {
+    }).then(({ breakdown, has_seasonal_overlap }) => {
       if (!cancelled) {
         setPriceBreakdown(breakdown)
-        setSeasonalNote(note)
+        setHasSeasonalOverlap(has_seasonal_overlap)
       }
     })
 
@@ -545,9 +544,6 @@ function BookingSummaryPageContent() {
 
   const calculatedPriceBreakdown = priceBreakdown ?? priceInfo
   const totalPrice = calculatedPriceBreakdown?.price || 0
-  const receiptStayCount = isTraining ? pricingDuration : duration
-  const formatReceiptAmount = (amount: number) =>
-    formatCheckoutPriceWithCode(convertPrice(amount, gym?.currency ?? 'USD'), selectedCurrency)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return ''
@@ -705,12 +701,18 @@ function BookingSummaryPageContent() {
           <CheckoutStepTitle>Your details</CheckoutStepTitle>
 
           {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay && (
-            <CheckoutReceiptBreakdown
-              breakdown={calculatedPriceBreakdown}
-              stayUnitCount={receiptStayCount}
+            <PriceBreakdownReceipt
+              gymName={gym.name}
+              checkin={checkin}
+              checkout={checkout}
+              pricingDuration={pricingDuration}
               isTraining={isTraining}
-              formatAmount={formatReceiptAmount}
-              seasonalNote={seasonalNote}
+              total={calculatedPriceBreakdown.price}
+              savedVsNightly={calculatedPriceBreakdown.savedVsNightly}
+              has_seasonal_overlap={hasSeasonalOverlap}
+              gymCurrency={gym.currency ?? 'USD'}
+              displayCurrency={selectedCurrency}
+              convertPrice={convertPrice}
             />
           )}
 
@@ -1300,12 +1302,18 @@ function BookingSummaryPageContent() {
           {/* Right column — pricing receipt (sticky) */}
           <div className="lg:sticky lg:top-6 space-y-4">
             {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay ? (
-              <CheckoutReceiptBreakdown
-                breakdown={calculatedPriceBreakdown}
-                stayUnitCount={receiptStayCount}
+              <PriceBreakdownReceipt
+                gymName={gym.name}
+                checkin={checkin}
+                checkout={checkout}
+                pricingDuration={pricingDuration}
                 isTraining={isTraining}
-                formatAmount={formatReceiptAmount}
-                seasonalNote={seasonalNote}
+                total={calculatedPriceBreakdown.price}
+                savedVsNightly={calculatedPriceBreakdown.savedVsNightly}
+                has_seasonal_overlap={hasSeasonalOverlap}
+                gymCurrency={gym.currency ?? 'USD'}
+                displayCurrency={selectedCurrency}
+                convertPrice={convertPrice}
               />
             ) : (
               <Card className="border border-gray-300 rounded-lg shadow-sm">
