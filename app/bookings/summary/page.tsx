@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { calculatePackagePrice } from '@/lib/utils'
+import { resolveClientPriceBreakdown } from '@/lib/booking/client-price-breakdown'
 import { useCurrency } from '@/lib/contexts/currency-context'
+import type { PriceBreakdown } from '@/lib/utils'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
@@ -38,7 +40,9 @@ import {
   CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
   CheckoutSummaryFieldError,
+  formatCheckoutPriceWithCode,
 } from '@/components/booking/checkout-ui'
+import { CheckoutReceiptBreakdown } from '@/components/booking/checkout-receipt-breakdown'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -166,7 +170,7 @@ function BookingSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, profile, loading: authLoading } = useAuth()
-  const { convertPrice, formatPrice } = useCurrency()
+  const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
   const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
 
   const initialPrefill = readSummaryPrefillFromUrl()
@@ -203,6 +207,8 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
+  const [seasonalNote, setSeasonalNote] = useState<string | null>(null)
   // Tracks when initial data load is done; prevents persist from overwriting restored data.
   const sessionLoadedRef = useRef(!!initialPrefill)
   // Guest details / profile prefill applied — gates guest sessionStorage writes.
@@ -494,7 +500,7 @@ function BookingSummaryPageContent() {
   const durationForMinStay = package_?.type === 'training' ? pricingDuration : duration
   const meetsMinimumStay = !package_ || durationForMinStay >= minStay
 
-  // Calculate price
+  // Calculate price (sync fallback; seasonal-aware breakdown loaded in effect below)
   const priceInfo = (package_ && isValidDuration)
     ? calculatePackagePrice(pricingDuration, package_.type, {
         daily: variant ? variant.price_per_day : package_.price_per_day,
@@ -503,7 +509,45 @@ function BookingSummaryPageContent() {
       })
     : null
 
-  const totalPrice = priceInfo?.price || 0
+  useEffect(() => {
+    if (!package_ || !isValidDuration || !checkin || !checkout) {
+      setPriceBreakdown(null)
+      setSeasonalNote(null)
+      return
+    }
+
+    let cancelled = false
+
+    void resolveClientPriceBreakdown({
+      package_: package_,
+      variant: variant
+        ? {
+            id: variant.id,
+            price_per_day: variant.price_per_day,
+            price_per_week: variant.price_per_week,
+            price_per_month: variant.price_per_month,
+          }
+        : null,
+      pricingDuration,
+      checkin,
+      checkout,
+    }).then(({ breakdown, seasonalNote: note }) => {
+      if (!cancelled) {
+        setPriceBreakdown(breakdown)
+        setSeasonalNote(note)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [package_, variant, checkin, checkout, isValidDuration, pricingDuration])
+
+  const calculatedPriceBreakdown = priceBreakdown ?? priceInfo
+  const totalPrice = calculatedPriceBreakdown?.price || 0
+  const receiptStayCount = isTraining ? pricingDuration : duration
+  const formatReceiptAmount = (amount: number) =>
+    formatCheckoutPriceWithCode(convertPrice(amount, gym?.currency ?? 'USD'), selectedCurrency)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return ''
@@ -659,6 +703,16 @@ function BookingSummaryPageContent() {
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6">
           <CheckoutStepTitle>Your details</CheckoutStepTitle>
+
+          {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay && (
+            <CheckoutReceiptBreakdown
+              breakdown={calculatedPriceBreakdown}
+              stayUnitCount={receiptStayCount}
+              isTraining={isTraining}
+              formatAmount={formatReceiptAmount}
+              seasonalNote={seasonalNote}
+            />
+          )}
 
           {/* Compact gym summary + guest details — single card */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -857,8 +911,8 @@ function BookingSummaryPageContent() {
           </div>
         </div>
 
-        {/* Desktop Layout - Keep existing */}
-        <div className="hidden md:grid lg:grid-cols-3 gap-6">
+        {/* Desktop Layout */}
+        <div className="hidden md:grid lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] gap-6 items-start">
           {/* Left Sidebar - Booking Summary */}
           <div className="lg:col-span-1 space-y-4">
             {/* Gym Summary Box */}
@@ -1001,7 +1055,7 @@ function BookingSummaryPageContent() {
                     {isTraining
                       ? `${pricingDuration} ${pricingDuration === 1 ? 'day' : 'days'}`
                       : `${duration} ${duration === 1 ? 'night' : 'nights'}`}
-                    {priceInfo && ` (${priceInfo.durationLabel})`}
+                    {priceInfo && ` (${calculatedPriceBreakdown?.durationLabel ?? priceInfo.durationLabel})`}
                   </div>
                 </div>
                 <div className="pt-3 border-t border-gray-300">
@@ -1028,7 +1082,7 @@ function BookingSummaryPageContent() {
           </div>
 
           {/* Center Column - User Details Form */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4">
             <div>
               <CheckoutStepTitle className="mb-3">Enter your details</CheckoutStepTitle>
               
@@ -1241,6 +1295,27 @@ function BookingSummaryPageContent() {
             </Card>
 
 
+          </div>
+
+          {/* Right column — pricing receipt (sticky) */}
+          <div className="lg:sticky lg:top-6 space-y-4">
+            {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay ? (
+              <CheckoutReceiptBreakdown
+                breakdown={calculatedPriceBreakdown}
+                stayUnitCount={receiptStayCount}
+                isTraining={isTraining}
+                formatAmount={formatReceiptAmount}
+                seasonalNote={seasonalNote}
+              />
+            ) : (
+              <Card className="border border-gray-300 rounded-lg shadow-sm">
+                <CardContent className="p-5 text-sm text-gray-600">
+                  {checkin && checkout
+                    ? 'Select valid dates that meet the minimum stay to see pricing.'
+                    : 'Select dates to see your pricing breakdown.'}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

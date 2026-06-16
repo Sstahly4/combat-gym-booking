@@ -121,8 +121,8 @@ export function PriceBreakdownSheet({
             {savedVsNightly > 0 && (
               <div>
                 <div className="flex items-start justify-between gap-6">
-                  <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
-                  <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
+                  <span className="text-[15px] leading-snug text-zinc-600">Weekly bundle discount</span>
+                  <span className="text-[15px] leading-snug text-emerald-600 shrink-0 text-right font-medium">
                     -{formatDisplay(savedVsNightly)}
                   </span>
                 </div>
@@ -244,8 +244,8 @@ export function PriceDetailsSheet({
             ))}
             {savedVsNightly > 0 && (
               <div className="flex items-start justify-between gap-6">
-                <span className="text-[15px] leading-snug text-emerald-700">Special offer</span>
-                <span className="text-[15px] leading-snug text-emerald-700 shrink-0 text-right">
+                <span className="text-[15px] leading-snug text-zinc-600">Weekly bundle discount</span>
+                <span className="text-[15px] leading-snug text-emerald-600 shrink-0 text-right font-medium">
                   -{formatDisplay(savedVsNightly)}
                 </span>
               </div>

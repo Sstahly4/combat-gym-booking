@@ -10,7 +10,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import type { Gym } from '@/lib/types/database'
 import { differenceInDays } from 'date-fns'
-import { calculateEstimatedPrice } from '@/lib/utils'
+import { CheckoutReceiptBreakdown } from '@/components/booking/checkout-receipt-breakdown'
+import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
+import { useCurrency } from '@/lib/contexts/currency-context'
+import type { PriceBreakdown } from '@/lib/utils'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
@@ -29,11 +32,15 @@ interface BookingModalProps {
     includeAccommodation?: boolean
     includeMeals?: boolean
     estimatedPrice: number
+    priceBreakdown?: PriceBreakdown | null
+    packageType?: 'training' | 'accommodation' | 'all_inclusive'
+    pricingDuration?: number
   }
 }
 
 export function BookingModal({ gym, open, onOpenChange, initialData }: BookingModalProps) {
   const router = useRouter()
+  const { convertPrice, selectedCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,16 +69,19 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
     }
   }, [initialData])
 
-  const calculateTotal = () => {
-     // If coming from package selection, trust the passed estimated price for now 
-     // (or recalculate if we had full package object here, but we simplify)
-     if (initialData?.estimatedPrice) return initialData.estimatedPrice
-     
-     // Fallback to gym base price if no package (shouldn't happen in new flow)
-     if (!bookingData.start_date || !bookingData.end_date) return 0
-     const days = differenceInDays(new Date(bookingData.end_date), new Date(bookingData.start_date))
-     return days * gym.price_per_day
-  }
+  const calculateTotal = () => initialData?.priceBreakdown?.price ?? initialData?.estimatedPrice ?? 0
+
+  const bookingDays =
+    bookingData.start_date && bookingData.end_date
+      ? differenceInDays(new Date(bookingData.end_date), new Date(bookingData.start_date))
+      : 0
+  const isTraining = initialData?.packageType === 'training'
+  const receiptStayCount =
+    initialData?.pricingDuration ??
+    (isTraining && bookingDays >= 0 ? Math.max(1, bookingDays + 1) : bookingDays)
+
+  const formatReceiptAmount = (amount: number) =>
+    formatCheckoutPriceWithCode(convertPrice(amount, gym.currency), selectedCurrency)
 
   const handleSubmit = async () => {
     setError(null)
@@ -204,13 +214,22 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
             />
           </div>
 
-          {bookingData.start_date && bookingData.end_date && (
+          {bookingData.start_date && bookingData.end_date && initialData?.priceBreakdown && (
+            <CheckoutReceiptBreakdown
+              breakdown={initialData.priceBreakdown}
+              stayUnitCount={receiptStayCount}
+              isTraining={isTraining}
+              formatAmount={formatReceiptAmount}
+            />
+          )}
+
+          {bookingData.start_date && bookingData.end_date && !initialData?.priceBreakdown && (
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between">
                 <span>Duration</span>
-                <span>{differenceInDays(new Date(bookingData.end_date), new Date(bookingData.start_date))} days</span>
+                <span>{bookingDays} days</span>
               </div>
-              
+
               {initialData?.packageName && (
                 <div className="flex justify-between text-sm font-medium text-gray-900 bg-gray-50 p-2 rounded">
                   <span>Package</span>
@@ -220,11 +239,8 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
 
               <div className="flex justify-between font-semibold text-lg pt-2 border-t">
                 <span>Estimated Total</span>
-                <span>{calculateTotal().toFixed(2)} {gym.currency}</span>
+                <span>{formatReceiptAmount(calculateTotal())}</span>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Final price confirmed by gym
-              </p>
             </div>
           )}
 

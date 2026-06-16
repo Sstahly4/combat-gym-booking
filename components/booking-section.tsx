@@ -192,7 +192,10 @@ export function BookingSection({ gym }: { gym: Gym }) {
           packageVariantId: (selectedPackage as any)?.variant_id,
           packageName: selectedPackage?.name,
           variantName: (selectedPackage as any)?.variant_name,
-          estimatedPrice: totalPrice
+          estimatedPrice: totalPrice,
+          priceBreakdown: priceInfo,
+          packageType: selectedPackage?.type,
+          pricingDuration,
         }}
       />
     </>

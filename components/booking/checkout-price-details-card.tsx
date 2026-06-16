@@ -81,8 +81,8 @@ function CheckoutPriceDetailsContent({
         ))}
         {savedVsNightly > 0 && (
           <div className="flex items-start justify-between gap-4">
-            <span className="text-emerald-700 leading-snug">Special offer</span>
-            <span className="text-emerald-700 shrink-0 text-right">-{formatDisplay(savedVsNightly)}</span>
+            <span className="text-zinc-600 leading-snug text-sm">Weekly bundle discount</span>
+            <span className="text-emerald-600 shrink-0 text-right text-sm font-medium">-{formatDisplay(savedVsNightly)}</span>
           </div>
         )}
       </div>
