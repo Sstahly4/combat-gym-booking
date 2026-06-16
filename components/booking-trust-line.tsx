@@ -84,7 +84,7 @@ const POLICY_LINK = (
     href="/faq#faq-what-happens-to-my-money"
     className="underline underline-offset-2 hover:text-gray-700"
   >
-    Full policy ↗
+    Full policy
   </a>
 )
 
