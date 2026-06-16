@@ -1,4 +1,9 @@
 import type { CheckoutAccordionSection } from '@/components/booking/checkout-accordion'
+import {
+  trainingAccessAccordionSubtitle,
+  trainingAccessInclusionLabel,
+  isPackageTrainingAccess,
+} from '@/lib/packages/training-access'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -107,19 +112,36 @@ function buildTrainingAccordionItem(
   const parsed = formatTrainingScheduleDetail(schedule)
   const freq = trainingFrequencyLabel(schedule)
   const amenities = gym.amenities as Record<string, boolean> | null | undefined
+  const packageAccess = isPackageTrainingAccess(package_.training_access)
+    ? package_.training_access
+    : null
+  const packageSubtitle = trainingAccessAccordionSubtitle(packageAccess)
 
-  const sessionsLabel = parsed
-    ? `${parsed.sessionsPerDay} session${parsed.sessionsPerDay === 1 ? '' : 's'} per day`
-    : freq ?? 'Daily training sessions'
+  const sessionsLabel = packageSubtitle
+    ? packageSubtitle
+    : parsed
+      ? `${parsed.sessionsPerDay} session${parsed.sessionsPerDay === 1 ? '' : 's'} per day`
+      : freq ?? 'Daily training sessions'
 
-  const subtitle = parsed
-    ? `${sessionsLabel} · ${parsed.slotSummary}`
-    : sessionsLabel
+  const subtitle = packageSubtitle
+    ? packageSubtitle
+    : parsed
+      ? `${sessionsLabel} · ${parsed.slotSummary}`
+      : sessionsLabel
 
   let body =
     'Training is included for every day of your booking. Most camps run structured group sessions — pad work, technique, and conditioning. '
 
-  if (parsed) {
+  if (packageAccess === 'twice_daily') {
+    body +=
+      'This package includes twice daily training — the standard morning and evening camp routine. Exact session times are confirmed by the gym after booking. '
+  } else if (packageAccess === 'once_daily') {
+    body +=
+      'This package includes one formal training session per day at a fixed time block. Session times are confirmed by the gym after booking. '
+  } else if (packageAccess === 'flexible_daily') {
+    body +=
+      'This package includes one session per day — you choose the morning or evening block each day. Exact times are confirmed by the gym after booking. '
+  } else if (parsed) {
     body += `This gym typically runs ${parsed.sessionsPerDay} session${parsed.sessionsPerDay === 1 ? '' : 's'} per day (${parsed.slotSummary}). ${parsed.typeSummary}. `
   } else {
     body +=
@@ -315,6 +337,11 @@ function trainingInclusionLabel(
   package_: Package,
   gym: { training_schedule?: Gym['training_schedule'] }
 ): string {
+  const fromPackage = isPackageTrainingAccess(package_.training_access)
+    ? trainingAccessInclusionLabel(package_.training_access)
+    : null
+  if (fromPackage) return fromPackage
+
   const fromSchedule = trainingFrequencyLabel(
     gym.training_schedule as TrainingSchedule | null | undefined
   )

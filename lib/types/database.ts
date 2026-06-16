@@ -275,6 +275,8 @@ export interface Package {
   booking_mode?: 'request_to_book' | 'instant'
   admin_override?: boolean
   admin_notes?: string
+  /** twice_daily | once_daily | flexible_daily — sessions per day for training packages */
+  training_access?: 'twice_daily' | 'once_daily' | 'flexible_daily' | null
   // One-time event fields
   event_date?: string | null
   event_end_date?: string | null

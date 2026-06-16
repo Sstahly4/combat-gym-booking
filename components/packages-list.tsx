@@ -10,6 +10,10 @@ import { useReviewModal } from '@/lib/contexts/review-modal-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import { packageShowsFreeCancellation } from '@/lib/manage/package-cancellation-policy-presets'
+import {
+  offerTypeUsesTrainingAccess,
+  trainingAccessCardLabel,
+} from '@/lib/packages/training-access'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
 import {
   Check,
@@ -342,6 +346,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
             const activeAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 5)
 
+            const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
+              ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
+              : null
+
             return (
               <Card 
                 key={pkg.id} 
@@ -368,6 +376,12 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         
                         {/* Facility Icons - Small icons row */}
                         <div className="flex flex-wrap gap-2 mb-2">
+                          {trainingAccessLabel && (
+                            <div className="flex items-center gap-1 text-xs text-gray-600">
+                              <Dumbbell className="w-3.5 h-3.5" />
+                              <span>{trainingAccessLabel}</span>
+                            </div>
+                          )}
                           {pkg.includes_accommodation && (
                             <div className="flex items-center gap-1 text-xs text-gray-600">
                               <Building2 className="w-3.5 h-3.5" />
@@ -561,6 +575,12 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       
                         {/* Plan Extras - Booking.com Style */}
                       <div className="flex flex-wrap gap-2 md:gap-4 pt-2">
+                        {trainingAccessLabel && (
+                          <div className="flex items-center gap-1.5 text-xs md:text-sm text-green-700 font-medium">
+                            <Check className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                            <span>{trainingAccessLabel}</span>
+                          </div>
+                        )}
                         {pkg.includes_accommodation && (
                             <div className="flex items-center gap-1.5 text-xs md:text-sm text-green-700 font-medium">
                               <Check className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />

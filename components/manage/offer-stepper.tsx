@@ -19,6 +19,12 @@ import {
   type PackageCancellationPresetId,
 } from '@/lib/manage/package-cancellation-policy-presets'
 import { PackageCancellationPolicyFields } from '@/components/manage/package-cancellation-policy-fields'
+import { TrainingAccessPicker } from '@/components/manage/training-access-picker'
+import {
+  offerTypeUsesTrainingAccess,
+  getTrainingAccessMeta,
+  type PackageTrainingAccess,
+} from '@/lib/packages/training-access'
 import { 
   Dumbbell, 
   BedDouble, 
@@ -111,6 +117,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [sport, setSport] = useState('Muay Thai')
   const [description, setDescription] = useState('')
   const [packageCurrency, setPackageCurrency] = useState(currency)
+  const [trainingAccess, setTrainingAccess] = useState<PackageTrainingAccess | null>('twice_daily')
+  
+  useEffect(() => {
+    if (!selectedOfferType) return
+    if (offerTypeUsesTrainingAccess(selectedOfferType)) {
+      setTrainingAccess((prev) => prev ?? 'twice_daily')
+    } else {
+      setTrainingAccess(null)
+    }
+  }, [selectedOfferType])
   
   // Step 3: Minimum Stay (defaults based on offer type)
   const [minStayDays, setMinStayDays] = useState(7)
@@ -184,6 +200,13 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setSport(existingPackage.sport)
       setDescription(existingPackage.description || '')
       setPackageCurrency(existingPackage.currency || currency)
+      setTrainingAccess(
+        existingPackage.training_access && offerTypeUsesTrainingAccess(existingPackage.offer_type)
+          ? existingPackage.training_access
+          : offerTypeUsesTrainingAccess(existingPackage.offer_type)
+            ? 'twice_daily'
+            : null
+      )
       setAvailableYearRound(existingPackage.available_year_round ?? true)
       setBlackoutDates(existingPackage.blackout_dates || [])
       setBookingMode(existingPackage.booking_mode || 'request_to_book')
@@ -323,6 +346,11 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       return
     }
 
+    if (offerTypeUsesTrainingAccess(selectedOfferType) && !trainingAccess) {
+      alert('Please select how many training sessions per day are included.')
+      return
+    }
+
     // Validate pricing based on offer type
     if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
       if (!eventDate) {
@@ -396,6 +424,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         cancellationPresetId,
         customCancellationDays
       ),
+      training_access: offerTypeUsesTrainingAccess(selectedOfferType) ? trainingAccess : null,
     }
 
     // Helper to build a datetime string from separate date + time inputs
@@ -556,7 +585,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       case 1:
         return selectedOfferType !== null
       case 2:
-        return name.trim() !== '' && sport !== ''
+        return name.trim() !== '' && sport !== '' && (
+          !offerTypeUsesTrainingAccess(selectedOfferType) || trainingAccess !== null
+        )
       case 3:
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
           // Require event date and at least one complete ticket tier
@@ -665,10 +696,23 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                 <Textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'What will attendees learn or experience?' : 'What\'s included? e.g. 2x training per day, Sunday off...'}
+                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'What will attendees learn or experience?' : 'What\'s included? e.g. private room, Sunday off...'}
                   rows={4}
                 />
               </div>
+
+              {offerTypeUsesTrainingAccess(selectedOfferType) && (
+                <div>
+                  <Label>Training sessions per day *</Label>
+                  <p className="text-sm text-gray-600 mb-3">
+                    How many formal sessions can guests attend each day? Use the standard camp terms guests expect.
+                  </p>
+                  <TrainingAccessPicker
+                    value={trainingAccess}
+                    onChange={setTrainingAccess}
+                  />
+                </div>
+              )}
 
               {/* Cover Image Upload */}
               <div>
@@ -1370,6 +1414,18 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     </>
                   ) : (
                     <>
+                      {offerTypeUsesTrainingAccess(selectedOfferType) && trainingAccess && (() => {
+                        const accessMeta = getTrainingAccessMeta(trainingAccess)
+                        return (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Training access:</span>
+                            <span className="font-medium text-right max-w-[60%]">
+                              {accessMeta?.label}
+                              {accessMeta?.subtitle ? ` (${accessMeta.subtitle})` : ''}
+                            </span>
+                          </div>
+                        )
+                      })()}
                       <div className="flex justify-between">
                         <span className="text-gray-600">Minimum Stay:</span>
                         <span className="font-medium">{selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</span>

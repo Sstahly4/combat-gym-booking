@@ -7,6 +7,10 @@ import { AccommodationQuickModal } from './accommodation-quick-modal'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import {
+  offerTypeUsesTrainingAccess,
+  trainingAccessCardLabel,
+} from '@/lib/packages/training-access'
+import {
   Plus,
   Edit2,
   Trash2,
@@ -259,6 +263,10 @@ export function OnboardingPackagesPanel({
                               ? `${pkg.currency} ${pkg.price_per_day.toLocaleString()} / day`
                               : null
 
+                      const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
+                        ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
+                        : null
+
                       return (
                         <div
                           key={pkg.id}
@@ -283,6 +291,12 @@ export function OnboardingPackagesPanel({
                               </div>
                               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                 <span>{pkg.sport}</span>
+                                {trainingAccessLabel ? (
+                                  <span className="flex items-center gap-1 text-gray-600">
+                                    <Dumbbell className="h-3 w-3" aria-hidden />
+                                    {trainingAccessLabel}
+                                  </span>
+                                ) : null}
                                 {priceLabel ? (
                                   <span className="font-medium text-gray-700">{priceLabel}</span>
                                 ) : null}

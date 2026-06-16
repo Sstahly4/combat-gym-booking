@@ -6,6 +6,10 @@ import { OfferStepper } from './offer-stepper'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import {
+  offerTypeUsesTrainingAccess,
+  trainingAccessCardLabel,
+} from '@/lib/packages/training-access'
+import {
   Plus,
   Edit2,
   Trash2,
@@ -161,6 +165,10 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                   ? `${pkg.currency} ${pkg.price_per_day.toLocaleString()} / day`
                   : null
 
+            const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
+              ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
+              : null
+
             return (
               <div
                 key={pkg.id}
@@ -185,6 +193,12 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                     <span>{pkg.sport}</span>
+                    {trainingAccessLabel && (
+                      <span className="flex items-center gap-1 text-gray-600">
+                        <Dumbbell className="w-3 h-3" />
+                        {trainingAccessLabel}
+                      </span>
+                    )}
                     {priceLabel && <span className="font-medium text-gray-700">{priceLabel}</span>}
                     {pkg.offer_type === 'TYPE_ONE_TIME_EVENT' && pkg.event_date && (
                       <span className="flex items-center gap-1 text-amber-600">
