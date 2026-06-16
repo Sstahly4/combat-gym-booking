@@ -137,9 +137,6 @@ function buildTrainingAccordionItem(
       'This package includes twice daily training — the standard morning and evening camp routine. Exact session times are confirmed by the gym after booking. '
   } else if (packageAccess === 'once_daily') {
     body +=
-      'This package includes one formal training session per day at a fixed time block. Session times are confirmed by the gym after booking. '
-  } else if (packageAccess === 'flexible_daily') {
-    body +=
       'This package includes one session per day — you choose the morning or evening block each day. Exact times are confirmed by the gym after booking. '
   } else if (parsed) {
     body += `This gym typically runs ${parsed.sessionsPerDay} session${parsed.sessionsPerDay === 1 ? '' : 's'} per day (${parsed.slotSummary}). ${parsed.typeSummary}. `

@@ -19,6 +19,6 @@ describe('offerTypeUsesTrainingAccess', () => {
 describe('training access labels', () => {
   it('maps values to card and inclusion copy', () => {
     expect(trainingAccessCardLabel('twice_daily')).toBe('Twice Daily')
-    expect(trainingAccessInclusionLabel('flexible_daily')).toContain('Flexible')
+    expect(trainingAccessInclusionLabel('flexible_daily')).toContain('choose')
   })
 })

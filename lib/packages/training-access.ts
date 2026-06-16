@@ -1,7 +1,15 @@
+/**
+ * Sessions-per-day terminology for training packages.
+ *
+ * Note: `flexible_daily` is deprecated (merged into `once_daily`) but is still
+ * accepted for backward compatibility until all rows are normalized.
+ */
 export type PackageTrainingAccess = 'twice_daily' | 'once_daily' | 'flexible_daily'
 
+export type NormalizedPackageTrainingAccess = 'twice_daily' | 'once_daily'
+
 export const TRAINING_ACCESS_OPTIONS: {
-  value: PackageTrainingAccess
+  value: NormalizedPackageTrainingAccess
   label: string
   subtitle: string
   description: string
@@ -15,13 +23,7 @@ export const TRAINING_ACCESS_OPTIONS: {
   {
     value: 'once_daily',
     label: 'Once Daily',
-    subtitle: 'Lite Access',
-    description: 'One formal session per day at a fixed time block.',
-  },
-  {
-    value: 'flexible_daily',
-    label: 'Flexible Session Choice',
-    subtitle: 'Once daily · your pick',
+    subtitle: 'Flexible Choice',
     description: 'One session per day — guest chooses morning or evening each day.',
   },
 ]
@@ -41,9 +43,18 @@ export function isPackageTrainingAccess(value: string | null | undefined): value
   return value === 'twice_daily' || value === 'once_daily' || value === 'flexible_daily'
 }
 
-export function getTrainingAccessMeta(value: PackageTrainingAccess | null | undefined) {
+export function normalizeTrainingAccess(
+  value: PackageTrainingAccess | null | undefined
+): NormalizedPackageTrainingAccess | null {
   if (!value) return null
-  return TRAINING_ACCESS_OPTIONS.find((o) => o.value === value) ?? null
+  if (value === 'flexible_daily') return 'once_daily'
+  return value
+}
+
+export function getTrainingAccessMeta(value: PackageTrainingAccess | null | undefined) {
+  const normalized = normalizeTrainingAccess(value)
+  if (!normalized) return null
+  return TRAINING_ACCESS_OPTIONS.find((o) => o.value === normalized) ?? null
 }
 
 /** Short label for package cards and checkout rows. */
@@ -54,13 +65,11 @@ export function trainingAccessCardLabel(value: PackageTrainingAccess | null | un
 
 /** Inclusion line for checkout / what's included. */
 export function trainingAccessInclusionLabel(value: PackageTrainingAccess | null | undefined): string | null {
-  switch (value) {
+  switch (normalizeTrainingAccess(value)) {
     case 'twice_daily':
       return 'Twice daily training (morning + evening)'
     case 'once_daily':
-      return 'Once daily training'
-    case 'flexible_daily':
-      return 'Flexible session choice (morning or evening)'
+      return 'Once daily training (choose morning or evening)'
     default:
       return null
   }
@@ -68,12 +77,10 @@ export function trainingAccessInclusionLabel(value: PackageTrainingAccess | null
 
 /** Accordion subtitle when package defines access explicitly. */
 export function trainingAccessAccordionSubtitle(value: PackageTrainingAccess | null | undefined): string | null {
-  switch (value) {
+  switch (normalizeTrainingAccess(value)) {
     case 'twice_daily':
       return '2 sessions per day · morning + evening'
     case 'once_daily':
-      return '1 session per day'
-    case 'flexible_daily':
       return '1 session per day · choose morning or evening'
     default:
       return null

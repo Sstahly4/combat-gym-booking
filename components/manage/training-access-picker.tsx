@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import {
   TRAINING_ACCESS_OPTIONS,
+  normalizeTrainingAccess,
   type PackageTrainingAccess,
 } from '@/lib/packages/training-access'
 
@@ -15,10 +16,11 @@ export function TrainingAccessPicker({
   onChange: (value: PackageTrainingAccess) => void
   className?: string
 }) {
+  const normalizedValue = normalizeTrainingAccess(value)
   return (
     <div className={cn('space-y-2', className)}>
       {TRAINING_ACCESS_OPTIONS.map((option) => {
-        const selected = value === option.value
+        const selected = normalizedValue === option.value
         return (
           <button
             key={option.value}
