@@ -185,6 +185,12 @@ export function buildWizardStepDeepLink(
   } else if (gymId) {
     if (step.deepLinkPath === '/manage/gym/edit') {
       url.searchParams.set('id', gymId)
+      // When the owner wizard is embedded for admins (`/admin/create-gym`), we
+      // still deep-link into the shared gym editor. Make "Save" / "Cancel"
+      // return to the admin gyms list instead of bouncing through `/manage`.
+      if (options?.basePath?.startsWith('/admin/')) {
+        url.searchParams.set('returnTo', '/admin/gyms')
+      }
     } else {
       url.searchParams.set('gym_id', gymId)
     }

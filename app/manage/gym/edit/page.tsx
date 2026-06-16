@@ -62,10 +62,15 @@ function EditGymForm() {
   const gymId = searchParams.get('id')
   const sectionFromUrl = searchParams.get('section')
   const returnToRaw = searchParams.get('returnTo')
-  const afterEditPath = useMemo(() => resolvePostGymEditReturnPath(returnToRaw), [returnToRaw])
-  const hubCrumb = useMemo(() => manageGymEditHubBreadcrumb(afterEditPath), [afterEditPath])
-
   const { user, profile, loading: authLoading } = useAuth()
+
+  const afterEditPath = useMemo(() => {
+    // Admins shouldn't bounce through `/manage` (it redirects them to `/`).
+    // When no explicit `returnTo` is provided, send them back to the admin gyms list.
+    if (!returnToRaw && profile?.role === 'admin') return '/admin/gyms'
+    return resolvePostGymEditReturnPath(returnToRaw)
+  }, [returnToRaw, profile?.role])
+  const hubCrumb = useMemo(() => manageGymEditHubBreadcrumb(afterEditPath), [afterEditPath])
   const [gym, setGym] = useState<GymWithImages | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
