@@ -31,8 +31,10 @@ type PackagePricingRow = Pick<
 
 type VariantPricingRow = Pick<
   PackageVariant,
-  'id' | 'package_id' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+  'id' | 'price_per_day' | 'price_per_week' | 'price_per_month'
 >
+
+type FetchedVariantRow = VariantPricingRow & Pick<PackageVariant, 'package_id'>
 
 /** Shared pricing path for create + checkout date updates. */
 export function computeBreakdownForStay(
@@ -115,10 +117,11 @@ export async function resolveBookingPrice(
       return { ok: false, status: 404, error: 'Package variant not found' }
     }
 
-    variant = variantData as VariantPricingRow
-    if (variant.package_id !== packageId) {
+    const fetchedVariant = variantData as FetchedVariantRow
+    if (fetchedVariant.package_id !== packageId) {
       return { ok: false, status: 400, error: 'Package variant does not belong to this package' }
     }
+    variant = fetchedVariant
   }
 
   const { data: seasonalRows } = await supabase

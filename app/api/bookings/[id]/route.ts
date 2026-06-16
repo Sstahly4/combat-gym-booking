@@ -107,8 +107,8 @@ export async function PATCH(
         `
         *,
         gym:gyms(cancellation_policy_tone),
-        package:packages(type, price_per_day, price_per_week, price_per_month, cancellation_policy_days),
-        variant:package_variants(price_per_day, price_per_week, price_per_month)
+        package:packages(id, type, price_per_day, price_per_week, price_per_month, cancellation_policy_days),
+        variant:package_variants(id, price_per_day, price_per_week, price_per_month)
       `
       )
       .eq('id', bookingId)
