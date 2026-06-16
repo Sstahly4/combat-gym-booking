@@ -78,7 +78,9 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
     setLoading(true)
 
     try {
-      const total = calculateTotal()
+      if (!bookingData.packageId) {
+        throw new Error('Please select a package before booking')
+      }
 
       // Append options to notes
       let finalNotes = bookingData.notes
@@ -93,14 +95,13 @@ export function BookingModal({ gym, open, onOpenChange, initialData }: BookingMo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gym_id: gym.id,
-          package_id: bookingData.packageId || null,
+          package_id: bookingData.packageId,
           package_variant_id: initialData?.packageVariantId || null,
           start_date: bookingData.start_date,
           end_date: bookingData.end_date,
           discipline: bookingData.discipline,
           experience_level: bookingData.experience_level,
           notes: finalNotes,
-          total_price: total,
         }),
       })
 

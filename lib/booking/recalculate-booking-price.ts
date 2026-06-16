@@ -1,5 +1,7 @@
-import { calculatePackagePrice } from '@/lib/utils'
+import { calculatePackagePrice, type PriceBreakdown } from '@/lib/utils'
 import type { Package, PackageVariant } from '@/lib/types/database'
+
+export type { PriceBreakdown }
 
 export function nightsBetween(startDate: string, endDate: string): number {
   return Math.floor(

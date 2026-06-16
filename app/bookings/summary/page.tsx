@@ -561,7 +561,6 @@ function BookingSummaryPageContent() {
           discipline: discipline || gym.disciplines?.[0] || null,
           experience_level: 'beginner',
           notes: notes || null,
-          total_price: totalPrice,
           // Guest booking details
           guest_email: email,
           guest_phone: phone,

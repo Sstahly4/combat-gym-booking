@@ -6,6 +6,7 @@ import {
   BOOKING_DATES_EXPIRED_ERROR,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
+import { resolveBookingPrice } from '@/lib/booking/resolve-booking-price'
 import { readAffiliateRefCookie } from '@/lib/affiliates/cookie'
 import { affiliatePayoutAud } from '@/lib/affiliates/commission'
 import { PLATFORM_COMMISSION_RATE } from '@/lib/affiliates/constants'
@@ -32,40 +33,28 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { 
-      gym_id, 
-      package_id, 
-      package_variant_id, 
-      start_date, 
-      end_date, 
-      discipline, 
+    const {
+      gym_id,
+      package_id,
+      package_variant_id,
+      start_date,
+      end_date,
+      discipline,
       experience_level,
-      notes, 
-      total_price, 
+      notes,
       guest_email,
       guest_phone,
-      guest_name
+      guest_name,
     } = body
 
-    // Validate required fields (total_price may be 0 for edge-case packages)
-    if (
-      !gym_id ||
-      !start_date ||
-      !end_date ||
-      total_price === undefined ||
-      total_price === null ||
-      total_price === ''
-    ) {
+    // Validate required fields — total_price is never accepted from the client.
+    if (!gym_id || !package_id || !start_date || !end_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     if (isBookingStartDateInPast(start_date)) {
       return NextResponse.json({ error: BOOKING_DATES_EXPIRED_ERROR }, { status: 400 })
     }
-
-    // Server is the source of truth for commission. Never trust client-supplied
-    // platform_fee — recompute from total_price and the configured rate.
-    const platform_fee = Number((Number(total_price) * PLATFORM_COMMISSION_RATE).toFixed(2))
 
     // For guest bookings, require email, phone, and name
     if (!user && (!guest_email || !guest_phone || !guest_name)) {
@@ -93,19 +82,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gym is not approved for bookings' }, { status: 400 })
     }
 
-    // Check package booking_mode if package_id is provided
-    let bookingMode: 'request_to_book' | 'instant' = 'request_to_book' // Default to request-to-book
-    if (package_id) {
-      const { data: packageData } = await supabase
-        .from('packages')
-        .select('booking_mode')
-        .eq('id', package_id)
-        .single()
+    const priceResult = await resolveBookingPrice(supabase, {
+      gymId: gym_id,
+      packageId: package_id,
+      packageVariantId: package_variant_id || null,
+      startDate: start_date,
+      endDate: end_date,
+    })
 
-      if (packageData?.booking_mode) {
-        bookingMode = packageData.booking_mode as 'request_to_book' | 'instant'
-      }
+    if (!priceResult.ok) {
+      return NextResponse.json({ error: priceResult.error }, { status: priceResult.status })
     }
+
+    const verifiedTotalPrice = priceResult.totalPrice
+    const platform_fee = Number((verifiedTotalPrice * PLATFORM_COMMISSION_RATE).toFixed(2))
+
+    const bookingMode: 'request_to_book' | 'instant' =
+      priceResult.package.booking_mode === 'instant' ? 'instant' : 'request_to_book'
 
     // Dedup guard: if the same guest submitted an identical pending booking
     // in the last 2 minutes (rapid double-click / retry), reuse that booking
@@ -186,7 +179,7 @@ export async function POST(request: NextRequest) {
           affiliateFields = {
             affiliate_code: affiliate.code,
             affiliate_payout_aud: affiliatePayoutAud(
-              Number(total_price),
+              verifiedTotalPrice,
               Number(affiliate.commission_rate)
             ),
             affiliate_payout_status: 'pending',
@@ -203,14 +196,14 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user?.id || null,  // Null for guest bookings
         gym_id,
-        package_id: package_id || null,
+        package_id,
         package_variant_id: package_variant_id || null,
         start_date,
         end_date,
         discipline: resolvedDiscipline,
         experience_level: resolvedExperienceLevel,
         notes: notes || null,
-        total_price,
+        total_price: verifiedTotalPrice,
         platform_fee,
         status: initialStatus,
         request_submitted_at: requestSubmittedAt,
@@ -276,7 +269,7 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             gym_id,
             booking_count: prevCount + 1,
-            total_spend: Number((prevSpend + Number(total_price || 0)).toFixed(2)),
+            total_spend: Number((prevSpend + verifiedTotalPrice).toFixed(2)),
             currency: null,
             last_booked_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -295,6 +288,8 @@ export async function POST(request: NextRequest) {
       booking_id: booking.id,
       booking_reference: bookingReference,
       booking_pin: bookingPin,
+      total_price: verifiedTotalPrice,
+      booking_mode: bookingMode,
     })
   } catch (error: any) {
     console.error('Error creating booking:', error)
