@@ -4,6 +4,7 @@ import {
   resolveCancellationPolicy,
   type GymCancellationPolicyTone,
 } from '@/lib/booking/cancellation-policy'
+import { GUEST_ARRIVAL_ACCEPTANCE_POLICY } from '@/lib/legal/guest-arrival-policy'
 
 const FINE_PRINT =
   'Refunds are processed within 5–10 business days to your original payment method. CombatStay handles all refunds directly — you do not need to contact the gym to get your money back.'
@@ -49,6 +50,13 @@ const PAYMENT_TIMING_BODY =
 
 const GYM_CANCELS_BODY =
   'If the gym cancels or declines your booking, your card hold is released automatically. If payment was already captured, you receive a full refund — CombatStay processes this directly. You do not need to chase the gym for your money.'
+
+const ARRIVAL_ACCEPTANCE_ITEM: CheckoutAccordionSection['items'][number] = {
+  id: 'arrival-acceptance',
+  title: 'What if something is wrong when I arrive?',
+  subtitle: 'Report within 48 hours of check-in',
+  body: GUEST_ARRIVAL_ACCEPTANCE_POLICY,
+}
 
 export function getCheckoutCancellationCopy({
   checkin,
@@ -121,6 +129,7 @@ export function getCheckoutCancellationCopy({
           subtitle: 'Full refund automatically',
           body: GYM_CANCELS_BODY,
         },
+        ARRIVAL_ACCEPTANCE_ITEM,
         changeDatesItem,
       ]),
     }
@@ -158,6 +167,7 @@ export function getCheckoutCancellationCopy({
           subtitle: 'Full refund automatically',
           body: GYM_CANCELS_BODY,
         },
+        ARRIVAL_ACCEPTANCE_ITEM,
         changeDatesItem,
       ]),
     }
@@ -188,6 +198,7 @@ export function getCheckoutCancellationCopy({
           subtitle: 'Full refund automatically',
           body: GYM_CANCELS_BODY,
         },
+        ARRIVAL_ACCEPTANCE_ITEM,
         changeDatesItem,
       ]),
     }
@@ -205,6 +216,7 @@ export function getCheckoutCancellationCopy({
         subtitle: headline,
         body: 'This booking is non-refundable under the package rules shown at checkout.',
       },
+      ARRIVAL_ACCEPTANCE_ITEM,
       changeDatesItem,
     ]),
   }

@@ -2,19 +2,24 @@
  * Partner Hub — platform payout rail (Wise, manual, future rails): balances are
  * derived from bookings plus optional gym_platform_payouts rows. Not used for
  * stripe_connect (Stripe balance APIs are the source of truth there).
+ *
+ * Eligibility follows {@link resolvePartnerPayoutEligibility} (check-in + 3 business days).
  */
 
-export type PlatformBalanceBooking = {
-  id: string
-  status: string
+import {
+  buildGymPaidBookingOrdinals,
+  isPaidLikeBookingStatus,
+  resolvePartnerPayoutEligibility,
+  type PartnerPayoutBookingInput,
+  type PartnerPayoutEligibility,
+} from '@/lib/manage/partner-payout-eligibility'
+
+export type PlatformBalanceBooking = PartnerPayoutBookingInput & {
   total_price: number | null
   platform_fee: number | null
-  start_date: string
-  end_date: string
   guest_name: string | null
   discipline: string | null
   platform_payout_id: string | null
-  platform_paid_out_at: string | null
 }
 
 export type GymPlatformPayoutRow = {
@@ -28,37 +33,12 @@ export type GymPlatformPayoutRow = {
   created_at: string
 }
 
-const PAID_LIKE = new Set(['paid', 'confirmed', 'completed'])
-
 export function bookingNetShare(
-  b: Pick<PlatformBalanceBooking, 'total_price' | 'platform_fee'>
+  b: Pick<PlatformBalanceBooking, 'total_price' | 'platform_fee'>,
 ): number {
   const gross = Number(b.total_price) || 0
   const fee = Number(b.platform_fee) || 0
   return Math.max(0, gross - fee)
-}
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
-/** Stay has ended (host share becomes payable on platform rail). */
-function stayEndedByEndDate(endDateIso: string, today: Date): boolean {
-  const end = startOfDay(new Date(endDateIso))
-  return end < startOfDay(today)
-}
-
-export function bookingEligibleForPlatformPayout(
-  b: Pick<PlatformBalanceBooking, 'status' | 'end_date' | 'platform_paid_out_at'>,
-  today: Date
-): boolean {
-  if (b.platform_paid_out_at) return false
-  const status = (b.status || '').toLowerCase()
-  if (!PAID_LIKE.has(status)) return false
-  if (status === 'completed') return true
-  return stayEndedByEndDate(b.end_date, today)
 }
 
 export type PlatformActivityItem =
@@ -71,50 +51,67 @@ export type PlatformActivityItem =
       rail: string
       external_reference: string | null
     }
-  | { kind: 'booking_unpaid'; at: string; booking: PlatformBalanceBooking; net: number }
+  | {
+      kind: 'booking_unpaid'
+      at: string
+      booking: PlatformBalanceBooking
+      net: number
+      eligibility: PartnerPayoutEligibility
+    }
 
 export type PlatformRouteBalanceSnapshot = {
   upcomingNet: number
-  /** Completed / ended stays not yet linked to a platform payout transfer. */
+  /** Eligible for transfer but not yet linked to a platform payout batch. */
   unpaidEarnedNet: number
-  /** Historical total already marked paid out (sum of booking net shares with platform_paid_out_at set). */
+  /** Historical total already marked paid out. */
   paidOutNet: number
   activityItems: PlatformActivityItem[]
+}
+
+export function bookingEligibleForPlatformPayout(
+  booking: PlatformBalanceBooking,
+  gymPaidBookingOrdinal: number,
+  now: Date = new Date(),
+): boolean {
+  return resolvePartnerPayoutEligibility(booking, { gymPaidBookingOrdinal, now }).eligible
 }
 
 export function computePlatformRouteBalances(
   bookings: PlatformBalanceBooking[],
   payouts: GymPlatformPayoutRow[],
-  now: Date = new Date()
+  now: Date = new Date(),
 ): PlatformRouteBalanceSnapshot {
-  const today = startOfDay(now)
+  const ordinals = buildGymPaidBookingOrdinals(bookings)
   let upcomingNet = 0
   let unpaidEarnedNet = 0
   let paidOutNet = 0
-  const unpaidForActivity: PlatformBalanceBooking[] = []
+  const unpaidForActivity: Array<{
+    booking: PlatformBalanceBooking
+    net: number
+    eligibility: PartnerPayoutEligibility
+  }> = []
 
   for (const b of bookings) {
-    const status = (b.status || '').toLowerCase()
-    if (!PAID_LIKE.has(status)) continue
+    if (!isPaidLikeBookingStatus(b.status)) continue
     const net = bookingNetShare(b)
+    const ordinal = ordinals.get(b.id) ?? 0
+    if (ordinal === 0) continue
+
+    const eligibility = resolvePartnerPayoutEligibility(b, {
+      gymPaidBookingOrdinal: ordinal,
+      now,
+    })
 
     if (b.platform_paid_out_at) {
       paidOutNet += net
       continue
     }
 
-    if (status === 'completed') {
+    if (eligibility.eligible) {
       unpaidEarnedNet += net
-      unpaidForActivity.push(b)
-      continue
-    }
-
-    // paid / confirmed
-    if (!stayEndedByEndDate(b.end_date, today)) {
+      unpaidForActivity.push({ booking: b, net, eligibility })
+    } else if (eligibility.reason === 'upcoming') {
       upcomingNet += net
-    } else {
-      unpaidEarnedNet += net
-      unpaidForActivity.push(b)
     }
   }
 
@@ -130,16 +127,19 @@ export function computePlatformRouteBalances(
       external_reference: p.external_reference,
     }))
 
-  unpaidForActivity.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
-  const bookingItems: PlatformActivityItem[] = unpaidForActivity.slice(0, 12).map((booking) => ({
+  unpaidForActivity.sort(
+    (a, b) => b.eligibility.eligibleAt.getTime() - a.eligibility.eligibleAt.getTime(),
+  )
+  const bookingItems: PlatformActivityItem[] = unpaidForActivity.slice(0, 12).map((row) => ({
     kind: 'booking_unpaid' as const,
-    at: booking.end_date,
-    booking,
-    net: bookingNetShare(booking),
+    at: row.eligibility.eligibleAtIso,
+    booking: row.booking,
+    net: row.net,
+    eligibility: row.eligibility,
   }))
 
   const activityItems = [...payoutItems, ...bookingItems].sort(
-    (x, y) => new Date(y.at).getTime() - new Date(x.at).getTime()
+    (x, y) => new Date(y.at).getTime() - new Date(x.at).getTime(),
   )
 
   return { upcomingNet, unpaidEarnedNet, paidOutNet, activityItems }
@@ -157,4 +157,26 @@ export function platformRouteStackPercents(snapshot: PlatformRouteBalanceSnapsho
     unpaidPct: Math.max(0, Math.min(100, (snapshot.unpaidEarnedNet / t) * 100)),
     paidOutPct: Math.max(0, Math.min(100, (snapshot.paidOutNet / t) * 100)),
   }
+}
+
+/** Bookings ready for an ops payout batch (platform rail). */
+export function listPlatformPayoutEligibleBookings(
+  bookings: PlatformBalanceBooking[],
+  now: Date = new Date(),
+): Array<{ booking: PlatformBalanceBooking; net: number; eligibility: PartnerPayoutEligibility }> {
+  const ordinals = buildGymPaidBookingOrdinals(bookings)
+  const out: Array<{
+    booking: PlatformBalanceBooking
+    net: number
+    eligibility: PartnerPayoutEligibility
+  }> = []
+  for (const b of bookings) {
+    const ordinal = ordinals.get(b.id)
+    if (!ordinal) continue
+    const eligibility = resolvePartnerPayoutEligibility(b, { gymPaidBookingOrdinal: ordinal, now })
+    if (!eligibility.eligible) continue
+    out.push({ booking: b, net: bookingNetShare(b), eligibility })
+  }
+  out.sort((a, b) => a.eligibility.eligibleAt.getTime() - b.eligibility.eligibleAt.getTime())
+  return out
 }

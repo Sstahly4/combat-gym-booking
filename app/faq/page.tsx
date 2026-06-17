@@ -162,6 +162,21 @@ const faqs: FAQItem[] = [
       'We usually place a temporary hold on your card at checkout. You are charged only after the free-cancellation deadline on your package (if there is one). Cancel before that time and the hold is released. No free-cancellation window? You may be charged sooner — the checkout screen states the exact rule. Some flows still need the gym to confirm dates first.',
   },
   {
+    id: 'booking-arrival',
+    category: 'bookings',
+    question: 'What if something is wrong when I arrive at the gym or accommodation?',
+    answer: (
+      <p className="text-sm leading-relaxed text-gray-700">
+        If there is a material issue with your accommodation or gym facility upon arrival, report it to{' '}
+        <Link href="/contact" className={faqInlineLink}>
+          CombatStay support
+        </Link>{' '}
+        within <strong>48 hours of check-in</strong> to be eligible for a platform-mediated refund. After 48 hours,
+        the booking is considered accepted.
+      </p>
+    ),
+  },
+  {
     id: 'what-happens-to-my-money',
     category: 'payments',
     question: 'What happens to my money when I book?',
@@ -207,7 +222,7 @@ const faqs: FAQItem[] = [
     category: 'payments',
     question: 'When does the gym get paid?',
     answer:
-      'For you as a guest, only two things matter: (1) cancellation rules are exactly what you saw at checkout, and (2) your card is captured after the free-cancellation deadline when one applies. How and when we settle with the gym may change operationally; your booking terms do not change after you pay.',
+      'For you as a guest, your checkout terms are what matter: cancellation rules are exactly what you saw at checkout, and you must report material arrival issues within 48 hours of check-in for refund eligibility. Under our partner terms, gyms are typically paid within three business days after your successful check-in, subject to any dispute or investigation.',
   },
   {
     id: 'payments-3',

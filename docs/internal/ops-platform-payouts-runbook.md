@@ -2,6 +2,22 @@
 
 Internal only. Partner Hub owners see derived balances; **this** is how we record what actually left the platform.
 
+## Payout eligibility (June 2026 agreement)
+
+Use `listPlatformPayoutEligibleBookings()` from `lib/manage/compute-platform-route-balances.ts` (or the underlying `resolvePartnerPayoutEligibility` in `lib/manage/partner-payout-eligibility.ts`).
+
+| Booking | Payout anchor | Eligible when |
+|---------|---------------|---------------|
+| Partner's **1st–3rd** captured booking | `end_date` (checkout) | 00:00 UTC on the calendar day **3 business days** after checkout |
+| **4th+** captured booking | `start_date` (check-in) | 00:00 UTC on the calendar day **3 business days** after check-in |
+
+- Business days = Mon–Fri UTC (weekends skipped).
+- Booking must be payment-captured (`payment_captured_at` set or status `paid` / `confirmed` / `completed`).
+- Guest arrival disputes: athletes must report material issues within **48 hours of check-in**; standard payout delay already exceeds that window.
+- **Do not** pay out from stay `end_date` for standard bookings — that was the legacy rule.
+
+Partner Hub **Balances** shows “Ready for payout” vs “After check-in / checkout” using the same logic.
+
 ## Two ways to record a batch
 
 ### A. Pending Wise transfer (recommended when money is in flight)
@@ -11,7 +27,7 @@ Use when you have initiated a Wise outbound transfer and want **Balances → Pai
 1. **Admin UI:** `/admin/platform-payouts` → _Record as: Pending Wise transfer_.
 2. **API:** `POST /api/admin/gym-platform-payouts` with JSON:
    - `gym_id` (UUID)
-   - `booking_ids` (array of UUIDs — host share lines included in this transfer)
+   - `booking_ids` (array of UUIDs — only include rows that pass eligibility above)
    - `status`: `"pending"`
    - `external_reference`: **Wise transfer id** (same id Wise shows on the transfer; string or number as string)
    - `rail`: `"wise"` (default) or `"manual"` / `"other"`
@@ -41,6 +57,8 @@ Use when the money already hit the host bank and you want the ledger updated **n
 ## Stripe Connect
 
 Listings on **`payout_rail = stripe_connect`** do **not** use this ledger for balances — Stripe Connect balances stay live from Stripe. Do not POST platform batches for those gyms (API returns 409).
+
+Partner agreement still states **3 business days after check-in** for Net Payouts; align Stripe transfer timing operationally where possible.
 
 ## Support
 

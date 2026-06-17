@@ -23,7 +23,7 @@ export const CHECKOUT_CANCELLATION_POLICY_DOC: CancellationPolicyDocSection[] = 
       'You book — a hold is placed on your card. No charge yet.',
       'Gym confirms — the hold stays in place until your free cancellation window closes (if your package includes one).',
       'Cancellation window ends — payment is captured. CombatStay appears on your statement, not the gym.',
-      'You stay — the gym is paid after your arrival. Your money never goes directly to the gym.',
+      'You stay — the gym is paid within 3 business days after check-in (your first 3 bookings may use a longer provisional schedule after checkout).',
     ],
   },
   {

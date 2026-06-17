@@ -85,6 +85,16 @@ export default function TermsPage() {
             </ul>
           </section>
 
+          <section id="arrival-acceptance">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">5a. Arrival &amp; acceptance</h2>
+            <p>
+              If there is a material issue with your accommodation or gym facility upon arrival, you must report it to{' '}
+              <a href="/contact" className="text-[#003580] hover:underline">CombatStay support</a> within{' '}
+              <strong>48 hours of check-in</strong> to be eligible for a platform-mediated refund. After 48 hours, the
+              booking is considered accepted.
+            </p>
+          </section>
+
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Safety and Liability</h2>
             <p>

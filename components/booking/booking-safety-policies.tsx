@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import type { Gym, Package } from '@/lib/types/database'
 import type { GymCancellationPolicyTone } from '@/lib/booking/cancellation-policy'
 import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
+import { GUEST_ARRIVAL_ACCEPTANCE_POLICY } from '@/lib/legal/guest-arrival-policy'
 
 type BookingSafetyPoliciesProps = {
   package_: Package
@@ -41,6 +42,10 @@ export function BookingSafetyPolicies({
             <span>{safetyPoliciesLine}</span>
           </div>
         ) : null}
+        <div className="flex items-start gap-2">
+          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>{GUEST_ARRIVAL_ACCEPTANCE_POLICY}</span>
+        </div>
         <div className="flex items-start gap-2">
           <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
           <span>Secure payment processing</span>

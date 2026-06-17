@@ -142,12 +142,17 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
           {
             type: 'paragraph',
             text:
-              'CombatStay charges a platform Commission of 15% (fifteen percent) of the total Booking value (being the gross amount paid by the Guest, inclusive of any applicable taxes collected at checkout, but exclusive of Stripe processing fees). The Commission is calculated on each Booking at the time of Booking confirmation.',
+              'CombatStay charges a platform Commission of 15% (fifteen percent) on all confirmed and completed Bookings. There are no upfront listing fees and no subscription charges.',
           },
           {
             type: 'paragraph',
             text:
-              "CombatStay may adjust the Commission rate upon 30 days' written notice to you. The Commission rate applicable to any Booking is the rate in force at the time the Booking is confirmed, not the rate at the time of payout.",
+              'Commission is calculated on the net Booking value after applicable taxes collected at checkout (exclusive of Stripe processing fees). The Commission rate applicable to any Booking is the rate in force at the time the Booking is confirmed, not the rate at the time of payout.',
+          },
+          {
+            type: 'paragraph',
+            text:
+              "CombatStay may adjust the Commission rate upon 30 days' written notice to you.",
           },
         ],
       },
@@ -164,15 +169,16 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
             type: 'bullets',
             items: [
               'CombatStay holds the payment until the applicable Cancellation Policy deadline has passed and the Booking is no longer subject to a full refund entitlement;',
-              'Net Payouts (total Booking value less Commission and any permitted deductions) are transferred to your nominated bank account or Stripe connected account on a monthly settlement schedule, or as otherwise agreed in writing;',
-              'A settlement statement detailing each Booking included in the payout will be made available to you via the Partner Dashboard or by email on or before the Settlement Date;',
+              "Net Payouts (total Booking value less Commission and any permitted deductions) are initiated to your nominated bank account or Stripe connected account within three (3) business days following the Guest's successful check-in date;",
+              'Full transaction history and payout statements are accessible via the Partner Dashboard;',
+              'You are solely responsible for your own tax reporting obligations in your operating jurisdiction;',
               'CombatStay reserves the right to withhold, defer, or set off any amounts from your Net Payout where a Booking is subject to a dispute, Chargeback, complaint, refund request, or pending investigation under this Agreement.',
             ],
           },
           {
             type: 'note',
             text:
-              "During the current early-access period, Commission settlement is handled manually on a schedule agreed between the parties. Automatic deduction via Stripe Connect will be activated in a future platform update. You will receive at least 14 days' written notice before automatic deduction takes effect.",
+              'To maintain ecosystem security, CombatStay reserves the right to apply a provisional post-checkout payout schedule for a Partner\'s first three (3) Bookings on the Platform. CombatStay will notify you before any such schedule applies to your account.',
           },
         ],
       },
@@ -275,6 +281,27 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
             type: 'paragraph',
             text:
               'Refunds to Guests are issued and managed by CombatStay. CombatStay holds liability to the Guest for all valid refunds. Where a refund is issued to a Guest following a late cancellation by the Guest (i.e., outside the cancellation deadline) due to special circumstances approved by CombatStay at its sole discretion, CombatStay will notify you and the refund amount will not be recovered from your Net Payout. Where a refund is issued due to a gym-initiated cancellation or a breach of your obligations under this Agreement, the refund amount (plus any associated Stripe fees) will be deducted from your forthcoming Net Payout, or invoiced to you if no settlement balance exists.',
+          },
+        ],
+      },
+      {
+        key: 'guest_arrival',
+        heading: '5.4  Guest Arrival & Acceptance',
+        body: [
+          {
+            type: 'paragraph',
+            text:
+              'Guests are presented with the following arrival acceptance rule at checkout and in the Platform Terms. By processing Bookings through CombatStay, you acknowledge that this rule forms part of the Guest booking contract:',
+          },
+          {
+            type: 'note',
+            text:
+              'If there is a material issue with accommodation or gym facilities upon arrival, the Guest must report it to CombatStay support within 48 hours of check-in to be eligible for a platform-mediated refund. After 48 hours, the Booking is considered accepted.',
+          },
+          {
+            type: 'paragraph',
+            text:
+              'You agree to cooperate with CombatStay in good faith when a Guest reports a material arrival issue within the 48-hour window, including providing reasonable evidence of the condition of accommodation and facilities at check-in. CombatStay will assess eligibility for any platform-mediated refund at its sole discretion in accordance with this Agreement and the Guest terms accepted at checkout.',
           },
         ],
       },

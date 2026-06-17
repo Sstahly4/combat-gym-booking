@@ -28,7 +28,7 @@ function formatAmount(amount: number, currency: string, lang: string | null | un
 const COPY = {
   en: {
     heading: (amount: string) => `${amount} in earnings awaiting payout setup`,
-    body: 'These bookings have been captured and are tracked on the platform — they are not yet in your Stripe balance. Complete payout setup to receive them.',
+    body: 'These bookings have been captured and are tracked on the platform — they are not yet in your Stripe balance. Payouts follow your partner schedule (3 business days after guest check-in). Complete payout setup to receive them.',
     cta: 'Complete payout setup →',
   },
   th: {

@@ -18,6 +18,10 @@ import {
   type GymPlatformPayoutRow,
   type PlatformBalanceBooking,
 } from '@/lib/manage/compute-platform-route-balances'
+import {
+  PARTNER_PAYOUT_SCHEDULE_OWNER_SUMMARY,
+  partnerPayoutStatusLabel,
+} from '@/lib/manage/partner-payout-eligibility'
 
 const BRAND = '#003580'
 
@@ -100,11 +104,28 @@ function formatRangeLabel(startIso: string, endIso: string): string {
   }
 }
 
-function bookingStatusBadge(status: string): { label: string; cls: string } {
-  const s = (status || '').toLowerCase()
-  if (s === 'completed') {
-    return { label: 'Awaiting payout', cls: 'bg-amber-50 text-amber-900 ring-amber-200/70' }
+function formatEligibleDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  } catch {
+    return '—'
   }
+}
+
+function bookingStatusBadge(
+  status: string,
+  eligibility?: { eligible: boolean; reason: string; schedule: string },
+): { label: string; cls: string } {
+  if (eligibility) {
+    return partnerPayoutStatusLabel(
+      eligibility as Parameters<typeof partnerPayoutStatusLabel>[0],
+    )
+  }
+  const s = (status || '').toLowerCase()
   if (s === 'paid') {
     return { label: 'Upcoming', cls: 'bg-sky-50 text-sky-800 ring-sky-200/70' }
   }
@@ -215,7 +236,7 @@ export default function BalancesPage() {
         supabase
           .from('bookings')
           .select(
-            'id, status, total_price, platform_fee, start_date, end_date, guest_name, discipline, platform_payout_id, platform_paid_out_at'
+            'id, status, total_price, platform_fee, start_date, end_date, created_at, payment_captured_at, guest_name, discipline, platform_payout_id, platform_paid_out_at'
           )
           .eq('gym_id', activeGymId),
         supabase.from('gyms').select('currency').eq('id', activeGymId).maybeSingle(),
@@ -447,6 +468,31 @@ export default function BalancesPage() {
           </div>
         ) : null}
 
+        {!error && activeGymId && (platformSnapshot.upcomingNet > 0 || platformSnapshot.unpaidEarnedNet > 0) ? (
+          <div className="rounded-xl border border-gray-200/90 bg-gray-50/80 px-4 py-3 text-sm text-gray-800">
+            <p className="font-medium text-gray-900">Payout schedule</p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-600">{PARTNER_PAYOUT_SCHEDULE_OWNER_SUMMARY}</p>
+            <div className="mt-3 flex flex-wrap gap-4 text-xs tabular-nums text-gray-700">
+              {platformSnapshot.unpaidEarnedNet > 0 ? (
+                <span>
+                  Ready for payout:{' '}
+                  <strong className="font-semibold text-gray-900">
+                    {formatMajorForViewer(platformSnapshot.unpaidEarnedNet, gymCurrency)}
+                  </strong>
+                </span>
+              ) : null}
+              {platformSnapshot.upcomingNet > 0 ? (
+                <span>
+                  After check-in / checkout:{' '}
+                  <strong className="font-semibold text-gray-900">
+                    {formatMajorForViewer(platformSnapshot.upcomingNet, gymCurrency)}
+                  </strong>
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
 
         {showDescriptor && payoutState === 'stripe' ? (
           <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
@@ -600,7 +646,7 @@ export default function BalancesPage() {
                           )
                         }
                         const b = row.booking
-                        const badge = bookingStatusBadge(b.status)
+                        const badge = bookingStatusBadge(b.status, row.eligibility)
                         return (
                           <div
                             key={`b-${b.id}`}
@@ -615,7 +661,7 @@ export default function BalancesPage() {
                                 <span className="ml-1 text-xs text-gray-500">· {b.discipline}</span>
                               ) : null}
                             </div>
-                            <div className="text-gray-700">{formatRangeLabel(b.start_date, b.end_date)}</div>
+                            <div className="text-gray-700">{formatEligibleDate(row.at)}</div>
                             <div className="text-right">
                               <span
                                 className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${badge.cls}`}
