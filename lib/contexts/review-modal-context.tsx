@@ -18,6 +18,7 @@ export interface ReviewModalParams {
   gymId: string
   packageId: string
   variantId?: string
+  trainingTier?: 'once_daily' | 'twice_daily'
   checkin: string
   checkout: string
   guestCount?: number
@@ -47,7 +48,7 @@ const ReviewModal = dynamic(
 )
 
 // The URL params that encode modal state for sharing/deep-linking
-const REVIEW_URL_PARAMS = ['review', 'pkg', 'checkin', 'checkout', 'guests', 'variant'] as const
+const REVIEW_URL_PARAMS = ['review', 'pkg', 'checkin', 'checkout', 'guests', 'variant', 'tier'] as const
 
 function saveRestoreParams(p: ReviewModalParams) {
   const { gymData: _g, packageData: _p, initialReviewCount: _c, initialReviewAverage: _a, ...lite } = p
@@ -61,6 +62,9 @@ function pushReviewUrl(p: ReviewModalParams) {
     url.searchParams.set('review', '1')
     url.searchParams.set('pkg', p.packageId)
     if (p.variantId) url.searchParams.set('variant', p.variantId)
+    if (p.trainingTier && p.trainingTier !== 'twice_daily') {
+      url.searchParams.set('tier', p.trainingTier)
+    }
     if (p.checkin) url.searchParams.set('checkin', p.checkin)
     if (p.checkout) url.searchParams.set('checkout', p.checkout)
     url.searchParams.set('guests', String(p.guestCount ?? 1))
@@ -92,6 +96,8 @@ function readUrlParams(gymId: string): ReviewModalParams | null {
       gymId,
       packageId: pkg,
       variantId: sp.get('variant') ?? undefined,
+      trainingTier:
+        sp.get('tier') === 'once_daily' ? 'once_daily' : 'twice_daily',
       checkin: sp.get('checkin') ?? '',
       checkout: sp.get('checkout') ?? '',
       guestCount: parseInt(sp.get('guests') ?? '1') || 1,

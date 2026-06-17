@@ -15,7 +15,13 @@ export async function resolveClientPriceBreakdown(input: {
   >
   variant: Pick<
     PackageVariant,
-    'id' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+    | 'id'
+    | 'price_per_day'
+    | 'price_per_week'
+    | 'price_per_month'
+    | 'once_daily_price_per_day'
+    | 'once_daily_price_per_week'
+    | 'once_daily_price_per_month'
   > | null
   pricingDuration: number
   checkin: string
@@ -23,11 +29,21 @@ export async function resolveClientPriceBreakdown(input: {
   training_tier?: 'once_daily' | 'twice_daily'
 }): Promise<{ breakdown: PriceBreakdown; has_seasonal_overlap: boolean }> {
   const { package_, variant, pricingDuration, checkin, checkout, training_tier } = input
+  const tier = training_tier === 'once_daily' ? 'once_daily' : 'twice_daily'
+  const tierVariant =
+    tier === 'once_daily' && variant
+      ? {
+          ...variant,
+          price_per_day: variant.once_daily_price_per_day ?? variant.price_per_day,
+          price_per_week: variant.once_daily_price_per_week ?? variant.price_per_week,
+          price_per_month: variant.once_daily_price_per_month ?? variant.price_per_month,
+        }
+      : variant
 
   const basePrices = {
-    daily: variant?.price_per_day ?? package_.price_per_day,
-    weekly: variant?.price_per_week ?? package_.price_per_week,
-    monthly: variant?.price_per_month ?? package_.price_per_month,
+    daily: tierVariant?.price_per_day ?? package_.price_per_day,
+    weekly: tierVariant?.price_per_week ?? package_.price_per_week,
+    monthly: tierVariant?.price_per_month ?? package_.price_per_month,
   }
 
   const fallback = calculatePackagePrice(pricingDuration, package_.type, basePrices)

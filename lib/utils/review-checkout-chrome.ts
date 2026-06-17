@@ -5,6 +5,7 @@ export interface ReviewModalRestoreParams {
   gymId: string
   packageId: string
   variantId?: string
+  trainingTier?: 'once_daily' | 'twice_daily'
   checkin: string
   checkout: string
   guestCount?: number

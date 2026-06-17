@@ -108,7 +108,7 @@ export async function PATCH(
         *,
         gym:gyms(cancellation_policy_tone),
         package:packages(id, type, price_per_day, price_per_week, price_per_month, cancellation_policy_days),
-        variant:package_variants(id, price_per_day, price_per_week, price_per_month)
+        variant:package_variants(id, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month)
       `
       )
       .eq('id', bookingId)
@@ -147,7 +147,15 @@ export async function PATCH(
       price_per_day: number | null
       price_per_week: number | null
       price_per_month: number | null
+      once_daily_price_per_day?: number | null
+      once_daily_price_per_week?: number | null
+      once_daily_price_per_month?: number | null
     } | null
+
+    const trainingTier =
+      booking.training_tier === 'once_daily' || booking.training_tier === 'twice_daily'
+        ? booking.training_tier
+        : 'twice_daily'
 
     const dbForRates = booking.user_id && user ? supabase : createAdminClient()
     const { data: seasonalRows } = await dbForRates
@@ -163,7 +171,8 @@ export async function PATCH(
       variant,
       seasonalRows ?? [],
       start_date,
-      end_date
+      end_date,
+      trainingTier
     )
     if (!priceInfo || priceInfo.price <= 0) {
       return NextResponse.json({ error: 'Invalid date range for pricing' }, { status: 400 })

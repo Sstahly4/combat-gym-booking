@@ -8,6 +8,10 @@ export type PackageTrainingAccess = 'twice_daily' | 'once_daily' | 'flexible_dai
 
 export type NormalizedPackageTrainingAccess = 'twice_daily' | 'once_daily'
 
+export type TrainingTier = NormalizedPackageTrainingAccess
+
+export const TRAINING_TIER_DEFAULT: TrainingTier = 'twice_daily'
+
 export const TRAINING_ACCESS_OPTIONS: {
   value: NormalizedPackageTrainingAccess
   label: string
@@ -55,6 +59,24 @@ export function getTrainingAccessMeta(value: PackageTrainingAccess | null | unde
   const normalized = normalizeTrainingAccess(value)
   if (!normalized) return null
   return TRAINING_ACCESS_OPTIONS.find((o) => o.value === normalized) ?? null
+}
+
+/** Review/checkout summary row — guest-selected tier at booking time. */
+export function trainingTierCheckoutLabel(tier: TrainingTier): string {
+  return tier === 'once_daily' ? 'Once Daily (Flexible)' : 'Twice Daily (Full Access)'
+}
+
+export function parseTrainingTier(value: string | null | undefined): TrainingTier {
+  return value === 'once_daily' ? 'once_daily' : TRAINING_TIER_DEFAULT
+}
+
+export function packageShowsTrainingTierSelection(pkg: {
+  type?: string | null
+  offer_type?: string | null
+} | null | undefined): boolean {
+  if (!pkg) return false
+  if (pkg.type === 'training') return true
+  return offerTypeUsesTrainingAccess(pkg.offer_type)
 }
 
 /** Short label for package cards and checkout rows. */

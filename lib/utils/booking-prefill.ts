@@ -19,6 +19,7 @@ export interface BookingPrefillData {
   gymId: string
   packageId: string
   variantId?: string
+  trainingTier?: 'once_daily' | 'twice_daily'
   /** Full gym object as-fetched (Record to avoid circular import) */
   gym: Record<string, unknown>
   /** Full package object as-fetched */
@@ -143,6 +144,7 @@ export function hydrateReviewParams<T extends {
   packageData?: Record<string, unknown>
   initialReviewCount?: number
   initialReviewAverage?: number
+  trainingTier?: 'once_daily' | 'twice_daily'
 }>(params: T): T {
   if (params.gymData && params.packageData) return params
   const prefill = readBookingPrefill(params.gymId, params.packageId)
@@ -153,5 +155,6 @@ export function hydrateReviewParams<T extends {
     packageData: prefill.package_,
     initialReviewCount: params.initialReviewCount ?? prefill.reviewCount,
     initialReviewAverage: params.initialReviewAverage ?? prefill.reviewAverage,
+    trainingTier: params.trainingTier ?? prefill.trainingTier,
   }
 }

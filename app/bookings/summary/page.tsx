@@ -23,6 +23,7 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
+import { packageShowsTrainingTierSelection, parseTrainingTier, type TrainingTier } from '@/lib/packages/training-access'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
   prepareCheckoutExitToGym,
@@ -59,7 +60,13 @@ const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxi
 function buildReviewBackHref(
   gymSlugOrId: string,
   packageId: string,
-  opts: { variantId?: string; checkin?: string; checkout?: string; guests?: number }
+  opts: {
+    variantId?: string
+    checkin?: string
+    checkout?: string
+    guests?: number
+    trainingTier?: TrainingTier
+  }
 ): string {
   const p = new URLSearchParams()
   p.set('review', '1')
@@ -68,6 +75,9 @@ function buildReviewBackHref(
   if (opts.checkin) p.set('checkin', opts.checkin)
   if (opts.checkout) p.set('checkout', opts.checkout)
   p.set('guests', String(opts.guests ?? 1))
+  if (opts.trainingTier && opts.trainingTier !== 'twice_daily') {
+    p.set('tier', opts.trainingTier)
+  }
   return `/gyms/${gymSlugOrId}?${p.toString()}`
 }
 
@@ -194,6 +204,11 @@ function BookingSummaryPageContent() {
   const [guestCount, setGuestCount] = useState(
     parseInt(searchParams.get('guests') || '1') || 1
   )
+  const [trainingTier, setTrainingTier] = useState<TrainingTier>(() =>
+    parseTrainingTier(
+      searchParams.get('trainingTier') ?? initialPrefill?.trainingTier ?? 'twice_daily'
+    )
+  )
   const [discipline, setDiscipline] = useState('')
   const [notes, setNotes] = useState('')
   
@@ -234,11 +249,15 @@ function BookingSummaryPageContent() {
       const backCheckin = checkin || searchParams.get('checkin') || ''
       const backCheckout = checkout || searchParams.get('checkout') || ''
       const backVariantId = variant?.id || searchParams.get('variantId') || undefined
+      const backTrainingTier = packageShowsTrainingTierSelection(package_)
+        ? trainingTier
+        : undefined
 
       writeBookingPrefill({
         gymId: gym.id,
         packageId: pkgId,
         variantId: backVariantId,
+        trainingTier: backTrainingTier,
         gym: gym as unknown as Record<string, unknown>,
         package_: package_ as unknown as Record<string, unknown>,
         checkin: backCheckin,
@@ -251,6 +270,7 @@ function BookingSummaryPageContent() {
         gymId: gym.id,
         packageId: pkgId,
         variantId: backVariantId,
+        trainingTier: backTrainingTier,
         checkin: backCheckin,
         checkout: backCheckout,
         guestCount,
@@ -261,6 +281,7 @@ function BookingSummaryPageContent() {
         checkin: backCheckin || undefined,
         checkout: backCheckout || undefined,
         guests: guestCount,
+        trainingTier: backTrainingTier,
       })
       router.prefetch(backHref)
       router.replace(backHref)
@@ -426,6 +447,7 @@ function BookingSummaryPageContent() {
     const prefill = readBookingPrefill(gymId, packageId)
     if (prefill) {
       applyGymPackageData(prefill.gym, prefill.package_, variantId, null)
+      if (prefill.trainingTier) setTrainingTier(parseTrainingTier(prefill.trainingTier))
       setAverageRating(prefill.reviewAverage)
       setReviewCount(prefill.reviewCount)
       sessionLoadedRef.current = true
@@ -508,6 +530,8 @@ function BookingSummaryPageContent() {
       })
     : null
 
+  const showTrainingTier = packageShowsTrainingTierSelection(package_)
+
   useEffect(() => {
     if (!package_ || !isValidDuration || !checkin || !checkout) {
       setPriceBreakdown(null)
@@ -525,11 +549,15 @@ function BookingSummaryPageContent() {
             price_per_day: variant.price_per_day,
             price_per_week: variant.price_per_week,
             price_per_month: variant.price_per_month,
+            once_daily_price_per_day: variant.once_daily_price_per_day,
+            once_daily_price_per_week: variant.once_daily_price_per_week,
+            once_daily_price_per_month: variant.once_daily_price_per_month,
           }
         : null,
       pricingDuration,
       checkin,
       checkout,
+      training_tier: showTrainingTier ? trainingTier : 'twice_daily',
     }).then(({ breakdown, has_seasonal_overlap }) => {
       if (!cancelled) {
         setPriceBreakdown(breakdown)
@@ -540,7 +568,7 @@ function BookingSummaryPageContent() {
     return () => {
       cancelled = true
     }
-  }, [package_, variant, checkin, checkout, isValidDuration, pricingDuration])
+  }, [package_, variant, checkin, checkout, isValidDuration, pricingDuration, trainingTier, showTrainingTier])
 
   const calculatedPriceBreakdown = priceBreakdown ?? priceInfo
   const totalPrice = calculatedPriceBreakdown?.price || 0
@@ -605,6 +633,7 @@ function BookingSummaryPageContent() {
           guest_email: email,
           guest_phone: phone,
           guest_name: `${firstName} ${lastName}`,
+          training_tier: showTrainingTier ? trainingTier : 'twice_daily',
         }),
       })
 

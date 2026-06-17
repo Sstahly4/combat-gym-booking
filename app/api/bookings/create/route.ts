@@ -45,7 +45,13 @@ export async function POST(request: NextRequest) {
       guest_email,
       guest_phone,
       guest_name,
+      training_tier: rawTrainingTier,
     } = body
+
+    const training_tier =
+      rawTrainingTier === 'once_daily' || rawTrainingTier === 'twice_daily'
+        ? rawTrainingTier
+        : 'twice_daily'
 
     // Validate required fields — total_price is never accepted from the client.
     if (!gym_id || !package_id || !start_date || !end_date) {
@@ -88,6 +94,7 @@ export async function POST(request: NextRequest) {
       packageVariantId: package_variant_id || null,
       startDate: start_date,
       endDate: end_date,
+      trainingTier: training_tier,
     })
 
     if (!priceResult.ok) {
@@ -198,6 +205,7 @@ export async function POST(request: NextRequest) {
         gym_id,
         package_id,
         package_variant_id: package_variant_id || null,
+        training_tier,
         start_date,
         end_date,
         discipline: resolvedDiscipline,

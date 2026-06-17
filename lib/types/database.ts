@@ -374,6 +374,8 @@ export interface Booking {
   gym_id: string
   package_id: string | null
   package_variant_id: string | null
+  /** Guest-selected training intensity at checkout (once_daily | twice_daily). */
+  training_tier?: 'once_daily' | 'twice_daily' | null
   // Request-to-Book timestamps
   request_submitted_at?: string | null
   gym_confirmed_at?: string | null

@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Star, X, ChevronRight } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
+import type { PriceBreakdown } from '@/lib/utils'
+import { resolveClientPriceBreakdown } from '@/lib/booking/client-price-breakdown'
 import {
   CheckoutSummaryRow,
   formatCheckoutAmountOnly,
@@ -24,8 +26,14 @@ import { LoadingOverlay } from '@/components/loading-overlay'
 import { CurrencyModal } from '@/components/currency-modal'
 import { writeBookingPrefill, readBookingPrefill } from '@/lib/utils/booking-prefill'
 import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
-import type { Gym, Package } from '@/lib/types/database'
+import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
+import {
+  packageShowsTrainingTierSelection,
+  parseTrainingTier,
+  trainingTierCheckoutLabel,
+  type TrainingTier,
+} from '@/lib/packages/training-access'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -104,6 +112,77 @@ function GuestSheet({
   )
 }
 
+// ─── Training intensity bottom sheet ───────────────────────────────────────────
+const TRAINING_TIER_OPTIONS: {
+  value: TrainingTier
+  title: string
+  description: string
+}[] = [
+  {
+    value: 'once_daily',
+    title: 'Once Daily (Flexible Choice)',
+    description: 'Train once a day. Choose either morning or evening each day.',
+  },
+  {
+    value: 'twice_daily',
+    title: 'Twice Daily (Full Access)',
+    description: 'The full fight-camp routine. Access to both morning and evening sessions.',
+  },
+]
+
+function TrainingTierSheet({
+  value,
+  onChange,
+  onClose,
+}: {
+  value: TrainingTier
+  onChange: (tier: TrainingTier) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[300]">
+      <div className="fixed inset-0 bg-black/50 z-[301]" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[302] flex flex-col max-h-[85dvh]">
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-lg font-semibold">Training intensity</h3>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl">✕</button>
+        </div>
+        <div className="px-5 py-4 flex-1 overflow-y-auto space-y-3">
+          {TRAINING_TIER_OPTIONS.map((opt) => {
+            const selected = value === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange(opt.value)}
+                className={`w-full text-left rounded-xl border-2 p-4 transition-colors ${
+                  selected
+                    ? 'border-[#003580] bg-blue-50/40'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="font-semibold text-gray-900">{opt.title}</div>
+                <div className="mt-1 text-sm text-gray-600 leading-snug">{opt.description}</div>
+              </button>
+            )
+          })}
+        </div>
+        <div className="px-5 pb-8 flex-shrink-0" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+          <Button
+            className="w-full h-11 bg-[#003580] hover:bg-[#003580]/90 font-semibold text-base"
+            onClick={onClose}
+          >
+            Done
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Modal content ────────────────────────────────────────────────────────────
 export function ReviewModal({
   params: initialParams,
@@ -141,9 +220,17 @@ export function ReviewModal({
   const [checkin, setCheckin] = useState(initialParams.checkin)
   const [checkout, setCheckout] = useState(initialParams.checkout)
   const [guestCount, setGuestCount] = useState(initialParams.guestCount ?? 1)
+  const [trainingTier, setTrainingTier] = useState<TrainingTier>(() =>
+    parseTrainingTier(
+      initialParams.trainingTier ?? cachedPrefill?.trainingTier ?? 'twice_daily'
+    )
+  )
+  const [variant, setVariant] = useState<PackageVariant | null>(null)
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
 
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
+  const [trainingTierSheetOpen, setTrainingTierSheetOpen] = useState(false)
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
   const gymCurrency = gym?.currency ?? 'USD'
@@ -205,6 +292,22 @@ export function ReviewModal({
     fetchReviews()
   }, [initialParams.gymId, initialParams.packageId, hasPreloaded])
 
+  useEffect(() => {
+    if (!initialParams.variantId) {
+      setVariant(null)
+      return
+    }
+    const supabase = createClient()
+    void supabase
+      .from('package_variants')
+      .select('*')
+      .eq('id', initialParams.variantId)
+      .single()
+      .then(({ data }) => {
+        if (data) setVariant(data as PackageVariant)
+      })
+  }, [initialParams.variantId])
+
   // ── Derived values ──────────────────────────────────────────────────────────
   const duration =
     checkin && checkout
@@ -216,15 +319,60 @@ export function ReviewModal({
 
   const isTraining = package_?.type === 'training'
   const pricingDuration = isTraining ? Math.max(1, duration + 1) : duration
+  const showTrainingTier = packageShowsTrainingTierSelection(package_)
+  const tierVariant =
+    showTrainingTier && trainingTier === 'once_daily' && variant
+      ? {
+          price_per_day: variant.once_daily_price_per_day ?? variant.price_per_day,
+          price_per_week: variant.once_daily_price_per_week ?? variant.price_per_week,
+          price_per_month: variant.once_daily_price_per_month ?? variant.price_per_month,
+        }
+      : variant
 
-  const priceInfo =
+  const syncFallbackPrice =
     package_ && pricingDuration > 0
       ? calculatePackagePrice(pricingDuration, package_.type, {
-          daily: package_.price_per_day,
-          weekly: package_.price_per_week,
-          monthly: package_.price_per_month,
+          daily: tierVariant?.price_per_day ?? package_.price_per_day,
+          weekly: tierVariant?.price_per_week ?? package_.price_per_week,
+          monthly: tierVariant?.price_per_month ?? package_.price_per_month,
         })
       : null
+
+  useEffect(() => {
+    if (!package_ || pricingDuration <= 0 || !checkin || !checkout) {
+      setPriceBreakdown(null)
+      return
+    }
+
+    let cancelled = false
+
+    void resolveClientPriceBreakdown({
+      package_: package_,
+      variant: variant
+        ? {
+            id: variant.id,
+            price_per_day: variant.price_per_day,
+            price_per_week: variant.price_per_week,
+            price_per_month: variant.price_per_month,
+            once_daily_price_per_day: variant.once_daily_price_per_day,
+            once_daily_price_per_week: variant.once_daily_price_per_week,
+            once_daily_price_per_month: variant.once_daily_price_per_month,
+          }
+        : null,
+      pricingDuration,
+      checkin,
+      checkout,
+      training_tier: showTrainingTier ? trainingTier : 'twice_daily',
+    }).then(({ breakdown }) => {
+      if (!cancelled) setPriceBreakdown(breakdown)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [package_, variant, checkin, checkout, pricingDuration, trainingTier, showTrainingTier])
+
+  const priceInfo = priceBreakdown ?? syncFallbackPrice
 
   const chargeTotalPrice = priceInfo?.price ?? null
   const totalPrice =
@@ -240,6 +388,9 @@ export function ReviewModal({
     if (gym) p.set('gymId', gym.id)
     p.set('packageId', initialParams.packageId)
     if (initialParams.variantId) p.set('variantId', initialParams.variantId)
+    if (showTrainingTier && trainingTier !== 'twice_daily') {
+      p.set('trainingTier', trainingTier)
+    }
     if (checkin) p.set('checkin', checkin)
     if (checkout) p.set('checkout', checkout)
     p.set('guests', String(guestCount))
@@ -253,7 +404,7 @@ export function ReviewModal({
     if (gym && package_) {
       router.prefetch(buildContinueUrl())
     }
-  }, [gym, package_, checkin, checkout, guestCount, initialParams.packageId, initialParams.variantId, router])
+  }, [gym, package_, checkin, checkout, guestCount, trainingTier, showTrainingTier, initialParams.packageId, initialParams.variantId, router])
 
   const handleContinue = () => {
     if (continuingRef.current) return
@@ -263,6 +414,7 @@ export function ReviewModal({
         gymId: gym.id,
         packageId: initialParams.packageId,
         variantId: initialParams.variantId,
+        trainingTier: showTrainingTier ? trainingTier : undefined,
         gym: gym as unknown as Record<string, unknown>,
         package_: package_ as unknown as Record<string, unknown>,
         checkin,
@@ -343,6 +495,13 @@ export function ReviewModal({
                   value={`${guestCount} ${guestCount === 1 ? 'adult' : 'adults'}`}
                   onEdit={() => setGuestSheetOpen(true)}
                 />
+                {showTrainingTier && (
+                  <CheckoutSummaryRow
+                    label="Training intensity"
+                    value={trainingTierCheckoutLabel(trainingTier)}
+                    onEdit={() => setTrainingTierSheetOpen(true)}
+                  />
+                )}
                 <CheckoutSummaryRow
                   label="Total price"
                   value={
@@ -428,6 +587,14 @@ export function ReviewModal({
               value={guestCount}
               onChange={setGuestCount}
               onClose={() => setGuestSheetOpen(false)}
+            />
+          )}
+
+          {trainingTierSheetOpen && (
+            <TrainingTierSheet
+              value={trainingTier}
+              onChange={setTrainingTier}
+              onClose={() => setTrainingTierSheetOpen(false)}
             />
           )}
 

@@ -102,9 +102,11 @@ export async function resolveBookingPrice(
     packageVariantId?: string | null
     startDate: string
     endDate: string
+    trainingTier?: 'once_daily' | 'twice_daily' | null
   }
 ): Promise<ResolveBookingPriceResult> {
-  const { gymId, packageId, packageVariantId, startDate, endDate } = input
+  const { gymId, packageId, packageVariantId, startDate, endDate, trainingTier } = input
+  const resolvedTier = trainingTier === 'once_daily' ? 'once_daily' : 'twice_daily'
 
   if (!packageId) {
     return { ok: false, status: 400, error: 'package_id is required' }
@@ -163,7 +165,8 @@ export async function resolveBookingPrice(
     variant,
     seasonalRates,
     startDate,
-    endDate
+    endDate,
+    resolvedTier
   )
   if (!breakdown) {
     return { ok: false, status: 400, error: 'Invalid date range for pricing' }
