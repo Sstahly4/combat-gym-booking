@@ -1,12 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { CalendarAvailabilityGrid } from '@/components/manage/calendar-availability-grid'
+import { CalendarSyncExportCard } from '@/components/manage/calendar-sync-export-card'
 import { Loader2 } from 'lucide-react'
 
 export default function ManageCalendarPage() {
   const { activeGymId, loading, gyms } = useActiveGym()
+  const searchParams = useSearchParams()
+  const packageVariantId = searchParams.get('package_variant_id')
 
   return (
     <div className="min-h-screen bg-white">
@@ -49,7 +53,10 @@ export default function ManageCalendarPage() {
               </Link>
             </div>
           ) : activeGymId ? (
-            <CalendarAvailabilityGrid gymId={activeGymId} />
+            <div className="space-y-5">
+              <CalendarSyncExportCard gymId={activeGymId} packageVariantId={packageVariantId} />
+              <CalendarAvailabilityGrid gymId={activeGymId} />
+            </div>
           ) : null}
         </div>
       </div>
