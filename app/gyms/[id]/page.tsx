@@ -572,19 +572,9 @@ export default async function GymDetailsPage({
             </div>
           </div>
         )}
-        {/* Header / Breadcrumbs */}
+        {/* Header */}
         <div className="bg-white border-b border-gray-200 py-4 md:py-6">
           <div className="max-w-6xl mx-auto px-4">
-            {/* Breadcrumbs - Smaller on mobile, scrollable if needed */}
-            <div className="flex items-center text-xs md:text-sm text-gray-500 mb-3 md:mb-4 overflow-x-auto no-scrollbar">
-              <a href="/" className="hover:text-[#003580] transition-colors whitespace-nowrap">Home</a>
-              <span className="mx-1.5 md:mx-2">/</span>
-              <a href={`/search?country=${encodeURIComponent(gym.country)}`} className="hover:text-[#003580] transition-colors whitespace-nowrap">{gym.country}</a>
-              <span className="mx-1.5 md:mx-2">/</span>
-              <a href={`/search?location=${encodeURIComponent(gym.city)}`} className="hover:text-[#003580] transition-colors whitespace-nowrap">{gym.city}</a>
-              <span className="mx-1.5 md:mx-2">/</span>
-              <span className="text-gray-900 font-medium whitespace-nowrap truncate">{gym.name}</span>
-            </div>
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 md:gap-4">
               <div className="flex-1 min-w-0">
                 {/* Mobile: Title and Reserve button inline */}
