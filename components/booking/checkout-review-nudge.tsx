@@ -9,6 +9,8 @@ import {
 
 /** Reserve space for the fixed FAB + safe area when testing visibility. */
 const FAB_ZONE_PX = 104
+/** Prevent instant dismiss on initial layout/overlay changes. */
+const MIN_SCROLL_BEFORE_DISMISS_PX = 24
 
 function ReviewScrollArrow({ className }: { className?: string }) {
   return (
@@ -50,6 +52,8 @@ function isCheckoutEndVisible(root: HTMLElement, end: HTMLElement): boolean {
 }
 
 function shouldDismiss(root: HTMLElement, checkoutEnd: HTMLElement | null): boolean {
+  // Only dismiss after the user has actually scrolled.
+  if (root.scrollTop < MIN_SCROLL_BEFORE_DISMISS_PX) return false
   if (isScrolledToBottom(root)) return true
   if (!checkoutEnd) return false
   return isCheckoutEndVisible(root, checkoutEnd)
