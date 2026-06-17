@@ -19,7 +19,7 @@ export const AGREEMENT_META = {
   /** Matches executed PDF / Word cover branding. */
   brandWordmark: 'COMBATSTAY',
   title: 'GYM PARTNER AGREEMENT',
-  version: 'Version 1.0  |  April 2026',
+  version: 'April 2026',
   issuingParty: 'CombatStay Pty Ltd',
   abn: '33 279 676 778',
   documentType: 'Binding Commercial Agreement',

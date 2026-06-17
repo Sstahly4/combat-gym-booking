@@ -17,6 +17,7 @@ import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
 import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
+import { GYM_CURRENCY_OPTIONS, normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import {
   DEFAULT_GYM_AMENITIES,
   GYM_AMENITY_ORDER,
@@ -36,7 +37,39 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
-const CURRENCIES = ['USD', 'THB', 'AUD', 'IDR']
+const COUNTRY_CURRENCY_HINT: Record<string, string> = {
+  Thailand: 'THB',
+  Indonesia: 'IDR',
+  Singapore: 'SGD',
+  Malaysia: 'MYR',
+  Vietnam: 'VND',
+  Philippines: 'PHP',
+  Japan: 'JPY',
+  'South Korea': 'KRW',
+  China: 'CNY',
+  'Hong Kong': 'HKD',
+  India: 'INR',
+  Australia: 'AUD',
+  'New Zealand': 'NZD',
+  Canada: 'CAD',
+  'United Kingdom': 'GBP',
+  Ireland: 'EUR',
+  France: 'EUR',
+  Germany: 'EUR',
+  Spain: 'EUR',
+  Italy: 'EUR',
+  Portugal: 'EUR',
+  Netherlands: 'EUR',
+  Belgium: 'EUR',
+  Austria: 'EUR',
+  Greece: 'EUR',
+  Finland: 'EUR',
+  Sweden: 'EUR',
+  Norway: 'EUR',
+  Denmark: 'EUR',
+  Switzerland: 'EUR',
+  'United States': 'USD',
+}
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 type PendingGymImageStatus = 'queued' | 'uploading' | 'saving' | 'done' | 'failed' | 'cancelled'
@@ -131,6 +164,20 @@ function EditGymForm() {
   const [countrySearch, setCountrySearch] = useState('')
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState<string>('')
+  const [currencySearch, setCurrencySearch] = useState('')
+  const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false)
+  const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>(() =>
+    normalizeGymCurrency(gym.currency, 'USD')
+  )
+  const currencyTouchedRef = useRef(false)
+
+  useEffect(() => {
+    if (!selectedCountry) return
+    if (currencyTouchedRef.current) return
+    const hinted = COUNTRY_CURRENCY_HINT[selectedCountry]
+    if (!hinted) return
+    setSelectedCurrencyCode((prev) => (prev === hinted ? prev : hinted))
+  }, [selectedCountry])
   const [locationAddress, setLocationAddress] = useState('')
   const [locationCity, setLocationCity] = useState('')
   const [cityNonLatinWarning, setCityNonLatinWarning] = useState(false)
@@ -417,6 +464,10 @@ function EditGymForm() {
       setSelectedCountry(data.country || '')
       setDisciplines(data.disciplines || [])
     }
+
+    // Currency should reflect DB on load (not cached)
+    setSelectedCurrencyCode(normalizeGymCurrency(data.currency, 'USD'))
+    currencyTouchedRef.current = false
     
     if (!hasCachedState) {
       setAmenities(mergeGymAmenitiesFromDb(data.amenities))
@@ -1180,9 +1231,99 @@ function EditGymForm() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="currency">Currency <span className="text-red-500">*</span></Label>
-                    <Select name="currency" defaultValue={gym.currency} required>
-                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </Select>
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="currency"
+                          type="text"
+                          value={
+                            currencyDropdownOpen
+                              ? currencySearch
+                              : GYM_CURRENCY_OPTIONS.find((c) => c.code === selectedCurrencyCode)?.label ??
+                                selectedCurrencyCode
+                          }
+                          onChange={(e) => {
+                            currencyTouchedRef.current = true
+                            setCurrencySearch(e.target.value)
+                            setCurrencyDropdownOpen(true)
+                          }}
+                          onFocus={() => {
+                            setCurrencyDropdownOpen(true)
+                            setCurrencySearch('')
+                          }}
+                          placeholder="Search currency…"
+                          className="pl-10 pr-10"
+                          required
+                        />
+                        {selectedCurrencyCode && !currencyDropdownOpen && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              currencyTouchedRef.current = true
+                              setSelectedCurrencyCode('USD')
+                              setCurrencySearch('')
+                            }}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            aria-label="Reset currency"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                        {currencyDropdownOpen && (
+                          <button
+                            type="button"
+                            onClick={() => setCurrencySearch('')}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            aria-label="Clear currency search"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {currencyDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setCurrencyDropdownOpen(false)} />
+                          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden">
+                            <div className="overflow-y-auto max-h-60">
+                              {GYM_CURRENCY_OPTIONS.filter((c) => {
+                                const q = currencySearch.trim().toLowerCase()
+                                if (!q) return true
+                                return c.code.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
+                              }).map((c) => (
+                                <button
+                                  key={c.code}
+                                  type="button"
+                                  onClick={() => {
+                                    currencyTouchedRef.current = true
+                                    setSelectedCurrencyCode(c.code)
+                                    setCurrencySearch('')
+                                    setCurrencyDropdownOpen(false)
+                                  }}
+                                  className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                                    selectedCurrencyCode === c.code
+                                      ? 'bg-blue-50 text-[#003580] font-medium'
+                                      : 'text-gray-700'
+                                  }`}
+                                >
+                                  {c.label}
+                                </button>
+                              ))}
+                              {GYM_CURRENCY_OPTIONS.filter((c) => {
+                                const q = currencySearch.trim().toLowerCase()
+                                if (!q) return true
+                                return c.code.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
+                              }).length === 0 && (
+                                <div className="px-4 py-2 text-sm text-gray-500">No currencies found</div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      <input type="hidden" name="currency" value={selectedCurrencyCode} required />
+                      <p className="text-xs text-gray-500">This is your listing’s native currency.</p>
+                    </div>
                   </div>
                 </div>
               </div>
