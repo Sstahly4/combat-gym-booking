@@ -43,11 +43,35 @@ export function computeBreakdownForStay(
     Package,
     'type' | 'price_per_day' | 'price_per_week' | 'price_per_month'
   >,
-  variant: VariantPricingRow | null,
+  variant: (VariantPricingRow & Partial<Pick<PackageVariant, 'once_daily_price_per_day' | 'once_daily_price_per_week' | 'once_daily_price_per_month'>>) | null,
   seasonalRates: PackageSeasonalRate[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  training_tier: 'once_daily' | 'twice_daily' = 'twice_daily'
 ): PriceBreakdown | null {
+  const tier = training_tier === 'once_daily' ? 'once_daily' : 'twice_daily'
+
+  // When once_daily is requested, use the once-daily track where configured, otherwise fall back.
+  const tierVariant =
+    tier === 'once_daily' && variant
+      ? {
+          ...variant,
+          price_per_day: (variant as any).once_daily_price_per_day ?? variant.price_per_day,
+          price_per_week: (variant as any).once_daily_price_per_week ?? variant.price_per_week,
+          price_per_month: (variant as any).once_daily_price_per_month ?? variant.price_per_month,
+        }
+      : variant
+
+  const tierSeasonalRates =
+    tier === 'once_daily'
+      ? seasonalRates.map((r) => ({
+          ...r,
+          price_per_day: (r as any).once_daily_price_per_day ?? r.price_per_day,
+          price_per_week: (r as any).once_daily_price_per_week ?? r.price_per_week,
+          price_per_month: (r as any).once_daily_price_per_month ?? r.price_per_month,
+        }))
+      : seasonalRates
+
   if (seasonalRates.length > 0) {
     return computeBookingPriceWithSeasons(
       startDate,
@@ -59,11 +83,11 @@ export function computeBreakdownForStay(
         price_per_week: pkg.price_per_week,
         price_per_month: pkg.price_per_month,
       },
-      seasonalRates,
-      variant
+      tierSeasonalRates,
+      tierVariant
     )
   }
-  return computeBookingPriceFromDates(startDate, endDate, pkg, variant)
+  return computeBookingPriceFromDates(startDate, endDate, pkg, tierVariant as any)
 }
 
 /**
@@ -109,7 +133,7 @@ export async function resolveBookingPrice(
   if (packageVariantId) {
     const { data: variantData, error: variantError } = await supabase
       .from('package_variants')
-      .select('id, package_id, price_per_day, price_per_week, price_per_month')
+        .select('id, package_id, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month')
       .eq('id', packageVariantId)
       .single()
 

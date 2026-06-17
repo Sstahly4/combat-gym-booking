@@ -295,6 +295,10 @@ export interface PackageVariant {
   price_per_day: number | null
   price_per_week: number | null
   price_per_month: number | null
+  /** Optional once-daily training price track (NULL => fall back to full access). */
+  once_daily_price_per_day?: number | null
+  once_daily_price_per_week?: number | null
+  once_daily_price_per_month?: number | null
   room_type: 'private' | 'shared' | null
   images: string[]
   // Used as ticket tier capacity for TYPE_ONE_TIME_EVENT packages
@@ -314,6 +318,10 @@ export interface PackageSeasonalRate {
   price_per_day: number | null
   price_per_week: number | null
   price_per_month: number | null
+  /** Optional once-daily training price track (NULL => fall back to full access tier fields). */
+  once_daily_price_per_day?: number | null
+  once_daily_price_per_week?: number | null
+  once_daily_price_per_month?: number | null
   created_at: string
   updated_at: string
 }

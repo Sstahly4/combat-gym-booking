@@ -20,8 +20,9 @@ export async function resolveClientPriceBreakdown(input: {
   pricingDuration: number
   checkin: string
   checkout: string
+  training_tier?: 'once_daily' | 'twice_daily'
 }): Promise<{ breakdown: PriceBreakdown; has_seasonal_overlap: boolean }> {
-  const { package_, variant, pricingDuration, checkin, checkout } = input
+  const { package_, variant, pricingDuration, checkin, checkout, training_tier } = input
 
   const basePrices = {
     daily: variant?.price_per_day ?? package_.price_per_day,
@@ -54,7 +55,8 @@ export async function resolveClientPriceBreakdown(input: {
     variant,
     rates,
     checkin,
-    checkout
+    checkout,
+    training_tier ?? 'twice_daily'
   )
 
   if (!seasonalBreakdown) {
