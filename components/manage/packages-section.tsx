@@ -105,9 +105,9 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
   if (showStepper) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
-        {/* Back bar */}
-        <div className="bg-white border-b sticky top-0 z-20">
-          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-4">
+        {/* Back bar — full width; step content aligns below in OfferStepper */}
+        <div className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-4 px-4 py-3 sm:px-6">
             <button
               type="button"
               onClick={handleClose}

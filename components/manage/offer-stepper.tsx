@@ -2277,7 +2277,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   }
 
   return (
-    <div className={embedded ? 'min-h-0 bg-transparent' : 'min-h-screen bg-gray-50'}>
+      <div className={embedded ? 'min-h-0 bg-transparent' : 'min-h-screen bg-gray-50'}>
       <AccommodationQuickModal
         open={accommodationModalOpen}
         onOpenChange={setAccommodationModalOpen}
@@ -2285,8 +2285,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         currency={packageCurrency}
         onSaved={() => void loadAccommodations()}
       />
-      <div className={`mx-auto max-w-7xl px-4 ${embedded ? 'py-4 md:py-6' : 'py-8'}`}>
-        <div className={embedded ? 'mb-4' : 'mb-6'}>
+
+      {/* Progress — full-width bar; inner content lines up with the form grid */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4">
           <GymStepper
             currentStep={currentStep}
             steps={steps}
@@ -2297,7 +2299,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             }}
           />
         </div>
+      </div>
 
+      <div className={`mx-auto max-w-7xl px-4 sm:px-6 ${embedded ? 'py-4 md:py-6' : 'py-8'}`}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Form (2/3 on desktop) */}
           <div className="lg:col-span-2">
