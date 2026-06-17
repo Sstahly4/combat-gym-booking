@@ -9,8 +9,9 @@ import {
 
 /** Reserve space for the fixed FAB + safe area when testing visibility. */
 const FAB_ZONE_PX = 104
-/** Prevent instant dismiss on initial layout/overlay changes. */
-const MIN_SCROLL_BEFORE_DISMISS_PX = 24
+
+/** Delay so the nudge "pops" after the loading overlay clears. */
+const SHOW_DELAY_MS = 220
 
 function ReviewScrollArrow({ className }: { className?: string }) {
   return (
@@ -37,38 +38,28 @@ function ReviewScrollArrow({ className }: { className?: string }) {
   )
 }
 
-/** How close to max scroll counts as "at the bottom" (iOS rubber-band tolerance). */
-const SCROLL_BOTTOM_TOLERANCE_PX = 32
-
-function isScrolledToBottom(root: HTMLElement): boolean {
-  return root.scrollTop + root.clientHeight >= root.scrollHeight - SCROLL_BOTTOM_TOLERANCE_PX
-}
-
-function isCheckoutEndVisible(root: HTMLElement, end: HTMLElement): boolean {
+function isConfirmBlockVisible(root: HTMLElement, block: HTMLElement): boolean {
   const rootRect = root.getBoundingClientRect()
-  const endRect = end.getBoundingClientRect()
+  const endRect = block.getBoundingClientRect()
   const visibleBottom = rootRect.bottom - FAB_ZONE_PX
   return endRect.top <= visibleBottom && endRect.bottom >= rootRect.top
 }
 
-function shouldDismiss(root: HTMLElement, checkoutEnd: HTMLElement | null): boolean {
-  // Only dismiss after the user has actually scrolled.
-  if (root.scrollTop < MIN_SCROLL_BEFORE_DISMISS_PX) return false
-  if (isScrolledToBottom(root)) return true
-  if (!checkoutEnd) return false
-  return isCheckoutEndVisible(root, checkoutEnd)
+function shouldDismiss(root: HTMLElement, confirmBlock: HTMLElement | null): boolean {
+  if (!confirmBlock) return false
+  return isConfirmBlockVisible(root, confirmBlock)
 }
 
 export function CheckoutReviewNudge({
   bookingId,
   scrollRootRef,
-  checkoutEndRef,
+  confirmBlockRef,
   ready = true,
 }: {
   bookingId: string
   scrollRootRef: RefObject<HTMLElement | null>
-  /** 1px sentinel at the bottom of mobile checkout content. */
-  checkoutEndRef: RefObject<HTMLElement | null>
+  /** Price details + confirm booking block — observed for auto-dismiss. */
+  confirmBlockRef: RefObject<HTMLElement | null>
   /** When false, payment content below the fold is not mounted yet (e.g. Stripe loading). */
   ready?: boolean
 }) {
@@ -76,10 +67,17 @@ export function CheckoutReviewNudge({
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
-    if (!bookingId || isCheckoutReviewNudgeDismissed(bookingId)) return
-    const frame = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(frame)
-  }, [bookingId])
+    if (!bookingId || !ready || isCheckoutReviewNudgeDismissed(bookingId)) return
+    // Wait a beat after the overlay clears so the pill feels like it "pops in".
+    const t = window.setTimeout(() => {
+      const root = scrollRootRef.current
+      const block = confirmBlockRef.current
+      // If the confirm block is already visible, don't show the nudge at all.
+      if (root && shouldDismiss(root, block)) return
+      setVisible(true)
+    }, SHOW_DELAY_MS)
+    return () => window.clearTimeout(t)
+  }, [bookingId, ready, scrollRootRef, confirmBlockRef])
 
   useEffect(() => {
     if (!visible || !ready || isCheckoutReviewNudgeDismissed(bookingId)) return
@@ -100,9 +98,9 @@ export function CheckoutReviewNudge({
 
     const maybeDismiss = () => {
       const root = scrollRootRef.current
-      const end = checkoutEndRef.current
+      const block = confirmBlockRef.current
       if (!root) return
-      if (shouldDismiss(root, end)) dismiss()
+      if (shouldDismiss(root, block)) dismiss()
     }
 
     const onScroll = () => {
@@ -115,8 +113,8 @@ export function CheckoutReviewNudge({
       if (cancelled || dismissed) return
 
       const root = scrollRootRef.current
-      const end = checkoutEndRef.current
-      if (!root || !end) {
+      const block = confirmBlockRef.current
+      if (!root || !block) {
         raf = requestAnimationFrame(attach)
         return
       }
@@ -135,7 +133,7 @@ export function CheckoutReviewNudge({
             rootMargin: `0px 0px -${FAB_ZONE_PX}px 0px`,
           },
         )
-        observer.observe(end)
+        observer.observe(block)
       } catch (err) {
         console.warn('[checkout-review-nudge] IntersectionObserver failed', err)
       }
@@ -152,15 +150,21 @@ export function CheckoutReviewNudge({
       root?.removeEventListener('scroll', onScroll)
       root?.removeEventListener('scrollend', maybeDismiss)
     }
-  }, [visible, ready, bookingId, scrollRootRef, checkoutEndRef])
+  }, [visible, ready, bookingId, scrollRootRef, confirmBlockRef])
 
   const handleClick = useCallback(() => {
     const root = scrollRootRef.current
+    const block = confirmBlockRef.current
     if (!root) return
+    if (!block) return
 
-    const maxScroll = Math.max(0, root.scrollHeight - root.clientHeight)
-    root.scrollTo({ top: maxScroll, behavior: 'smooth' })
-  }, [scrollRootRef])
+    const rootTop = root.getBoundingClientRect().top
+    const targetTop = block.getBoundingClientRect().top
+    root.scrollTo({
+      top: root.scrollTop + (targetTop - rootTop) - 16,
+      behavior: 'smooth',
+    })
+  }, [scrollRootRef, confirmBlockRef])
 
   if (!visible) return null
 

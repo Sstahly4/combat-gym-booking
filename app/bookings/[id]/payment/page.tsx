@@ -247,6 +247,7 @@ function CheckoutForm({
   mobileCheckoutDisabled = false,
   payWhen = 'now',
   priceDetailsSection,
+  confirmBlockRef,
 }: {
   booking: Booking & { gym: Gym; guest_email?: string | null; guest_name?: string | null }
   formId?: string
@@ -260,6 +261,7 @@ function CheckoutForm({
   mobileCheckoutDisabled?: boolean
   payWhen?: PayWhenChoice
   priceDetailsSection?: ReactNode
+  confirmBlockRef?: RefObject<HTMLDivElement | null>
 }) {
   const router = useRouter()
   const params = useParams()
@@ -458,17 +460,18 @@ function CheckoutForm({
           )}
         </form>
 
-        {priceDetailsSection}
+        <div ref={confirmBlockRef as RefObject<HTMLDivElement>} className="space-y-6">
+          {priceDetailsSection}
 
-        <div className="space-y-2">
-          <CheckoutPaymentConsent />
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-              {error}
-            </div>
-          )}
-          <div>
-          {isKlarnaCheckout ? (
+          <div className="space-y-2">
+            <CheckoutPaymentConsent />
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            <div>
+            {isKlarnaCheckout ? (
             <Button
               type="submit"
               form={formId}
@@ -529,8 +532,9 @@ function CheckoutForm({
               </div>
             )
           ) : null}
+            </div>
+            <PaymentHoldExplainer />
           </div>
-          <PaymentHoldExplainer />
         </div>
       </div>
     )
@@ -673,7 +677,7 @@ export default function PaymentPage() {
   const [draftCheckin, setDraftCheckin] = useState('')
   const [draftCheckout, setDraftCheckout] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
-  const checkoutEndRef = useRef<HTMLDivElement>(null)
+  const confirmBlockRef = useRef<HTMLDivElement>(null)
 
   const openPayWhenSheet = () => {
     setDraftPayWhen(payWhen)
@@ -1551,6 +1555,7 @@ export default function PaymentPage() {
                 onPaymentMethodChange={setSelectedPaymentMethod}
                 mobileCheckoutDisabled={!clientSecret || loading}
                 payWhen={effectivePayWhen}
+                confirmBlockRef={confirmBlockRef}
                 priceDetailsSection={
                   priceInfo && rawTotal > 0 ? (
                     <CheckoutPriceDetailsInline
@@ -1568,10 +1573,6 @@ export default function PaymentPage() {
               />
             </Elements>
           ) : null}
-
-          {!datesExpired && (
-          <div ref={checkoutEndRef} className="h-px w-full shrink-0" aria-hidden />
-          )}
         </div>
 
       {/* Desktop Layout */}
@@ -1892,7 +1893,7 @@ export default function PaymentPage() {
       <CheckoutReviewNudge
         bookingId={bookingId}
         scrollRootRef={scrollRootRef}
-        checkoutEndRef={checkoutEndRef}
+        confirmBlockRef={confirmBlockRef}
         ready={!!clientSecret}
       />
       )}
