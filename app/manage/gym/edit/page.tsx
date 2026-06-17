@@ -166,9 +166,7 @@ function EditGymForm() {
   const [selectedCountry, setSelectedCountry] = useState<string>('')
   const [currencySearch, setCurrencySearch] = useState('')
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false)
-  const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>(() =>
-    normalizeGymCurrency(gym.currency, 'USD')
-  )
+  const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>('USD')
   const currencyTouchedRef = useRef(false)
 
   useEffect(() => {

@@ -87,14 +87,15 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       const id = String((b as any).id || '')
       if (!id) continue
 
-      cal.createEvent({
+      const ev = cal.createEvent({
         id,
-        uid: `${id}@combatstay`,
         summary: `CombatStay: Guest Booking - ${id.slice(0, 4)}`,
         start,
         end,
         allDay: true,
       })
+      // ical-generator v11 types don't expose `uid` in event data; set via method if available.
+      ;(ev as any)?.uid?.(`${id}@combatstay`)
     }
 
     const ics = cal.toString()
