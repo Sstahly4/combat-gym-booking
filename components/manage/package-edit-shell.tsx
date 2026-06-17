@@ -33,26 +33,27 @@ export function PackageEditShell({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-4 px-4 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            <ChevronRight className="h-4 w-4 rotate-180" />
-            Back to packages
-          </button>
-          <span className="text-sm text-gray-300">|</span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900">{pkg.name}</p>
-            <p className="text-xs text-gray-500">Edit package</p>
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="flex items-center gap-4 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
+              <ChevronRight className="h-4 w-4 rotate-180" />
+              Back to packages
+            </button>
+            <span className="text-sm text-gray-300">|</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-900">{pkg.name}</p>
+              <p className="text-xs text-gray-500">Edit package</p>
+            </div>
           </div>
-        </div>
 
-        <nav
-          className="flex gap-1 overflow-x-auto px-4 pb-0"
-          aria-label="Package editor sections"
-        >
+          <nav
+            className="flex gap-1 overflow-x-auto pb-0"
+            aria-label="Package editor sections"
+          >
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -69,7 +70,8 @@ export function PackageEditShell({
               {label}
             </button>
           ))}
-        </nav>
+          </nav>
+        </div>
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto">

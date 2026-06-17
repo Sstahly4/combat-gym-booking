@@ -12,6 +12,63 @@ export type TrainingTier = NormalizedPackageTrainingAccess
 
 export const TRAINING_TIER_DEFAULT: TrainingTier = 'twice_daily'
 
+/** Owner wizard: which training tiers this package sells. */
+export type TrainingTierOptions = {
+  twice_daily: boolean
+  once_daily: boolean
+}
+
+export const DEFAULT_TRAINING_TIER_OPTIONS: TrainingTierOptions = {
+  twice_daily: true,
+  once_daily: false,
+}
+
+export function hasTrainingTierSelection(
+  options: TrainingTierOptions | null | undefined
+): boolean {
+  return !!(options?.twice_daily || options?.once_daily)
+}
+
+export function trainingAccessFromTierOptions(
+  options: TrainingTierOptions
+): NormalizedPackageTrainingAccess {
+  if (options.once_daily && !options.twice_daily) return 'once_daily'
+  return 'twice_daily'
+}
+
+export function trainingTierOptionsSummary(options: TrainingTierOptions): string {
+  const labels = TRAINING_ACCESS_OPTIONS.filter((o) => options[o.value]).map(
+    (o) => `${o.label} (${o.subtitle})`
+  )
+  return labels.join(' · ')
+}
+
+export function inferTrainingTierOptionsFromPackage(pkg: {
+  training_access?: PackageTrainingAccess | null
+  price_per_day?: number | null
+  price_per_week?: number | null
+  once_daily_price_per_day?: number | null
+}): TrainingTierOptions {
+  const hasOnceTrack = pkg.once_daily_price_per_day != null
+  const access = normalizeTrainingAccess(pkg.training_access)
+  const hasTwiceTrack =
+    pkg.price_per_day != null ||
+    pkg.price_per_week != null ||
+    access === 'twice_daily' ||
+    (!hasOnceTrack && access !== 'once_daily')
+
+  if (hasOnceTrack && hasTwiceTrack) {
+    return { twice_daily: true, once_daily: true }
+  }
+  if (access === 'once_daily' && !hasOnceTrack) {
+    return { twice_daily: false, once_daily: true }
+  }
+  return {
+    twice_daily: hasTwiceTrack,
+    once_daily: hasOnceTrack,
+  }
+}
+
 export const TRAINING_ACCESS_OPTIONS: {
   value: NormalizedPackageTrainingAccess
   label: string
@@ -79,19 +136,34 @@ export function packageShowsTrainingTierSelection(pkg: {
   return offerTypeUsesTrainingAccess(pkg.offer_type)
 }
 
-/** True when a cheaper once-daily track is configured (variant or package-level). */
+/** True when travelers can pick between full-access and once-daily at checkout. */
 export function offersOnceDailyTrainingChoice(
   pkg: {
     type?: string | null
     offer_type?: string | null
+    price_per_day?: number | null
+    price_per_week?: number | null
     once_daily_price_per_day?: number | null
   } | null
   | undefined,
-  variant: { once_daily_price_per_day?: number | null } | null | undefined
+  variant: {
+    price_per_day?: number | null
+    price_per_week?: number | null
+    once_daily_price_per_day?: number | null
+  } | null
+  | undefined
 ): boolean {
   if (!packageShowsTrainingTierSelection(pkg)) return false
-  if (variant) return variant.once_daily_price_per_day != null
-  return pkg?.once_daily_price_per_day != null
+
+  const hasTwiceDailyTrack = variant
+    ? variant.price_per_day != null || variant.price_per_week != null
+    : pkg?.price_per_day != null || pkg?.price_per_week != null
+
+  const hasOnceDailyTrack = variant
+    ? variant.once_daily_price_per_day != null
+    : pkg?.once_daily_price_per_day != null
+
+  return hasTwiceDailyTrack && hasOnceDailyTrack
 }
 
 /** Short label for package cards and checkout rows. */

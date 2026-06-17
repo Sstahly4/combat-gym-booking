@@ -3,8 +3,7 @@
 import { cn } from '@/lib/utils'
 import {
   TRAINING_ACCESS_OPTIONS,
-  normalizeTrainingAccess,
-  type PackageTrainingAccess,
+  type TrainingTierOptions,
 } from '@/lib/packages/training-access'
 
 export function TrainingAccessPicker({
@@ -12,46 +11,46 @@ export function TrainingAccessPicker({
   onChange,
   className,
 }: {
-  value: PackageTrainingAccess | null
-  onChange: (value: PackageTrainingAccess) => void
+  value: TrainingTierOptions
+  onChange: (value: TrainingTierOptions) => void
   className?: string
 }) {
-  const normalizedValue = normalizeTrainingAccess(value)
+  const toggle = (tier: keyof TrainingTierOptions, checked: boolean) => {
+    const next = { ...value, [tier]: checked }
+    if (!next.twice_daily && !next.once_daily) return
+    onChange(next)
+  }
+
   return (
     <div className={cn('space-y-2', className)}>
       {TRAINING_ACCESS_OPTIONS.map((option) => {
-        const selected = normalizedValue === option.value
+        const selected = value[option.value]
         return (
-          <button
+          <label
             key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
             className={cn(
-              'w-full rounded-lg border p-4 text-left transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
               selected
                 ? 'border-[#003580] bg-blue-50/60 ring-1 ring-[#003580]/20'
                 : 'border-gray-200 bg-white hover:border-gray-300',
             )}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-sm text-gray-900">{option.label}</span>
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-                    {option.subtitle}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-600">{option.description}</p>
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => toggle(option.value, e.target.checked)}
+              className="mt-1 rounded"
+            />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">{option.label}</span>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                  {option.subtitle}
+                </span>
               </div>
-              <span
-                className={cn(
-                  'mt-0.5 h-4 w-4 shrink-0 rounded-full border',
-                  selected ? 'border-[#003580] bg-[#003580]' : 'border-gray-300 bg-white',
-                )}
-                aria-hidden
-              />
+              <p className="mt-1 text-sm text-gray-600">{option.description}</p>
             </div>
-          </button>
+          </label>
         )
       })}
     </div>

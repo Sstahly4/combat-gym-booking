@@ -20,22 +20,34 @@ describe('offerTypeUsesTrainingAccess', () => {
 describe('offersOnceDailyTrainingChoice', () => {
   const trainingPkg = { type: 'training' as const, offer_type: 'TYPE_TRAINING_ONLY' as const }
 
-  it('is false when no once-daily day rate is configured', () => {
+  it('is false when only one track is configured', () => {
     expect(offersOnceDailyTrainingChoice(trainingPkg, null)).toBe(false)
     expect(
-      offersOnceDailyTrainingChoice(trainingPkg, { once_daily_price_per_day: null })
+      offersOnceDailyTrainingChoice(
+        { ...trainingPkg, price_per_day: 2000 },
+        null
+      )
+    ).toBe(false)
+    expect(
+      offersOnceDailyTrainingChoice(
+        { ...trainingPkg, once_daily_price_per_day: 1500 },
+        null
+      )
     ).toBe(false)
   })
 
-  it('is true when variant or package has once-daily day rate', () => {
-    expect(
-      offersOnceDailyTrainingChoice(trainingPkg, { once_daily_price_per_day: 1500 })
-    ).toBe(true)
+  it('is true when both twice-daily and once-daily tracks are configured', () => {
     expect(
       offersOnceDailyTrainingChoice(
-        { ...trainingPkg, once_daily_price_per_day: 1200 },
+        { ...trainingPkg, price_per_day: 2000, once_daily_price_per_day: 1500 },
         null
       )
+    ).toBe(true)
+    expect(
+      offersOnceDailyTrainingChoice(trainingPkg, {
+        price_per_day: 2000,
+        once_daily_price_per_day: 1500,
+      })
     ).toBe(true)
   })
 })

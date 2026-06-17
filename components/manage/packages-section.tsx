@@ -106,19 +106,21 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
         {/* Back bar */}
-        <div className="bg-white border-b px-4 py-3 flex items-center gap-4 sticky top-0 z-20">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium"
-          >
-            <ChevronRight className="w-4 h-4 rotate-180" />
-            Back to packages
-          </button>
-          <span className="text-sm text-gray-400">|</span>
-          <span className="text-sm text-gray-600">
-            {editingPackage ? `Editing: ${editingPackage.name}` : 'New Offer'}
-          </span>
+        <div className="bg-white border-b sticky top-0 z-20">
+          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium"
+            >
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              Back to packages
+            </button>
+            <span className="text-sm text-gray-400">|</span>
+            <span className="text-sm text-gray-600">
+              {editingPackage ? `Editing: ${editingPackage.name}` : 'New Offer'}
+            </span>
+          </div>
         </div>
 
         <OfferStepper

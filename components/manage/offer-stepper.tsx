@@ -22,8 +22,12 @@ import { PackageCancellationPolicyFields } from '@/components/manage/package-can
 import { TrainingAccessPicker } from '@/components/manage/training-access-picker'
 import {
   offerTypeUsesTrainingAccess,
-  getTrainingAccessMeta,
-  type PackageTrainingAccess,
+  trainingTierOptionsSummary,
+  trainingAccessFromTierOptions,
+  inferTrainingTierOptionsFromPackage,
+  hasTrainingTierSelection,
+  DEFAULT_TRAINING_TIER_OPTIONS,
+  type TrainingTierOptions,
 } from '@/lib/packages/training-access'
 import {
   serializeManagedImageRef,
@@ -121,14 +125,18 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [sport, setSport] = useState('Muay Thai')
   const [description, setDescription] = useState('')
   const [packageCurrency, setPackageCurrency] = useState(currency)
-  const [trainingAccess, setTrainingAccess] = useState<PackageTrainingAccess | null>('twice_daily')
+  const [trainingTierOptions, setTrainingTierOptions] = useState<TrainingTierOptions>(
+    DEFAULT_TRAINING_TIER_OPTIONS
+  )
   
   useEffect(() => {
     if (!selectedOfferType) return
     if (offerTypeUsesTrainingAccess(selectedOfferType)) {
-      setTrainingAccess((prev) => prev ?? 'twice_daily')
+      setTrainingTierOptions((prev) =>
+        hasTrainingTierSelection(prev) ? prev : DEFAULT_TRAINING_TIER_OPTIONS
+      )
     } else {
-      setTrainingAccess(null)
+      setTrainingTierOptions({ twice_daily: false, once_daily: false })
     }
   }, [selectedOfferType])
   
@@ -145,13 +153,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [bundlePricesByAccommodationId, setBundlePricesByAccommodationId] = useState<
     Record<string, { night: string; week: string; month: string }>
   >({})
-  const [offerOnceDaily, setOfferOnceDaily] = useState(false)
   const [onceDailyPricePerDay, setOnceDailyPricePerDay] = useState('')
   const [onceDailyPricePerWeek, setOnceDailyPricePerWeek] = useState('')
   const [onceDailyPricePerMonth, setOnceDailyPricePerMonth] = useState('')
-  const [offerOnceDailyByAccommodationId, setOfferOnceDailyByAccommodationId] = useState<
-    Record<string, boolean>
-  >({})
   const [onceDailyBundlePricesByAccommodationId, setOnceDailyBundlePricesByAccommodationId] = useState<
     Record<string, { night: string; week: string; month: string }>
   >({})
@@ -214,12 +218,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setSport(existingPackage.sport)
       setDescription(existingPackage.description || '')
       setPackageCurrency(existingPackage.currency || currency)
-      setTrainingAccess(
-        existingPackage.training_access && offerTypeUsesTrainingAccess(existingPackage.offer_type)
-          ? existingPackage.training_access
-          : offerTypeUsesTrainingAccess(existingPackage.offer_type)
-            ? 'twice_daily'
-            : null
+      setTrainingTierOptions(
+        offerTypeUsesTrainingAccess(existingPackage.offer_type)
+          ? inferTrainingTierOptionsFromPackage(existingPackage)
+          : { twice_daily: false, once_daily: false }
       )
       setAvailableYearRound(existingPackage.available_year_round ?? true)
       setBlackoutDates(existingPackage.blackout_dates || [])
@@ -233,7 +235,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setPricePerDay(existingPackage.price_per_day?.toString() || '')
       setPricePerWeek(existingPackage.price_per_week?.toString() || '')
       setPricePerMonth(existingPackage.price_per_month?.toString() || '')
-      setOfferOnceDaily(existingPackage.once_daily_price_per_day != null)
       setOnceDailyPricePerDay(existingPackage.once_daily_price_per_day?.toString() || '')
       setOnceDailyPricePerWeek(existingPackage.once_daily_price_per_week?.toString() || '')
       setOnceDailyPricePerMonth(existingPackage.once_daily_price_per_month?.toString() || '')
@@ -295,7 +296,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setLinkedAccommodationIds(accIds)
       const next: Record<string, { night: string; week: string; month: string }> = {}
       const nextOnceDaily: Record<string, { night: string; week: string; month: string }> = {}
-      const nextOnceDailyFlags: Record<string, boolean> = {}
       variants.forEach((v: any) => {
         if (!v.accommodation_id) return
         next[v.accommodation_id] = {
@@ -303,7 +303,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
           week: v.price_per_week != null ? String(v.price_per_week) : '',
           month: v.price_per_month != null ? String(v.price_per_month) : '',
         }
-        nextOnceDailyFlags[v.accommodation_id] = v.once_daily_price_per_day != null
         nextOnceDaily[v.accommodation_id] = {
           night: v.once_daily_price_per_day != null ? String(v.once_daily_price_per_day) : '',
           week: v.once_daily_price_per_week != null ? String(v.once_daily_price_per_week) : '',
@@ -311,7 +310,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         }
       })
       setBundlePricesByAccommodationId(next)
-      setOfferOnceDailyByAccommodationId(nextOnceDailyFlags)
       setOnceDailyBundlePricesByAccommodationId(nextOnceDaily)
       return
     }
@@ -376,8 +374,8 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       return
     }
 
-    if (offerTypeUsesTrainingAccess(selectedOfferType) && !trainingAccess) {
-      alert('Please select how many training sessions per day are included.')
+    if (offerTypeUsesTrainingAccess(selectedOfferType) && !hasTrainingTierSelection(trainingTierOptions)) {
+      alert('Please select at least one training option for this package.')
       return
     }
 
@@ -392,12 +390,20 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         return
       }
     } else if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
-      if (!pricePerDay) {
-        alert('Please enter a daily rate (price per session) for training-only packages.')
+      if (trainingTierOptions.twice_daily && !pricePerDay) {
+        alert('Please enter a twice-daily price per day.')
         return
       }
-      if (offerOnceDaily && !onceDailyPricePerDay.trim()) {
-        alert('Please enter a once-daily price per day, or turn off the discounted once-daily option.')
+      if (trainingTierOptions.once_daily && !trainingTierOptions.twice_daily && !pricePerDay) {
+        alert('Please enter a once-daily price per day.')
+        return
+      }
+      if (
+        trainingTierOptions.once_daily &&
+        trainingTierOptions.twice_daily &&
+        !onceDailyPricePerDay.trim()
+      ) {
+        alert('Please enter a once-daily price per day for the discounted track.')
         return
       }
     } else {
@@ -406,27 +412,53 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
 
       // Train & Stay / All-inclusive are priced per linked room bundle (variants).
       // Other multi-day offers need a package-level weekly rate.
-      if (!usesRoomVariants && !pricePerWeek) {
-        alert('Please enter a weekly rate. This is required for price calculation.')
+      if (!usesRoomVariants && !trainingTierOptions.twice_daily && !trainingTierOptions.once_daily) {
+        alert('Please select at least one training option in Basic Information.')
+        return
+      }
+      if (!usesRoomVariants && trainingTierOptions.twice_daily && !pricePerWeek) {
+        alert('Please enter a weekly rate for twice-daily training.')
         return
       }
       if (
         !usesRoomVariants &&
-        offerTypeUsesTrainingAccess(selectedOfferType) &&
-        offerOnceDaily &&
+        trainingTierOptions.once_daily &&
+        !trainingTierOptions.twice_daily &&
+        !pricePerWeek
+      ) {
+        alert('Please enter a weekly rate for once-daily training.')
+        return
+      }
+      if (
+        !usesRoomVariants &&
+        trainingTierOptions.once_daily &&
+        trainingTierOptions.twice_daily &&
         !onceDailyPricePerDay.trim()
       ) {
-        alert('Please enter a once-daily price per day, or turn off the discounted once-daily option.')
+        alert('Please enter a once-daily price per day for the discounted track.')
         return
       }
       if (usesRoomVariants) {
         for (const accId of linkedAccommodationIds) {
-          if (
-            offerOnceDailyByAccommodationId[accId] &&
-            !onceDailyBundlePricesByAccommodationId[accId]?.night?.trim()
-          ) {
-            alert('Please enter a once-daily nightly bundle price for every room where once-daily is enabled.')
-            return
+          if (trainingTierOptions.twice_daily) {
+            const bundle = bundlePricesByAccommodationId[accId]
+            if (!bundle?.night?.trim() || !bundle?.week?.trim()) {
+              alert('Please set twice-daily bundle prices for every linked room.')
+              return
+            }
+          }
+          if (trainingTierOptions.once_daily && trainingTierOptions.twice_daily) {
+            if (!onceDailyBundlePricesByAccommodationId[accId]?.night?.trim()) {
+              alert('Please set once-daily bundle prices for every linked room.')
+              return
+            }
+          }
+          if (trainingTierOptions.once_daily && !trainingTierOptions.twice_daily) {
+            const bundle = bundlePricesByAccommodationId[accId]
+            if (!bundle?.night?.trim() || !bundle?.week?.trim()) {
+              alert('Please set once-daily bundle prices for every linked room.')
+              return
+            }
           }
         }
       }
@@ -477,7 +509,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         cancellationPresetId,
         customCancellationDays
       ),
-      training_access: offerTypeUsesTrainingAccess(selectedOfferType) ? trainingAccess : null,
+      training_access: offerTypeUsesTrainingAccess(selectedOfferType)
+        ? trainingAccessFromTierOptions(trainingTierOptions)
+        : null,
     }
 
     // Helper to build a datetime string from separate date + time inputs
@@ -514,18 +548,21 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       payload.price_per_day = usesRoomVariants ? null : pricePerDay ? parseFloat(pricePerDay) : null
       payload.price_per_week = usesRoomVariants ? null : pricePerWeek ? parseFloat(pricePerWeek) : null
       payload.price_per_month = usesRoomVariants ? null : pricePerMonth ? parseFloat(pricePerMonth) : null
-      const packageOffersOnceDaily =
-        offerTypeUsesTrainingAccess(selectedOfferType) && !usesRoomVariants && offerOnceDaily
+      const packageOffersOnceDailyTrack =
+        offerTypeUsesTrainingAccess(selectedOfferType) &&
+        !usesRoomVariants &&
+        trainingTierOptions.once_daily &&
+        trainingTierOptions.twice_daily
       payload.once_daily_price_per_day =
-        packageOffersOnceDaily && onceDailyPricePerDay.trim()
+        packageOffersOnceDailyTrack && onceDailyPricePerDay.trim()
           ? parseFloat(onceDailyPricePerDay)
           : null
       payload.once_daily_price_per_week =
-        packageOffersOnceDaily && onceDailyPricePerWeek.trim()
+        packageOffersOnceDailyTrack && onceDailyPricePerWeek.trim()
           ? parseFloat(onceDailyPricePerWeek)
           : null
       payload.once_daily_price_per_month =
-        packageOffersOnceDaily && onceDailyPricePerMonth.trim()
+        packageOffersOnceDailyTrack && onceDailyPricePerMonth.trim()
           ? parseFloat(onceDailyPricePerMonth)
           : null
       payload.event_date = null
@@ -613,7 +650,8 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         const variantRows = selectedAccs.map((acc: any) => {
           const bundle = bundlePricesByAccommodationId[acc.id]
           const onceDailyBundle = onceDailyBundlePricesByAccommodationId[acc.id]
-          const roomOffersOnceDaily = !!offerOnceDailyByAccommodationId[acc.id]
+          const roomOffersBothTiers =
+            trainingTierOptions.twice_daily && trainingTierOptions.once_daily
           const roomType = acc.room_type === 'private' ? 'private' : acc.room_type ? 'shared' : null
           return {
             package_id: packageId,
@@ -625,15 +663,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             price_per_week: bundle.week ? parseFloat(bundle.week) : null,
             price_per_month: bundle.month ? parseFloat(bundle.month) : null,
             once_daily_price_per_day:
-              roomOffersOnceDaily && onceDailyBundle?.night?.trim()
+              roomOffersBothTiers && onceDailyBundle?.night?.trim()
                 ? parseFloat(onceDailyBundle.night)
                 : null,
             once_daily_price_per_week:
-              roomOffersOnceDaily && onceDailyBundle?.week?.trim()
+              roomOffersBothTiers && onceDailyBundle?.week?.trim()
                 ? parseFloat(onceDailyBundle.week)
                 : null,
             once_daily_price_per_month:
-              roomOffersOnceDaily && onceDailyBundle?.month?.trim()
+              roomOffersBothTiers && onceDailyBundle?.month?.trim()
                 ? parseFloat(onceDailyBundle.month)
                 : null,
             images: acc.images || [],
@@ -667,12 +705,61 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         return selectedOfferType !== null
       case 2:
         return name.trim() !== '' && sport !== '' && (
-          !offerTypeUsesTrainingAccess(selectedOfferType) || trainingAccess !== null
+          !offerTypeUsesTrainingAccess(selectedOfferType) ||
+          hasTrainingTierSelection(trainingTierOptions)
         )
       case 3:
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
-          // Require event date and at least one complete ticket tier
           return eventDate !== '' && ticketTiers.some(t => t.name.trim() !== '' && t.price !== '')
+        }
+        if (offerTypeUsesTrainingAccess(selectedOfferType)) {
+          const usesRoomVariants =
+            selectedOfferType === 'TYPE_TRAINING_ACCOM' ||
+            selectedOfferType === 'TYPE_ALL_INCLUSIVE'
+          if (!hasTrainingTierSelection(trainingTierOptions)) return false
+          if (usesRoomVariants) {
+            if (linkedAccommodationIds.length === 0) return false
+            return linkedAccommodationIds.every((id) => {
+              const twice = bundlePricesByAccommodationId[id]
+              const once = onceDailyBundlePricesByAccommodationId[id]
+              if (trainingTierOptions.twice_daily && (!twice?.week?.trim() || !twice?.night?.trim())) {
+                return false
+              }
+              if (trainingTierOptions.once_daily && !trainingTierOptions.twice_daily) {
+                return Boolean(twice?.week?.trim() && twice?.night?.trim())
+              }
+              if (trainingTierOptions.once_daily && trainingTierOptions.twice_daily) {
+                return Boolean(once?.night?.trim())
+              }
+              return true
+            })
+          }
+          if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
+            if (trainingTierOptions.twice_daily && !pricePerDay) return false
+            if (trainingTierOptions.once_daily && !trainingTierOptions.twice_daily && !pricePerDay) {
+              return false
+            }
+            if (
+              trainingTierOptions.once_daily &&
+              trainingTierOptions.twice_daily &&
+              !onceDailyPricePerDay.trim()
+            ) {
+              return false
+            }
+            return true
+          }
+          if (trainingTierOptions.twice_daily && !pricePerWeek) return false
+          if (trainingTierOptions.once_daily && !trainingTierOptions.twice_daily && !pricePerWeek) {
+            return false
+          }
+          if (
+            trainingTierOptions.once_daily &&
+            trainingTierOptions.twice_daily &&
+            !onceDailyPricePerDay.trim()
+          ) {
+            return false
+          }
+          return true
         }
         if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
           return pricePerDay !== ''
@@ -784,13 +871,13 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
 
               {offerTypeUsesTrainingAccess(selectedOfferType) && (
                 <div>
-                  <Label>Training sessions per day *</Label>
+                  <Label>Training options available in this package *</Label>
                   <p className="text-sm text-gray-600 mb-3">
-                    How many formal sessions can guests attend each day? Use the standard camp terms guests expect.
+                    Select the training options available in this package (select all that apply).
                   </p>
                   <TrainingAccessPicker
-                    value={trainingAccess}
-                    onChange={setTrainingAccess}
+                    value={trainingTierOptions}
+                    onChange={setTrainingTierOptions}
                   />
                 </div>
               )}
@@ -1028,155 +1115,220 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
               {/* Pricing - day/week/month rates.
                   Hidden for Train & Stay / All-inclusive because those are priced per room bundle below. */}
               {selectedOfferType !== 'TYPE_TRAINING_ACCOM' && selectedOfferType !== 'TYPE_ALL_INCLUSIVE' && (
-              <div className="border-t pt-4 space-y-4">
+              <div className="border-t pt-4 space-y-6">
                 {offerTypeUsesTrainingAccess(selectedOfferType) ? (
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Base rates (Twice Daily / Full Access)</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Standard full-access training — morning and evening sessions.
-                    </p>
-                  </div>
-                ) : null}
-                    <div>
-                  <Label>
-                    Price per Day ({packageCurrency}){' '}
-                    {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
-                      <span className="text-red-500">*</span>
-                    ) : (
-                      <span className="text-gray-400">(Optional)</span>
-                    )}
-                  </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                    value={pricePerDay}
-                    onChange={e => setPricePerDay(e.target.value)}
-                        placeholder="0.00"
-                    required={selectedOfferType === 'TYPE_TRAINING_ONLY'}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                    {selectedOfferType === 'TYPE_TRAINING_ONLY' 
-                      ? 'Per-session rate for drop-in training.' 
-                      : 'Optional base daily rate for display purposes.'}
-                      </p>
-                    </div>
-                    
-                    <div>
-                  <Label>
-                    Price per Week ({packageCurrency}){' '}
-                    {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
-                      <span className="text-red-500">*</span>
-                    ) : (
-                      <span className="text-gray-400">(Optional)</span>
-                    )}
-                  </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                    value={pricePerWeek}
-                    onChange={e => setPricePerWeek(e.target.value)}
-                        placeholder="0.00"
-                    required={selectedOfferType !== 'TYPE_TRAINING_ONLY'}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                    Total price for a 7-day stay. This is the base rate for booking calculations.
-                      </p>
-                    </div>
-                    
-                    <div>
-                  <Label>Price per Month ({packageCurrency}) <span className="text-gray-400">(Optional)</span></Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                    value={pricePerMonth}
-                    onChange={e => setPricePerMonth(e.target.value)}
-                        placeholder="0.00"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                    Optional. Discounted rate for 30-day stays.
-                      </p>
-                    </div>
-
-                {offerTypeUsesTrainingAccess(selectedOfferType) ? (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-4">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={offerOnceDaily}
-                        onChange={(e) => {
-                          setOfferOnceDaily(e.target.checked)
-                          if (!e.target.checked) {
-                            setOnceDailyPricePerDay('')
-                            setOnceDailyPricePerWeek('')
-                            setOnceDailyPricePerMonth('')
-                          }
-                        }}
-                        className="mt-1 rounded"
-                      />
-                      <span>
-                        <span className="text-sm font-medium text-gray-900 block">
-                          Offer a discounted &ldquo;Once Daily&rdquo; training option?
-                        </span>
-                        <span className="text-xs text-gray-600 mt-0.5 block">
-                          Guests who train once per day can book at a lower rate. Leave off if you only offer full access.
-                        </span>
-                      </span>
-                    </label>
-
-                    {offerOnceDaily ? (
-                      <div className="space-y-4 border-t border-gray-200 pt-4">
-                        <p className="text-sm font-semibold text-gray-900">Once Daily rates</p>
+                  <>
+                    {trainingTierOptions.twice_daily ? (
+                      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Twice Daily (Full Access)</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Standard full-access training — morning and evening sessions.
+                          </p>
+                        </div>
                         <div>
                           <Label>
-                            Once Daily price per day ({packageCurrency}){' '}
-                            <span className="text-red-500">*</span>
+                            Price per Day ({packageCurrency}){' '}
+                            {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
+                              <span className="text-red-500">*</span>
+                            ) : (
+                              <span className="text-gray-400">(Optional)</span>
+                            )}
                           </Label>
                           <Input
                             type="number"
                             step="0.01"
-                            min="0"
-                            value={onceDailyPricePerDay}
-                            onChange={(e) => setOnceDailyPricePerDay(e.target.value)}
+                            value={pricePerDay}
+                            onChange={(e) => setPricePerDay(e.target.value)}
                             placeholder="0.00"
                           />
                         </div>
                         <div>
                           <Label>
-                            Once Daily price per week ({packageCurrency}){' '}
-                            <span className="text-gray-400">(Optional)</span>
+                            Price per Week ({packageCurrency}){' '}
+                            {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
+                              <span className="text-red-500">*</span>
+                            ) : (
+                              <span className="text-gray-400">(Optional)</span>
+                            )}
                           </Label>
                           <Input
                             type="number"
                             step="0.01"
-                            min="0"
-                            value={onceDailyPricePerWeek}
-                            onChange={(e) => setOnceDailyPricePerWeek(e.target.value)}
+                            value={pricePerWeek}
+                            onChange={(e) => setPricePerWeek(e.target.value)}
                             placeholder="0.00"
                           />
                         </div>
                         <div>
                           <Label>
-                            Once Daily price per month ({packageCurrency}){' '}
+                            Price per Month ({packageCurrency}){' '}
                             <span className="text-gray-400">(Optional)</span>
                           </Label>
                           <Input
                             type="number"
                             step="0.01"
-                            min="0"
-                            value={onceDailyPricePerMonth}
-                            onChange={(e) => setOnceDailyPricePerMonth(e.target.value)}
+                            value={pricePerMonth}
+                            onChange={(e) => setPricePerMonth(e.target.value)}
                             placeholder="0.00"
                           />
                         </div>
                       </div>
                     ) : null}
+
+                    {trainingTierOptions.once_daily ? (
+                      <div className="space-y-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Once Daily (Flexible Choice)</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {trainingTierOptions.twice_daily
+                              ? 'Discounted track for guests training once per day.'
+                              : 'Single-session camps — one training block per day.'}
+                          </p>
+                        </div>
+                        {trainingTierOptions.twice_daily ? (
+                          <>
+                            <div>
+                              <Label>
+                                Once Daily price per day ({packageCurrency}){' '}
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={onceDailyPricePerDay}
+                                onChange={(e) => setOnceDailyPricePerDay(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label>
+                                Once Daily price per week ({packageCurrency}){' '}
+                                <span className="text-gray-400">(Optional)</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={onceDailyPricePerWeek}
+                                onChange={(e) => setOnceDailyPricePerWeek(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label>
+                                Once Daily price per month ({packageCurrency}){' '}
+                                <span className="text-gray-400">(Optional)</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={onceDailyPricePerMonth}
+                                onChange={(e) => setOnceDailyPricePerMonth(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <Label>
+                                Price per Day ({packageCurrency}){' '}
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricePerDay}
+                                onChange={(e) => setPricePerDay(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label>
+                                Price per Week ({packageCurrency}){' '}
+                                {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
+                                  <span className="text-red-500">*</span>
+                                ) : (
+                                  <span className="text-gray-400">(Optional)</span>
+                                )}
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricePerWeek}
+                                onChange={(e) => setPricePerWeek(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label>
+                                Price per Month ({packageCurrency}){' '}
+                                <span className="text-gray-400">(Optional)</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricePerMonth}
+                                onChange={(e) => setPricePerMonth(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <Label>
+                        Price per Day ({packageCurrency}){' '}
+                        <span className="text-gray-400">(Optional)</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={pricePerDay}
+                        onChange={(e) => setPricePerDay(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label>
+                        Price per Week ({packageCurrency}){' '}
+                        <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={pricePerWeek}
+                        onChange={(e) => setPricePerWeek(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label>
+                        Price per Month ({packageCurrency}){' '}
+                        <span className="text-gray-400">(Optional)</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={pricePerMonth}
+                        onChange={(e) => setPricePerMonth(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
-                ) : null}
-                
+                )}
+
                 {selectedOfferType !== 'TYPE_TRAINING_ONLY' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-xs text-blue-800">
-                      <strong>How pricing works:</strong> Stays are rounded up to the nearest week. 
+                      <strong>How pricing works:</strong> Stays are rounded up to the nearest week.
                       For example, an 11-day booking is billed as 2 weeks. Stays of 28+ days use the monthly rate if set.
                     </p>
                   </div>
@@ -1222,121 +1374,23 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                           </label>
 
                           {linkedAccommodationIds.includes(acc.id) ? (
-                            <div className="mt-3 space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
-                                  <Label className="text-xs text-gray-600">
-                                    Nightly ({packageCurrency}) <span className="text-red-500">*</span>
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={bundlePricesByAccommodationId[acc.id]?.night ?? ''}
-                                    onChange={(e) =>
-                                      setBundlePricesByAccommodationId((prev) => ({
-                                        ...prev,
-                                        [acc.id]: {
-                                          night: e.target.value,
-                                          week: prev[acc.id]?.week ?? '',
-                                          month: prev[acc.id]?.month ?? '',
-                                        },
-                                      }))
-                                    }
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs text-gray-600">
-                                    Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={bundlePricesByAccommodationId[acc.id]?.week ?? ''}
-                                    onChange={(e) =>
-                                      setBundlePricesByAccommodationId((prev) => ({
-                                        ...prev,
-                                        [acc.id]: {
-                                          night: prev[acc.id]?.night ?? '',
-                                          week: e.target.value,
-                                          month: prev[acc.id]?.month ?? '',
-                                        },
-                                      }))
-                                    }
-                                    placeholder={acc.price_per_week ? String(acc.price_per_week) : '0.00'}
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs text-gray-600">
-                                    Monthly bundle ({packageCurrency}) <span className="text-gray-400">(Optional)</span>
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={bundlePricesByAccommodationId[acc.id]?.month ?? ''}
-                                    onChange={(e) =>
-                                      setBundlePricesByAccommodationId((prev) => ({
-                                        ...prev,
-                                        [acc.id]: {
-                                          night: prev[acc.id]?.night ?? '',
-                                          week: prev[acc.id]?.week ?? '',
-                                          month: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder={acc.price_per_month ? String(acc.price_per_month) : '0.00'}
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-[11px] text-gray-500">
-                                Weekly and monthly bundles unlock at 7 and 28 nights. Nightly applies for shorter stays
-                                and any extra nights beyond a full week.
-                              </p>
-
-                              <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 space-y-3">
-                                <label className="flex items-start gap-3 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!offerOnceDailyByAccommodationId[acc.id]}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked
-                                      setOfferOnceDailyByAccommodationId((prev) => ({
-                                        ...prev,
-                                        [acc.id]: checked,
-                                      }))
-                                      if (!checked) {
-                                        setOnceDailyBundlePricesByAccommodationId((prev) => ({
-                                          ...prev,
-                                          [acc.id]: { night: '', week: '', month: '' },
-                                        }))
-                                      }
-                                    }}
-                                    className="mt-1 rounded"
-                                  />
-                                  <span>
-                                    <span className="text-sm font-medium text-gray-900 block">
-                                      Offer once-daily discount for this room
-                                    </span>
-                                    <span className="text-xs text-gray-600 mt-0.5 block">
-                                      Lower bundle price for guests training once per day.
-                                    </span>
-                                  </span>
-                                </label>
-
-                                {offerOnceDailyByAccommodationId[acc.id] ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-gray-200 pt-3">
+                            <div className="mt-3 space-y-4">
+                              {trainingTierOptions.twice_daily ? (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-semibold text-gray-900">
+                                    Twice Daily (Full Access) bundle
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Once Daily nightly ({packageCurrency}){' '}
-                                        <span className="text-red-500">*</span>
+                                        Nightly ({packageCurrency}) <span className="text-red-500">*</span>
                                       </Label>
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        min="0"
-                                        value={onceDailyBundlePricesByAccommodationId[acc.id]?.night ?? ''}
+                                        value={bundlePricesByAccommodationId[acc.id]?.night ?? ''}
                                         onChange={(e) =>
-                                          setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                          setBundlePricesByAccommodationId((prev) => ({
                                             ...prev,
                                             [acc.id]: {
                                               night: e.target.value,
@@ -1350,16 +1404,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                     </div>
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Once Daily weekly ({packageCurrency}){' '}
-                                        <span className="text-gray-400">(Optional)</span>
+                                        Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
                                       </Label>
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        min="0"
-                                        value={onceDailyBundlePricesByAccommodationId[acc.id]?.week ?? ''}
+                                        value={bundlePricesByAccommodationId[acc.id]?.week ?? ''}
                                         onChange={(e) =>
-                                          setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                          setBundlePricesByAccommodationId((prev) => ({
                                             ...prev,
                                             [acc.id]: {
                                               night: prev[acc.id]?.night ?? '',
@@ -1368,21 +1420,20 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                             },
                                           }))
                                         }
-                                        placeholder="0.00"
+                                        placeholder={acc.price_per_week ? String(acc.price_per_week) : '0.00'}
                                       />
                                     </div>
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Once Daily monthly ({packageCurrency}){' '}
+                                        Monthly bundle ({packageCurrency}){' '}
                                         <span className="text-gray-400">(Optional)</span>
                                       </Label>
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        min="0"
-                                        value={onceDailyBundlePricesByAccommodationId[acc.id]?.month ?? ''}
+                                        value={bundlePricesByAccommodationId[acc.id]?.month ?? ''}
                                         onChange={(e) =>
-                                          setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                          setBundlePricesByAccommodationId((prev) => ({
                                             ...prev,
                                             [acc.id]: {
                                               night: prev[acc.id]?.night ?? '',
@@ -1391,12 +1442,145 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                             },
                                           }))
                                         }
+                                        placeholder={acc.price_per_month ? String(acc.price_per_month) : '0.00'}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {trainingTierOptions.once_daily ? (
+                                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
+                                  <p className="text-xs font-semibold text-gray-900">
+                                    Once Daily (Flexible Choice) bundle
+                                    {trainingTierOptions.twice_daily ? (
+                                      <span className="font-normal text-gray-500"> — discounted track</span>
+                                    ) : null}
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                      <Label className="text-xs text-gray-600">
+                                        Nightly ({packageCurrency}) <span className="text-red-500">*</span>
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={
+                                          trainingTierOptions.twice_daily
+                                            ? onceDailyBundlePricesByAccommodationId[acc.id]?.night ?? ''
+                                            : bundlePricesByAccommodationId[acc.id]?.night ?? ''
+                                        }
+                                        onChange={(e) => {
+                                          const value = e.target.value
+                                          if (trainingTierOptions.twice_daily) {
+                                            setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: value,
+                                                week: prev[acc.id]?.week ?? '',
+                                                month: prev[acc.id]?.month ?? '',
+                                              },
+                                            }))
+                                          } else {
+                                            setBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: value,
+                                                week: prev[acc.id]?.week ?? '',
+                                                month: prev[acc.id]?.month ?? '',
+                                              },
+                                            }))
+                                          }
+                                        }}
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs text-gray-600">
+                                        Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={
+                                          trainingTierOptions.twice_daily
+                                            ? onceDailyBundlePricesByAccommodationId[acc.id]?.week ?? ''
+                                            : bundlePricesByAccommodationId[acc.id]?.week ?? ''
+                                        }
+                                        onChange={(e) => {
+                                          const value = e.target.value
+                                          if (trainingTierOptions.twice_daily) {
+                                            setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: prev[acc.id]?.night ?? '',
+                                                week: value,
+                                                month: prev[acc.id]?.month ?? '',
+                                              },
+                                            }))
+                                          } else {
+                                            setBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: prev[acc.id]?.night ?? '',
+                                                week: value,
+                                                month: prev[acc.id]?.month ?? '',
+                                              },
+                                            }))
+                                          }
+                                        }}
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs text-gray-600">
+                                        Monthly bundle ({packageCurrency}){' '}
+                                        <span className="text-gray-400">(Optional)</span>
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={
+                                          trainingTierOptions.twice_daily
+                                            ? onceDailyBundlePricesByAccommodationId[acc.id]?.month ?? ''
+                                            : bundlePricesByAccommodationId[acc.id]?.month ?? ''
+                                        }
+                                        onChange={(e) => {
+                                          const value = e.target.value
+                                          if (trainingTierOptions.twice_daily) {
+                                            setOnceDailyBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: prev[acc.id]?.night ?? '',
+                                                week: prev[acc.id]?.week ?? '',
+                                                month: value,
+                                              },
+                                            }))
+                                          } else {
+                                            setBundlePricesByAccommodationId((prev) => ({
+                                              ...prev,
+                                              [acc.id]: {
+                                                night: prev[acc.id]?.night ?? '',
+                                                week: prev[acc.id]?.week ?? '',
+                                                month: value,
+                                              },
+                                            }))
+                                          }
+                                        }}
                                         placeholder="0.00"
                                       />
                                     </div>
                                   </div>
-                                ) : null}
-                              </div>
+                                </div>
+                              ) : null}
+
+                              <p className="text-[11px] text-gray-500">
+                                Weekly and monthly bundles unlock at 7 and 28 nights. Nightly applies for shorter stays
+                                and any extra nights beyond a full week.
+                              </p>
                             </div>
                           ) : null}
                         </div>
@@ -1684,18 +1868,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     </>
                   ) : (
                     <>
-                      {offerTypeUsesTrainingAccess(selectedOfferType) && trainingAccess && (() => {
-                        const accessMeta = getTrainingAccessMeta(trainingAccess)
-                        return (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Training access:</span>
-                            <span className="font-medium text-right max-w-[60%]">
-                              {accessMeta?.label}
-                              {accessMeta?.subtitle ? ` (${accessMeta.subtitle})` : ''}
-                            </span>
-                          </div>
-                        )
-                      })()}
+                      {offerTypeUsesTrainingAccess(selectedOfferType) && hasTrainingTierSelection(trainingTierOptions) && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Training options:</span>
+                          <span className="font-medium text-right max-w-[60%]">
+                            {trainingTierOptionsSummary(trainingTierOptions)}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600">Minimum Stay:</span>
                         <span className="font-medium">{selectedOfferType === 'TYPE_TRAINING_ONLY' ? '1 day' : '1 week'}</span>
@@ -2105,17 +2285,19 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         currency={packageCurrency}
         onSaved={() => void loadAccommodations()}
       />
-      <GymStepper
-        currentStep={currentStep}
-        steps={steps}
-        onStepClick={(step) => {
-          if (step <= currentStep) {
-            setCurrentStep(step)
-          }
-        }}
-      />
-
       <div className={`mx-auto max-w-7xl px-4 ${embedded ? 'py-4 md:py-6' : 'py-8'}`}>
+        <div className={embedded ? 'mb-4' : 'mb-6'}>
+          <GymStepper
+            currentStep={currentStep}
+            steps={steps}
+            onStepClick={(step) => {
+              if (step <= currentStep) {
+                setCurrentStep(step)
+              }
+            }}
+          />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Form (2/3 on desktop) */}
           <div className="lg:col-span-2">
