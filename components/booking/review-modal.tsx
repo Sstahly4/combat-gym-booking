@@ -27,9 +27,10 @@ import { CurrencyModal } from '@/components/currency-modal'
 import { writeBookingPrefill, readBookingPrefill } from '@/lib/utils/booking-prefill'
 import { isKlarnaAvailableForCurrency } from '@/lib/payments/klarna'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
+import { primaryGymImageCardSrc } from '@/lib/images/gym-image-variants'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 import {
-  packageShowsTrainingTierSelection,
+  offersOnceDailyTrainingChoice,
   parseTrainingTier,
   trainingTierCheckoutLabel,
   type TrainingTier,
@@ -319,7 +320,7 @@ export function ReviewModal({
 
   const isTraining = package_?.type === 'training'
   const pricingDuration = isTraining ? Math.max(1, duration + 1) : duration
-  const showTrainingTier = packageShowsTrainingTierSelection(package_)
+  const showTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
   const tierVariant =
     showTrainingTier && trainingTier === 'once_daily' && variant
       ? {
@@ -332,9 +333,21 @@ export function ReviewModal({
   const syncFallbackPrice =
     package_ && pricingDuration > 0
       ? calculatePackagePrice(pricingDuration, package_.type, {
-          daily: tierVariant?.price_per_day ?? package_.price_per_day,
-          weekly: tierVariant?.price_per_week ?? package_.price_per_week,
-          monthly: tierVariant?.price_per_month ?? package_.price_per_month,
+          daily: tierVariant?.price_per_day ?? (
+            showTrainingTier && trainingTier === 'once_daily'
+              ? package_.once_daily_price_per_day ?? package_.price_per_day
+              : package_.price_per_day
+          ),
+          weekly: tierVariant?.price_per_week ?? (
+            showTrainingTier && trainingTier === 'once_daily'
+              ? package_.once_daily_price_per_week ?? package_.price_per_week
+              : package_.price_per_week
+          ),
+          monthly: tierVariant?.price_per_month ?? (
+            showTrainingTier && trainingTier === 'once_daily'
+              ? package_.once_daily_price_per_month ?? package_.price_per_month
+              : package_.price_per_month
+          ),
         })
       : null
 
@@ -372,16 +385,19 @@ export function ReviewModal({
     }
   }, [package_, variant, checkin, checkout, pricingDuration, trainingTier, showTrainingTier])
 
+  useEffect(() => {
+    if (!showTrainingTier && trainingTier !== 'twice_daily') {
+      setTrainingTier('twice_daily')
+    }
+  }, [showTrainingTier, trainingTier])
+
   const priceInfo = priceBreakdown ?? syncFallbackPrice
 
   const chargeTotalPrice = priceInfo?.price ?? null
   const totalPrice =
     chargeTotalPrice != null ? convertPrice(chargeTotalPrice, gymCurrency) : null
 
-  const mainImage =
-    gym?.images && gym.images.length > 0
-      ? [...gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
-      : null
+  const cardImage = primaryGymImageCardSrc(gym?.images)
 
   const buildContinueUrl = () => {
     const p = new URLSearchParams()
@@ -462,8 +478,8 @@ export function ReviewModal({
               {/* Gym identity */}
               <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex gap-3 items-start">
-                  {mainImage ? (
-                    <img src={mainImage} alt={gym?.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                  {cardImage ? (
+                    <img src={cardImage} alt={gym?.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
                   ) : (
                     <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
                   )}

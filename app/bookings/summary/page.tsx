@@ -14,6 +14,7 @@ import { resolveClientPriceBreakdown } from '@/lib/booking/client-price-breakdow
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { PriceBreakdown } from '@/lib/utils'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
+import { primaryGymImageCardSrc, primaryGymImageHeroSrc } from '@/lib/images/gym-image-variants'
 import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
 import Link from 'next/link'
 import { LoadingOverlay } from '@/components/loading-overlay'
@@ -23,7 +24,7 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
-import { packageShowsTrainingTierSelection, parseTrainingTier, type TrainingTier } from '@/lib/packages/training-access'
+import { offersOnceDailyTrainingChoice, parseTrainingTier, type TrainingTier } from '@/lib/packages/training-access'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
   prepareCheckoutExitToGym,
@@ -249,7 +250,7 @@ function BookingSummaryPageContent() {
       const backCheckin = checkin || searchParams.get('checkin') || ''
       const backCheckout = checkout || searchParams.get('checkout') || ''
       const backVariantId = variant?.id || searchParams.get('variantId') || undefined
-      const backTrainingTier = packageShowsTrainingTierSelection(package_)
+      const backTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
         ? trainingTier
         : undefined
 
@@ -530,7 +531,7 @@ function BookingSummaryPageContent() {
       })
     : null
 
-  const showTrainingTier = packageShowsTrainingTierSelection(package_)
+  const showTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
 
   useEffect(() => {
     if (!package_ || !isValidDuration || !checkin || !checkout) {
@@ -698,7 +699,8 @@ function BookingSummaryPageContent() {
     )
   }
 
-  const mainImage = gym.images && gym.images.length > 0 ? gym.images[0].url : null
+  const cardImage = primaryGymImageCardSrc(gym.images)
+  const heroImage = primaryGymImageHeroSrc(gym.images)
 
   const submitDisabled =
     !isValidDuration ||
@@ -749,8 +751,8 @@ function BookingSummaryPageContent() {
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <div className="flex gap-3 items-start">
-                {mainImage ? (
-                  <img src={mainImage} alt={gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                {cardImage ? (
+                  <img src={cardImage} alt={gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
                 )}
@@ -948,9 +950,9 @@ function BookingSummaryPageContent() {
           <div className="lg:col-span-1 space-y-4">
             {/* Gym Summary Box */}
             <Card className="overflow-hidden border border-gray-300 rounded-lg shadow-sm">
-              {mainImage && (
+              {heroImage && (
                 <div className="w-full h-48 overflow-hidden">
-                  <img src={mainImage} alt={gym.name} className="w-full h-full object-cover" />
+                  <img src={heroImage} alt={gym.name} className="w-full h-full object-cover" />
                 </div>
               )}
               <CardContent className="p-5">

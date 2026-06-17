@@ -79,6 +79,21 @@ export function packageShowsTrainingTierSelection(pkg: {
   return offerTypeUsesTrainingAccess(pkg.offer_type)
 }
 
+/** True when a cheaper once-daily track is configured (variant or package-level). */
+export function offersOnceDailyTrainingChoice(
+  pkg: {
+    type?: string | null
+    offer_type?: string | null
+    once_daily_price_per_day?: number | null
+  } | null
+  | undefined,
+  variant: { once_daily_price_per_day?: number | null } | null | undefined
+): boolean {
+  if (!packageShowsTrainingTierSelection(pkg)) return false
+  if (variant) return variant.once_daily_price_per_day != null
+  return pkg?.once_daily_price_per_day != null
+}
+
 /** Short label for package cards and checkout rows. */
 export function trainingAccessCardLabel(value: PackageTrainingAccess | null | undefined): string | null {
   const meta = getTrainingAccessMeta(value)

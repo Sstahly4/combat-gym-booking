@@ -11,7 +11,14 @@ import type { Package, PackageSeasonalRate, PackageVariant } from '@/lib/types/d
 export async function resolveClientPriceBreakdown(input: {
   package_: Pick<
     Package,
-    'id' | 'type' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+    | 'id'
+    | 'type'
+    | 'price_per_day'
+    | 'price_per_week'
+    | 'price_per_month'
+    | 'once_daily_price_per_day'
+    | 'once_daily_price_per_week'
+    | 'once_daily_price_per_month'
   >
   variant: Pick<
     PackageVariant,
@@ -40,10 +47,20 @@ export async function resolveClientPriceBreakdown(input: {
         }
       : variant
 
+  const tierPkg =
+    tier === 'once_daily' && !variant
+      ? {
+          ...package_,
+          price_per_day: package_.once_daily_price_per_day ?? package_.price_per_day,
+          price_per_week: package_.once_daily_price_per_week ?? package_.price_per_week,
+          price_per_month: package_.once_daily_price_per_month ?? package_.price_per_month,
+        }
+      : package_
+
   const basePrices = {
-    daily: tierVariant?.price_per_day ?? package_.price_per_day,
-    weekly: tierVariant?.price_per_week ?? package_.price_per_week,
-    monthly: tierVariant?.price_per_month ?? package_.price_per_month,
+    daily: tierVariant?.price_per_day ?? tierPkg.price_per_day,
+    weekly: tierVariant?.price_per_week ?? tierPkg.price_per_week,
+    monthly: tierVariant?.price_per_month ?? tierPkg.price_per_month,
   }
 
   const fallback = calculatePackagePrice(pricingDuration, package_.type, basePrices)

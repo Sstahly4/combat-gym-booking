@@ -41,7 +41,13 @@ export function computeBreakdownForStay(
   packageId: string,
   pkg: Pick<
     Package,
-    'type' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+    | 'type'
+    | 'price_per_day'
+    | 'price_per_week'
+    | 'price_per_month'
+    | 'once_daily_price_per_day'
+    | 'once_daily_price_per_week'
+    | 'once_daily_price_per_month'
   >,
   variant: (VariantPricingRow & Partial<Pick<PackageVariant, 'once_daily_price_per_day' | 'once_daily_price_per_week' | 'once_daily_price_per_month'>>) | null,
   seasonalRates: PackageSeasonalRate[],
@@ -72,22 +78,32 @@ export function computeBreakdownForStay(
         }))
       : seasonalRates
 
+  const tierPkg =
+    tier === 'once_daily' && !variant
+      ? {
+          ...pkg,
+          price_per_day: pkg.once_daily_price_per_day ?? pkg.price_per_day,
+          price_per_week: pkg.once_daily_price_per_week ?? pkg.price_per_week,
+          price_per_month: pkg.once_daily_price_per_month ?? pkg.price_per_month,
+        }
+      : pkg
+
   if (seasonalRates.length > 0) {
     return computeBookingPriceWithSeasons(
       startDate,
       endDate,
       {
         id: packageId,
-        type: pkg.type,
-        price_per_day: pkg.price_per_day,
-        price_per_week: pkg.price_per_week,
-        price_per_month: pkg.price_per_month,
+        type: tierPkg.type,
+        price_per_day: tierPkg.price_per_day,
+        price_per_week: tierPkg.price_per_week,
+        price_per_month: tierPkg.price_per_month,
       },
       tierSeasonalRates,
       tierVariant
     )
   }
-  return computeBookingPriceFromDates(startDate, endDate, pkg, tierVariant as any)
+  return computeBookingPriceFromDates(startDate, endDate, tierPkg, tierVariant as any)
 }
 
 /**
@@ -118,7 +134,7 @@ export async function resolveBookingPrice(
 
   const { data: packageData, error: pkgError } = await supabase
     .from('packages')
-    .select('id, gym_id, type, price_per_day, price_per_week, price_per_month, booking_mode')
+    .select('id, gym_id, type, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month, booking_mode')
     .eq('id', packageId)
     .single()
 

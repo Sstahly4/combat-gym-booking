@@ -212,7 +212,10 @@ export interface GymImage {
   created_at: string
 }
 
-export type GymImageVariants = Partial<Record<'w400' | 'w800' | 'w1200', string>>
+export type GymImageVariants = Partial<Record<'w400' | 'w800' | 'w1200', string>> & {
+  /** Base64 ThumbHash for instant color-blur placeholder while WebP loads. */
+  thumbhash?: string
+}
 
 // Canonical Offer Types (Standardized Marketplace)
 export type CanonicalOfferType = 
@@ -230,6 +233,10 @@ export interface Package {
   price_per_day: number | null
   price_per_week: number | null
   price_per_month: number | null
+  /** Optional once-daily training price track (NULL => no guest tier choice at checkout). */
+  once_daily_price_per_day?: number | null
+  once_daily_price_per_week?: number | null
+  once_daily_price_per_month?: number | null
   currency: string
   includes_accommodation: boolean
   accommodation_name: string | null
