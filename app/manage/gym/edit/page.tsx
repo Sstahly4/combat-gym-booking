@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { Gym, GymImage } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
 import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
-import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
 import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
@@ -1078,9 +1077,6 @@ function EditGymForm() {
 
       <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:py-8 md:pb-10">
         <div className="hidden md:block mb-6">
-          <ManageBreadcrumbs
-            items={[{ label: hubCrumb.label, href: hubCrumb.href }, { label: 'Edit gym' }]}
-          />
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit gym profile</h1>
           <p className="text-gray-600 text-sm mt-1">Update your listing — changes sync to your preview and public page.</p>
         </div>

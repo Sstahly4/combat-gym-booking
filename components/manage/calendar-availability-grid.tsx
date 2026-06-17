@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, ChevronLeft, ChevronRight, X, Lock, Unlock } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight, X, Lock, Unlock, Info } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,37 +77,42 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 // status → pill / cell styling (booking.com-esque semantics)
 const STATUS_STYLES: Record<
   DayStatus,
-  { dot: string; label: string; bar: string; ring: string }
+  { dot: string; label: string; bg: string; ring: string; dotRing?: string }
 > = {
   open: {
     dot: 'bg-emerald-500',
     label: 'Open',
-    bar: 'bg-emerald-500',
-    ring: 'hover:ring-emerald-400/60',
+    bg: 'bg-emerald-50/50',
+    ring: 'hover:ring-emerald-400/25',
+    dotRing: 'ring-emerald-200',
   },
   partial: {
     dot: 'bg-amber-500',
     label: 'Partial',
-    bar: 'bg-amber-500',
-    ring: 'hover:ring-amber-400/60',
+    bg: 'bg-amber-50/55',
+    ring: 'hover:ring-amber-400/25',
+    dotRing: 'ring-amber-200',
   },
   sold_out: {
     dot: 'bg-red-500',
     label: 'Sold out',
-    bar: 'bg-red-500',
-    ring: 'hover:ring-red-400/60',
+    bg: 'bg-rose-50/60',
+    ring: 'hover:ring-rose-400/25',
+    dotRing: 'ring-rose-200',
   },
   closed: {
     dot: 'bg-gray-900',
     label: 'Closed',
-    bar: 'bg-gray-900',
-    ring: 'hover:ring-gray-500/60',
+    bg: 'bg-gray-100/60',
+    ring: 'hover:ring-gray-400/25',
+    dotRing: 'ring-gray-200',
   },
   unconfigured: {
     dot: 'bg-gray-300',
     label: 'No capacity set',
-    bar: 'bg-gray-300',
-    ring: 'hover:ring-gray-300/80',
+    bg: 'bg-white',
+    ring: 'hover:ring-gray-300/35',
+    dotRing: 'ring-gray-200',
   },
 }
 
@@ -231,69 +236,105 @@ export function CalendarAvailabilityGrid({ gymId }: { gymId: string }) {
   return (
     <div>
       {/* Top controls row: month pager + default capacity */}
-      <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2} />
-          </button>
-          <div className="min-w-[10.5rem] text-center text-sm font-semibold text-gray-900">
-            {monthLabel(cursor.year, cursor.month)}
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-[1fr_20rem]">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={prevMonth}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <div className="min-w-[10.5rem] text-center text-sm font-semibold text-gray-900">
+              {monthLabel(cursor.year, cursor.month)}
+            </div>
+            <button
+              type="button"
+              onClick={nextMonth}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={2} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-4 w-4" strokeWidth={2} />
-          </button>
+
           <button
             type="button"
             onClick={() => {
               const t = new Date()
               setCursor({ year: t.getFullYear(), month: t.getMonth() })
             }}
-            className="ml-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
             Today
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Label htmlFor="default-capacity" className="text-xs font-medium text-gray-500">
-            Default spots / day
-          </Label>
-          <Input
-            id="default-capacity"
-            type="number"
-            min={0}
-            max={10000}
-            inputMode="numeric"
-            placeholder="e.g. 20"
-            value={defaultCapDraft}
-            onChange={(e) => setDefaultCapDraft(e.target.value)}
-            className="h-9 w-24 text-sm"
-          />
-          <Button
-            type="button"
-            onClick={handleSaveDefault}
-            disabled={savingDefault}
-            className="h-9"
-          >
-            {savingDefault ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Saving
-              </>
-            ) : (
-              'Save'
-            )}
-          </Button>
+        <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="default-capacity" className="text-xs font-medium text-gray-500">
+                  Default spots / day
+                </Label>
+                <span
+                  className="group relative inline-flex"
+                  tabIndex={0}
+                  role="button"
+                  aria-label="About default spots per day"
+                >
+                  <Info className="h-3.5 w-3.5 text-gray-400" strokeWidth={1.75} aria-hidden />
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none invisible absolute right-0 top-[calc(100%+8px)] z-30 w-[min(20rem,calc(100vw-2.5rem))] rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[11px] font-normal leading-snug text-gray-700 shadow-md opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                  >
+                    Set a default number of spots per day to track availability and avoid overbookings.
+                    You can still override individual dates.
+                  </span>
+                </span>
+              </div>
+              {defaultCapacity == null ? (
+                <p className="mt-1 text-[11px] leading-snug text-amber-700">
+                  Recommended: set this before you accept paid bookings.
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] leading-snug text-gray-400">
+                  Overrides can be set per date.
+                </p>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <Input
+                id="default-capacity"
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                placeholder="e.g. 20"
+                value={defaultCapDraft}
+                onChange={(e) => setDefaultCapDraft(e.target.value)}
+                className="h-9 w-24 text-sm"
+              />
+              <Button
+                type="button"
+                onClick={handleSaveDefault}
+                disabled={savingDefault}
+                className="h-9"
+              >
+                {savingDefault ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -317,13 +358,6 @@ export function CalendarAvailabilityGrid({ gymId }: { gymId: string }) {
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
-        </div>
-      ) : null}
-
-      {defaultCapacity == null ? (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Set a default number of spots per day to start tracking availability and avoid
-          overbookings. You can still override individual dates.
         </div>
       ) : null}
 
@@ -411,52 +445,62 @@ function DayCell({
       type="button"
       onClick={onClick}
       className={cn(
-        'group relative flex h-20 flex-col justify-between rounded-lg border border-gray-200 bg-white p-1.5 text-left text-xs transition',
-        'hover:-translate-y-px hover:shadow-sm hover:ring-2',
+        'group relative flex h-20 flex-col justify-between rounded-xl border border-gray-200/70 p-2 text-left text-xs transition',
+        'shadow-[0_1px_0_rgba(15,23,42,0.04)]',
+        'hover:-translate-y-px hover:shadow-md hover:ring-2',
         styles.ring,
-        'sm:h-24 sm:p-2'
+        styles.bg,
+        'sm:h-24 sm:p-2.5'
       )}
       aria-label={`${iso}: ${styles.label}`}
     >
-      <div className={cn('absolute left-0 top-0 h-1 w-full rounded-t-lg', styles.bar)} />
-
-      <div className="mt-1 flex items-start justify-between">
-        <span
-          className={cn(
-            'tabular-nums text-sm font-semibold',
-            isToday ? 'text-[#003580]' : 'text-gray-900'
-          )}
-        >
-          {dayNum}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'inline-flex h-2 w-2 shrink-0 rounded-full ring-2 ring-white',
+              styles.dot,
+              styles.dotRing ? `shadow-sm ${styles.dotRing}` : ''
+            )}
+            aria-hidden
+          />
+          <span
+            className={cn(
+              'tabular-nums text-sm font-semibold',
+              isToday ? 'text-[#003580]' : 'text-gray-900'
+            )}
+          >
+            {dayNum}
+          </span>
           {isToday ? (
-            <span className="ml-1 rounded bg-[#003580]/10 px-1 py-0.5 text-[9px] font-medium tracking-wide text-[#003580]">
-              TODAY
+            <span className="rounded-full bg-[#003580]/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#003580]">
+              Today
             </span>
           ) : null}
-        </span>
-        {day?.is_closed ? (
-          <Lock className="h-3 w-3 text-gray-500" aria-label="Closed" />
-        ) : null}
+        </div>
+        {day?.is_closed ? <Lock className="mt-0.5 h-3.5 w-3.5 text-gray-500" aria-label="Closed" /> : null}
       </div>
 
       {day ? (
         <div className="flex flex-col gap-0.5">
-          <span className="truncate text-[11px] font-medium text-gray-900">
+          <span className="truncate text-[11px] font-semibold text-gray-900">
             {formatDashboardMoneyCompact(day.price, currency)}
             {day.price_override != null ? (
-              <span className="ml-1 text-[9px] font-normal uppercase tracking-wide text-amber-600">
-                override
+              <span className="ml-1 rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-inset ring-amber-200/70">
+                Override
               </span>
             ) : null}
           </span>
-          <span className="truncate text-[10px] text-gray-500">
-            {day.is_closed
-              ? 'Closed'
-              : day.capacity == null
-              ? 'No cap'
-              : day.capacity === 0
-              ? '0 spots'
-              : `${day.spots_left ?? 0}/${day.capacity} left`}
+          <span className="truncate text-[10px] text-gray-600">
+            {day.is_closed ? (
+              'Closed'
+            ) : day.capacity == null ? (
+              'No limit set'
+            ) : day.capacity === 0 ? (
+              '0 spots'
+            ) : (
+              `${day.spots_left ?? 0}/${day.capacity} left`
+            )}
           </span>
         </div>
       ) : (

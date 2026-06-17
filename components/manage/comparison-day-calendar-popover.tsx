@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   addMonths,
   eachDayOfInterval,
@@ -50,6 +50,7 @@ export function ComparisonDayCalendarPanel({ valueKey, maxDayKey, onSelect, clas
   const [dd, setDd] = useState(() => String(selected.getDate()).padStart(2, '0'))
   const [mm, setMm] = useState(() => String(selected.getMonth() + 1).padStart(2, '0'))
   const [yyyy, setYyyy] = useState(() => String(selected.getFullYear()))
+  const [monthYearOpen, setMonthYearOpen] = useState(false)
 
   useEffect(() => {
     const s = parseLocalDayKey(valueKey)
@@ -57,6 +58,7 @@ export function ComparisonDayCalendarPanel({ valueKey, maxDayKey, onSelect, clas
     setMm(String(s.getMonth() + 1).padStart(2, '0'))
     setYyyy(String(s.getFullYear()))
     setView(startOfMonth(s))
+    setMonthYearOpen(false)
   }, [valueKey])
 
   const applyTypedDate = useCallback(() => {
@@ -80,6 +82,23 @@ export function ComparisonDayCalendarPanel({ valueKey, maxDayKey, onSelect, clas
 
   const prevMonth = () => setView((v) => addMonths(v, -1))
   const nextMonth = () => setView((v) => addMonths(v, 1))
+
+  const years: number[] = []
+  for (let y = minDate.getFullYear(); y <= maxDate.getFullYear(); y++) years.push(y)
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
 
   return (
     <div
@@ -126,19 +145,77 @@ export function ComparisonDayCalendarPanel({ valueKey, maxDayKey, onSelect, clas
           type="button"
           className="rounded-md p-1 text-gray-600 hover:bg-gray-100"
           aria-label="Previous month"
-          onClick={prevMonth}
+          onClick={() => {
+            setMonthYearOpen(false)
+            prevMonth()
+          }}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-1 truncate text-sm font-medium text-gray-900">
-          <span className="truncate">{format(view, 'MMMM yyyy')}</span>
-          <ChevronDownIcon />
+        <div className="relative flex min-w-0 flex-1 justify-center">
+          <button
+            type="button"
+            className="flex min-w-0 items-center justify-center gap-1 truncate rounded-md px-2 py-1 text-sm font-medium text-gray-900 hover:bg-gray-100"
+            aria-label="Jump to month and year"
+            aria-expanded={monthYearOpen}
+            onClick={() => setMonthYearOpen((o) => !o)}
+          >
+            <span className="truncate">{format(view, 'MMMM yyyy')}</span>
+            <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden />
+          </button>
+
+          {monthYearOpen ? (
+            <div className="absolute top-[calc(100%+6px)] z-10 w-[260px] rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[11px] font-medium text-gray-500">
+                  Month
+                  <select
+                    className="mt-1 h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900"
+                    value={view.getMonth()}
+                    onChange={(e) => setView((v) => new Date(v.getFullYear(), Number(e.target.value), 1))}
+                  >
+                    {months.map((name, idx) => (
+                      <option key={name} value={idx}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[11px] font-medium text-gray-500">
+                  Year
+                  <select
+                    className="mt-1 h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900"
+                    value={view.getFullYear()}
+                    onChange={(e) => setView((v) => new Date(Number(e.target.value), v.getMonth(), 1))}
+                  >
+                    {years.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                  onClick={() => setMonthYearOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
           className="rounded-md p-1 text-gray-600 hover:bg-gray-100"
           aria-label="Next month"
-          onClick={nextMonth}
+          onClick={() => {
+            setMonthYearOpen(false)
+            nextMonth()
+          }}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -178,10 +255,4 @@ export function ComparisonDayCalendarPanel({ valueKey, maxDayKey, onSelect, clas
   )
 }
 
-function ChevronDownIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0 text-gray-500" aria-hidden>
-      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
+ 

@@ -73,7 +73,7 @@ const STEPS: TourStep[] = [
     title: 'How you get paid',
     paragraphs: [
       'Use Balances in the sidebar for live totals and payout activity when you use Stripe Connect.',
-      'Set up Wise or Stripe under Settings → Payouts (gear icon at the bottom of the sidebar). You can polish your listing first; finish payment details before you start accepting paid bookings.',
+      'Set up Stripe under Settings → Payouts (gear icon at the bottom of the sidebar). You can polish your listing first; finish payment details before you start accepting paid bookings.',
     ],
   },
   {
@@ -130,7 +130,7 @@ const STEPS_MOBILE: TourStep[] = [
     title: 'How you get paid',
     paragraphs: [
       'Open Balances from the menu for live totals and payout activity when you use Stripe Connect.',
-      'Set up Wise or Stripe under Settings → Payouts (gear icon). You can finish payment details before you accept paid bookings.',
+      'Set up Stripe under Settings → Payouts (gear icon). You can finish payment details before you accept paid bookings.',
     ],
   },
   {

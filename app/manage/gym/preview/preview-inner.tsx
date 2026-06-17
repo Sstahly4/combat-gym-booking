@@ -9,7 +9,6 @@ import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper
 import { GymDescription } from '@/components/gym-description'
 import { PackagesList } from '@/components/packages-list'
 import { MapPin, ExternalLink } from 'lucide-react'
-import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
 
@@ -92,14 +91,6 @@ export function GymListingPreviewInner() {
   return (
     <BookingProvider>
       <div className="min-h-full bg-white pb-12">
-        <div className="max-w-6xl mx-auto px-4 pt-6 pb-2">
-          <ManageBreadcrumbs
-            items={[
-              { label: 'Dashboard', href: '/manage' },
-              { label: 'Listing preview' },
-            ]}
-          />
-        </div>
         <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>

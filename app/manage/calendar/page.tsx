@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { CalendarAvailabilityGrid } from '@/components/manage/calendar-availability-grid'
 import { Loader2 } from 'lucide-react'
@@ -12,12 +11,6 @@ export default function ManageCalendarPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
-        <ManageBreadcrumbs
-          items={[
-            { label: 'Dashboard', href: '/manage' },
-            { label: 'Calendar & availability' },
-          ]}
-        />
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">

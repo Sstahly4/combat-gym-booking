@@ -134,6 +134,10 @@ function formatHoverClockHour(hour: number) {
   return `${String(h).padStart(2, '0')}:00`
 }
 
+function formatShortDay(d: Date) {
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).replace(',', '')
+}
+
 /** % change of *cumulative* today vs cumulative yesterday at the same hour index (00:00–24:00). */
 function pctVsYesterday(todayAtH: number, yestAtH: number): number {
   if (yestAtH === 0) return todayAtH === 0 ? 0 : 100
@@ -236,6 +240,7 @@ export function DashboardTodaySection({
 
   const liveTime = formatClock24()
   const comparisonDate = useMemo(() => parseLocalDayKey(comparisonDayKey), [comparisonDayKey])
+  const comparisonLabel = useMemo(() => formatShortDay(comparisonDate), [comparisonDate])
   const active = displayMetrics[selectedMetric]
   const valueType = METRIC_VALUE_TYPE[selectedMetric]
   const todayDisplay = formatMetricValue(active.todayTotal, valueType, selectedCurrency)
@@ -467,7 +472,7 @@ export function DashboardTodaySection({
                 setCalendarOpen((o) => !o)
               }}
             >
-              <span>Yesterday</span>
+              <span>{comparisonLabel}</span>
               <ChevronDown
                 className={`h-3.5 w-3.5 shrink-0 opacity-50 transition-transform ${calendarOpen ? 'rotate-180' : ''}`}
                 aria-hidden
@@ -488,6 +493,9 @@ export function DashboardTodaySection({
                     setCalendarOpen(false)
                   }}
                 />
+                <p className="mt-2 max-w-[280px] text-[11px] leading-snug text-gray-400">
+                  Comparison days are limited to complete days (up to yesterday).
+                </p>
               </div>
             ) : null}
             <p className="mt-0.5 text-lg font-light tabular-nums tracking-tight text-gray-600 sm:text-xl">

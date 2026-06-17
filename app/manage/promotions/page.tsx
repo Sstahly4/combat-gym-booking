@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -275,8 +274,6 @@ export default function ManagePromotionsPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
-        <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Promotions' }]} />
-
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">

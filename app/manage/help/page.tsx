@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ManageBreadcrumbs } from '@/components/manage/manage-breadcrumbs'
 import { OWNER_HELP_FAQS } from '@/lib/constants/owner-help-faqs'
 import { ChevronDown, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,7 +12,6 @@ export default function ManageHelpPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
-        <ManageBreadcrumbs items={[{ label: 'Dashboard', href: '/manage' }, { label: 'Help center' }]} />
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Help center</h1>
         <p className="mt-1 text-sm text-gray-500">
           Quick answers for gym owners. Everything stays in your dashboard.
