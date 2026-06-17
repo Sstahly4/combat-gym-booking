@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { GymImage } from '@/lib/types/database'
 import {
   gymImageCardSrc,
@@ -48,13 +48,13 @@ export function ResponsiveGymImage({
 }: ResponsiveGymImageProps) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [loaded, setLoaded] = useState(false)
+  const [useFade, setUseFade] = useState(false)
   const [placeholderUrl, setPlaceholderUrl] = useState<string | null>(null)
 
   const thumbhash = gymImageThumbhash(image)
   const src = context === 'hero' ? gymImageSrc(image) : gymImageCardSrc(image)
 
   useEffect(() => {
-    setLoaded(false)
     if (!thumbhash) {
       setPlaceholderUrl(null)
       return
@@ -62,12 +62,20 @@ export function ResponsiveGymImage({
     setPlaceholderUrl(thumbhashBase64ToDataUrl(thumbhash))
   }, [thumbhash, image.url])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const img = imgRef.current
     if (img?.complete && img.naturalWidth > 0) {
       setLoaded(true)
+      setUseFade(false)
+    } else {
+      setLoaded(false)
+      setUseFade(true)
     }
   }, [src])
+
+  const handleLoad = () => {
+    setLoaded(true)
+  }
 
   const fx = typeof image.focus_x === 'number' ? image.focus_x : null
   const fy = typeof image.focus_y === 'number' ? image.focus_y : null
@@ -78,6 +86,7 @@ export function ResponsiveGymImage({
 
   const showPlaceholder = Boolean(placeholderUrl)
   const imageVisible = loaded || !showPlaceholder
+  const fadeClass = useFade ? 'transition-opacity duration-300 ease-out' : 'transition-none'
 
   return (
     <div
@@ -93,7 +102,8 @@ export function ResponsiveGymImage({
           alt=""
           aria-hidden
           className={cn(
-            'absolute inset-0 h-full w-full scale-105 blur-md transition-opacity duration-300 ease-out',
+            'absolute inset-0 h-full w-full scale-105 blur-md',
+            fadeClass,
             className,
             loaded ? 'opacity-0' : 'opacity-100',
           )}
@@ -107,7 +117,8 @@ export function ResponsiveGymImage({
         sizes={sizes}
         alt={alt}
         className={cn(
-          'absolute inset-0 h-full w-full transition-opacity duration-300 ease-out',
+          'absolute inset-0 h-full w-full',
+          fadeClass,
           className,
           imageVisible ? 'opacity-100' : 'opacity-0',
         )}
@@ -115,8 +126,8 @@ export function ResponsiveGymImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'auto'}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
+        onLoad={handleLoad}
+        onError={handleLoad}
       />
     </div>
   )
