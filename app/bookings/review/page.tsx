@@ -11,6 +11,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
+import { primaryGymImageCardSrc } from '@/lib/images/gym-image-variants'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -227,10 +228,7 @@ function ReviewPageContent() {
     return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'long' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
   }
 
-  const mainImage =
-    gym?.images && gym.images.length > 0
-      ? [...gym.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
-      : null
+  const cardImage = primaryGymImageCardSrc(gym?.images)
 
   const gymSlugOrId = (gym as any)?.slug || gym?.id || ''
 
@@ -313,9 +311,9 @@ function ReviewPageContent() {
           {/* Gym identity */}
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex gap-3 items-start">
-              {mainImage ? (
+              {cardImage ? (
                 <img
-                  src={mainImage}
+                  src={cardImage}
                   alt={gym.name}
                   className="w-20 h-20 rounded-xl object-cover shrink-0"
                 />

@@ -1,5 +1,5 @@
 /**
- * Backfill gym_images.variants (w400/w800/w1200 WebP) for rows still on `{}`.
+ * Backfill gym_images.variants (w400/w800/w1200 WebP, thumbhash, EXIF-stripped originals).
  *
  * Paths + JSONB keys must match lib/images/gym-image-variants.ts uploadGymImageWithVariants().
  *
@@ -23,6 +23,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { createClient } from '@supabase/supabase-js'
+import { rgbaToThumbHash } from 'thumbhash'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -95,7 +96,9 @@ function variantStoragePath(gymId, stem, widthKey) {
 
 function needsBackfill(variants) {
   if (!variants || typeof variants !== 'object') return true
-  return !variants.w400 && !variants.w800 && !variants.w1200
+  const hasWidth = variants.w400 || variants.w800 || variants.w1200
+  const hasThumbhash = typeof variants.thumbhash === 'string' && variants.thumbhash.length > 0
+  return !hasWidth || !hasThumbhash
 }
 
 function mergeVariants(existing, generated) {
@@ -110,6 +113,56 @@ async function downloadOriginal(url) {
   return buf
 }
 
+async function generateThumbhash(originalBuffer) {
+  const { data, info } = await sharp(originalBuffer, { failOn: 'none' })
+    .rotate()
+    .ensureAlpha()
+    .resize(100, 100, { fit: 'inside', withoutEnlargement: true })
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const rgba = new Uint8Array(data)
+  const hash = rgbaToThumbHash(info.width, info.height, rgba)
+  return Buffer.from(hash).toString('base64')
+}
+
+async function sanitizeOriginalBuffer(originalBuffer, gymId, stem, storagePath) {
+  const meta = await sharp(originalBuffer, { failOn: 'none' }).rotate().metadata()
+  const format = meta.format
+  if (format === 'png') {
+    return {
+      buffer: await sharp(originalBuffer, { failOn: 'none' }).rotate().png({ compressionLevel: 9 }).toBuffer(),
+      contentType: 'image/png',
+      storagePath,
+    }
+  }
+  if (format === 'webp') {
+    return {
+      buffer: await sharp(originalBuffer, { failOn: 'none' }).rotate().webp({ quality: 92 }).toBuffer(),
+      contentType: 'image/webp',
+      storagePath,
+    }
+  }
+  if (format === 'jpeg' || format === 'jpg') {
+    return {
+      buffer: await sharp(originalBuffer, { failOn: 'none' }).rotate().jpeg({ quality: 92, mozjpeg: true }).toBuffer(),
+      contentType: 'image/jpeg',
+      storagePath,
+    }
+  }
+  if (format === 'heif' || format === 'heic') {
+    return {
+      buffer: await sharp(originalBuffer, { failOn: 'none' }).rotate().webp({ quality: 90 }).toBuffer(),
+      contentType: 'image/webp',
+      storagePath: `${gymId}/${stem}.webp`,
+    }
+  }
+  return {
+    buffer: await sharp(originalBuffer, { failOn: 'none' }).rotate().jpeg({ quality: 92, mozjpeg: true }).toBuffer(),
+    contentType: 'image/jpeg',
+    storagePath,
+  }
+}
+
 async function generateVariantBuffers(originalBuffer) {
   const pipeline = sharp(originalBuffer, { failOn: 'none' }).rotate()
   const meta = await pipeline.metadata()
@@ -117,8 +170,17 @@ async function generateVariantBuffers(originalBuffer) {
   if (sourceWidth <= 0) throw new Error('Could not read image width')
 
   const out = {}
-  for (const width of GYM_IMAGE_VARIANT_WIDTHS) {
-    if (width > sourceWidth) continue
+  const applicableWidths = GYM_IMAGE_VARIANT_WIDTHS.filter((width) => width <= sourceWidth)
+
+  if (applicableWidths.length === 0) {
+    out.w400 = await sharp(originalBuffer, { failOn: 'none' })
+      .rotate()
+      .webp({ quality: WEBP_QUALITY, effort: 4 })
+      .toBuffer()
+    return out
+  }
+
+  for (const width of applicableWidths) {
     const key = `w${width}`
     const buffer = await sharp(originalBuffer, { failOn: 'none' })
       .rotate()
@@ -171,14 +233,37 @@ async function processRow(supabase, row, dryRun) {
   }
 
   const originalBuffer = await downloadOriginal(row.url)
-  const variantBuffers = await generateVariantBuffers(originalBuffer)
+  const [thumbhash, variantBuffers, sanitized] = await Promise.all([
+    generateThumbhash(originalBuffer),
+    generateVariantBuffers(originalBuffer),
+    sanitizeOriginalBuffer(originalBuffer, row.gym_id, stem, storagePath),
+  ])
   const keys = Object.keys(variantBuffers)
   if (keys.length === 0) {
     return { id: row.id, status: 'skipped', reason: 'no applicable widths' }
   }
 
   const bucket = supabase.storage.from(BUCKET)
-  const generatedVariants = {}
+  const generatedVariants = { thumbhash }
+
+  if (!dryRun) {
+    const { error: sanitizeError } = await bucket.upload(sanitized.storagePath, sanitized.buffer, {
+      cacheControl: '31536000',
+      contentType: sanitized.contentType,
+      upsert: true,
+    })
+    if (sanitizeError) {
+      throw new Error(`Sanitized original upload failed: ${sanitizeError.message}`)
+    }
+    if (sanitized.storagePath !== storagePath) {
+      await bucket.remove([storagePath])
+    }
+  }
+
+  const nextUrl =
+    dryRun
+      ? row.url
+      : bucket.getPublicUrl(sanitized.storagePath).data.publicUrl
 
   for (const key of keys) {
     const variantPath = variantStoragePath(row.gym_id, stem, key)
@@ -203,7 +288,7 @@ async function processRow(supabase, row, dryRun) {
   if (!dryRun) {
     const { error: updateError } = await supabase
       .from('gym_images')
-      .update({ variants: nextVariants })
+      .update({ url: nextUrl, variants: nextVariants })
       .eq('id', row.id)
     if (updateError) {
       throw new Error(`DB update failed for ${row.id}: ${updateError.message}`)
@@ -213,7 +298,7 @@ async function processRow(supabase, row, dryRun) {
   return {
     id: row.id,
     status: dryRun ? 'dry-run' : 'ok',
-    keys,
+    keys: [...keys, 'thumbhash'],
     stem,
   }
 }

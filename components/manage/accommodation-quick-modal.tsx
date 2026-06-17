@@ -12,6 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils'
 import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 import {
+  serializeManagedImageRef,
+  uploadGymImageWithVariants,
+} from '@/lib/images/gym-image-variants'
+import {
   BedDouble,
   ChevronDown,
   ChevronLeft,
@@ -395,12 +399,15 @@ export function AccommodationQuickModal({
     for (let i = 0; i < pendingFiles.length; i++) {
       const image = pendingFiles[i].file
       try {
-        const fileExt = image.name.split('.').pop() || 'jpg'
-        const fileName = `accommodations/${gymId}/${Date.now()}-${i}-${newPhotoId().slice(0, 8)}.${fileExt}`
-        const { error: uploadError } = await supabase.storage.from('gym-images').upload(fileName, image)
-        if (uploadError) throw uploadError
-        const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-        uploadedByOrder.push(data.publicUrl)
+        const stem = `${Date.now()}-${i}-${newPhotoId().slice(0, 8)}`
+        const uploaded = await uploadGymImageWithVariants({
+          supabase,
+          gymId,
+          file: image,
+          stem,
+          subdir: 'accommodations',
+        })
+        uploadedByOrder.push(serializeManagedImageRef(uploaded))
       } catch (err) {
         console.error(err)
         alert('One or more images failed to upload. Try smaller files or check your connection.')

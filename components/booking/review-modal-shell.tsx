@@ -9,6 +9,7 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { hydrateReviewParams } from '@/lib/utils/booking-prefill'
 import type { ReviewModalParams } from '@/lib/contexts/review-modal-context'
 import type { Gym, Package } from '@/lib/types/database'
+import { primaryGymImageCardSrc } from '@/lib/images/gym-image-variants'
 import { ChooseWhenToPaySection } from '@/components/booking/choose-when-to-pay'
 
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -112,7 +113,7 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
   const chargeTotalPrice = priceInfo?.price ?? null
   const totalPrice =
     chargeTotalPrice != null ? convertPrice(chargeTotalPrice, gymCurrency) : null
-  const mainImage = gym?.images && gym.images.length > 0 ? gym.images[0].url : null
+  const cardImage = primaryGymImageCardSrc(gym?.images)
 
   return (
     <div className="fixed inset-0 z-[200] bg-white flex flex-col overflow-hidden">
@@ -130,8 +131,8 @@ export function ReviewModalShell({ params }: { params: ReviewModalParams }) {
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex gap-3 items-start">
-              {mainImage ? (
-                <img src={mainImage} alt={gym?.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+              {cardImage ? (
+                <img src={cardImage} alt={gym?.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
               ) : (
                 <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
               )}

@@ -10,6 +10,10 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
+import {
+  serializeManagedImageRef,
+  uploadGymImageWithVariants,
+} from '@/lib/images/gym-image-variants'
 import { 
   BedDouble, 
   Plus, 
@@ -198,19 +202,15 @@ export function AccommodationManager({ gymId, currency, hideHeader = false }: Ac
       for (let i = 0; i < images.length; i++) {
         const image = images[i]
         try {
-          const fileExt = image.name.split('.').pop()
-          const fileName = `accommodations/${gymId}/${Date.now()}-${i}.${fileExt}`
-          const { error: uploadError } = await supabase.storage
-            .from('gym-images')
-            .upload(fileName, image)
-          
-          if (uploadError) throw uploadError
-          
-          const { data } = supabase.storage
-            .from('gym-images')
-            .getPublicUrl(fileName)
-          
-          uploadedImageUrls.push(data.publicUrl)
+          const stem = `${Date.now()}-${i}`
+          const uploaded = await uploadGymImageWithVariants({
+            supabase,
+            gymId,
+            file: image,
+            stem,
+            subdir: 'accommodations',
+          })
+          uploadedImageUrls.push(serializeManagedImageRef(uploaded))
         } catch (error) {
           console.error('Failed to upload image:', error)
         }

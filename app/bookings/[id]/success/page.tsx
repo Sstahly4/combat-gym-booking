@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Check, Copy, Calendar, MapPin, Dumbbell, Printer, Download, Shield, Lock, AlertCircle, DollarSign, User, Mail, Phone, CreditCard, X, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2 } from 'lucide-react'
 import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/types/database'
+import { primaryGymImageCardSrc, primaryGymImageHeroSrc } from '@/lib/images/gym-image-variants'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -204,7 +205,8 @@ export default function PaymentSuccessPage() {
   )
   const isTraining = booking.package?.type === 'training'
   const displayDuration = isTraining ? Math.max(1, duration + 1) : duration
-  const mainImage = booking.gym.images && booking.gym.images.length > 0 ? booking.gym.images[0].url : null
+  const cardImage = primaryGymImageCardSrc(booking.gym.images)
+  const heroImage = primaryGymImageHeroSrc(booking.gym.images)
   const confirmationNumber = booking.booking_reference || booking.id
   const pin = booking.booking_pin || 'N/A'
 
@@ -419,10 +421,10 @@ export default function PaymentSuccessPage() {
             </CardHeader>
             <CardContent>
               <div className="flex gap-4">
-                {mainImage && (
+                {cardImage && (
                   <div className="w-20 h-20 flex-shrink-0 rounded overflow-hidden">
                     <img 
-                      src={mainImage} 
+                      src={cardImage} 
                       alt={booking.gym.name} 
                       className="w-full h-full object-cover"
                     />
@@ -553,10 +555,10 @@ export default function PaymentSuccessPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Your booking summary</h2>
             
             <div className="flex gap-4">
-                {mainImage && (
+                {heroImage && (
                   <div className="w-28 h-28 flex-shrink-0 rounded overflow-hidden">
                     <img 
-                      src={mainImage} 
+                      src={heroImage} 
                       alt={booking.gym.name} 
                       className="w-full h-full object-cover"
                     />

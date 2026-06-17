@@ -12,6 +12,10 @@ import type { Package, PackageVariant } from '@/lib/types/database'
 import { Trash2, Edit2, Plus, Package as PackageIcon, BedDouble } from 'lucide-react'
 import { syncGymSearchPrice } from '@/lib/manage/sync-gym-search-price'
 import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
+import {
+  serializeManagedImageRef,
+  uploadGymImageWithVariants,
+} from '@/lib/images/gym-image-variants'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
 const PACKAGE_TYPES = [
@@ -301,7 +305,7 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
 
   // Variant Handlers
   const handleVariantSubmit = async () => {
-    if (!editingId) return
+    if (!editingId || !gymId) return
     if (variantSubmitLockRef.current) return
 
     variantSubmitLockRef.current = true
@@ -319,17 +323,15 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
         const uploadPromises = snapshot.map(async (entry, index) => {
           const image = entry.file
           try {
-            const fileExt = image.name.split('.').pop()
-            const fileName = `variants/${editingId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`
-            const { error: uploadError } = await supabase.storage
-              .from('gym-images')
-              .upload(fileName, image)
-
-            if (uploadError) throw uploadError
-
-            const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-
-            return data.publicUrl
+            const stem = `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`
+            const uploaded = await uploadGymImageWithVariants({
+              supabase,
+              gymId,
+              file: image,
+              stem,
+              subdir: `package-variants/${editingId}`,
+            })
+            return serializeManagedImageRef(uploaded)
           } catch (e) {
             console.error('Failed to upload variant image:', e)
             return null
@@ -464,17 +466,15 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
       let imageUrl = existingPackageImage
       if (packageImage) {
         try {
-          const fileExt = packageImage.name.split('.').pop()
-          const fileName = `packages/${currentGymId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${fileExt}`
-          const { error: uploadError } = await supabase.storage
-            .from('gym-images')
-            .upload(fileName, packageImage)
-
-          if (uploadError) throw uploadError
-
-          const { data } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-
-          imageUrl = data.publicUrl
+          const stem = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+          const uploaded = await uploadGymImageWithVariants({
+            supabase,
+            gymId: currentGymId,
+            file: packageImage,
+            stem,
+            subdir: 'packages',
+          })
+          imageUrl = serializeManagedImageRef(uploaded)
         } catch (err) {
           console.error('Failed to upload package image:', err)
           alert('Failed to upload package image. Please try again.')

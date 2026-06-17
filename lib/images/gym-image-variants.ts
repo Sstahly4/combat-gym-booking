@@ -2,9 +2,20 @@ import type { GymImage, GymImageVariants } from '@/lib/types/database'
 
 export const GYM_IMAGE_VARIANT_WIDTHS = [400, 800, 1200] as const
 
+/** Storage prefix under the gym-images bucket (e.g. `{gymId}/packages`). */
+export function gymImageAssetBase(gymId: string, subdir?: string): string {
+  if (!subdir) return gymId
+  const clean = subdir.replace(/^\/+|\/+$/g, '')
+  return clean ? `${gymId}/${clean}` : gymId
+}
+
+export function variantStoragePath(assetBase: string, stem: string, widthKey: 'w400' | 'w800' | 'w1200') {
+  return `${assetBase}/variants/${stem}-${widthKey}.webp`
+}
+
 export type GeneratedGymImageVariant = {
-  key: keyof GymImageVariants
-  width: (typeof GYM_IMAGE_VARIANT_WIDTHS)[number]
+  key: 'w400' | 'w800' | 'w1200'
+  width: number
   blob: Blob
 }
 
@@ -74,13 +85,31 @@ function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
   })
 }
 
+function variantTargetsForWidth(sourceWidth: number): Array<{
+  key: 'w400' | 'w800' | 'w1200'
+  width: number
+}> {
+  const targets: Array<{ key: 'w400' | 'w800' | 'w1200'; width: number }> =
+    GYM_IMAGE_VARIANT_WIDTHS.filter((width) => width <= sourceWidth).map((width) => ({
+      key: `w${width}` as 'w400' | 'w800' | 'w1200',
+      width,
+    }))
+  // Sources narrower than 400px still get a w400 WebP at native resolution.
+  if (targets.length === 0 && sourceWidth > 0) {
+    targets.push({ key: 'w400', width: sourceWidth })
+  }
+  return targets
+}
+
 export async function createGymImageVariantBlobs(file: File): Promise<GeneratedGymImageVariant[]> {
-  if (!file.type.startsWith('image/')) return []
+  if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) {
+    return []
+  }
 
   const loaded = await loadImage(file)
   try {
     return await Promise.all(
-      GYM_IMAGE_VARIANT_WIDTHS.filter((width) => width <= loaded.width).map(async (width) => {
+      variantTargetsForWidth(loaded.width).map(async ({ key, width }) => {
         const height = Math.max(1, Math.round((loaded.height / loaded.width) * width))
         const canvas = document.createElement('canvas')
         canvas.width = width
@@ -89,8 +118,8 @@ export async function createGymImageVariantBlobs(file: File): Promise<GeneratedG
         if (!ctx) throw new Error('Could not prepare image variant canvas')
         ctx.drawImage(loaded.image, 0, 0, width, height)
         const blob = await canvasToWebp(canvas, 0.78)
-        return { key: `w${width}` as keyof GymImageVariants, width, blob }
-      })
+        return { key, width, blob }
+      }),
     )
   } finally {
     loaded.cleanup()
@@ -102,15 +131,19 @@ export async function uploadGymImageWithVariants({
   gymId,
   file,
   stem,
+  subdir,
 }: {
   supabase: SupabaseStorageClient
   gymId: string
   file: File
   stem: string
+  /** e.g. `packages`, `accommodations`, `package-variants/{packageId}` */
+  subdir?: string
 }): Promise<UploadedGymImageWithVariants> {
   const bucket = supabase.storage.from('gym-images')
   const fileExt = file.name.split('.').pop() || 'jpg'
-  const originalPath = `${gymId}/${stem}.${fileExt}`
+  const assetBase = gymImageAssetBase(gymId, subdir)
+  const originalPath = `${assetBase}/${stem}.${fileExt}`
 
   const { error: uploadError } = await bucket.upload(originalPath, file, {
     cacheControl: '31536000',
@@ -127,7 +160,7 @@ export async function uploadGymImageWithVariants({
   try {
     const generated = await createGymImageVariantBlobs(file)
     for (const variant of generated) {
-      const variantPath = `${gymId}/variants/${stem}-${variant.key}.webp`
+      const variantPath = variantStoragePath(assetBase, stem, variant.key)
       const { error: variantUploadError } = await bucket.upload(variantPath, variant.blob, {
         cacheControl: '31536000',
         contentType: 'image/webp',
@@ -165,12 +198,67 @@ export function gymImageSrcSet(image: Pick<GymImage, 'url' | 'variants'> | null 
   return parts.length > 0 ? parts.join(', ') : undefined
 }
 
+type GymImagePick = Pick<GymImage, 'url' | 'variants'> & { order?: number | null }
+
+function primaryGymImage(
+  images: GymImagePick[] | null | undefined,
+): GymImagePick | null {
+  if (!images?.length) return null
+  return [...images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0] ?? null
+}
+
+/** Sorted primary image URL for card/thumbnail contexts (checkout, review, etc.). */
+export function primaryGymImageCardSrc(images: GymImagePick[] | null | undefined): string | null {
+  const img = primaryGymImage(images)
+  if (!img) return null
+  const src = gymImageCardSrc(img)
+  return src || null
+}
+
+/** Sorted primary image URL for larger hero/thumbnail contexts. */
+export function primaryGymImageHeroSrc(images: GymImagePick[] | null | undefined): string | null {
+  const img = primaryGymImage(images)
+  if (!img) return null
+  const src = gymImageSrc(img)
+  return src || null
+}
+
+export function gymImageThumbhash(
+  image: Pick<GymImage, 'variants'> | null | undefined,
+): string | null {
+  const hash = image?.variants?.thumbhash
+  return typeof hash === 'string' && hash.length > 0 ? hash : null
+}
+
+/** Serialize upload result for text[] / text columns (backward-compatible plain URL). */
+export function serializeManagedImageRef(upload: UploadedGymImageWithVariants): string {
+  const v = upload.variants
+  if (v?.w400 || v?.w800 || v?.w1200 || v?.thumbhash) {
+    return JSON.stringify({ url: upload.url, variants: v })
+  }
+  return upload.url
+}
+
+/** Parse a stored image ref (plain URL or JSON with variants). */
+export function parseManagedImageRef(ref: string): Pick<GymImage, 'url' | 'variants'> {
+  if (ref.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(ref) as { url?: string; variants?: GymImageVariants }
+      if (parsed?.url) return { url: parsed.url, variants: parsed.variants ?? null }
+    } catch {
+      /* fall through */
+    }
+  }
+  return { url: ref, variants: null }
+}
+
 /** Map a stored image URL to gallery metadata (variants) when it matches a gym_images row. */
 export function resolveUrlToGymImage(
   gym: { images?: GymImage[] | null },
   url: string | null | undefined
 ): Pick<GymImage, 'url' | 'variants'> | null {
   if (!url) return null
+  if (url.startsWith('{')) return parseManagedImageRef(url)
   for (const img of gym.images ?? []) {
     if (img.url === url) return img
     const v = img.variants

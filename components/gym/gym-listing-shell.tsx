@@ -4,15 +4,18 @@ import { MapPin } from 'lucide-react'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import type { BookingPrefillData } from '@/lib/utils/booking-prefill'
 
+import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
+
 /** Instant gym listing paint while the server page loads after checkout exit. */
 export function GymListingShell({ prefill }: { prefill: BookingPrefillData }) {
   const gym = prefill.gym as {
     name?: string
     city?: string
     country?: string
-    images?: { url: string }[]
+    images?: { url: string; variants?: { w400?: string; w800?: string; w1200?: string } | null }[]
   }
-  const mainImage = gym.images && gym.images.length > 0 ? gym.images[0].url : null
+  const mainImage =
+    gym.images && gym.images.length > 0 ? gymImageCardSrc(gym.images[0]) : null
 
   return (
     <div className="min-h-screen bg-white pb-12">

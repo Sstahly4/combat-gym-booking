@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { AdminGymStripeSync } from '@/components/admin/admin-gym-stripe-sync'
+import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
 import {
   restoreAdminGymsListScrollIfStashed,
@@ -204,7 +205,7 @@ export default function AdminGymsPage() {
                 <div className="relative aspect-video bg-stone-100">
                   {gym.images?.length ? (
                     <img
-                      src={gym.images[0].url}
+                      src={gymImageCardSrc(gym.images[0])}
                       alt={gym.name}
                       className="h-full w-full object-cover"
                     />

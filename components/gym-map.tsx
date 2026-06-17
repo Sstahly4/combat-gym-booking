@@ -7,9 +7,10 @@ import { X, MapPin, ChevronRight, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Gym } from '@/lib/types/database'
+import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 
 interface GymMapProps {
-  gym: Gym & { images?: { url: string }[] }
+  gym: Gym & { images?: { url: string; variants?: { w400?: string; w800?: string; w1200?: string } | null }[] }
   googleMapsKey: string
 }
 
@@ -137,7 +138,7 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
                     <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
                       {gym.images && gym.images.length > 0 && (
                         <img 
-                          src={gym.images[0].url} 
+                          src={gymImageCardSrc(gym.images[0])} 
                           alt={gym.name}
                           className="w-full h-full object-cover"
                         />
@@ -181,7 +182,7 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
                     <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
                       {gym.images && gym.images.length > 0 && (
                         <img 
-                          src={gym.images[0].url} 
+                          src={gymImageCardSrc(gym.images[0])} 
                           alt={gym.name}
                           className="w-full h-full object-cover"
                         />

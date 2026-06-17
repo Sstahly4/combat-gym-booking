@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import type { Booking, Gym, Package, PackageVariant, GymImage } from '@/lib/types/database'
+import { primaryGymImageCardSrc, primaryGymImageHeroSrc } from '@/lib/images/gym-image-variants'
 import {
   ArrowLeft,
   ArrowRight,
@@ -1175,10 +1176,8 @@ export default function PaymentPage() {
       ? booking.gym.images
       : (prefill?.gym as { images?: GymImage[] } | undefined)?.images
 
-  const mainImage =
-    gymImages && gymImages.length > 0
-      ? [...gymImages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0].url
-      : null
+  const cardImage = primaryGymImageCardSrc(gymImages)
+  const heroImage = primaryGymImageHeroSrc(gymImages)
   const gymCurrency = booking?.gym?.currency ?? 'USD'
 
   const priceInfo =
@@ -1301,8 +1300,8 @@ export default function PaymentPage() {
             <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex gap-3 items-start">
-                {mainImage ? (
-                  <img src={mainImage} alt={booking.gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                {cardImage ? (
+                  <img src={cardImage} alt={booking.gym.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
                 )}
@@ -1581,9 +1580,9 @@ export default function PaymentPage() {
           <div className="lg:col-span-1 space-y-4">
             {/* Gym Summary Box */}
             <Card className="overflow-hidden border border-gray-300 rounded-lg shadow-sm">
-              {mainImage && (
+              {heroImage && (
                 <div className="w-full h-48 overflow-hidden">
-                  <img src={mainImage} alt={booking.gym.name} className="w-full h-full object-cover" />
+                  <img src={heroImage} alt={booking.gym.name} className="w-full h-full object-cover" />
                 </div>
               )}
               <CardContent className="p-5">

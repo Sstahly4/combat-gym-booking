@@ -1,12 +1,11 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Clock, MapPin, Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { GuideGym } from '@/lib/guides/thailand-gyms'
-import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
 import { trainingScheduleSnippet } from '@/lib/guides/schedule-snippet'
 import { labelGymAmenity, mergeGymAmenitiesFromDb } from '@/lib/constants/gym-amenities'
+import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 function formatMoney(amount: number, currency: string) {
   try {
@@ -45,8 +44,8 @@ function buildSignalLine(gym: GuideGym): string | null {
 }
 
 export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: GuideGymCardProps) {
-  const imageSrc =
-    gymImageCardSrc(gym.images?.[0]) || fallbackImageSrc || '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
+  const fallbackSrc = fallbackImageSrc || '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
+  const primaryImage = gym.images?.[0]
 
   const priceLine = gym.price_per_week
     ? `${formatMoney(gym.price_per_day, gym.currency)}/day · ${formatMoney(gym.price_per_week, gym.currency)}/week`
@@ -63,14 +62,21 @@ export function GuideGymCard({ gym, rank, priorityImage, fallbackImageSrc }: Gui
     <Link href={gymCanonicalPath(gym)} className="block h-full">
       <Card className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full overflow-hidden">
         <div className="relative w-full aspect-[16/9] bg-gray-100">
-          <Image
-            src={imageSrc}
-            alt={gym.name}
-            fill
-            priority={Boolean(priorityImage)}
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover"
-          />
+          {primaryImage ? (
+            <ResponsiveGymImage
+              image={primaryImage}
+              alt={gym.name}
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              priority={Boolean(priorityImage)}
+            />
+          ) : (
+            <img
+              src={fallbackSrc}
+              alt={gym.name}
+              className="absolute inset-0 h-full w-full object-cover"
+              loading={priorityImage ? 'eager' : 'lazy'}
+            />
+          )}
           {typeof rank === 'number' && (
             <div className="absolute top-3 left-3 bg-[#003580] text-white text-xs font-semibold px-2 py-1 rounded">
               #{rank}
