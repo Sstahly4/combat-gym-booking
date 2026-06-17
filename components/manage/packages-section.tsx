@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OfferStepper } from './offer-stepper'
-import { PackageEditShell } from './package-edit-shell'
+import { PackageEditShell, PACKAGE_EDITOR_CHROME } from './package-edit-shell'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import {
@@ -88,7 +88,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
     setEditingPackage(null)
   }
 
-  // ── Tabbed package editor (Details / Media / Pricing & Seasons) ─────────
+  // ── Package editor (wizard only; sits below Partner Hub navbar) ─────────
   if (editShellPackage) {
     return (
       <PackageEditShell
@@ -104,10 +104,9 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
   // ── Full-screen stepper (new offer only) ───────────────────────────────
   if (showStepper) {
     return (
-      <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
-        {/* Back bar — full width; step content aligns below in OfferStepper */}
-        <div className="sticky top-0 z-20 border-b border-gray-200 bg-white">
-          <div className="flex items-center gap-4 px-4 py-3 sm:px-6">
+      <div className={PACKAGE_EDITOR_CHROME}>
+        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
             <button
               type="button"
               onClick={handleClose}
