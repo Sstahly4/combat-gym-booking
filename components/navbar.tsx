@@ -470,6 +470,7 @@ export function Navbar() {
             {/* Hamburger Menu Button */}
             <button
               type="button"
+              aria-label={mobileMenuOpen ? 'Close main menu' : 'Open main menu'}
               className="p-2 rounded-full text-white/90 hover:bg-white/10 transition-colors touch-manipulation"
               onClick={toggleMobileMenu}
               onPointerEnter={preloadListYourGymMenuIcon}

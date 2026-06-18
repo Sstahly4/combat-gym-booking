@@ -4,6 +4,17 @@
 > Compare real prices, verified gyms, and packages — instant
 > booking, no DMs.
 
+Discover and book elite combat sports training camps worldwide.
+
+## Core Directory
+
+- [Home](https://www.combatstay.com)
+- [Explore Camps](https://www.combatstay.com/search)
+- [About Us](https://www.combatstay.com/about)
+- [Contact](https://www.combatstay.com/contact)
+- [FAQ](https://www.combatstay.com/faq)
+- [Blog](https://www.combatstay.com/blog)
+
 CombatStay is an OTA (online travel agency) marketplace connecting combat sports
 travelers with gyms offering training, accommodation, and stay-and-train packages
 in a single booking. Primary market: Thailand. Global expansion planned.
@@ -26,11 +37,11 @@ in a single booking. Primary market: Thailand. Global expansion planned.
 
 ## Key pages
 
-- Homepage: https://www.combatstay.com
-- Search / browse gyms: https://www.combatstay.com/search
-- Search filtered to Thailand: https://www.combatstay.com/search?country=Thailand
-- Blog / training guides: https://www.combatstay.com/blog
-- FAQ / help centre: https://www.combatstay.com/faq
+- [Homepage](https://www.combatstay.com)
+- [Search / browse gyms](https://www.combatstay.com/search)
+- [Search filtered to Thailand](https://www.combatstay.com/search?country=Thailand)
+- [Blog / training guides](https://www.combatstay.com/blog)
+- [FAQ / help centre](https://www.combatstay.com/faq)
 
 ## Gym listings
 
