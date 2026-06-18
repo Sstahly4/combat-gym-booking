@@ -108,7 +108,7 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
           observer.disconnect()
         }
       },
-      { rootMargin: '200px 0px' },
+      { rootMargin: '0px 0px 500px 0px' },
     )
     observer.observe(node)
     return () => observer.disconnect()

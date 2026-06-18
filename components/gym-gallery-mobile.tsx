@@ -17,30 +17,71 @@ function circularSlideDistance(idx: number, currentIndex: number, total: number)
   return Math.min(Math.abs(idx - currentIndex), total - Math.abs(idx - currentIndex))
 }
 
+function wrapIndex(index: number, total: number) {
+  return ((index % total) + total) % total
+}
+
+function neighborIndices(center: number, total: number, radius: number) {
+  const indices: number[] = []
+  for (let offset = -radius; offset <= radius; offset += 1) {
+    indices.push(wrapIndex(center + offset, total))
+  }
+  return indices
+}
+
 export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMobileProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [prefetchIndices, setPrefetchIndices] = useState<Set<number>>(() => new Set([0]))
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
 
   if (!images || images.length === 0) return null
 
-  const goTo = useCallback((index: number) => {
-    setCurrentIndex(((index % images.length) + images.length) % images.length)
-  }, [images.length])
+  const addPrefetchIndices = useCallback(
+    (indices: number[]) => {
+      setPrefetchIndices((prev) => {
+        const next = new Set(prev)
+        for (const idx of indices) next.add(idx)
+        return next
+      })
+    },
+    [],
+  )
+
+  const goTo = useCallback(
+    (index: number) => {
+      const wrapped = wrapIndex(index, images.length)
+      addPrefetchIndices(neighborIndices(wrapped, images.length, PRELOAD_AHEAD))
+      setCurrentIndex(wrapped)
+    },
+    [addPrefetchIndices, images.length],
+  )
+
+  const prefetchBeforeNav = useCallback(
+    (targetIndex: number) => {
+      addPrefetchIndices(neighborIndices(targetIndex, images.length, PRELOAD_AHEAD))
+    },
+    [addPrefetchIndices, images.length],
+  )
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation()
-    goTo(currentIndex + 1)
+    const target = wrapIndex(currentIndex + 1, images.length)
+    prefetchBeforeNav(target)
+    goTo(target)
   }
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation()
-    goTo(currentIndex - 1)
+    const target = wrapIndex(currentIndex - 1, images.length)
+    prefetchBeforeNav(target)
+    goTo(target)
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
     touchDeltaX.current = 0
+    addPrefetchIndices(neighborIndices(currentIndex, images.length, PRELOAD_AHEAD + 1))
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -50,21 +91,22 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
 
   const handleTouchEnd = () => {
     if (Math.abs(touchDeltaX.current) > 40) {
-      if (touchDeltaX.current < 0) {
-        goTo(currentIndex + 1)
-      } else {
-        goTo(currentIndex - 1)
-      }
+      const target =
+        touchDeltaX.current < 0
+          ? wrapIndex(currentIndex + 1, images.length)
+          : wrapIndex(currentIndex - 1, images.length)
+      prefetchBeforeNav(target)
+      goTo(target)
     }
     touchStartX.current = null
     touchDeltaX.current = 0
   }
 
   const handleImageClick = () => {
-    if (onImageClick) {
-      onImageClick(currentIndex)
-    }
+    onImageClick?.(currentIndex)
   }
+
+  const trackOffsetPercent = (currentIndex / images.length) * 100
 
   return (
     <div
@@ -77,9 +119,10 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
         className="flex h-full"
         style={{
           width: `${images.length * 100}%`,
-          transform: `translateX(-${(currentIndex / images.length) * 100}%)`,
+          transform: `translate3d(-${trackOffsetPercent}%, 0, 0)`,
           transition: 'transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
         onClick={handleImageClick}
       >
@@ -87,7 +130,7 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
           const isCoverPhoto = idx === 0
           const isNearActive =
             circularSlideDistance(idx, currentIndex, images.length) <= PRELOAD_AHEAD
-          const shouldLoadImage = isCoverPhoto || isNearActive
+          const shouldLoadImage = isCoverPhoto || isNearActive || prefetchIndices.has(idx)
 
           return (
             <div
