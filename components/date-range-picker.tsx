@@ -187,6 +187,85 @@ export function DateRangePicker({
     return isDateStart(date) || isDateEnd(date)
   }
 
+  const isSingleDayRange =
+    !!checkinDate && !!checkoutDate && isSameDay(checkinDate, checkoutDate)
+
+  const renderDayCell = (
+    day: Date,
+    month: Date,
+    idx: number,
+    variant: 'mobile' | 'desktop',
+  ) => {
+    const inCurrentMonth = isSameMonth(day, month)
+    const isStart = isDateStart(day)
+    const isEnd = isDateEnd(day)
+    const inRange = isDateInRange(day)
+    const isSelected = isDateSelected(day)
+    const isDisabled = isDateDisabled(day) || (variant === 'mobile' && !inCurrentMonth)
+    const isSingleDay = isSingleDayRange && isStart && isEnd
+
+    const rangeBgClass =
+      !isSingleDay && inRange && isStart
+        ? 'bg-[linear-gradient(to_right,transparent_50%,#eff6ff_50%)]'
+        : !isSingleDay && inRange && isEnd
+          ? 'bg-[linear-gradient(to_right,#eff6ff_50%,transparent_50%)]'
+          : !isSingleDay && inRange
+            ? 'bg-blue-50'
+            : ''
+
+    const anchorSize = variant === 'mobile' ? 'h-11 w-11' : 'h-10 w-10'
+    const textSize = variant === 'mobile' ? 'text-sm' : 'text-sm'
+
+    return (
+      <div
+        key={idx}
+        className={[
+          'flex items-center justify-center w-full h-full',
+          rangeBgClass,
+          variant === 'mobile' && !inCurrentMonth ? 'pointer-events-none' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            if (variant === 'mobile') {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+            handleDateClick(day)
+          }}
+          onMouseEnter={() =>
+            variant === 'desktop' && !checkoutDate && inCurrentMonth && !isDisabled && setHoverDate(day)
+          }
+          disabled={isDisabled}
+          className={[
+            `${textSize} font-medium transition-colors flex items-center justify-center touch-manipulation`,
+            isSelected
+              ? `${anchorSize} rounded-full bg-[#003580] text-white hover:bg-[#003580] active:bg-[#003580]`
+              : 'w-full h-full min-w-0 min-h-0',
+            variant === 'mobile' && !inCurrentMonth ? 'text-transparent' : '',
+            variant === 'desktop' && !inCurrentMonth ? 'text-gray-300 opacity-40' : '',
+            isDisabled
+              ? 'cursor-not-allowed text-gray-300 opacity-30'
+              : 'cursor-pointer',
+            inRange && !isSelected && inCurrentMonth ? 'text-[#003580]' : '',
+            !inRange && !isSelected && !isDisabled && inCurrentMonth
+              ? variant === 'mobile'
+                ? 'text-gray-900 active:bg-gray-200 hover:bg-gray-100 rounded-full'
+                : 'text-gray-900 hover:bg-gray-100 rounded-full'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {inCurrentMonth ? format(day, 'd') : variant === 'mobile' ? '' : format(day, 'd')}
+        </button>
+      </div>
+    )
+  }
+
   const isDateDisabled = (date: Date) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -322,42 +401,8 @@ export function DateRangePicker({
                     <div className="text-base font-semibold text-gray-900 mb-2">
                       {format(m, 'MMMM yyyy')}
                     </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {days.map((day, idx) => {
-                        const isCurrent = isSameMonth(day, m)
-                        const isSelected = isDateSelected(day)
-                        const inRange = isDateInRange(day)
-                        const isStart = isDateStart(day)
-                        const isEnd = isDateEnd(day)
-                        // On mobile, we hide/disable filler days from adjacent months to avoid confusion
-                        const isDisabled = isDateDisabled(day) || !isCurrent
-
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleDateClick(day)
-                            }}
-                            disabled={isDisabled}
-                            className={`
-                              h-11 w-11 rounded-full text-sm font-medium transition-colors touch-manipulation
-                              ${!isCurrent ? 'text-transparent' : 'text-gray-900'}
-                              ${isDisabled ? 'cursor-not-allowed text-gray-300 opacity-20' : 'cursor-pointer active:bg-gray-200 hover:bg-gray-100'}
-                              ${isSelected ? 'bg-[#003580] text-white hover:bg-[#003580] active:bg-[#003580]' : ''}
-                              ${inRange && !isSelected ? 'bg-blue-50 text-[#003580]' : ''}
-                              ${isStart && !isEnd ? 'rounded-r-none' : ''}
-                              ${isEnd && !isStart ? 'rounded-l-none' : ''}
-                              ${inRange && !isStart && !isEnd ? 'rounded-none' : ''}
-                              ${!isCurrent ? 'opacity-40' : ''}
-                            `}
-                          >
-                            {isCurrent ? format(day, 'd') : ''}
-                          </button>
-                        )
-                      })}
+                    <div className="grid grid-cols-7 auto-rows-[2.75rem]">
+                      {days.map((day, idx) => renderDayCell(day, m, idx, 'mobile'))}
                     </div>
                   </div>
                 )
@@ -434,38 +479,8 @@ export function DateRangePicker({
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {days1.map((day, idx) => {
-                    const isCurrentMonth = isSameMonth(day, month1)
-                    const isSelected = isDateSelected(day)
-                    const inRange = isDateInRange(day)
-                    const isStart = isDateStart(day)
-                    const isEnd = isDateEnd(day)
-                    const isDisabled = isDateDisabled(day)
-
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleDateClick(day)}
-                        onMouseEnter={() => !checkoutDate && setHoverDate(day)}
-                        disabled={isDisabled}
-                        className={`
-                          h-10 w-10 rounded text-sm font-medium transition-colors
-                          ${!isCurrentMonth ? 'text-gray-300' : ''}
-                          ${isDisabled ? 'cursor-not-allowed text-gray-300 opacity-40' : 'cursor-pointer hover:bg-gray-100'}
-                          ${isSelected ? 'bg-[#003580] text-white hover:bg-[#003580]' : ''}
-                          ${inRange && !isSelected ? 'bg-blue-50 text-[#003580]' : ''}
-                          ${isStart && !isEnd ? 'rounded-r-none' : ''}
-                          ${isEnd && !isStart ? 'rounded-l-none' : ''}
-                          ${inRange && !isStart && !isEnd ? 'rounded-none' : ''}
-                          ${!isCurrentMonth ? 'opacity-40' : ''}
-                        `}
-                      >
-                        {format(day, 'd')}
-                      </button>
-                    )
-                  })}
+                <div className="grid grid-cols-7 auto-rows-[2.5rem]">
+                  {days1.map((day, idx) => renderDayCell(day, month1, idx, 'desktop'))}
                 </div>
               </div>
 
@@ -492,38 +507,8 @@ export function DateRangePicker({
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {days2.map((day, idx) => {
-                    const isCurrentMonth = isSameMonth(day, month2)
-                    const isSelected = isDateSelected(day)
-                    const inRange = isDateInRange(day)
-                    const isStart = isDateStart(day)
-                    const isEnd = isDateEnd(day)
-                    const isDisabled = isDateDisabled(day)
-
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleDateClick(day)}
-                        onMouseEnter={() => !checkoutDate && setHoverDate(day)}
-                        disabled={isDisabled}
-                        className={`
-                          h-10 w-10 rounded text-sm font-medium transition-colors
-                          ${!isCurrentMonth ? 'text-gray-300' : ''}
-                          ${isDisabled ? 'cursor-not-allowed text-gray-300 opacity-40' : 'cursor-pointer hover:bg-gray-100'}
-                          ${isSelected ? 'bg-[#003580] text-white hover:bg-[#003580]' : ''}
-                          ${inRange && !isSelected ? 'bg-blue-50 text-[#003580]' : ''}
-                          ${isStart && !isEnd ? 'rounded-r-none' : ''}
-                          ${isEnd && !isStart ? 'rounded-l-none' : ''}
-                          ${inRange && !isStart && !isEnd ? 'rounded-none' : ''}
-                          ${!isCurrentMonth ? 'opacity-40' : ''}
-                        `}
-                      >
-                        {format(day, 'd')}
-                      </button>
-                    )
-                  })}
+                <div className="grid grid-cols-7 auto-rows-[2.5rem]">
+                  {days2.map((day, idx) => renderDayCell(day, month2, idx, 'desktop'))}
                 </div>
               </div>
             </div>

@@ -1092,13 +1092,15 @@ export function SearchBarRedesign({
     today.setHours(0, 0, 0, 0)
     const isDisabled = isBefore(day, today)
     const isSelected = isStart || isEnd
+    const isSingleDay =
+      !!checkinDate && !!checkoutDate && isSameDay(checkinDate, checkoutDate) && isStart && isEnd
 
     const rangeBgClass =
-      inRange && isStart
+      !isSingleDay && inRange && isStart
         ? 'bg-[linear-gradient(to_right,transparent_50%,#eff6ff_50%)]'
-        : inRange && isEnd
+        : !isSingleDay && inRange && isEnd
           ? 'bg-[linear-gradient(to_right,#eff6ff_50%,transparent_50%)]'
-          : inRange
+          : !isSingleDay && inRange
             ? 'bg-blue-50'
             : ''
 
