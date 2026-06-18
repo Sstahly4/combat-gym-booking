@@ -5,12 +5,6 @@ import { createPublicClient } from '@/lib/supabase/public-server'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
 import type { GymReview } from '@/lib/gym/gym-reviews-data'
 
-export function looksLikeUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  )
-}
-
 export interface GymListing extends Gym {
   images: GymImage[]
   owner: { full_name: string | null }

@@ -1,33 +1,34 @@
 'use client'
 
-import { Suspense, type ReactNode } from 'react'
+import { Suspense, useEffect, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { BookingProvider } from '@/lib/contexts/booking-context'
+import { BookingProvider, useBooking } from '@/lib/contexts/booking-context'
 import { ReviewModalProvider } from '@/lib/contexts/review-modal-context'
 
-function GymPageClientShellInner({
-  children,
-  gymId,
-  gymSlugOrId,
-}: {
-  children: ReactNode
-  gymId: string
-  gymSlugOrId: string
-}) {
+/** Apply ?checkin=&checkout= from the URL after hydration (keeps page ISR-cacheable). */
+function BookingUrlDateSync() {
   const searchParams = useSearchParams()
-  const checkin = searchParams.get('checkin') ?? undefined
-  const checkout = searchParams.get('checkout') ?? undefined
+  const { setCheckin, setCheckout } = useBooking()
 
+  useEffect(() => {
+    const checkin = searchParams.get('checkin')
+    const checkout = searchParams.get('checkout')
+    if (checkin) setCheckin(checkin)
+    if (checkout) setCheckout(checkout)
+  }, [searchParams, setCheckin, setCheckout])
+
+  return null
+}
+
+function BookingUrlDateSyncBoundary() {
   return (
-    <BookingProvider initialCheckin={checkin} initialCheckout={checkout}>
-      <ReviewModalProvider gymSlugOrId={gymSlugOrId} gymId={gymId}>
-        {children}
-      </ReviewModalProvider>
-    </BookingProvider>
+    <Suspense fallback={null}>
+      <BookingUrlDateSync />
+    </Suspense>
   )
 }
 
-/** Reads URL search params on the client so the gym page shell can stay ISR-cacheable. */
+/** Client providers for gym detail — search params read without opting the page into dynamic SSR. */
 export function GymPageClientShell({
   children,
   gymId,
@@ -38,10 +39,11 @@ export function GymPageClientShell({
   gymSlugOrId: string
 }) {
   return (
-    <Suspense fallback={<>{children}</>}>
-      <GymPageClientShellInner gymId={gymId} gymSlugOrId={gymSlugOrId}>
+    <BookingProvider>
+      <BookingUrlDateSyncBoundary />
+      <ReviewModalProvider gymSlugOrId={gymSlugOrId} gymId={gymId}>
         {children}
-      </GymPageClientShellInner>
-    </Suspense>
+      </ReviewModalProvider>
+    </BookingProvider>
   )
 }

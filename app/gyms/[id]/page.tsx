@@ -32,8 +32,8 @@ import {
   getOwnerDraftGym,
   getPublicGym,
   getPublicGymBySlug,
-  looksLikeUuid,
 } from '@/lib/gym/gym-listing-data'
+import { looksLikeUuid } from '@/lib/utils/gym-route'
 
 function StarRating({ rating }: { rating: number }) {
   return (

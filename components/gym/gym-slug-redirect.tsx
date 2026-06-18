@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { looksLikeUuid } from '@/lib/gym/gym-listing-data'
+import { looksLikeUuid } from '@/lib/utils/gym-route'
 
 /** Canonical slug redirect for legacy UUID gym URLs (preserves query string). */
 function GymSlugRedirect({ slug }: { slug: string }) {
