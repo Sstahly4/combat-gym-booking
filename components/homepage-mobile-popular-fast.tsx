@@ -14,7 +14,7 @@ export async function HomepageMobilePopularFast() {
         <p className="text-sm text-gray-700 mb-3">
           From intensive fight camps to holistic training retreats, find your perfect match
         </p>
-        <FeaturedCarousel gyms={gyms} priorityCount={4} />
+        <FeaturedCarousel gyms={gyms} priorityCount={2} eagerCount={4} />
       </div>
     </section>
   )

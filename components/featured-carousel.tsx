@@ -12,14 +12,20 @@ import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 interface FeaturedCarouselProps {
   gyms: any[]
   /**
-   * Number of leading card images to mark as `priority` so Next.js emits
-   * a <link rel="preload"> for them. Use this on the first carousel that
-   * is above the fold on the homepage. Defaults to 0 (no preloads).
+   * Leading cards with `fetchPriority="high"` — use sparingly for LCP (e.g. 2 visible mobile cards).
    */
   priorityCount?: number
+  /**
+   * Additional leading cards to load eagerly without high fetch priority (peek / next swipe).
+   */
+  eagerCount?: number
 }
 
-export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselProps) {
+export function FeaturedCarousel({
+  gyms,
+  priorityCount = 0,
+  eagerCount = 0,
+}: FeaturedCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(() => gyms.length > 2)
@@ -164,6 +170,7 @@ export function FeaturedCarousel({ gyms, priorityCount = 0 }: FeaturedCarouselPr
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 288px"
                     priority={idx < priorityCount}
+                    eager={idx >= priorityCount && idx < eagerCount}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gray-100 text-sm">

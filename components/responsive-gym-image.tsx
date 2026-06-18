@@ -72,9 +72,9 @@ export function ResponsiveGymImage({
       setUseFade(false)
     } else {
       setLoaded(false)
-      setUseFade(true)
+      setUseFade(!priority)
     }
-  }, [src])
+  }, [src, priority])
 
   const handleLoad = () => {
     setLoaded(true)
@@ -87,7 +87,7 @@ export function ResponsiveGymImage({
       ? `${Math.round(fx * 100)}% ${Math.round(fy * 100)}%`
       : undefined
 
-  const showPlaceholder = Boolean(placeholderUrl)
+  const showPlaceholder = Boolean(placeholderUrl) && !priority
   const imageVisible = loaded || !showPlaceholder
   const fadeClass = useFade ? 'transition-opacity duration-300 ease-out' : 'transition-none'
 
