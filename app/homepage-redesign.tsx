@@ -294,7 +294,7 @@ async function HomepageCarouselContent({
                   sports={availableSports}
                   country={mostCommonCountry}
                   dateDisplay={dateDisplay}
-                  priorityCount={4}
+                  priorityCount={0}
                 />
               </div>
             </section>
@@ -318,7 +318,7 @@ async function HomepageCarouselContent({
               <p className="text-sm text-gray-700 mb-3">
                 Highly rated by fighters who&apos;ve trained there - verified reviews from real bookings
               </p>
-              <FeaturedCarousel gyms={topRatedGyms} priorityCount={3} />
+              <FeaturedCarousel gyms={topRatedGyms} priorityCount={0} />
             </div>
           </section>
           <section className="pt-4 pb-4 bg-white">

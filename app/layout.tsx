@@ -15,6 +15,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 const siteUrl = canonicalSiteUrl()
 const GA_MEASUREMENT_ID = "G-7D24ZQQRDL"
+const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
@@ -97,6 +98,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {supabaseOrigin ? (
+          <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+        ) : null}
+      </head>
       <body className={`${inter.className} flex flex-col min-h-screen`}>
         <Script
           id="review-checkout-chrome-boot"
