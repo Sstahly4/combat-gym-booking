@@ -1,8 +1,8 @@
 'use client'
 
 import { GymListingShell } from '@/components/gym/gym-listing-shell'
+import { GymDetailSkeleton } from '@/components/gym/gym-detail-skeleton'
 import { ReviewModalShell } from '@/components/booking/review-modal-shell'
-import { LoadingOverlay } from '@/components/loading-overlay'
 import { hydrateReviewParams, readBookingPrefillForGymRoute } from '@/lib/utils/booking-prefill'
 import { gymSlugOrIdFromPathname } from '@/lib/utils/gym-route'
 import {
@@ -31,9 +31,5 @@ export default function Loading() {
     }
   }
 
-  return (
-    <div className="min-h-[100dvh] bg-white">
-      <LoadingOverlay show={true} />
-    </div>
-  )
+  return <GymDetailSkeleton />
 }

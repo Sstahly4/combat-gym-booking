@@ -109,12 +109,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <AppRootProviders>
-          <Navbar />
-          <main className="flex min-h-0 flex-1 flex-col">
-            {children}
-          </main>
-          <ConditionalFooter />
-          <MobileBottomNav />
+          <div className="flex min-h-screen flex-1 flex-col">
+            <Navbar />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <ConditionalFooter />
+            <MobileBottomNav />
+          </div>
         </AppRootProviders>
         <Analytics />
         <SpeedInsights />
