@@ -13,8 +13,7 @@ export function GymListingShell({ prefill }: { prefill: BookingPrefillData }) {
     country?: string
     images?: { url: string; variants?: { w400?: string; w800?: string; w1200?: string } | null }[]
   }
-  const mainImage =
-    gym.images && gym.images.length > 0 ? primaryGymImageCardSrc(gym.images[0]) : null
+  const mainImage = primaryGymImageCardSrc(gym.images)
 
   return (
     <GymPageMinHeightShell className="pb-12">
