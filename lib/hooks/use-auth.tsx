@@ -76,25 +76,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 10000)
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (!mounted) return
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          void fetchProfile(session.user.id)
-        } else {
-          clearTimeout(timeoutId)
-          setLoading(false)
-        }
-      })
-      .catch((err) => {
-        console.error('Error getting session:', err)
-        if (mounted) {
-          clearTimeout(timeoutId)
-          setLoading(false)
-        }
-      })
+    const runInitialSession = () => {
+      if (!mounted) return
+      supabase.auth
+        .getSession()
+        .then(({ data: { session } }) => {
+          if (!mounted) return
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            void fetchProfile(session.user.id)
+          } else {
+            clearTimeout(timeoutId)
+            setLoading(false)
+          }
+        })
+        .catch((err) => {
+          console.error('Error getting session:', err)
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setLoading(false)
+          }
+        })
+    }
+
+    const cancelDeferred =
+      typeof requestIdleCallback !== 'undefined'
+        ? (() => {
+            const id = requestIdleCallback(runInitialSession, { timeout: 1500 })
+            return () => cancelIdleCallback(id)
+          })()
+        : (() => {
+            const id = window.setTimeout(runInitialSession, 1)
+            return () => clearTimeout(id)
+          })()
 
     const {
       data: { subscription },
@@ -153,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false
       clearTimeout(timeoutId)
+      cancelDeferred()
       subscription.unsubscribe()
     }
   }, [])

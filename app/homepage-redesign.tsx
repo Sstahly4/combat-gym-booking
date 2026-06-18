@@ -6,13 +6,12 @@ import { SportTypeCarousel } from '@/components/sport-type-carousel'
 import { TripPlanner } from '@/components/trip-planner'
 import { HomepageHero } from '@/components/homepage-hero'
 import { HomepageCarouselSkeleton } from '@/components/homepage-carousel-skeleton'
-import { HomepageFirstRowSkeleton } from '@/components/homepage-first-row-skeleton'
 import { HomepageMobilePopularFast } from '@/components/homepage-mobile-popular-fast'
 import { OffersSection } from '@/components/offers-section'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { BLUR_DATA_URL } from '@/lib/images/blur'
 import { homepageSportTileVariants } from '@/lib/homepage/homepage-sport-tile-images'
-import { getHomepageDataCached } from '@/lib/homepage/fetch-homepage-data'
+import { getHomepageDataCached, getHomepageFirstRowCached } from '@/lib/homepage/fetch-homepage-data'
 import {
   buildHomepageRow,
   compareByQuality,
@@ -26,13 +25,13 @@ import {
 } from '@/lib/homepage/homepage-rows'
 
 export default async function HomepageRedesign() {
+  const popularGymsMobile = await getHomepageFirstRowCached()
+
   return (
     <BookingProvider>
       <main className="min-h-screen bg-white">
         <HomepageHero />
-        <Suspense fallback={<HomepageFirstRowSkeleton />}>
-          <HomepageMobilePopularFast />
-        </Suspense>
+        <HomepageMobilePopularFast gyms={popularGymsMobile} />
         <Suspense fallback={<HomepageCarouselSkeleton />}>
           <HomepageCarouselContent />
         </Suspense>

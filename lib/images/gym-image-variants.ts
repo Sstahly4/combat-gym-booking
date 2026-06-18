@@ -28,6 +28,7 @@ type SupabaseStorageClient = {
         options?: { cacheControl?: string; upsert?: boolean; contentType?: string }
       ) => Promise<{ error: { message: string } | null }>
       getPublicUrl: (path: string) => { data: { publicUrl: string } }
+      remove: (paths: string[]) => Promise<{ error: { message: string } | null }>
     }
   }
 }
@@ -156,9 +157,15 @@ export async function uploadGymImageWithVariants({
 
   const variants: GymImageVariants = {}
   const storagePaths = [originalPath]
+  const uploadedVariantPaths: string[] = []
 
   try {
     const generated = await createGymImageVariantBlobs(file)
+    if (generated.length === 0) {
+      throw new Error(
+        'Could not generate WebP variants from this file. Use JPEG, PNG, or WebP — HEIC/HEIF is not supported in the browser uploader.',
+      )
+    }
     for (const variant of generated) {
       const variantPath = variantStoragePath(assetBase, stem, variant.key)
       const { error: variantUploadError } = await bucket.upload(variantPath, variant.blob, {
@@ -169,10 +176,16 @@ export async function uploadGymImageWithVariants({
       if (variantUploadError) throw new Error(variantUploadError.message)
       variants[variant.key] = bucket.getPublicUrl(variantPath).data.publicUrl
       storagePaths.push(variantPath)
+      uploadedVariantPaths.push(variantPath)
     }
   } catch (error) {
-    // Variant generation is an optimization; keep the original image as a safe fallback.
-    console.warn('Image variant generation failed:', error)
+    await bucket.remove([originalPath, ...uploadedVariantPaths]).catch(() => {})
+    throw error instanceof Error ? error : new Error('Image variant generation failed')
+  }
+
+  if (!variants.w400) {
+    await bucket.remove([originalPath, ...uploadedVariantPaths]).catch(() => {})
+    throw new Error('Upload requires a w400 WebP variant. Try a standard photo format or a larger image.')
   }
 
   return { url: urlData.publicUrl, variants, storagePaths }

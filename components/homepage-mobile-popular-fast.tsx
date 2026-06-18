@@ -1,10 +1,8 @@
 import { FeaturedCarousel } from '@/components/featured-carousel'
-import { getHomepageFirstRowCached } from '@/lib/homepage/fetch-homepage-data'
+import type { HomepageGym } from '@/lib/homepage/homepage-rows'
 
-/** Fast LCP path: slim gym sample, separate from the full catalog Suspense boundary. */
-export async function HomepageMobilePopularFast() {
-  const gyms = await getHomepageFirstRowCached()
-
+/** Mobile Popular row — gyms fetched in the static page shell (no Suspense) for LCP. */
+export function HomepageMobilePopularFast({ gyms }: { gyms: HomepageGym[] }) {
   if (gyms.length === 0) return null
 
   return (

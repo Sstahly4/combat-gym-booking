@@ -144,8 +144,9 @@ export async function POST(request: NextRequest) {
     storagePaths.push(variantPath)
   }
 
-  if (Object.keys(widthUrls).length === 0) {
-    return NextResponse.json({ error: 'No variants were generated' }, { status: 422 })
+  if (!widthUrls.w400) {
+    await bucket.remove(storagePaths).catch(() => {})
+    return NextResponse.json({ error: 'No w400 variant was generated' }, { status: 422 })
   }
 
   const variants: GymImageVariants = mergeVariantUrls(null, widthUrls, thumbhash)
