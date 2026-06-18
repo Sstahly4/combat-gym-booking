@@ -8,6 +8,7 @@ import { Star, X, ChevronRight } from 'lucide-react'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { PriceBreakdown } from '@/lib/utils'
 import { resolveClientPriceBreakdown } from '@/lib/booking/client-price-breakdown'
+import { applyTrainingTierToBreakdown } from '@/lib/booking/price-breakdown-display'
 import {
   CheckoutSummaryRow,
   formatCheckoutAmountOnly,
@@ -228,6 +229,7 @@ export function ReviewModal({
   )
   const [variant, setVariant] = useState<PackageVariant | null>(null)
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
+  const [hasSeasonalOverlap, setHasSeasonalOverlap] = useState(false)
 
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
@@ -354,6 +356,7 @@ export function ReviewModal({
   useEffect(() => {
     if (!package_ || pricingDuration <= 0 || !checkin || !checkout) {
       setPriceBreakdown(null)
+      setHasSeasonalOverlap(false)
       return
     }
 
@@ -376,8 +379,11 @@ export function ReviewModal({
       checkin,
       checkout,
       training_tier: showTrainingTier ? trainingTier : 'twice_daily',
-    }).then(({ breakdown }) => {
-      if (!cancelled) setPriceBreakdown(breakdown)
+    }).then(({ breakdown, has_seasonal_overlap }) => {
+      if (!cancelled) {
+        setPriceBreakdown(breakdown)
+        setHasSeasonalOverlap(has_seasonal_overlap)
+      }
     })
 
     return () => {
@@ -392,6 +398,10 @@ export function ReviewModal({
   }, [showTrainingTier, trainingTier])
 
   const priceInfo = priceBreakdown ?? syncFallbackPrice
+  const displayPriceInfo =
+    priceInfo && showTrainingTier
+      ? applyTrainingTierToBreakdown(priceInfo, { showTrainingTier, trainingTier })
+      : priceInfo
 
   const chargeTotalPrice = priceInfo?.price ?? null
   const totalPrice =
@@ -614,11 +624,13 @@ export function ReviewModal({
             />
           )}
 
-          {priceSheetOpen && priceInfo && gym && (
+          {priceSheetOpen && displayPriceInfo && gym && (
             <PriceDetailsSheet
-              lines={priceInfo.lines}
-              savedVsNightly={priceInfo.savedVsNightly}
-              total={priceInfo.price}
+              lines={displayPriceInfo.lines}
+              savedVsNightly={displayPriceInfo.savedVsNightly}
+              total={displayPriceInfo.price}
+              gymName={gym.name}
+              has_seasonal_overlap={hasSeasonalOverlap}
               gymCurrency={gym.currency ?? 'USD'}
               displayCurrency={selectedCurrency}
               convertPrice={convertPrice}

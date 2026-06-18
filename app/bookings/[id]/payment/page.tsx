@@ -41,7 +41,15 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { calculatePackagePrice } from '@/lib/utils'
+import { calculatePackagePrice, type PriceBreakdown } from '@/lib/utils'
+import { resolveClientPriceBreakdown } from '@/lib/booking/client-price-breakdown'
+import {
+  applyTrainingTierToBreakdown,
+} from '@/lib/booking/price-breakdown-display'
+import {
+  offersOnceDailyTrainingChoice,
+  parseTrainingTier,
+} from '@/lib/packages/training-access'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { CheckoutPaymentConsent } from '@/components/booking/checkout-payment-consent'
@@ -648,6 +656,8 @@ export default function PaymentPage() {
       return null
     }
   })
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
+  const [hasSeasonalOverlap, setHasSeasonalOverlap] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [addressCopied, setAddressCopied] = useState(false)
@@ -1114,6 +1124,95 @@ export default function PaymentPage() {
   const isTraining = booking?.package?.type === 'training'
   const displayDuration = isTraining ? Math.max(1, duration + 1) : duration
 
+  const showTrainingTier = booking?.package
+    ? offersOnceDailyTrainingChoice(booking.package, booking.variant ?? null)
+    : false
+  const resolvedTrainingTier = parseTrainingTier(booking?.training_tier)
+
+  const tierAwareSyncFallback =
+    booking?.package && displayDuration > 0
+      ? calculatePackagePrice(displayDuration, booking.package.type, {
+          daily:
+            showTrainingTier && resolvedTrainingTier === 'once_daily'
+              ? booking.variant?.once_daily_price_per_day ??
+                booking.package.once_daily_price_per_day ??
+                booking.variant?.price_per_day ??
+                booking.package.price_per_day
+              : booking.variant?.price_per_day ?? booking.package.price_per_day,
+          weekly:
+            showTrainingTier && resolvedTrainingTier === 'once_daily'
+              ? booking.variant?.once_daily_price_per_week ??
+                booking.package.once_daily_price_per_week ??
+                booking.variant?.price_per_week ??
+                booking.package.price_per_week
+              : booking.variant?.price_per_week ?? booking.package.price_per_week,
+          monthly:
+            showTrainingTier && resolvedTrainingTier === 'once_daily'
+              ? booking.variant?.once_daily_price_per_month ??
+                booking.package.once_daily_price_per_month ??
+                booking.variant?.price_per_month ??
+                booking.package.price_per_month
+              : booking.variant?.price_per_month ?? booking.package.price_per_month,
+        })
+      : null
+
+  useEffect(() => {
+    if (!booking?.package || displayDuration <= 0 || !booking.start_date || !booking.end_date) {
+      setPriceBreakdown(null)
+      setHasSeasonalOverlap(false)
+      return
+    }
+
+    let cancelled = false
+    const pkg = booking.package
+    const variant = booking.variant
+
+    void resolveClientPriceBreakdown({
+      package_: pkg,
+      variant: variant
+        ? {
+            id: variant.id,
+            price_per_day: variant.price_per_day,
+            price_per_week: variant.price_per_week,
+            price_per_month: variant.price_per_month,
+            once_daily_price_per_day: variant.once_daily_price_per_day,
+            once_daily_price_per_week: variant.once_daily_price_per_week,
+            once_daily_price_per_month: variant.once_daily_price_per_month,
+          }
+        : null,
+      pricingDuration: displayDuration,
+      checkin: booking.start_date,
+      checkout: booking.end_date,
+      training_tier: showTrainingTier ? resolvedTrainingTier : 'twice_daily',
+    }).then(({ breakdown, has_seasonal_overlap }) => {
+      if (!cancelled) {
+        setPriceBreakdown(breakdown)
+        setHasSeasonalOverlap(has_seasonal_overlap)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    booking?.package,
+    booking?.variant,
+    booking?.start_date,
+    booking?.end_date,
+    displayDuration,
+    showTrainingTier,
+    resolvedTrainingTier,
+  ])
+
+  const basePriceInfo = priceBreakdown ?? tierAwareSyncFallback
+  const priceInfo =
+    basePriceInfo && showTrainingTier
+      ? applyTrainingTierToBreakdown(basePriceInfo, {
+          showTrainingTier,
+          trainingTier: resolvedTrainingTier,
+        })
+      : basePriceInfo
+
   const copyAddress = async () => {
     if (!booking?.gym?.address) return
     try {
@@ -1181,19 +1280,9 @@ export default function PaymentPage() {
   const heroImage = primaryGymImageHeroSrc(gymImages)
   const gymCurrency = booking?.gym?.currency ?? 'USD'
 
-  const priceInfo =
-    booking?.package && displayDuration > 0
-      ? calculatePackagePrice(displayDuration, booking.package.type, {
-          daily: booking.variant?.price_per_day ?? booking.package.price_per_day,
-          weekly: booking.variant?.price_per_week ?? booking.package.price_per_week,
-          monthly: booking.variant?.price_per_month ?? booking.package.price_per_month,
-        })
-      : null
-
-  // Prefer the server-confirmed total; fall back to a local recalculation from
-  // prefill data so the price display is never "0" while loading.
+  // Prefer server-confirmed total; breakdown lines come from seasonal/tier engine.
   const serverTotal = booking?.total_price ?? 0
-  const rawTotal = serverTotal > 0 ? serverTotal : (priceInfo?.price ?? 0)
+  const rawTotal = serverTotal > 0 ? serverTotal : (basePriceInfo?.price ?? 0)
   const displayTotalPrice = rawTotal > 0 ? convertPrice(rawTotal, gymCurrency) : null
   const klarnaAvailable = isKlarnaAvailableForCurrency(gymCurrency)
   const effectivePayWhen =
@@ -1934,6 +2023,8 @@ export default function PaymentPage() {
           })}
           savedVsNightly={priceInfo.savedVsNightly}
           total={rawTotal}
+          gymName={booking.gym.name}
+          has_seasonal_overlap={hasSeasonalOverlap}
           gymCurrency={gymCurrency}
           displayCurrency={selectedCurrency}
           convertPrice={convertPrice}
@@ -1941,11 +2032,13 @@ export default function PaymentPage() {
         />
       )}
 
-      {priceSheetOpen && priceInfo && rawTotal > 0 && (
+      {priceSheetOpen && priceInfo && rawTotal > 0 && booking && (
         <PriceDetailsSheet
           lines={priceInfo.lines}
           savedVsNightly={priceInfo.savedVsNightly}
           total={rawTotal}
+          gymName={booking.gym.name}
+          has_seasonal_overlap={hasSeasonalOverlap}
           gymCurrency={gymCurrency}
           displayCurrency={selectedCurrency}
           convertPrice={convertPrice}

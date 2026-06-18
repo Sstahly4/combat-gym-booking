@@ -4,13 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { PriceLine } from '@/lib/utils'
 import { formatCheckoutPriceWithCode } from '@/components/booking/checkout-ui'
-
-function lineUnitLabel(line: PriceLine): string {
-  if (line.kind === 'day') return line.qty === 1 ? 'day' : 'days'
-  if (line.kind === 'month') return line.qty === 1 ? 'month' : 'months'
-  if (line.kind === 'week') return line.qty === 1 ? 'week' : 'weeks'
-  return line.qty === 1 ? 'night' : 'nights'
-}
+import { formatPriceLineWithUnitPrice } from '@/lib/booking/price-breakdown-display'
 
 export function formatBreakdownDateRange(from: string, to: string): string {
   const a = new Date(from + 'T00:00:00')
@@ -328,7 +322,7 @@ export function PriceDetailsSheet({
             {lines.map((line, i) => (
               <div key={i} className="flex items-start justify-between gap-6">
                 <span className="text-[15px] leading-snug text-gray-900">
-                  {line.qty} {lineUnitLabel(line)} x {formatDisplay(line.unitPrice)}
+                  {formatPriceLineWithUnitPrice(line, formatDisplay)}
                 </span>
                 <span className="text-[15px] leading-snug text-gray-900 shrink-0 text-right">
                   {formatDisplay(line.subtotal)}
@@ -375,6 +369,8 @@ export function PriceDetailsSheet({
           summaryLabel={breakdownSummaryLabel}
           savedVsNightly={savedVsNightly}
           total={total}
+          gymName={gymName}
+          has_seasonal_overlap={has_seasonal_overlap}
           gymCurrency={gymCurrency}
           displayCurrency={displayCurrency}
           convertPrice={convertPrice}
