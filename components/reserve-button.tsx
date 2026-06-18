@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { useBooking } from '@/lib/contexts/booking-context'
 import { useReviewModal } from '@/lib/contexts/review-modal-context'
 import type { Gym } from '@/lib/types/database'
+import type { GymListing } from '@/lib/gym/gym-listing-data'
 import { Calendar } from 'lucide-react'
 
-export function ReserveButton({ gym }: { gym: Gym }) {
+export function ReserveButton({ gym }: { gym: Gym | GymListing }) {
   const router = useRouter()
   const { selectedPackage, checkin, checkout } = useBooking()
   const { openReviewModal } = useReviewModal()
@@ -28,19 +29,30 @@ export function ReserveButton({ gym }: { gym: Gym }) {
 
     if (isMobile) {
       // Mobile: open full-screen overlay modal — pass pre-loaded data so it renders instantly
-      const reviews = (gym as any).reviews as { rating: number }[] | undefined ?? []
+      const listing = gym as GymListing
+      const reviewCount =
+        typeof listing.reviewCount === 'number'
+          ? listing.reviewCount
+          : ((gym as Gym & { reviews?: { rating: number }[] }).reviews?.length ?? 0)
+      const reviewAverage =
+        typeof listing.averageRating === 'number' && listing.reviewCount > 0
+          ? listing.averageRating
+          : (() => {
+              const reviews = (gym as Gym & { reviews?: { rating: number }[] }).reviews ?? []
+              return reviews.length > 0
+                ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+                : 0
+            })()
       openReviewModal({
         gymId: gym.id,
         packageId: selectedPackage.id,
-        variantId: (selectedPackage as any)?.variant_id,
+        variantId: (selectedPackage as { variant_id?: string })?.variant_id,
         checkin: checkin || '',
         checkout: checkout || '',
         gymData: gym as unknown as Record<string, unknown>,
         packageData: selectedPackage as unknown as Record<string, unknown>,
-        initialReviewCount: reviews.length,
-        initialReviewAverage: reviews.length > 0
-          ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-          : 0,
+        initialReviewCount: reviewCount,
+        initialReviewAverage: reviewAverage,
       })
     } else {
       // Desktop: navigate straight to summary

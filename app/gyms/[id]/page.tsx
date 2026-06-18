@@ -1,26 +1,24 @@
 import type { Metadata } from 'next'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public-server'
 import { Card, CardContent } from '@/components/ui/card'
-import type { Gym, GymImage, Review, Package } from '@/lib/types/database'
+import type { Package } from '@/lib/types/database'
 import { PackagesList } from '@/components/packages-list'
 import { GymGallery } from '@/components/gym-gallery'
 import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper'
 import { GymMap } from '@/components/gym-map'
-import { BookingProvider } from '@/lib/contexts/booking-context'
-import { ReviewModalProvider } from '@/lib/contexts/review-modal-context'
 import { GymCheckoutExitCleanup } from '@/components/gym/gym-checkout-exit-cleanup'
 import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
+import { GymPageClientShell } from '@/components/gym/gym-page-client-shell'
+import { GymSlugRedirectBoundary } from '@/components/gym/gym-slug-redirect'
+import { GymReviewsCarouselSection } from '@/components/gym/gym-reviews-section'
+import { GymReviewsCarouselSkeleton } from '@/components/gym/gym-reviews-skeleton'
 import { ReserveButton } from '@/components/reserve-button'
 import { SaveButton } from '@/components/save-button'
 import { PropertyHighlightsCard } from '@/components/property-highlights-card'
 import { ReviewsLinkButton } from '@/components/reviews-link-button'
-import { ReviewCard } from '@/components/review-card'
-import { ReviewsCarousel } from '@/components/reviews-carousel'
-import { FacilitiesList } from '@/components/facilities-list'
 import { GymDescription } from '@/components/gym-description'
 import { TrainingSchedule } from '@/components/training-schedule'
 import { ShowOnMapLink } from '@/components/show-on-map-link'
@@ -29,30 +27,13 @@ import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
 import { ThingsToDoCard } from '@/components/things-to-do-card'
+import {
+  getOwnerDraftGym,
+  getPublicGym,
+  getPublicGymBySlug,
+  looksLikeUuid,
+} from '@/lib/gym/gym-listing-data'
 
-// Helper function to format review date as "time ago"
-function formatReviewDate(createdAt: string): string {
-  const reviewDate = new Date(createdAt)
-  const now = new Date()
-  const diffTime = Math.abs(now.getTime() - reviewDate.getTime())
-  const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30))
-  const diffYears = Math.floor(diffMonths / 12)
-  
-  if (diffYears > 0) {
-    return `${diffYears} ${diffYears === 1 ? 'year' : 'years'} ago`
-  } else if (diffMonths > 0) {
-    return `${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago`
-  } else {
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-    if (diffDays > 0) {
-      return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`
-    } else {
-      return 'Today'
-    }
-  }
-}
-
-// Helper component to render star rating (Booking.com style)
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -70,42 +51,9 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
-
-interface GymWithDetails extends Gym {
-  images: GymImage[]
-  reviews: (Review & { booking: { user_id: string } })[]
-  owner: { full_name: string | null }
-  packages: Package[]
-  opening_hours?: any
-  training_schedule?: Record<string, Array<{ time: string; type?: string }>>
-}
-
-const GYM_LISTING_SELECT = `
-        *,
-        packages(*, variants:package_variants(*)),
-        reviews:bookings(
-          id,
-          user_id,
-          reviews(*)
-        ),
-        owner:profiles!gyms_owner_id_fkey(full_name)
-      `
-
-// Revalidate pre-rendered gym pages hourly so fresh pricing/reviews land
-// without rebuilding. Non-statically-generated gyms still render on demand
-// (dynamicParams = true) and get cached on the edge after first hit.
 export const revalidate = 3600
 export const dynamicParams = true
 
-function looksLikeUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-}
-
-/**
- * Pre-render the top 100 most-reviewed verified gyms at build time so popular
- * detail pages load as static HTML (0ms DB wait). Everything else falls back
- * to on-demand ISR via dynamicParams=true.
- */
 export async function generateStaticParams() {
   try {
     const supabase = createPublicClient()
@@ -118,10 +66,10 @@ export async function generateStaticParams() {
     if (error || !data) return []
 
     const ranked = data
-      .map((g: any) => ({
-        id: g.id as string,
+      .map((g: { id: string; reviews?: { reviews?: { id: string }[] }[] }) => ({
+        id: g.id,
         count: (g.reviews || []).reduce(
-          (sum: number, b: any) => sum + ((b?.reviews || []).length || 0),
+          (sum, b) => sum + (b?.reviews || []).length,
           0,
         ),
       }))
@@ -135,159 +83,6 @@ export async function generateStaticParams() {
   }
 }
 
-// Shared reducer that turns raw Supabase rows into a GymWithDetails. The same
-// query shape is used for the cached public path and the owner-draft fallback,
-// so we keep the reshape logic in one place.
-async function assembleGym(
-  supabase: SupabaseClient,
-  gymData: any,
-  id: string,
-): Promise<GymWithDetails | null> {
-  if (!gymData) return null
-
-  const { data: imagesData, error: imagesError } = await supabase
-    .from('gym_images')
-    .select('*')
-    .eq('gym_id', id)
-    .order('order', { ascending: true, nullsFirst: false })
-
-  if (imagesError) {
-    console.error('Error fetching images:', imagesError)
-  }
-
-  const sortedImages = (imagesData || []).sort((a: any, b: any) => {
-    const orderA = a.order !== null && a.order !== undefined ? a.order : 999
-    const orderB = b.order !== null && b.order !== undefined ? b.order : 999
-    return orderA - orderB
-  })
-
-  const bookingReviews = (gymData.reviews || []).flatMap((booking: any) =>
-    (booking.reviews || []).map((review: any) => ({
-      ...review,
-      booking: { user_id: booking.user_id },
-    })),
-  )
-
-  // MVP ONLY: Fetch manual reviews (gym_id based) - REMOVE BEFORE SHIPPING
-  let manualReviews: any[] = []
-  try {
-    const { data: reviewsData } = await supabase
-      .from('reviews')
-      .select('id, rating, comment, created_at, reviewer_name')
-      .eq('gym_id', id)
-      .eq('manual_review', true)
-      .limit(10)
-    manualReviews = reviewsData || []
-  } catch (reviewError) {
-    console.error('Error fetching manual reviews:', reviewError)
-  }
-
-  const reviews = [
-    ...bookingReviews,
-    ...manualReviews.map((review: any) => ({
-      ...review,
-      booking: null,
-    })),
-  ]
-
-  return {
-    ...gymData,
-    images: sortedImages,
-    reviews,
-  } as GymWithDetails
-}
-
-/**
- * Public, cookie-free fetch for verified/trusted gyms. Because we never touch
- * cookies() / auth on this path, Next can actually statically render the
- * page (with ISR) and cache it at the edge. Wrapped in unstable_cache so
- * repeat requests for the same gym within the revalidation window skip
- * Supabase entirely.
- */
-const getPublicGym = unstable_cache(
-  async (id: string): Promise<GymWithDetails | null> => {
-    try {
-      const supabase = createPublicClient()
-      const { data: gymData, error } = await supabase
-        .from('gyms')
-        .select(GYM_LISTING_SELECT)
-        .eq('id', id)
-        .in('verification_status', ['verified', 'trusted'])
-        .maybeSingle()
-      if (error) {
-        console.error('Error fetching public gym:', error)
-        return null
-      }
-      return await assembleGym(supabase as any, gymData, id)
-    } catch (err) {
-      console.error('Error in getPublicGym:', err)
-      return null
-    }
-  },
-  ['gym-detail'],
-  { revalidate: 3600, tags: ['gyms'] },
-)
-
-const getPublicGymBySlug = unstable_cache(
-  async (slug: string): Promise<GymWithDetails | null> => {
-    try {
-      const supabase = createPublicClient()
-      const { data: gymData, error } = await supabase
-        .from('gyms')
-        .select(GYM_LISTING_SELECT)
-        .eq('slug', slug)
-        .in('verification_status', ['verified', 'trusted'])
-        .maybeSingle()
-      if (error) {
-        console.error('Error fetching public gym by slug:', error)
-        return null
-      }
-      if (!gymData?.id) return null
-      return await assembleGym(supabase as any, gymData, gymData.id)
-    } catch (err) {
-      console.error('Error in getPublicGymBySlug:', err)
-      return null
-    }
-  },
-  ['gym-detail-by-slug'],
-  { revalidate: 3600, tags: ['gyms'] },
-)
-
-/**
- * Cookie-scoped fallback used only when the public fetch returns nothing —
- * typically a draft gym the current user owns. This path reads auth and is
- * therefore dynamic, but it only runs for <1% of traffic.
- */
-async function getOwnerDraftGym(id: string): Promise<GymWithDetails | null> {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const { data: gymData, error } = await supabase
-      .from('gyms')
-      .select(GYM_LISTING_SELECT)
-      .eq('id', id)
-      .eq('owner_id', user.id)
-      .maybeSingle()
-    if (error) {
-      console.error('Error fetching gym (owner fallback):', error)
-      return null
-    }
-    return await assembleGym(supabase as any, gymData, id)
-  } catch (err) {
-    console.error('Error in getOwnerDraftGym:', err)
-    return null
-  }
-}
-
-// Cached, cookie-free metadata lookup. Using createPublicClient (instead of
-// the cookie-bound createClient) keeps generateMetadata from accidentally
-// opting the whole page into dynamic rendering, and unstable_cache tagged
-// with 'gyms' means metadata invalidates alongside the main page whenever
-// revalidateGymCache() runs.
 const getGymMetadata = unstable_cache(
   async (idOrSlug: string) => {
     const supabase = createPublicClient()
@@ -317,10 +112,9 @@ export async function generateMetadata({
   }
 
   const name = data.name?.trim() || 'Training Camp'
-  const city: string = (data as any).city?.trim() || ''
-  const rawDisciplines: string[] = Array.isArray((data as any).disciplines) ? (data as any).disciplines : []
+  const city: string = data.city?.trim() || ''
+  const rawDisciplines: string[] = Array.isArray(data.disciplines) ? data.disciplines : []
 
-  // Title: [Gym Name] [City] | [Discipline(s)] Training | CombatStay
   const disciplineLabel =
     rawDisciplines.length > 0
       ? rawDisciplines.slice(0, 2).join(' & ')
@@ -328,8 +122,7 @@ export async function generateMetadata({
   const titleCity = city ? ` ${city}` : ''
   const pageTitle = `${name}${titleCity} | ${disciplineLabel} Training | CombatStay`
 
-  // Meta description: single punchy ~150-char line
-  const tagline: string | null = (data as any).tagline ?? null
+  const tagline: string | null = data.tagline ?? null
   const rawDesc: string | null = data.description ?? null
   const firstDiscipline = rawDisciplines[0] ?? 'combat sports'
   let metaDescription = `Train ${firstDiscipline} at ${name}${city ? ` in ${city}` : ''}.`
@@ -344,7 +137,7 @@ export async function generateMetadata({
   metaDescription += ' Book instantly.'
   if (metaDescription.length > 160) metaDescription = `${metaDescription.substring(0, 157)}...`
 
-  const canonicalSlug = (data as any)?.slug || params.id
+  const canonicalSlug = data.slug || params.id
 
   return {
     title: pageTitle,
@@ -361,38 +154,82 @@ export async function generateMetadata({
   }
 }
 
+function schemaLowestPricePerDay(
+  packages: Package[],
+  gymCurrency: string,
+  gymPricePerDay: number,
+): string | undefined {
+  const SYMBOLS: Record<string, string> = {
+    USD: '$', EUR: '€', GBP: '£', AUD: 'A$', THB: '฿',
+    IDR: 'Rp', JPY: '¥', CNY: '¥', SGD: 'S$', MYR: 'RM',
+    NZD: 'NZ$', CAD: 'C$', HKD: 'HK$', INR: '₹', KRW: '₩',
+    PHP: '₱', VND: '₫',
+  }
+  const currency = (gymCurrency || 'USD').toUpperCase()
+  const symbol = SYMBOLS[currency] ?? currency
+
+  let min: number | null = null
+  for (const pkg of packages) {
+    if (pkg.pricing_config?.mode === 'rate') {
+      const daily = pkg.pricing_config.rates?.daily
+      if (daily && daily > 0) min = min === null ? daily : Math.min(min, daily)
+      continue
+    }
+    if (pkg.pricing_config?.mode === 'fixed') {
+      for (const d of pkg.pricing_config.durations ?? []) {
+        if (d.price > 0 && d.days > 0) {
+          const perDay = d.price / d.days
+          min = min === null ? perDay : Math.min(min, perDay)
+        }
+      }
+      continue
+    }
+    if (pkg.price_per_day && pkg.price_per_day > 0) {
+      min = min === null ? pkg.price_per_day : Math.min(min, pkg.price_per_day)
+    }
+  }
+
+  if (min === null && gymPricePerDay > 0) min = gymPricePerDay
+  if (min === null) return undefined
+  return `From ${symbol}${Math.round(min).toLocaleString('en-US')}/day`
+}
+
+function gymOpeningHoursToSchema(hours: Record<string, string> | undefined): string[] | undefined {
+  if (!hours || typeof hours !== 'object') return undefined
+  const abbr: Record<string, string> = {
+    monday: 'Mo', tuesday: 'Tu', wednesday: 'We', thursday: 'Th',
+    friday: 'Fr', saturday: 'Sa', sunday: 'Su',
+  }
+  const result: string[] = []
+  for (const [day, val] of Object.entries(hours)) {
+    const short = abbr[day.toLowerCase()]
+    if (!short || !val || /closed/i.test(val)) continue
+    const parts = val.replace(/[–—]/g, '-').replace(/\s/g, '').split('-')
+    if (parts.length < 2) continue
+    const pad = (t: string) => {
+      const [h, m = '00'] = t.split(':')
+      return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
+    }
+    result.push(`${short} ${pad(parts[0])}-${pad(parts[1])}`)
+  }
+  return result.length > 0 ? result : undefined
+}
+
 export default async function GymDetailsPage({
   params,
-  searchParams,
 }: {
   params: { id: string }
-  searchParams: { checkin?: string; checkout?: string; dates_confirmed?: string }
 }) {
   const idOrSlug = params.id
-  // Fast path: cookie-free, cached fetch — renders statically for verified/trusted gyms.
   let gym = looksLikeUuid(idOrSlug) ? await getPublicGym(idOrSlug) : await getPublicGymBySlug(idOrSlug)
-  // Only fall back to the cookie-based owner path (which opts this request into
-  // dynamic rendering) when the public fetch returned nothing. That keeps the
-  // top 100 pre-rendered at build and the long tail edge-cached after one hit.
   let isOwner = false
   if (!gym) {
-    // Draft gym fallback is UUID-only.
     gym = looksLikeUuid(idOrSlug) ? await getOwnerDraftGym(idOrSlug) : null
     isOwner = !!gym
   }
 
   if (!gym) {
     notFound()
-  }
-
-  // If the user hit the UUID URL, 301-ish redirect to slug canonical.
-  if (looksLikeUuid(idOrSlug) && gym.slug) {
-    const qp = new URLSearchParams()
-    if (searchParams?.checkin) qp.set('checkin', searchParams.checkin)
-    if (searchParams?.checkout) qp.set('checkout', searchParams.checkout)
-    if (searchParams?.dates_confirmed === 'true') qp.set('dates_confirmed', 'true')
-    const qs = qp.toString()
-    permanentRedirect(`/gyms/${gym.slug}${qs ? `?${qs}` : ''}`)
   }
 
   const isVerified = gym.verification_status === 'verified'
@@ -402,86 +239,13 @@ export default async function GymDetailsPage({
     notFound()
   }
 
-  const averageRating = gym.reviews.length > 0
-    ? gym.reviews.reduce((sum, r) => sum + r.rating, 0) / gym.reviews.length
-    : 0
+  const { reviewCount, averageRating } = gym
+  const needsSlugRedirect = looksLikeUuid(idOrSlug) && !!gym.slug
 
   const primaryImage =
     gym.images && gym.images.length > 0 ? gym.images[0]?.url : undefined
 
   const gymPublicPath = `/gyms/${gym.slug?.trim() || gym.id}`
-
-  // Derive the lowest per-day price across all packages (schema priceRange).
-  // Mirrors what the PackagesList renders: "per day" for training packages.
-  function schemaLowestPricePerDay(
-    packages: Package[],
-    gymCurrency: string,
-    gymPricePerDay: number,
-  ): string | undefined {
-    const SYMBOLS: Record<string, string> = {
-      USD: '$', EUR: '€', GBP: '£', AUD: 'A$', THB: '฿',
-      IDR: 'Rp', JPY: '¥', CNY: '¥', SGD: 'S$', MYR: 'RM',
-      NZD: 'NZ$', CAD: 'C$', HKD: 'HK$', INR: '₹', KRW: '₩',
-      PHP: '₱', VND: '₫',
-    }
-    const currency = (gymCurrency || 'USD').toUpperCase()
-    const symbol = SYMBOLS[currency] ?? currency
-
-    let min: number | null = null
-    for (const pkg of packages) {
-      // pricing_config 'rate' mode — use declared daily rate
-      if (pkg.pricing_config?.mode === 'rate') {
-        const daily = pkg.pricing_config.rates?.daily
-        if (daily && daily > 0) min = min === null ? daily : Math.min(min, daily)
-        continue
-      }
-      // pricing_config 'fixed' mode — cheapest duration ÷ days gives effective daily rate
-      if (pkg.pricing_config?.mode === 'fixed') {
-        for (const d of pkg.pricing_config.durations ?? []) {
-          if (d.price > 0 && d.days > 0) {
-            const perDay = d.price / d.days
-            min = min === null ? perDay : Math.min(min, perDay)
-          }
-        }
-        continue
-      }
-      // Fallback: flat price_per_day field
-      if (pkg.price_per_day && pkg.price_per_day > 0) {
-        min = min === null ? pkg.price_per_day : Math.min(min, pkg.price_per_day)
-      }
-    }
-
-    // Fall back to gym-level price if no package price found
-    if (min === null && gymPricePerDay > 0) min = gymPricePerDay
-
-    if (min === null) return undefined
-    const formatted = Math.round(min).toLocaleString('en-US')
-    return `From ${symbol}${formatted}/day`
-  }
-
-  // Convert opening_hours object to schema.org openingHours array format
-  // e.g. { monday: "7:00 - 20:00" } → ["Mo 07:00-20:00"]
-  function gymOpeningHoursToSchema(hours: Record<string, string> | undefined): string[] | undefined {
-    if (!hours || typeof hours !== 'object') return undefined
-    const abbr: Record<string, string> = {
-      monday: 'Mo', tuesday: 'Tu', wednesday: 'We', thursday: 'Th',
-      friday: 'Fr', saturday: 'Sa', sunday: 'Su',
-    }
-    const result: string[] = []
-    for (const [day, val] of Object.entries(hours)) {
-      const short = abbr[day.toLowerCase()]
-      if (!short || !val || /closed/i.test(val)) continue
-      // Normalise "7:00 - 20:00", "07:00-20:00", "7:00–20:00" etc.
-      const parts = val.replace(/[–—]/g, '-').replace(/\s/g, '').split('-')
-      if (parts.length < 2) continue
-      const pad = (t: string) => {
-        const [h, m = '00'] = t.split(':')
-        return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
-      }
-      result.push(`${short} ${pad(parts[0])}-${pad(parts[1])}`)
-    }
-    return result.length > 0 ? result : undefined
-  }
 
   const sportsActivityLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -509,11 +273,11 @@ export default async function GymDetailsPage({
     sport: Array.isArray(gym.disciplines) && gym.disciplines.length > 0 ? gym.disciplines : undefined,
     priceRange: schemaLowestPricePerDay(gym.packages, gym.currency, gym.price_per_day),
     aggregateRating:
-      gym.reviews.length > 0
+      reviewCount > 0
         ? {
             '@type': 'AggregateRating',
             ratingValue: Number(averageRating.toFixed(2)),
-            reviewCount: gym.reviews.length,
+            reviewCount,
             bestRating: 5,
             worstRating: 1,
           }
@@ -526,29 +290,18 @@ export default async function GymDetailsPage({
     },
   }
 
-  // Get nearby landmarks - ONLY use cached from database, never fetch on page load
-  // Landmarks should be fetched once via API endpoint when gym is created/approved
-  let landmarks: Array<{ name: string; distance: number }> = []
   let landmarksText = ''
-  
-  // Check if we have cached landmarks in database
   if (gym.nearby_attractions && Array.isArray(gym.nearby_attractions) && gym.nearby_attractions.length > 0) {
-    // Use cached landmarks (instant, no API call - page loads fast!)
-    landmarks = gym.nearby_attractions
-    landmarksText = formatLandmarksText(landmarks)
+    landmarksText = formatLandmarksText(gym.nearby_attractions)
   }
-  // If no cache exists, landmarks will be empty (no API calls on page load)
+
+  const gymSlugOrId = gym.slug?.trim() || gym.id
 
   return (
-    <BookingProvider initialCheckin={searchParams.checkin} initialCheckout={searchParams.checkout}>
-    <ReviewModalProvider
-      gymSlugOrId={gym.slug?.trim() || gym.id}
-      gymId={gym.id}
-      hasReviewIntent={
-        (searchParams as Record<string, string | undefined>).review === '1' &&
-        !!(searchParams as Record<string, string | undefined>).pkg
-      }
-    >
+    <GymPageClientShell gymId={gym.id} gymSlugOrId={gymSlugOrId}>
+      {needsSlugRedirect && gym.slug ? (
+        <GymSlugRedirectBoundary slug={gym.slug} />
+      ) : null}
       <GymCheckoutExitCleanup gymId={gym.id} />
       <GymPageCurrencyHint currency={gym.currency} />
       <script
@@ -556,7 +309,6 @@ export default async function GymDetailsPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
       />
       <div className="min-h-screen bg-white pb-12">
-        {/* Preview mode banner for owners viewing draft listing */}
         {isDraft && isOwner && (
           <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-white to-slate-50 py-2.5 md:py-3">
             <div className="max-w-6xl mx-auto px-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -572,15 +324,13 @@ export default async function GymDetailsPage({
             </div>
           </div>
         )}
-        {/* Header */}
+
         <div className="bg-white border-b border-gray-200 py-4 md:py-6">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 md:gap-4">
               <div className="flex-1 min-w-0">
-                {/* Mobile: Title and Reserve button inline */}
                 <div className="flex items-start justify-between gap-3 mb-2 md:mb-0">
                   <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight flex-1 min-w-0">{gym.name}</h1>
-                  {/* Save + Reserve - inline on mobile */}
                   <div className="md:hidden flex-shrink-0 flex items-center gap-2">
                     <SaveButton gymId={gym.id} inline />
                     <ReserveButton gym={gym} />
@@ -595,22 +345,18 @@ export default async function GymDetailsPage({
                       <GymAddressCopy address={gym.address} className="text-sm md:text-[15px]" />
                     </>
                   )}
-                  {/* Show on map link - Mobile only */}
                   <ShowOnMapLink />
                 </div>
-                {/* Star Rating & Reviews - Mobile only */}
                 {averageRating > 0 && (
                   <div className="md:hidden flex items-center gap-1.5 flex-wrap mt-1">
                     <StarRating rating={Math.round(averageRating)} />
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-semibold text-gray-900">{averageRating.toFixed(1)}</span>
-                      <span className="text-xs text-gray-600">({gym.reviews.length} {gym.reviews.length === 1 ? 'review' : 'reviews'})</span>
+                      <span className="text-xs text-gray-600">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                     </div>
                   </div>
                 )}
               </div>
-              
-              {/* Save + Reserve - Desktop only (mobile is inline above) */}
               <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                 <SaveButton gymId={gym.id} inline />
                 <ReserveButton gym={gym} />
@@ -619,25 +365,18 @@ export default async function GymDetailsPage({
           </div>
         </div>
 
-        {/* Mobile Gallery - Full width slider at top (mobile only) */}
         <div className="md:hidden w-full">
-          <GymGalleryMobileWrapper 
-            images={gym.images} 
-            gymName={gym.name}
-          />
+          <GymGalleryMobileWrapper images={gym.images} gymName={gym.name} />
         </div>
 
-        {/* Mobile Description & Facilities - Right after gallery (mobile only) */}
         <div className="md:hidden w-full px-4 py-4 space-y-6">
-          <GymDescription 
+          <GymDescription
             gymName={gym.name}
             description={gym.description}
             landmarksText={landmarksText}
             amenities={gym.amenities}
             disciplines={gym.disciplines}
           />
-          
-          {/* Packages - Mobile only, below facilities */}
           <div id="packages" className="border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900">Available Packages</h2>
             <PackagesList packages={gym.packages} gym={gym} />
@@ -646,18 +385,14 @@ export default async function GymDetailsPage({
 
         <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
           <div className="grid lg:grid-cols-3 gap-6 md:gap-10">
-            {/* Right Sidebar - Shows FIRST on mobile, then moves to right on desktop */}
             <div className="lg:col-span-1 space-y-4 md:space-y-6 order-1 lg:order-2">
-              
-              {/* Property Highlights - Dynamic based on gym and dates */}
-              <PropertyHighlightsCard 
-                gym={gym} 
+              <PropertyHighlightsCard
+                gym={gym}
                 averageRating={averageRating}
-                reviewCount={gym.reviews.length}
+                reviewCount={reviewCount}
                 googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''}
               />
 
-              {/* Reviews Summary - Desktop only */}
               {averageRating > 0 && (
                 <Card className="hidden md:block border border-gray-200 shadow-sm">
                   <CardContent className="p-4 md:p-5">
@@ -667,45 +402,37 @@ export default async function GymDetailsPage({
                     </div>
                     <div className="flex items-center gap-2 mb-2 md:mb-3">
                       <span className="text-gray-600 text-xs md:text-sm font-medium">{averageRating.toFixed(1)}</span>
-                      <span className="text-gray-400 text-xs md:text-sm">({gym.reviews.length} {gym.reviews.length === 1 ? 'review' : 'reviews'})</span>
+                      <span className="text-gray-400 text-xs md:text-sm">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                     </div>
                     <p className="text-xs md:text-sm text-gray-600 mb-2 md:mb-3">
-                      {gym.reviews.length} {gym.reviews.length === 1 ? 'review' : 'reviews'}
+                      {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}
                     </p>
-                    {gym.reviews.length > 0 && (
-                      <ReviewsLinkButton />
-                    )}
+                    {reviewCount > 0 && <ReviewsLinkButton />}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Map Embed with Modal - Desktop only (mobile is in PropertyHighlightsCard) */}
               <div id="gym-map-section" className="hidden md:block">
-                <GymMap 
-                  gym={gym} 
-                  googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''} 
-                />
+                <GymMap gym={gym} googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''} />
               </div>
 
-              {/* Things to do nearby (mobile) — keep above opening hours on small screens */}
               {gym.things_to_do && gym.things_to_do.length >= 2 && (
                 <div className="md:hidden">
                   <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
                 </div>
               )}
 
-              {/* Opening Hours - Mobile and Desktop */}
               {(gym.opening_hours || gym.training_schedule) && (
                 <Card className="border border-gray-200 shadow-sm">
                   <CardContent className="p-4 md:p-5">
                     {gym.opening_hours && (() => {
                       const dayOrder = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
                       const sortedHours = dayOrder
-                        .map(day => ({ day, hours: gym.opening_hours[day] }))
-                        .filter(item => item.hours !== undefined)
-                      
+                        .map((day) => ({ day, hours: gym.opening_hours![day] }))
+                        .filter((item) => item.hours !== undefined)
+
                       if (sortedHours.length === 0) return null
-                      
+
                       return (
                         <>
                           <h3 className="font-bold text-sm md:text-lg mb-2.5 md:mb-4 text-gray-900">Opening Hours</h3>
@@ -720,8 +447,6 @@ export default async function GymDetailsPage({
                         </>
                       )
                     })()}
-                    
-                    {/* Class Schedule - Below Opening Hours (Mobile and Desktop) */}
                     {gym.training_schedule && (
                       <TrainingSchedule trainingSchedule={gym.training_schedule} />
                     )}
@@ -729,7 +454,6 @@ export default async function GymDetailsPage({
                 </Card>
               )}
 
-              {/* Things to do nearby (desktop) — place below opening hours */}
               {gym.things_to_do && gym.things_to_do.length >= 2 && (
                 <div className="hidden md:block">
                   <ThingsToDoCard city={gym.city} items={gym.things_to_do} />
@@ -737,17 +461,12 @@ export default async function GymDetailsPage({
               )}
             </div>
 
-            {/* Main Content */}
             <div className="lg:col-span-2 space-y-6 md:space-y-10 order-2 lg:order-1">
-              
-              {/* Gallery - Desktop only (mobile gallery is at top) */}
               <div className="hidden md:block">
                 <GymGallery images={gym.images} gymName={gym.name} />
               </div>
-
-              {/* Description & Facilities - Blended (Booking.com style) - Desktop only */}
               <div className="hidden md:block">
-                <GymDescription 
+                <GymDescription
                   gymName={gym.name}
                   description={gym.description}
                   landmarksText={landmarksText}
@@ -755,17 +474,13 @@ export default async function GymDetailsPage({
                   disciplines={gym.disciplines}
                 />
               </div>
-
-              {/* Packages - DIRECTLY UNDERNEATH Amenities - Desktop only (mobile is above) */}
               <div id="packages" className="hidden md:block border-t border-gray-200 pt-6 md:pt-8">
                 <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-gray-900">Available Packages</h2>
                 <PackagesList packages={gym.packages} gym={gym} />
               </div>
-
             </div>
           </div>
 
-          {/* Reviews - Full width, aligned with sidebar edge */}
           <div id="reviews" className="border-t border-gray-200 pt-6 md:pt-8 mt-6 md:mt-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0 mb-4">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900">Guest Reviews</h2>
@@ -773,7 +488,7 @@ export default async function GymDetailsPage({
                 <div className="flex items-center gap-2 md:gap-3">
                   <div className="text-right">
                     <div className="text-xs md:text-sm text-gray-600">Excellent</div>
-                    <div className="text-[10px] md:text-xs text-gray-500">{gym.reviews.length} {gym.reviews.length === 1 ? 'review' : 'reviews'}</div>
+                    <div className="text-[10px] md:text-xs text-gray-500">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</div>
                   </div>
                   <div className="bg-[#003580] text-white px-2.5 md:px-3 py-1.5 md:py-2 rounded-md text-lg md:text-xl font-bold min-w-[50px] md:min-w-[60px] text-center">
                     {averageRating.toFixed(1)}
@@ -781,7 +496,7 @@ export default async function GymDetailsPage({
                 </div>
               )}
             </div>
-            {gym.reviews.length === 0 ? (
+            {reviewCount === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
                 {isDraft && isOwner ? (
                   <>
@@ -802,12 +517,13 @@ export default async function GymDetailsPage({
                 )}
               </div>
             ) : (
-              <ReviewsCarousel reviews={gym.reviews} />
+              <Suspense fallback={<GymReviewsCarouselSkeleton />}>
+                <GymReviewsCarouselSection gymId={gym.id} />
+              </Suspense>
             )}
           </div>
         </div>
       </div>
-    </ReviewModalProvider>
-    </BookingProvider>
+    </GymPageClientShell>
   )
 }
