@@ -757,10 +757,11 @@ export default function PaymentPage() {
   }
 
   const handleDatePickerSave = async () => {
-    if (!booking || !draftCheckin || !draftCheckout) return
+    const resolvedCheckout = draftCheckout || draftCheckin
+    if (!booking || !draftCheckin || !resolvedCheckout) return
     if (
       draftCheckin === booking.start_date &&
-      draftCheckout === booking.end_date
+      resolvedCheckout === booking.end_date
     ) {
       dismissDatePicker()
       return
@@ -774,7 +775,7 @@ export default function PaymentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           start_date: draftCheckin,
-          end_date: draftCheckout,
+          end_date: resolvedCheckout,
         }),
       })
       const data = await response.json()
@@ -803,7 +804,7 @@ export default function PaymentPage() {
         writeBookingPrefill({
           ...cached,
           checkin: draftCheckin,
-          checkout: draftCheckout,
+          checkout: resolvedCheckout,
         })
       }
 

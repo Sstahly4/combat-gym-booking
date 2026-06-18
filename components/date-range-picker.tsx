@@ -91,6 +91,21 @@ export function DateRangePicker({
   const checkinDate = checkin ? new Date(checkin + 'T00:00:00') : null
   const checkoutDate = checkout ? new Date(checkout + 'T00:00:00') : null
 
+  const commitPartialSelection = () => {
+    if (checkin && !checkout) {
+      onCheckoutChange(checkin)
+    }
+  }
+
+  const closePicker = () => {
+    commitPartialSelection()
+    if (forceOpen && onClose) {
+      onClose()
+    } else {
+      setIsOpen(false)
+    }
+  }
+
   const formatDisplayDate = (date: Date) => {
     return format(date, 'd MMM')
   }
@@ -435,13 +450,7 @@ export function DateRangePicker({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (forceOpen && onClose) {
-                      onClose()
-                    } else {
-                      setIsOpen(false)
-                    }
-                  }}
+                  onClick={closePicker}
                   className="px-4 py-2 text-sm font-medium text-white bg-[#003580] hover:bg-[#003580]/90 active:bg-[#003580]/80 rounded-md transition-colors touch-manipulation"
                 >
                   Done
@@ -515,7 +524,7 @@ export function DateRangePicker({
 
             <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={closePicker}
                 className="px-4 py-2 text-sm font-medium text-[#003580] hover:bg-gray-50 rounded transition-colors"
                 type="button"
               >

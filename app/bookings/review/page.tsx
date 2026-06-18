@@ -12,6 +12,10 @@ import { DateRangePicker } from '@/components/date-range-picker'
 import { BookingTrustLine } from '@/components/booking-trust-line'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { primaryGymImageCardSrc } from '@/lib/images/gym-image-variants'
+import {
+  formatBookingDateRange,
+  normalizeBookingCheckout,
+} from '@/lib/booking/booking-date-range'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -136,6 +140,13 @@ function ReviewPageContent() {
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [guestSheetOpen, setGuestSheetOpen] = useState(false)
 
+  const closeDatePicker = () => {
+    if (checkin && !checkout) {
+      setCheckout(checkin)
+    }
+    setDatePickerOpen(false)
+  }
+
   // Desktop: skip this page and go straight to summary
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
@@ -186,10 +197,12 @@ function ReviewPageContent() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────
+  const effectiveCheckout = normalizeBookingCheckout(checkin, checkout)
+
   const duration =
-    checkin && checkout
+    checkin && effectiveCheckout
       ? Math.floor(
-          (new Date(checkout).getTime() - new Date(checkin).getTime()) /
+          (new Date(effectiveCheckout).getTime() - new Date(checkin).getTime()) /
             (1000 * 60 * 60 * 24)
         )
       : 0
@@ -214,20 +227,6 @@ function ReviewPageContent() {
     return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
-  // "7–14 June 2026" — share month/year when both dates are in the same month
-  const formatDateRange = (from: string, to: string) => {
-    if (!from || !to) return 'No dates selected'
-    const a = new Date(from + 'T00:00:00')
-    const b = new Date(to + 'T00:00:00')
-    const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
-    if (sameMonth) {
-      const month = a.toLocaleDateString('en-GB', { month: 'long' })
-      const year = a.getFullYear()
-      return `${a.getDate()}–${b.getDate()} ${month} ${year}`
-    }
-    return `${a.getDate()} ${a.toLocaleDateString('en-GB', { month: 'long' })} – ${b.getDate()} ${b.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
-  }
-
   const cardImage = primaryGymImageCardSrc(gym?.images)
 
   const gymSlugOrId = (gym as any)?.slug || gym?.id || ''
@@ -241,7 +240,7 @@ function ReviewPageContent() {
     const variantId = searchParams.get('variantId')
     if (variantId) params.set('variantId', variantId)
     if (checkin) params.set('checkin', checkin)
-    if (checkout) params.set('checkout', checkout)
+    if (effectiveCheckout) params.set('checkout', effectiveCheckout)
     params.set('guests', String(guestCount))
     return `/bookings/summary?${params.toString()}`
   }
@@ -346,9 +345,9 @@ function ReviewPageContent() {
             {/* Dates */}
             <Row
               label="Dates"
-              value={formatDateRange(checkin, checkout)}
+              value={formatBookingDateRange(checkin, checkout)}
               sub={
-                duration > 0
+                pricingDuration > 0
                   ? `${isTraining ? pricingDuration : duration} ${
                       isTraining
                         ? pricingDuration === 1 ? 'day' : 'days'
@@ -372,7 +371,7 @@ function ReviewPageContent() {
               value={
                 totalPrice != null
                   ? formatPrice(totalPrice)
-                  : checkin && checkout
+                  : checkin && effectiveCheckout
                   ? 'Calculating…'
                   : 'Select dates for pricing'
               }
@@ -407,14 +406,14 @@ function ReviewPageContent() {
         <div className="fixed inset-0 z-[100]">
           <div
             className="fixed inset-0 bg-black/40 z-[45]"
-            onClick={() => setDatePickerOpen(false)}
+            onClick={closeDatePicker}
           />
           <div className="fixed inset-0 z-[52] pointer-events-none [&>div]:pointer-events-auto [&>div>div:first-child]:opacity-0 [&>div>div:first-child]:pointer-events-none">
                 <DateRangePicker
                   checkin={checkin}
                   checkout={checkout}
                   forceOpen={true}
-                  onClose={() => setDatePickerOpen(false)}
+                  onClose={closeDatePicker}
                   onCheckinChange={setCheckin}
                   onCheckoutChange={setCheckout}
                 />
