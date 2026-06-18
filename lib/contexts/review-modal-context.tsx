@@ -235,7 +235,14 @@ export function ReviewModalProvider({
 
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
-      <div className={hideGymListing ? 'hidden' : undefined} aria-hidden={hideGymListing}>
+      <div
+        className={
+          hideGymListing
+            ? 'pointer-events-none select-none opacity-0'
+            : undefined
+        }
+        aria-hidden={hideGymListing}
+      >
         {children}
       </div>
       <LoadingOverlay show={showCover} zClass="z-[199]" />

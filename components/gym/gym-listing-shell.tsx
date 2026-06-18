@@ -1,10 +1,9 @@
 'use client'
 
 import { MapPin } from 'lucide-react'
-import { LoadingOverlay } from '@/components/loading-overlay'
+import { GymPageMinHeightShell } from '@/components/gym/gym-page-shell'
 import type { BookingPrefillData } from '@/lib/utils/booking-prefill'
-
-import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
+import { primaryGymImageCardSrc } from '@/lib/images/gym-image-variants'
 
 /** Instant gym listing paint while the server page loads after checkout exit. */
 export function GymListingShell({ prefill }: { prefill: BookingPrefillData }) {
@@ -15,11 +14,10 @@ export function GymListingShell({ prefill }: { prefill: BookingPrefillData }) {
     images?: { url: string; variants?: { w400?: string; w800?: string; w1200?: string } | null }[]
   }
   const mainImage =
-    gym.images && gym.images.length > 0 ? gymImageCardSrc(gym.images[0]) : null
+    gym.images && gym.images.length > 0 ? primaryGymImageCardSrc(gym.images[0]) : null
 
   return (
-    <div className="min-h-screen bg-white pb-12">
-      <LoadingOverlay show={true} zClass="z-40" />
+    <GymPageMinHeightShell className="pb-12">
       <div className="bg-white border-b border-gray-200 py-4 md:py-6">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
@@ -56,6 +54,6 @@ export function GymListingShell({ prefill }: { prefill: BookingPrefillData }) {
           ) : null}
         </div>
       </div>
-    </div>
+    </GymPageMinHeightShell>
   )
 }

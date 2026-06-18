@@ -1,7 +1,7 @@
 /** Layout skeleton for gym detail — reserves vertical space while data loads. */
 export function GymDetailSkeleton() {
   return (
-    <div className="flex flex-1 flex-col bg-white pb-12">
+    <div className="flex min-h-screen flex-1 flex-col pb-12">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white py-4 md:py-6">
         <div className="mx-auto max-w-6xl px-4">
