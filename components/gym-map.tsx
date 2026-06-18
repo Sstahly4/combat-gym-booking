@@ -108,7 +108,9 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
           observer.disconnect()
         }
       },
-      { rootMargin: '0px 0px 500px 0px' },
+      // Bottom-only margin: enough to reduce spinner visibility without firing
+      // during fast mid-page scroll (500px caused main-thread jank with Maps JS).
+      { rootMargin: '0px 0px 200px 0px' },
     )
     observer.observe(node)
     return () => observer.disconnect()
