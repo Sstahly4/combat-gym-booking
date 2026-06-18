@@ -11,7 +11,11 @@ interface GymGalleryMobileProps {
   onImageClick?: (index: number) => void
 }
 
-const PRELOAD_AHEAD = 1 // adjacent slides only after the user swipes
+const PRELOAD_AHEAD = 1
+
+function circularSlideDistance(idx: number, currentIndex: number, total: number) {
+  return Math.min(Math.abs(idx - currentIndex), total - Math.abs(idx - currentIndex))
+}
 
 export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMobileProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -34,7 +38,6 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
     goTo(currentIndex - 1)
   }
 
-  // Touch swipe support
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
     touchDeltaX.current = 0
@@ -70,12 +73,7 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 
-        Sliding strip — ALL images stay in the DOM.
-        We shift the strip with translateX so the browser never unmounts/remounts
-        images and can composite the animation on the GPU.
-      */}
-      <div 
+      <div
         className="flex h-full"
         style={{
           width: `${images.length * 100}%`,
@@ -86,40 +84,36 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
         onClick={handleImageClick}
       >
         {images.map((image, idx) => {
-          // LCP cover (index 0) loads immediately; everything else stays lazy until
-          // the user swipes or the slide enters the active viewport.
           const isCoverPhoto = idx === 0
-          const isActiveSlide = idx === currentIndex
-          const isAdjacent =
-            images.length > 1 &&
-            Math.min(
-              Math.abs(idx - currentIndex),
-              images.length - Math.abs(idx - currentIndex),
-            ) <= PRELOAD_AHEAD
-          const shouldPrioritize =
-            isCoverPhoto || (isActiveSlide && currentIndex > 0) || (isAdjacent && currentIndex > 0)
+          const isNearActive =
+            circularSlideDistance(idx, currentIndex, images.length) <= PRELOAD_AHEAD
+          const shouldLoadImage = isCoverPhoto || isNearActive
+
           return (
             <div
               key={image.url}
-              className="relative flex-shrink-0 cursor-pointer"
+              className="relative flex-shrink-0 cursor-pointer h-full"
               style={{ width: `${100 / images.length}%` }}
             >
-              <img
-                src={gymImageSrc(image)}
-                srcSet={gymImageSrcSet(image)}
-                alt={`${gymName} ${idx + 1}`}
-                loading={shouldPrioritize ? 'eager' : 'lazy'}
-                decoding="async"
-                fetchPriority={shouldPrioritize ? 'high' : 'auto'}
-                sizes="100vw"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
+              {shouldLoadImage ? (
+                <img
+                  src={gymImageSrc(image)}
+                  srcSet={gymImageSrcSet(image)}
+                  alt={`${gymName} ${idx + 1}`}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority={isCoverPhoto ? 'high' : 'auto'}
+                  sizes="100vw"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 h-full w-full bg-gray-200" aria-hidden />
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* Navigation Arrows */}
       {images.length > 1 && (
         <>
           <button
@@ -138,12 +132,10 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
             <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Image Counter */}
           <div className="absolute bottom-3 right-3 bg-gray-900/70 text-white px-3 py-1.5 rounded-md text-xs font-medium z-10 backdrop-blur-sm pointer-events-none">
             {currentIndex + 1} / {images.length}
           </div>
 
-          {/* Dot indicators */}
           {images.length <= 10 && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
               {images.map((_, idx) => (

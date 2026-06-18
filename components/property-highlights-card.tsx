@@ -105,13 +105,11 @@ export function PropertyHighlightsCard({ gym, averageRating, reviewCount = 0, go
         )}
 
         {/* Map Section - Mobile only, at bottom */}
-        <div className="md:hidden border-t border-gray-200 pt-4 mt-4">
-          <div id="gym-map-section">
-            <GymMap 
-              gym={gym} 
-              googleMapsKey={googleMapsKey || (typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY : '') || ''} 
-            />
-          </div>
+        <div data-gym-map-anchor className="md:hidden border-t border-gray-200 pt-4 mt-4">
+          <GymMap
+            gym={gym}
+            googleMapsKey={googleMapsKey || (typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY : '') || ''}
+          />
         </div>
       </CardContent>
     </Card>

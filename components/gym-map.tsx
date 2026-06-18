@@ -80,7 +80,7 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
   const [modalEmbedActive, setModalEmbedActive] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(true)
   const [modalLoading, setModalLoading] = useState(true)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const previewBoxRef = useRef<HTMLDivElement>(null)
   const { convertPrice, formatPrice } = useCurrency()
 
   const apiKey =
@@ -95,14 +95,11 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
     return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(placeQuery)}&zoom=16&maptype=roadmap`
   }, [apiKey, placeQuery])
 
-  // Desktop preview: inject iframe only when the map block scrolls near the viewport.
+  // Lazy-load preview iframe when the map block scrolls near the viewport (all breakpoints).
   useEffect(() => {
     if (!mapUrl || previewEmbedActive) return
-    const node = previewRef.current
+    const node = previewBoxRef.current
     if (!node) return
-
-    const isMobile = window.matchMedia('(max-width: 767px)').matches
-    if (isMobile) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -139,10 +136,19 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
 
   return (
     <>
-      <div className="mt-0 md:mt-6" ref={previewRef}>
+      <div className="mt-0 md:mt-6">
         <div
-          className="border rounded-lg overflow-hidden h-48 md:h-64 bg-gray-100 relative cursor-pointer group"
+          ref={previewBoxRef}
+          className="border rounded-lg overflow-hidden min-h-[12rem] h-48 md:h-64 bg-gray-100 relative cursor-pointer group"
           onClick={() => setOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setOpen(true)
+            }
+          }}
         >
           {previewEmbedActive ? (
             <>
@@ -162,7 +168,10 @@ export function GymMap({ gym, googleMapsKey }: GymMapProps) {
           )}
           {previewEmbedActive && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-              <Button variant="secondary" className="hidden md:flex shadow-lg text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2 pointer-events-auto">
+              <Button
+                variant="secondary"
+                className="shadow-lg text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2 pointer-events-auto md:flex"
+              >
                 Show on map
               </Button>
             </div>

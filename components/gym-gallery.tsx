@@ -74,6 +74,7 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
                 className="object-cover"
                 sizes="33vw"
                 context="hero"
+                eager
               />
           </div>
         )}
@@ -88,6 +89,7 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
                   className="object-cover"
                   sizes="33vw"
                   context="hero"
+                  eager
                 />
                 {images.length > 3 && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-base md:text-lg z-10">

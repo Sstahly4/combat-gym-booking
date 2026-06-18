@@ -427,7 +427,7 @@ export default async function GymDetailsPage({
                 </Card>
               )}
 
-              <div id="gym-map-section" className="hidden md:block">
+              <div data-gym-map-anchor className="hidden md:block">
                 <GymMap gym={gym} googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''} />
               </div>
 

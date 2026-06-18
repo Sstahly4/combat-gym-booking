@@ -26,6 +26,8 @@ type ResponsiveGymImageProps = {
   sizes: string
   className?: string
   priority?: boolean
+  /** Load immediately without competing with LCP (`fetchPriority` stays auto). */
+  eager?: boolean
   /** Card thumbnails prefer w400; hero/gallery contexts prefer w800. */
   context?: 'card' | 'hero'
   /**
@@ -42,6 +44,7 @@ export function ResponsiveGymImage({
   sizes,
   className = 'object-cover',
   priority = false,
+  eager = false,
   context = 'card',
   aspect = 'fill',
   wrapperClassName,
@@ -123,7 +126,7 @@ export function ResponsiveGymImage({
           imageVisible ? 'opacity-100' : 'opacity-0',
         )}
         style={objectPosition ? { objectPosition } : undefined}
-        loading={priority ? 'eager' : 'lazy'}
+        loading={priority || eager ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'auto'}
         onLoad={handleLoad}
