@@ -11,12 +11,16 @@
  *   pnpm run backfill:gym-image-variants -- --dry-run
  *   pnpm run backfill:gym-image-variants -- --limit 5
  *   pnpm run backfill:gym-image-variants
+ *   pnpm run backfill:gym-image-variants -- --force-reencode
+ *   pnpm run backfill:gym-image-variants -- --ids 0e22694a-...,e29ebc42-...
  *
  * Options:
- *   --dry-run       Log actions only; no uploads or DB writes
- *   --limit N       Process at most N rows (default: all pending)
- *   --batch-size N  Rows per batch (default: 25)
- *   --delay-ms N    Pause between batches (default: 750)
+ *   --dry-run         Log actions only; no uploads or DB writes
+ *   --limit N         Process at most N rows (default: all pending)
+ *   --batch-size N    Rows per batch (default: 25)
+ *   --delay-ms N      Pause between batches (default: 750)
+ *   --force-reencode  Re-encode every row (refresh stale w400/w800/w1200 at quality 78)
+ *   --ids ID[,ID...]  Only process these gym_images.id values (implies --force-reencode)
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -59,16 +63,25 @@ function parseArgs(argv) {
     limit: Infinity,
     batchSize: 25,
     delayMs: 750,
+    forceReencode: false,
+    ids: null,
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--dry-run') opts.dryRun = true
+    else if (arg === '--force-reencode') opts.forceReencode = true
     else if (arg === '--limit') opts.limit = Number(argv[++i])
     else if (arg.startsWith('--limit=')) opts.limit = Number(arg.split('=')[1])
     else if (arg === '--batch-size') opts.batchSize = Number(argv[++i])
     else if (arg.startsWith('--batch-size=')) opts.batchSize = Number(arg.split('=')[1])
     else if (arg === '--delay-ms') opts.delayMs = Number(argv[++i])
     else if (arg.startsWith('--delay-ms=')) opts.delayMs = Number(arg.split('=')[1])
+    else if (arg === '--ids') opts.ids = argv[++i]
+    else if (arg.startsWith('--ids=')) opts.ids = arg.split('=').slice(1).join('=')
+  }
+  if (opts.ids) {
+    opts.forceReencode = true
+    opts.ids = opts.ids.split(',').map((id) => id.trim()).filter(Boolean)
   }
   return opts
 }
@@ -192,7 +205,17 @@ async function generateVariantBuffers(originalBuffer) {
   return out
 }
 
-async function fetchPendingRows(supabase, limit) {
+async function fetchPendingRows(supabase, limit, { forceReencode = false, ids = null } = {}) {
+  if (ids?.length) {
+    const { data, error } = await supabase
+      .from('gym_images')
+      .select('id, gym_id, url, variants')
+      .in('id', ids)
+      .order('id', { ascending: true })
+    if (error) throw error
+    return data || []
+  }
+
   const pageSize = 200
   const rows = []
   let from = 0
@@ -208,7 +231,7 @@ async function fetchPendingRows(supabase, limit) {
     if (!data?.length) break
 
     for (const row of data) {
-      if (needsBackfill(row.variants)) {
+      if (forceReencode || needsBackfill(row.variants)) {
         rows.push(row)
         if (rows.length >= limit) break
       }
@@ -300,6 +323,7 @@ async function processRow(supabase, row, dryRun) {
     status: dryRun ? 'dry-run' : 'ok',
     keys: [...keys, 'thumbhash'],
     stem,
+    w400Bytes: variantBuffers.w400?.length,
   }
 }
 
@@ -322,9 +346,19 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const pending = await fetchPendingRows(supabase, opts.limit)
+  const pending = await fetchPendingRows(supabase, opts.limit, {
+    forceReencode: opts.forceReencode,
+    ids: opts.ids,
+  })
+
+  const modeLabel = opts.ids
+    ? `targeted (${opts.ids.length} id(s))`
+    : opts.forceReencode
+      ? 'force-reencode (all rows)'
+      : 'without variants'
+
   console.log(
-    `Found ${pending.length} gym_images row(s) without variants` +
+    `Found ${pending.length} gym_images row(s) — ${modeLabel}` +
       (opts.dryRun ? ' (dry-run)' : ''),
   )
 
@@ -348,13 +382,18 @@ async function main() {
           console.warn(`  skip ${row.id}: ${result.reason}`)
         } else {
           ok++
+          const sizeNote =
+            result.w400Bytes != null ? ` w400=${Math.round(result.w400Bytes / 1024)}KB` : ''
           console.log(
-            `  ${result.status} ${row.id} stem=${result.stem} keys=${result.keys.join(',')}`,
+            `  ${result.status} ${row.id} gym=${row.gym_id} stem=${result.stem} keys=${result.keys.join(',')}${sizeNote}`,
           )
         }
       } catch (err) {
         failed++
-        console.error(`  fail ${row.id}:`, err instanceof Error ? err.message : err)
+        console.error(
+          `  fail ${row.id} gym=${row.gym_id} url=${row.url}:`,
+          err instanceof Error ? err.message : err,
+        )
       }
     }
 
