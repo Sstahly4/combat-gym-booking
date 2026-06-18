@@ -27,6 +27,9 @@ const GYM_IMAGE_ORDER = {
 /** Sample size for the fast LCP row — quality-sorted in memory, not the full catalog. */
 const FIRST_ROW_POOL_SIZE = 48
 
+/** Cap homepage shelf / TripPlanner pool — avoids unbounded catalog fetch on cache miss. */
+const HOMEPAGE_CATALOG_POOL_SIZE = 120
+
 async function fetchSlimGymsWithPackages(): Promise<HomepageGym[]> {
   const supabase = createPublicClient()
   const { data } = await supabase
@@ -35,6 +38,7 @@ async function fetchSlimGymsWithPackages(): Promise<HomepageGym[]> {
     .in('verification_status', [...LIVE_VERIFICATION])
     .order('order', GYM_IMAGE_ORDER)
     .limit(1, { foreignTable: 'gym_images' })
+    .limit(HOMEPAGE_CATALOG_POOL_SIZE)
 
   const gyms = sortGymImages((data || []) as HomepageGym[])
   const withReviews = await attachReviewStatsPublic(gyms)
@@ -144,6 +148,6 @@ export const getHomepageDataCached = unstable_cache(
       firstRowIds,
     }
   },
-  ['homepage-redesign-data-v5'],
+  ['homepage-redesign-data-v6'],
   { revalidate: 300 },
 )

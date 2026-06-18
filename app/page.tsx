@@ -162,8 +162,8 @@ async function getGymCountsByDiscipline() {
   return counts
 }
 
-export default async function Home({ searchParams }: { searchParams?: { checkin?: string, checkout?: string } }) {
-  if (USE_NEW_HOMEPAGE) return <HomepageRedesign searchParams={searchParams} />
+export default async function Home() {
+  if (USE_NEW_HOMEPAGE) return <HomepageRedesign />
 
   // Fetch gyms for all carousels in parallel for better performance
   const [allGyms, allGymsWithPackages, topRatedGyms, disciplineCounts] = await Promise.all([
@@ -172,32 +172,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
     getTopRatedGyms(10),
     getGymCountsByDiscipline()
   ])
-  
-  // Format dates for display
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return ''
-    const date = new Date(dateString + 'T00:00:00')
-    const day = date.getDate()
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const month = months[date.getMonth()]
-    return `${day} ${month}`
-  }
-  
-  // Get dates from search params or use defaults
-  const checkin = searchParams?.checkin || ''
-  const checkout = searchParams?.checkout || ''
-  
-  // Format date range string - always show dates (use defaults if not set)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  const nextDay = new Date(today)
-  nextDay.setDate(today.getDate() + 2)
-  
-  const finalCheckin = checkin || today.toISOString().split('T')[0]
-  const finalCheckout = checkout || nextDay.toISOString().split('T')[0]
-  
-  const dateDisplay = `${formatDateForDisplay(finalCheckin)}-${formatDateForDisplay(finalCheckout)}, 1 adult`
   
   // Get the most common country from approved gyms for the "Browse by sport type" section
   // Use cached data from allGyms to avoid extra query
@@ -312,7 +286,6 @@ export default async function Home({ searchParams }: { searchParams?: { checkin?
               <SportTypeCarousel
                 sports={availableSports}
                 country={mostCommonCountry}
-                dateDisplay={dateDisplay}
                 priorityCount={4}
               />
             </div>

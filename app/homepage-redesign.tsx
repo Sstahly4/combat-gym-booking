@@ -25,11 +25,7 @@ import {
   HOMEPAGE_ROW_SIZE_MOBILE,
 } from '@/lib/homepage/homepage-rows'
 
-export default async function HomepageRedesign({
-  searchParams,
-}: {
-  searchParams?: { checkin?: string; checkout?: string }
-}) {
+export default async function HomepageRedesign() {
   return (
     <BookingProvider>
       <main className="min-h-screen bg-white">
@@ -38,41 +34,16 @@ export default async function HomepageRedesign({
           <HomepageMobilePopularFast />
         </Suspense>
         <Suspense fallback={<HomepageCarouselSkeleton />}>
-          <HomepageCarouselContent searchParams={searchParams} />
+          <HomepageCarouselContent />
         </Suspense>
       </main>
     </BookingProvider>
   )
 }
 
-async function HomepageCarouselContent({
-  searchParams,
-}: {
-  searchParams?: { checkin?: string; checkout?: string }
-}) {
+async function HomepageCarouselContent() {
   const { allGymsWithPackages, topRatedGyms, disciplineCounts, offers, firstRowIds } =
     await getHomepageDataCached()
-
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return ''
-    const date = new Date(`${dateString}T00:00:00`)
-    const day = date.getDate()
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const month = months[date.getMonth()]
-    return `${day} ${month}`
-  }
-
-  const checkin = searchParams?.checkin || ''
-  const checkout = searchParams?.checkout || ''
-
-  const today = new Date()
-  const nextDay = new Date(today)
-  nextDay.setDate(today.getDate() + 2)
-
-  const finalCheckin = checkin || today.toISOString().split('T')[0]
-  const finalCheckout = checkout || nextDay.toISOString().split('T')[0]
-
-  const dateDisplay = `${formatDateForDisplay(finalCheckin)}-${formatDateForDisplay(finalCheckout)}, 1 adult`
 
   const countryCounts: Record<string, number> = {}
   allGymsWithPackages?.forEach((gym: any) => {
@@ -293,7 +264,6 @@ async function HomepageCarouselContent({
                 <SportTypeCarousel
                   sports={availableSports}
                   country={mostCommonCountry}
-                  dateDisplay={dateDisplay}
                   priorityCount={0}
                 />
               </div>

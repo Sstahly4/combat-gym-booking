@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { Suspense, useRef, useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,6 +10,7 @@ import {
   homepageSportTileSrcSet,
   type HomepageSportTileVariants,
 } from '@/lib/homepage/homepage-sport-tile-images'
+import { buildHomepageDateDisplay } from '@/lib/homepage/homepage-date-display'
 
 interface Sport {
   name: string
@@ -19,35 +21,61 @@ interface Sport {
 interface SportTypeCarouselProps {
   sports: Sport[]
   country: string
-  dateDisplay: string
+  /** Omit to read ?checkin=&checkout= on the client (keeps homepage ISR-cacheable). */
+  dateDisplay?: string
   /** First N tiles: eager load + high fetch priority (LCP / above-the-fold). */
   priorityCount?: number
 }
 
-export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount = 0 }: SportTypeCarouselProps) {
+function cardsOverflowing(count: number) {
+  if (typeof window === 'undefined') return count > 2
+  return count > (window.innerWidth < 768 ? 2 : 4)
+}
+
+function SportTypeCarouselInner({
+  sports,
+  country,
+  dateDisplay: dateDisplayProp,
+  priorityCount = 0,
+}: SportTypeCarouselProps) {
+  const searchParams = useSearchParams()
+  const dateDisplay =
+    dateDisplayProp ??
+    buildHomepageDateDisplay(searchParams.get('checkin'), searchParams.get('checkout'))
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
+  const [canScrollRight, setCanScrollRight] = useState(() => cardsOverflowing(sports.length))
 
-  const checkScroll = () => {
+  const checkScroll = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
       setCanScrollLeft(scrollLeft > 0)
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    checkScroll()
-    window.addEventListener('resize', checkScroll)
-    return () => window.removeEventListener('resize', checkScroll)
-  }, [])
+    setCanScrollRight(cardsOverflowing(sports.length))
+  }, [sports.length])
+
+  useEffect(() => {
+    let raf = 0
+    const onResize = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(checkScroll)
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(raf)
+    }
+  }, [checkScroll])
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const containerWidth = scrollRef.current.clientWidth
       const gap = window.innerWidth < 768 ? 12 : 16
-      // On mobile: 2 cards per view (50vw), on desktop: 4 cards per view
       const itemWidth = window.innerWidth < 768
         ? (containerWidth - gap) / 2
         : (containerWidth - (3 * gap)) / 4
@@ -62,7 +90,6 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
 
   return (
     <div className="relative group">
-      {/* Left Button - Hidden on mobile */}
       {canScrollLeft && (
         <Button
           variant="ghost"
@@ -74,7 +101,6 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
         </Button>
       )}
 
-      {/* Right Button - Hidden on mobile */}
       {canScrollRight && (
         <Button
           variant="ghost"
@@ -86,7 +112,6 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
         </Button>
       )}
 
-      {/* Scroll Container */}
       <div
         ref={scrollRef}
         onScroll={checkScroll}
@@ -119,5 +144,15 @@ export function SportTypeCarousel({ sports, country, dateDisplay, priorityCount 
         ))}
       </div>
     </div>
+  )
+}
+
+export function SportTypeCarousel(props: SportTypeCarouselProps) {
+  const fallbackDate = props.dateDisplay ?? buildHomepageDateDisplay()
+
+  return (
+    <Suspense fallback={<SportTypeCarouselInner {...props} dateDisplay={fallbackDate} />}>
+      <SportTypeCarouselInner {...props} />
+    </Suspense>
   )
 }

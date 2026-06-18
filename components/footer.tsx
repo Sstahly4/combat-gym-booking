@@ -138,7 +138,7 @@ export function Footer() {
         <div className="pt-8 pb-6">
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 lg:gap-10">
             <img
-              src="/logo-board-of-boxing.png"
+              src="/logo-board-of-boxing.webp"
               alt="Board of Boxing"
               className="h-12 w-auto object-contain transition-all"
               style={{ filter: 'grayscale(1) brightness(0.3) contrast(1.2)', opacity: 0.8 }}
@@ -146,7 +146,7 @@ export function Footer() {
               onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
             />
             <img
-              src="/logo-gov-new.png"
+              src="/logo-gov-new.webp"
               alt="Government"
               className="h-12 w-auto object-contain transition-all"
               style={{ filter: 'grayscale(1) brightness(0.3) contrast(1.2)', opacity: 0.8 }}
