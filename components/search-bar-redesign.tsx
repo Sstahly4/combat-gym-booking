@@ -1318,7 +1318,7 @@ export function SearchBarRedesign({
               ) : null}
             </div>
           ) : (
-            <span className="flex-1 text-sm text-gray-400 truncate">Start your search</span>
+            <span className="flex-1 text-sm text-gray-500 truncate">Start your search</span>
           )}
         </button>
       </div>
