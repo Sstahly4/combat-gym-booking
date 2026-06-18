@@ -27,6 +27,7 @@ import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
 import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
 import { ThingsToDoCard } from '@/components/things-to-do-card'
+import { gymImageSrc, gymImageSrcSet } from '@/lib/images/gym-image-variants'
 import {
   getOwnerDraftGym,
   getPublicGym,
@@ -296,9 +297,23 @@ export default async function GymDetailsPage({
   }
 
   const gymSlugOrId = gym.slug?.trim() || gym.id
+  const coverImage = gym.images[0]
+  const coverPreloadHref = coverImage ? gymImageSrc(coverImage) : null
+  const coverPreloadSrcSet = coverImage ? gymImageSrcSet(coverImage) : undefined
 
   return (
     <GymPageClientShell gymId={gym.id} gymSlugOrId={gymSlugOrId}>
+      {coverPreloadHref ? (
+        <link
+          rel="preload"
+          as="image"
+          href={coverPreloadHref}
+          {...(coverPreloadSrcSet
+            ? { imageSrcSet: coverPreloadSrcSet, imageSizes: '100vw' }
+            : {})}
+          fetchPriority="high"
+        />
+      ) : null}
       {needsSlugRedirect && gym.slug ? (
         <GymSlugRedirectBoundary slug={gym.slug} />
       ) : null}

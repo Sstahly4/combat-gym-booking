@@ -11,7 +11,7 @@ interface GymGalleryMobileProps {
   onImageClick?: (index: number) => void
 }
 
-const PRELOAD_AHEAD = 3 // how many images ahead to keep hot
+const PRELOAD_AHEAD = 1 // adjacent slides only after the user swipes
 
 export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMobileProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -86,8 +86,18 @@ export function GymGalleryMobile({ images, gymName, onImageClick }: GymGalleryMo
         onClick={handleImageClick}
       >
         {images.map((image, idx) => {
-          // Eagerly load current + next PRELOAD_AHEAD; lazy-load the rest
-          const shouldPrioritize = idx === 0 || Math.abs(idx - currentIndex) <= PRELOAD_AHEAD
+          // LCP cover (index 0) loads immediately; everything else stays lazy until
+          // the user swipes or the slide enters the active viewport.
+          const isCoverPhoto = idx === 0
+          const isActiveSlide = idx === currentIndex
+          const isAdjacent =
+            images.length > 1 &&
+            Math.min(
+              Math.abs(idx - currentIndex),
+              images.length - Math.abs(idx - currentIndex),
+            ) <= PRELOAD_AHEAD
+          const shouldPrioritize =
+            isCoverPhoto || (isActiveSlide && currentIndex > 0) || (isAdjacent && currentIndex > 0)
           return (
             <div
               key={image.url}

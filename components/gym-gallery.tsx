@@ -53,18 +53,19 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
         className="grid grid-cols-1 md:grid-cols-3 grid-rows-1 md:grid-rows-2 gap-2 h-[240px] md:h-[400px] rounded-lg md:rounded-xl overflow-hidden cursor-pointer"
         onClick={() => openLightbox(0)}
       >
-        {/* Hero image */}
+        {/* Hero image — LCP cover: high priority, never lazy */}
         <div className="col-span-1 md:col-span-2 row-span-1 md:row-span-2 relative hover:opacity-95 transition-opacity">
           <ResponsiveGymImage
             image={images[0]}
             alt={`${gymName} hero`}
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 66vw"
+            context="hero"
             priority
           />
         </div>
 
-        {/* Secondary image */}
+        {/* Secondary image — deferred until near viewport */}
         {images.length > 1 && (
           <div className="hidden md:block col-span-1 row-span-1 relative hover:opacity-95 transition-opacity">
               <ResponsiveGymImage
@@ -72,7 +73,7 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
                 alt={`${gymName} 2`}
                 className="object-cover"
                 sizes="33vw"
-                priority
+                context="hero"
               />
           </div>
         )}
@@ -86,7 +87,7 @@ export function GymGallery({ images, gymName }: GymGalleryProps) {
                   alt={`${gymName} 3`}
                   className="object-cover"
                   sizes="33vw"
-                  priority
+                  context="hero"
                 />
                 {images.length > 3 && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-base md:text-lg z-10">
