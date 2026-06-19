@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import { OfferStepper } from '@/components/manage/offer-stepper'
 import type { Package } from '@/lib/types/database'
 import { ChevronRight } from 'lucide-react'
@@ -10,42 +8,33 @@ import { ChevronRight } from 'lucide-react'
 export const PACKAGE_EDITOR_CHROME =
   'fixed inset-x-0 bottom-0 z-40 overflow-y-auto bg-gray-50 top-32 md:left-56 md:top-20'
 
-const HUB_MAIN_SCROLL_SELECTORS = '[data-manage-main-scroll], [data-admin-hub-main-scroll]'
-
-function usePackageEditorScrollLock() {
-  useEffect(() => {
-    const scrollEls = Array.from(
-      document.querySelectorAll<HTMLElement>(HUB_MAIN_SCROLL_SELECTORS)
-    )
-    const prevBodyOverflow = document.body.style.overflow
-    const prevScrollOverflows = scrollEls.map((el) => el.style.overflow)
-
-    document.body.style.overflow = 'hidden'
-    for (const el of scrollEls) el.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = prevBodyOverflow
-      scrollEls.forEach((el, index) => {
-        el.style.overflow = prevScrollOverflows[index] ?? ''
-      })
-    }
-  }, [])
-}
-
-/** Full-viewport package editor shell — portaled so gym edit form content cannot bleed through. */
-export function PackageEditorOverlay({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
-  usePackageEditorScrollLock()
-
-  if (!mounted) return null
-
-  return createPortal(
-    <div className={PACKAGE_EDITOR_CHROME} role="dialog" aria-modal="true">
-      {children}
-    </div>,
-    document.body
+function PackageEditorHeader({
+  onClose,
+  title,
+  subtitle,
+}: {
+  onClose: () => void
+  title: string
+  subtitle?: string
+}) {
+  return (
+    <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+          <ChevronRight className="h-4 w-4 rotate-180" />
+          Back to packages
+        </button>
+        <span className="text-sm text-gray-300">|</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+          {subtitle ? <p className="text-xs text-gray-500">{subtitle}</p> : null}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -63,25 +52,8 @@ export function PackageEditShell({
   onUpdated: () => void
 }) {
   return (
-    <PackageEditorOverlay>
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            <ChevronRight className="h-4 w-4 rotate-180" />
-            Back to packages
-          </button>
-          <span className="text-sm text-gray-300">|</span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900">{pkg.name}</p>
-            <p className="text-xs text-gray-500">Edit package</p>
-          </div>
-        </div>
-      </div>
-
+    <div className={PACKAGE_EDITOR_CHROME}>
+      <PackageEditorHeader onClose={onClose} title={pkg.name} subtitle="Edit package" />
       <OfferStepper
         gymId={gymId}
         currency={currency}
@@ -92,6 +64,32 @@ export function PackageEditShell({
           onClose()
         }}
       />
-    </PackageEditorOverlay>
+    </div>
+  )
+}
+
+export function PackageCreateShell({
+  gymId,
+  currency,
+  onClose,
+  onComplete,
+}: {
+  gymId: string
+  currency: string
+  onClose: () => void
+  onComplete: () => void
+}) {
+  return (
+    <div className={PACKAGE_EDITOR_CHROME}>
+      <PackageEditorHeader onClose={onClose} title="New Offer" />
+      <OfferStepper
+        gymId={gymId}
+        currency={currency}
+        onComplete={() => {
+          onComplete()
+          onClose()
+        }}
+      />
+    </div>
   )
 }

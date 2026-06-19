@@ -11,8 +11,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { GymDescriptionField } from '@/components/manage/gym-description-field'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Gym, GymImage } from '@/lib/types/database'
+import type { Gym, GymImage, Package } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
+import { PackageCreateShell, PackageEditShell } from '@/components/manage/package-edit-shell'
 import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
 import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
@@ -88,6 +89,11 @@ interface GymWithImages extends Gym {
   faq?: any
 }
 
+type PackageEditorMode =
+  | { kind: 'edit'; package: Package }
+  | { kind: 'create' }
+  | null
+
 function EditGymForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -108,6 +114,8 @@ function EditGymForm() {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('basic')
+  const [packageEditorMode, setPackageEditorMode] = useState<PackageEditorMode>(null)
+  const [packagesListRefreshKey, setPackagesListRefreshKey] = useState(0)
   const scrolledToSectionKey = useRef<string | null>(null)
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false)
 
@@ -1089,6 +1097,36 @@ function EditGymForm() {
   }
 
   if (!gym) return null
+
+  const closePackageEditor = () => {
+    setPackageEditorMode(null)
+    setPackagesListRefreshKey((key) => key + 1)
+  }
+
+  if (packageEditorMode) {
+    const currency = gym.currency || 'USD'
+
+    if (packageEditorMode.kind === 'edit') {
+      return (
+        <PackageEditShell
+          gymId={gym.id}
+          currency={currency}
+          package={packageEditorMode.package}
+          onClose={closePackageEditor}
+          onUpdated={() => setPackagesListRefreshKey((key) => key + 1)}
+        />
+      )
+    }
+
+    return (
+      <PackageCreateShell
+        gymId={gym.id}
+        currency={currency}
+        onClose={closePackageEditor}
+        onComplete={() => setPackagesListRefreshKey((key) => key + 1)}
+      />
+    )
+  }
 
   // Calculate section completion status
   const sectionStatus = {
@@ -2154,10 +2192,13 @@ function EditGymForm() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <PackagesSection 
-                    gymId={gym.id} 
+                  <PackagesSection
+                    gymId={gym.id}
                     currency={gym.currency || 'USD'}
                     isAdmin={profile?.role === 'admin'}
+                    listRefreshKey={packagesListRefreshKey}
+                    onEditPackage={(pkg) => setPackageEditorMode({ kind: 'edit', package: pkg })}
+                    onCreatePackage={() => setPackageEditorMode({ kind: 'create' })}
                   />
                 </CardContent>
               </Card>

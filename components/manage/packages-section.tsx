@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { OfferStepper } from './offer-stepper'
-import { PackageEditShell, PackageEditorOverlay } from './package-edit-shell'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import { managedImageDisplayUrl } from '@/lib/images/gym-image-variants'
@@ -20,14 +18,15 @@ import {
   BedDouble,
   UtensilsCrossed,
   Dumbbell,
-  ChevronRight,
-  ImageIcon,
 } from 'lucide-react'
 
 interface PackagesSectionProps {
   gymId: string
   currency: string
   isAdmin?: boolean
+  listRefreshKey?: number
+  onEditPackage: (pkg: Package) => void
+  onCreatePackage: () => void
 }
 
 const OFFER_TYPE_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -38,16 +37,19 @@ const OFFER_TYPE_META: Record<string, { label: string; color: string; icon: Reac
   TYPE_ONE_TIME_EVENT:  { label: 'One-Time Event',         color: 'bg-amber-100 text-amber-700',  icon: Ticket },
 }
 
-export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
+export function PackagesSection({
+  gymId,
+  currency,
+  listRefreshKey = 0,
+  onEditPackage,
+  onCreatePackage,
+}: PackagesSectionProps) {
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
-  const [showStepper, setShowStepper] = useState(false)
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null)
-  const [editShellPackage, setEditShellPackage] = useState<Package | null>(null)
 
   useEffect(() => {
-    fetchPackages()
-  }, [gymId])
+    void fetchPackages()
+  }, [gymId, listRefreshKey])
 
   const fetchPackages = async () => {
     setLoading(true)
@@ -66,74 +68,9 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
     if (!confirm('Delete this offer? This cannot be undone.')) return
     const supabase = createClient()
     await supabase.from('packages').delete().eq('id', id)
-    fetchPackages()
+    await fetchPackages()
   }
 
-  const openCreate = () => {
-    setEditingPackage(null)
-    setShowStepper(true)
-  }
-
-  const openEdit = (pkg: Package) => {
-    setEditShellPackage(pkg)
-  }
-
-  const handleComplete = () => {
-    setShowStepper(false)
-    setEditingPackage(null)
-    fetchPackages()
-  }
-
-  const handleClose = () => {
-    setShowStepper(false)
-    setEditingPackage(null)
-  }
-
-  // ── Package editor (wizard only; sits below Partner Hub navbar) ─────────
-  if (editShellPackage) {
-    return (
-      <PackageEditShell
-        gymId={gymId}
-        currency={currency}
-        package={editShellPackage}
-        onClose={() => setEditShellPackage(null)}
-        onUpdated={fetchPackages}
-      />
-    )
-  }
-
-  // ── Full-screen stepper (new offer only) ───────────────────────────────
-  if (showStepper) {
-    return (
-      <PackageEditorOverlay>
-        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium"
-            >
-              <ChevronRight className="w-4 h-4 rotate-180" />
-              Back to packages
-            </button>
-            <span className="text-sm text-gray-400">|</span>
-            <span className="text-sm text-gray-600">
-              {editingPackage ? `Editing: ${editingPackage.name}` : 'New Offer'}
-            </span>
-          </div>
-        </div>
-
-        <OfferStepper
-          gymId={gymId}
-          currency={currency}
-          onComplete={handleComplete}
-          existingPackage={editingPackage}
-        />
-      </PackageEditorOverlay>
-    )
-  }
-
-  // ── Package list ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -141,7 +78,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
           {packages.length} offer{packages.length !== 1 ? 's' : ''}
         </p>
         <Button
-          onClick={openCreate}
+          onClick={onCreatePackage}
           className="bg-[#003580] hover:bg-[#003580]/90 text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -160,7 +97,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
           <Ticket className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="font-medium text-gray-600 mb-1">No offers yet</p>
           <p className="text-sm">Create your first offer to start accepting bookings.</p>
-          <Button onClick={openCreate} variant="outline" className="mt-4">
+          <Button onClick={onCreatePackage} variant="outline" className="mt-4">
             <Plus className="w-4 h-4 mr-2" />
             Create Offer
           </Button>
@@ -190,7 +127,6 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                 key={pkg.id}
                 className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors"
               >
-                {/* Thumbnail */}
                 <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                   {pkg.image ? (
                     <img
@@ -203,7 +139,6 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <p className="font-semibold text-sm text-gray-900 truncate">{pkg.name}</p>
@@ -229,12 +164,11 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => openEdit(pkg)}
+                    onClick={() => onEditPackage(pkg)}
                     className="h-8 px-3"
                   >
                     <Edit2 className="w-3.5 h-3.5 mr-1" />
