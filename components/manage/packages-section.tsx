@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OfferStepper } from './offer-stepper'
-import { PackageEditShell, PACKAGE_EDITOR_CHROME } from './package-edit-shell'
+import { PackageEditShell, PackageEditorOverlay } from './package-edit-shell'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
 import {
@@ -104,7 +104,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
   // ── Full-screen stepper (new offer only) ───────────────────────────────
   if (showStepper) {
     return (
-      <div className={PACKAGE_EDITOR_CHROME}>
+      <PackageEditorOverlay>
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
             <button
@@ -128,7 +128,7 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
           onComplete={handleComplete}
           existingPackage={editingPackage}
         />
-      </div>
+      </PackageEditorOverlay>
     )
   }
 

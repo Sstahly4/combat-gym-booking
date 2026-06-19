@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { OfferStepper } from '@/components/manage/offer-stepper'
 import type { Package } from '@/lib/types/database'
 import { ChevronRight } from 'lucide-react'
@@ -7,6 +9,45 @@ import { ChevronRight } from 'lucide-react'
 /** Below Partner Hub navbar (+ mobile hub bar); matches manage sidebar offsets. */
 export const PACKAGE_EDITOR_CHROME =
   'fixed inset-x-0 bottom-0 z-40 overflow-y-auto bg-gray-50 top-32 md:left-56 md:top-20'
+
+const HUB_MAIN_SCROLL_SELECTORS = '[data-manage-main-scroll], [data-admin-hub-main-scroll]'
+
+function usePackageEditorScrollLock() {
+  useEffect(() => {
+    const scrollEls = Array.from(
+      document.querySelectorAll<HTMLElement>(HUB_MAIN_SCROLL_SELECTORS)
+    )
+    const prevBodyOverflow = document.body.style.overflow
+    const prevScrollOverflows = scrollEls.map((el) => el.style.overflow)
+
+    document.body.style.overflow = 'hidden'
+    for (const el of scrollEls) el.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      scrollEls.forEach((el, index) => {
+        el.style.overflow = prevScrollOverflows[index] ?? ''
+      })
+    }
+  }, [])
+}
+
+/** Full-viewport package editor shell — portaled so gym edit form content cannot bleed through. */
+export function PackageEditorOverlay({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+  usePackageEditorScrollLock()
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className={PACKAGE_EDITOR_CHROME} role="dialog" aria-modal="true">
+      {children}
+    </div>,
+    document.body
+  )
+}
 
 export function PackageEditShell({
   gymId,
@@ -22,7 +63,7 @@ export function PackageEditShell({
   onUpdated: () => void
 }) {
   return (
-    <div className={PACKAGE_EDITOR_CHROME}>
+    <PackageEditorOverlay>
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
           <button
@@ -51,6 +92,6 @@ export function PackageEditShell({
           onClose()
         }}
       />
-    </div>
+    </PackageEditorOverlay>
   )
 }
