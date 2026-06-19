@@ -2,6 +2,12 @@ import type { GymImage, GymImageVariants } from '@/lib/types/database'
 
 export const GYM_IMAGE_VARIANT_WIDTHS = [400, 800, 1200] as const
 
+/** Max longest edge before upload — keeps variant generation fast on phone photos. */
+export const GYM_UPLOAD_MAX_EDGE = 2000
+
+const GYM_UPLOAD_PREPARE_WEBP_QUALITY = 0.78
+const GYM_UPLOAD_SKIP_PREPARE_MAX_BYTES = 500_000
+
 /** Storage prefix under the gym-images bucket (e.g. `{gymId}/packages`). */
 export function gymImageAssetBase(gymId: string, subdir?: string): string {
   if (!subdir) return gymId
@@ -48,12 +54,22 @@ type LoadedImage = {
 
 async function loadImage(file: File): Promise<LoadedImage> {
   if (typeof createImageBitmap === 'function') {
-    const bitmap = await createImageBitmap(file)
-    return {
-      image: bitmap,
-      width: bitmap.width,
-      height: bitmap.height,
-      cleanup: () => bitmap.close(),
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      return {
+        image: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close(),
+      }
+    } catch {
+      const bitmap = await createImageBitmap(file)
+      return {
+        image: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close(),
+      }
     }
   }
 
@@ -102,6 +118,42 @@ function variantTargetsForWidth(sourceWidth: number): Array<{
   return targets
 }
 
+/** Downscale large phone photos in-browser before variant generation and upload. */
+export async function prepareGymImageUploadFile(file: File): Promise<File> {
+  if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) {
+    return file
+  }
+
+  const loaded = await loadImage(file)
+  try {
+    const maxEdge = Math.max(loaded.width, loaded.height)
+    const needsResize = maxEdge > GYM_UPLOAD_MAX_EDGE
+    const needsCompress = file.size > GYM_UPLOAD_SKIP_PREPARE_MAX_BYTES
+    if (!needsResize && !needsCompress) return file
+
+    const scale = needsResize ? GYM_UPLOAD_MAX_EDGE / maxEdge : 1
+    const targetWidth = Math.max(1, Math.round(loaded.width * scale))
+    const targetHeight = Math.max(1, Math.round(loaded.height * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = targetWidth
+    canvas.height = targetHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Could not prepare image canvas')
+    ctx.drawImage(loaded.image, 0, 0, targetWidth, targetHeight)
+
+    const blob = await canvasToWebp(canvas, GYM_UPLOAD_PREPARE_WEBP_QUALITY)
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo'
+    return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() })
+  } finally {
+    loaded.cleanup()
+  }
+}
+
+export function canonicalGymImageUrl(variants: GymImageVariants): string {
+  return variants.w1200 || variants.w800 || variants.w400 || ''
+}
+
 export async function createGymImageVariantBlobs(file: File): Promise<GeneratedGymImageVariant[]> {
   if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) {
     return []
@@ -142,25 +194,15 @@ export async function uploadGymImageWithVariants({
   subdir?: string
 }): Promise<UploadedGymImageWithVariants> {
   const bucket = supabase.storage.from('gym-images')
-  const fileExt = file.name.split('.').pop() || 'jpg'
   const assetBase = gymImageAssetBase(gymId, subdir)
-  const originalPath = `${assetBase}/${stem}.${fileExt}`
-
-  const { error: uploadError } = await bucket.upload(originalPath, file, {
-    cacheControl: '31536000',
-    upsert: false,
-  })
-  if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`)
-
-  const { data: urlData } = bucket.getPublicUrl(originalPath)
-  if (!urlData?.publicUrl) throw new Error('Failed to get public URL for uploaded image')
+  const prepared = await prepareGymImageUploadFile(file)
 
   const variants: GymImageVariants = {}
-  const storagePaths = [originalPath]
+  const storagePaths: string[] = []
   const uploadedVariantPaths: string[] = []
 
   try {
-    const generated = await createGymImageVariantBlobs(file)
+    const generated = await createGymImageVariantBlobs(prepared)
     if (generated.length === 0) {
       throw new Error(
         'Could not generate WebP variants from this file. Use JPEG, PNG, or WebP — HEIC/HEIF is not supported in the browser uploader.',
@@ -179,16 +221,22 @@ export async function uploadGymImageWithVariants({
       uploadedVariantPaths.push(variantPath)
     }
   } catch (error) {
-    await bucket.remove([originalPath, ...uploadedVariantPaths]).catch(() => {})
+    await bucket.remove(uploadedVariantPaths).catch(() => {})
     throw error instanceof Error ? error : new Error('Image variant generation failed')
   }
 
   if (!variants.w400) {
-    await bucket.remove([originalPath, ...uploadedVariantPaths]).catch(() => {})
+    await bucket.remove(uploadedVariantPaths).catch(() => {})
     throw new Error('Upload requires a w400 WebP variant. Try a standard photo format or a larger image.')
   }
 
-  return { url: urlData.publicUrl, variants, storagePaths }
+  const url = canonicalGymImageUrl(variants)
+  if (!url) {
+    await bucket.remove(uploadedVariantPaths).catch(() => {})
+    throw new Error('Upload requires at least one WebP variant.')
+  }
+
+  return { url, variants, storagePaths }
 }
 
 export function gymImageSrc(image: Pick<GymImage, 'url' | 'variants'> | null | undefined): string {
