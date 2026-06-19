@@ -6,6 +6,7 @@ import { OfferStepper } from './offer-stepper'
 import { AccommodationQuickModal } from './accommodation-quick-modal'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
+import { managedImageDisplayUrl } from '@/lib/images/gym-image-variants'
 import {
   offerTypeUsesTrainingAccess,
   trainingAccessCardLabel,
@@ -275,7 +276,11 @@ export function OnboardingPackagesPanel({
                           <div className="flex min-w-0 flex-1 items-start gap-4">
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm">
                               {pkg.image ? (
-                                <img src={pkg.image} alt="" className="h-full w-full object-cover" />
+                                <img
+                                  src={managedImageDisplayUrl(pkg.image) ?? ''}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
                               ) : (
                                 <Icon className="h-6 w-6 text-gray-400" aria-hidden />
                               )}

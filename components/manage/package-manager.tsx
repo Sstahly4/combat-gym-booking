@@ -13,6 +13,7 @@ import { Trash2, Edit2, Plus, Package as PackageIcon, BedDouble } from 'lucide-r
 import { syncGymSearchPrice } from '@/lib/manage/sync-gym-search-price'
 import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 import {
+  managedImageDisplayUrl,
   serializeManagedImageRef,
   uploadGymImageWithVariants,
 } from '@/lib/images/gym-image-variants'
@@ -811,7 +812,7 @@ export function PackageManager({ gymId, currency }: { gymId: string | undefined,
                         src={
                           packageImage && packageImagePreviewUrl
                             ? packageImagePreviewUrl
-                            : existingPackageImage || ''
+                            : managedImageDisplayUrl(existingPackageImage) ?? ''
                         } 
                         alt="Package preview"
                         className="w-full h-full object-cover pointer-events-none" 

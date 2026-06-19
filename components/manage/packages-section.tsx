@@ -6,6 +6,7 @@ import { OfferStepper } from './offer-stepper'
 import { PackageEditShell, PackageEditorOverlay } from './package-edit-shell'
 import { Button } from '@/components/ui/button'
 import type { Package } from '@/lib/types/database'
+import { managedImageDisplayUrl } from '@/lib/images/gym-image-variants'
 import {
   offerTypeUsesTrainingAccess,
   trainingAccessCardLabel,
@@ -192,7 +193,11 @@ export function PackagesSection({ gymId, currency }: PackagesSectionProps) {
                 {/* Thumbnail */}
                 <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                   {pkg.image ? (
-                    <img src={pkg.image} alt={pkg.name} className="w-full h-full object-cover" />
+                    <img
+                      src={managedImageDisplayUrl(pkg.image) ?? ''}
+                      alt={pkg.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <Icon className="w-6 h-6 text-gray-400" />
                   )}

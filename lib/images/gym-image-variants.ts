@@ -265,6 +265,13 @@ export function parseManagedImageRef(ref: string): Pick<GymImage, 'url' | 'varia
   return { url: ref, variants: null }
 }
 
+/** Plain URL for `<img src>` from a stored package/accommodation ref (URL or JSON + variants). */
+export function managedImageDisplayUrl(ref: string | null | undefined): string | null {
+  if (!ref) return null
+  const parsed = parseManagedImageRef(ref)
+  return gymImageCardSrc(parsed) || parsed.url || null
+}
+
 /** Map a stored image URL to gallery metadata (variants) when it matches a gym_images row. */
 export function resolveUrlToGymImage(
   gym: { images?: GymImage[] | null },

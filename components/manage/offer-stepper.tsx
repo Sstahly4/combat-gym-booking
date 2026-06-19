@@ -30,6 +30,7 @@ import {
   type TrainingTierOptions,
 } from '@/lib/packages/training-access'
 import {
+  managedImageDisplayUrl,
   serializeManagedImageRef,
   uploadGymImageWithVariants,
 } from '@/lib/images/gym-image-variants'
@@ -242,7 +243,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       // Load existing image
       if (existingPackage.image) {
         setExistingImageUrl(existingPackage.image)
-        setImagePreviewUrl(existingPackage.image)
+        setImagePreviewUrl(managedImageDisplayUrl(existingPackage.image))
       }
 
       // Load pricing extras from pricing_config
