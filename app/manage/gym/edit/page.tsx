@@ -148,6 +148,9 @@ function EditGymForm() {
   const galleryOrderRef = useRef<GalleryOrderItem[]>([])
   galleryOrderRef.current = galleryOrder
   const [pendingPreviewUrls, setPendingPreviewUrls] = useState<Record<string, string>>({})
+  const pendingPreviewUrlsRef = useRef<Record<string, string>>({})
+  pendingPreviewUrlsRef.current = pendingPreviewUrls
+  const [transitionPreviewUrls, setTransitionPreviewUrls] = useState<Record<string, string>>({})
   const nextImageOrderRef = useRef(0)
   const { uploads: pendingUploads } = useGymImageUploads(gymId ?? undefined)
 
@@ -181,8 +184,19 @@ function EditGymForm() {
       .map((item, index) => {
         if (item.kind === 'saved') {
           const image = gym.images?.find((img) => img.id === item.imageId)
-          if (!image) return null
-          return { kind: 'saved' as const, key: item.imageId, index, image }
+          if (image) {
+            return { kind: 'saved' as const, key: item.imageId, index, image }
+          }
+          const transitionPreview = transitionPreviewUrls[item.imageId]
+          if (transitionPreview) {
+            return {
+              kind: 'transition' as const,
+              key: item.imageId,
+              index,
+              previewUrl: transitionPreview,
+            }
+          }
+          return null
         }
         const pending = pendingUploads.find((p) => p.id === item.pendingId)
         const previewUrl = pendingPreviewUrls[item.pendingId] ?? pending?.previewUrl
@@ -202,7 +216,7 @@ function EditGymForm() {
         }
       })
       .filter((x): x is NonNullable<typeof x> => x != null)
-  }, [galleryOrder, gym, pendingUploads, pendingPreviewUrls])
+  }, [galleryOrder, gym, pendingUploads, pendingPreviewUrls, transitionPreviewUrls])
   const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
     monday: false,
@@ -452,34 +466,58 @@ function EditGymForm() {
     if (!gymId) return
     return subscribeGymImageUploadComplete(({ gymId: gId, pendingId, image }) => {
       if (gId !== gymId) return
+
+      const previewUrl = pendingPreviewUrlsRef.current[pendingId]
+      const nextGalleryOrder = galleryOrderRef.current.map((item) =>
+        item.kind === 'pending' && item.pendingId === pendingId
+          ? { kind: 'saved' as const, imageId: image.id }
+          : item,
+      )
+      galleryOrderRef.current = nextGalleryOrder
+      setGalleryOrderForGym(gId, nextGalleryOrder)
+
       setPendingPreviewUrls((prev) => {
-        const url = prev[pendingId]
-        if (url) URL.revokeObjectURL(url)
+        if (!(pendingId in prev)) return prev
         const next = { ...prev }
         delete next[pendingId]
         return next
       })
-      setGalleryOrder((prev) => {
-        const next = prev.map((item) =>
-          item.kind === 'pending' && item.pendingId === pendingId
-            ? { kind: 'saved' as const, imageId: image.id }
-            : item,
-        )
-        galleryOrderRef.current = next
-        return next
-      })
+      if (previewUrl) {
+        setTransitionPreviewUrls((prev) => ({ ...prev, [image.id]: previewUrl }))
+      }
+
+      setGalleryOrder(nextGalleryOrder)
       setGym((prev) => {
         if (!prev || prev.id !== gId) return prev
         const createMutableCopy = (obj: unknown) => {
           if (typeof structuredClone !== 'undefined') return structuredClone(obj)
           return JSON.parse(JSON.stringify(obj))
         }
-        const allImages = [...(prev.images || []), image]
-        const reordered = reorderGymImagesForGallery(allImages, galleryOrderRef.current)
+        const existingIds = new Set((prev.images || []).map((img) => img.id))
+        const allImages = existingIds.has(image.id)
+          ? [...(prev.images || [])]
+          : [...(prev.images || []), image]
+        const reordered = reorderGymImagesForGallery(allImages, nextGalleryOrder)
         return { ...createMutableCopy(prev), images: reordered } as GymWithImages
       })
     })
   }, [gymId])
+
+  useEffect(() => {
+    if (!gym?.images?.length) return
+    const savedIds = new Set(gym.images.map((img) => img.id))
+    setTransitionPreviewUrls((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const imageId of Object.keys(next)) {
+        if (!savedIds.has(imageId)) continue
+        URL.revokeObjectURL(next[imageId])
+        delete next[imageId]
+        changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [gym?.images])
 
   const fetchGym = async (id: string) => {
     const supabase = createClient()
@@ -1599,6 +1637,7 @@ function EditGymForm() {
                         item.kind === 'pending' &&
                         (item.pending.status === 'uploading' || item.pending.status === 'saving')
                       const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
+                      const isTransitioning = item.kind === 'transition'
 
                       return (
                         <div
@@ -1627,14 +1666,18 @@ function EditGymForm() {
                               />
                             ) : (
                               <img
-                                src={pendingPreviewUrls[item.pending.id] ?? item.pending.previewUrl}
+                                src={
+                                  item.kind === 'transition'
+                                    ? item.previewUrl
+                                    : pendingPreviewUrls[item.pending.id] ?? item.pending.previewUrl
+                                }
                                 alt="Preview"
                                 className="h-full w-full object-cover pointer-events-none"
                               />
                             )}
                           </div>
 
-                          {isUploading && (
+                          {(isUploading || isTransitioning) && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                               <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
                               <span className="sr-only">Uploading</span>
@@ -1650,11 +1693,15 @@ function EditGymForm() {
                           <button
                             type="button"
                             onPointerDown={(ev) => ev.stopPropagation()}
-                            onClick={() =>
-                              item.kind === 'saved'
-                                ? deleteExistingImage(item.image.id)
-                                : removePendingImage(item.pending.id)
-                            }
+                            onClick={() => {
+                              if (item.kind === 'saved') {
+                                deleteExistingImage(item.image.id)
+                              } else if (item.kind === 'pending') {
+                                removePendingImage(item.pending.id)
+                              } else {
+                                deleteExistingImage(item.key)
+                              }
+                            }}
                             className="absolute top-1.5 right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/80 touch-manipulation"
                             aria-label="Remove image"
                           >

@@ -196,12 +196,11 @@ async function uploadOne(entry: GymImageUploadEntry): Promise<void> {
       fn({ gymId: entry.gymId, pendingId: entry.id, image: insertedImage as GymImage }),
     )
 
-    const previewUrl = entry.previewUrl
     entries.delete(entry.id)
     sessionCompleted += 1
     recomputeSummary()
     notify()
-    URL.revokeObjectURL(previewUrl)
+    // Preview blob URLs are owned by the edit page — it revokes when safe to drop.
 
     const snapshot = committedGalleryOrderByGym.get(entry.gymId)
     if (snapshot) {
