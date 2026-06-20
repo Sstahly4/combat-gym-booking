@@ -44,7 +44,9 @@ export function GymImageUploadToast({
             {failed > 0 ? ` · ${failed} failed` : ''}
           </p>
           {inProgress > 0 ? (
-            <p className="mt-1 text-xs text-gray-500">You can keep editing while photos upload.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Uploads continue in the background — you can leave this page.
+            </p>
           ) : null}
         </div>
         {inProgress > 0 ? (

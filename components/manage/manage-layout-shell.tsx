@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { ManageSidebar } from '@/components/manage/manage-sidebar'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
+import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
 import { AccountClaimPrompts } from '@/components/manage/account-claim-prompts'
 import { ClaimDashboardTour } from '@/components/manage/claim-dashboard-tour'
@@ -127,6 +128,7 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
       <AccountClaimPrompts />
       <ClaimDashboardTour />
       <ManageNoBookingsToastHost />
+      <GymImageUploadToastHost />
       <ManageSidebar
         editGymHref={editGymHref}
         gymName={gymName}
@@ -181,6 +183,7 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
       <>
         <PendingOwnerGuard />
         <AccountClaimPrompts />
+        <GymImageUploadToastHost />
         <ManageNoSidebarHubTitle />
         {children}
       </>

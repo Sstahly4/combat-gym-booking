@@ -16,7 +16,7 @@ import { PackagesSection } from '@/components/manage/packages-section'
 import { PackageCreateShell, PackageEditShell } from '@/components/manage/package-edit-shell'
 import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
@@ -33,14 +33,20 @@ import {
   manageGymEditHubBreadcrumb,
   resolvePostGymEditReturnPath,
 } from '@/lib/navigation/manage-gym-edit-return'
-import { uploadGymImageWithVariants } from '@/lib/images/gym-image-variants'
 import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
+import {
+  commitGalleryOrderOnSave,
+  enqueueGymImageUploads,
+  removeGymImageUpload,
+  setGalleryOrderForGym,
+  subscribeGymImageUploadComplete,
+  type GalleryOrderSnapshotItem,
+} from '@/lib/manage/gym-image-upload-manager'
+import { useGymImageUploads } from '@/lib/hooks/use-gym-image-uploads'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
-import { GymImageUploadToast } from '@/components/manage/gym-image-upload-toast'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
-const GYM_IMAGE_UPLOAD_CONCURRENCY = 3
 const COUNTRY_CURRENCY_HINT: Record<string, string> = {
   Thailand: 'THB',
   Indonesia: 'IDR',
@@ -76,13 +82,21 @@ const COUNTRY_CURRENCY_HINT: Record<string, string> = {
 }
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-type PendingGymImageStatus = 'queued' | 'uploading' | 'saving' | 'done' | 'failed' | 'cancelled'
-type PendingGymImage = {
-  id: string
-  file: File
-  previewUrl: string
-  status: PendingGymImageStatus
-  error?: string | null
+type GalleryOrderItem = GalleryOrderSnapshotItem
+
+function reorderGymImagesForGallery(
+  images: GymImage[] | undefined,
+  gallery: GalleryOrderItem[],
+): GymImage[] {
+  if (!images?.length) return []
+  const imageById = new Map(images.map((img) => [img.id, img]))
+  return gallery
+    .filter((item): item is { kind: 'saved'; imageId: string } => item.kind === 'saved')
+    .map((item, idx) => {
+      const img = imageById.get(item.imageId)
+      return img ? { ...img, order: idx } : null
+    })
+    .filter((img): img is GymImage => img != null)
 }
 
 interface GymWithImages extends Gym {
@@ -128,18 +142,11 @@ function EditGymForm() {
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() => ({
     ...DEFAULT_GYM_AMENITIES,
   }))
-  const [newImages, setNewImages] = useState<PendingGymImage[]>([])
-  const newImagesRef = useRef<PendingGymImage[]>([])
-  newImagesRef.current = newImages
-  const cancelImageUploadsRef = useRef(false)
-  const uploadPumpRunningRef = useRef(false)
+  const [galleryOrder, setGalleryOrder] = useState<GalleryOrderItem[]>([])
+  const galleryOrderRef = useRef<GalleryOrderItem[]>([])
+  galleryOrderRef.current = galleryOrder
   const nextImageOrderRef = useRef(0)
-  const [imageUploadSummary, setImageUploadSummary] = useState<{
-    active: boolean
-    completed: number
-    failed: number
-    total: number
-  }>({ active: false, completed: 0, failed: 0, total: 0 })
+  const { uploads: pendingUploads } = useGymImageUploads(gymId ?? undefined)
 
   const focusFrameRef = useRef<HTMLDivElement | null>(null)
   const focusDraggingRef = useRef(false)
@@ -163,7 +170,23 @@ function EditGymForm() {
   })
   const saveInProgressRef = useRef(false)
   const [imageDragEnabled, setImageDragEnabled] = useState(false)
-  const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
+  const [draggedGalleryIndex, setDraggedGalleryIndex] = useState<number | null>(null)
+
+  const galleryDisplayItems = useMemo(() => {
+    if (!gym) return []
+    return galleryOrder
+      .map((item, index) => {
+        if (item.kind === 'saved') {
+          const image = gym.images?.find((img) => img.id === item.imageId)
+          if (!image) return null
+          return { kind: 'saved' as const, key: item.imageId, index, image }
+        }
+        const pending = pendingUploads.find((p) => p.id === item.pendingId)
+        if (!pending) return null
+        return { kind: 'pending' as const, key: item.pendingId, index, pending }
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null)
+  }, [galleryOrder, gym, pendingUploads])
   const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
     monday: false,
@@ -345,15 +368,6 @@ function EditGymForm() {
     if (!gymId || loading) return
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const uploadsActive = newImagesRef.current.some((x) =>
-        x.status === 'queued' || x.status === 'uploading' || x.status === 'saving',
-      )
-      if (uploadsActive) {
-        e.preventDefault()
-        e.returnValue = 'Your photos are still uploading. Leaving now may cancel uploads.'
-        return e.returnValue
-      }
-
       const cacheKey = getCacheKey()
       if (cacheKey && localStorage.getItem(cacheKey)) {
         e.preventDefault()
@@ -364,7 +378,7 @@ function EditGymForm() {
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [gymId, loading, newImages])
+  }, [gymId, loading])
 
   useEffect(() => {
     if (authLoading) return
@@ -414,10 +428,35 @@ function EditGymForm() {
   }, [])
 
   useEffect(() => {
-    return () => {
-      newImagesRef.current.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
-    }
-  }, [])
+    if (!gymId) return
+    setGalleryOrderForGym(gymId, galleryOrder)
+  }, [gymId, galleryOrder])
+
+  useEffect(() => {
+    if (!gymId) return
+    return subscribeGymImageUploadComplete(({ gymId: gId, pendingId, image }) => {
+      if (gId !== gymId) return
+      setGalleryOrder((prev) => {
+        const next = prev.map((item) =>
+          item.kind === 'pending' && item.pendingId === pendingId
+            ? { kind: 'saved' as const, imageId: image.id }
+            : item,
+        )
+        galleryOrderRef.current = next
+        return next
+      })
+      setGym((prev) => {
+        if (!prev || prev.id !== gId) return prev
+        const createMutableCopy = (obj: unknown) => {
+          if (typeof structuredClone !== 'undefined') return structuredClone(obj)
+          return JSON.parse(JSON.stringify(obj))
+        }
+        const allImages = [...(prev.images || []), image]
+        const reordered = reorderGymImagesForGallery(allImages, galleryOrderRef.current)
+        return { ...createMutableCopy(prev), images: reordered } as GymWithImages
+      })
+    })
+  }, [gymId])
 
   const fetchGym = async (id: string) => {
     const supabase = createClient()
@@ -466,6 +505,12 @@ function EditGymForm() {
       mutableGym.images = [...mutableGym.images]
     }
     setGym(mutableGym as any)
+    setGalleryOrder(
+      (mutableGym.images || []).map((img: GymImage) => ({
+        kind: 'saved' as const,
+        imageId: img.id,
+      })),
+    )
 
     // Try to restore cached form state first
     const { hasCachedState, restoredLocationFromCache } = restoreFormState()
@@ -582,39 +627,27 @@ function EditGymForm() {
   const handleNewImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !gym?.id) return
     const files = Array.from(e.target.files)
-    let added: PendingGymImage[] = []
-    setNewImages((prev) => {
-      const currentCount = (gym?.images?.length || 0) + prev.length
-      const remainingSlots = 30 - currentCount
-      if (remainingSlots <= 0) {
-        alert('Maximum 30 images allowed')
-        return prev
-      }
-      added = files.slice(0, remainingSlots).map((file, idx) => ({
-        id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 10)}`,
-        file,
-        previewUrl: URL.createObjectURL(file),
-        status: 'queued' as const,
-        error: null,
-      }))
-      const next = [...prev, ...added]
-      newImagesRef.current = next
-      return next
-    })
-    e.target.value = ''
-    if (added.length > 0) {
-      void processUploadQueue(gym.id)
+    const currentCount = galleryOrderRef.current.length
+    const remainingSlots = 30 - currentCount
+    if (remainingSlots <= 0) {
+      alert('Maximum 30 images allowed')
+      e.target.value = ''
+      return
     }
+    const toAdd = files.slice(0, remainingSlots)
+    const added = enqueueGymImageUploads(gym.id, toAdd, currentCount)
+    setGalleryOrder((prev) => [
+      ...prev,
+      ...added.map((p) => ({ kind: 'pending' as const, pendingId: p.id })),
+    ])
+    e.target.value = ''
   }
 
-  const removeNewImage = (index: number) => {
-    setNewImages((prev) => {
-      const entry = prev[index]
-      if (entry) URL.revokeObjectURL(entry.previewUrl)
-      const next = prev.filter((_, i) => i !== index)
-      newImagesRef.current = next
-      return next
-    })
+  const removePendingImage = (pendingId: string) => {
+    removeGymImageUpload(pendingId)
+    setGalleryOrder((prev) =>
+      prev.filter((item) => !(item.kind === 'pending' && item.pendingId === pendingId)),
+    )
   }
 
   const deleteExistingImage = async (imageId: string) => {
@@ -628,9 +661,23 @@ function EditGymForm() {
 
     if (error) {
       alert('Failed to delete image')
-    } else {
-      fetchGym(gym!.id)
+      return
     }
+
+    setGalleryOrder((prev) =>
+      prev.filter((item) => !(item.kind === 'saved' && item.imageId === imageId)),
+    )
+    setGym((prev) => {
+      if (!prev) return prev
+      const createMutableCopy = (obj: any): any => {
+        if (typeof structuredClone !== 'undefined') return structuredClone(obj)
+        return JSON.parse(JSON.stringify(obj))
+      }
+      return {
+        ...createMutableCopy(prev),
+        images: (prev.images || []).filter((img) => img.id !== imageId),
+      }
+    })
   }
 
   const openFocusAdjust = (img: GymImage) => {
@@ -683,218 +730,40 @@ function EditGymForm() {
     setFocusModal((p) => ({ ...p, saving: false, open: false }))
   }
 
-  const uploadOnePendingImage = async (gymId: string, entry: PendingGymImage): Promise<void> => {
-    if (cancelImageUploadsRef.current) {
-      setNewImages((prev) =>
-        prev.map((x) => (x.id === entry.id && x.status !== 'done' ? { ...x, status: 'cancelled' } : x)),
-      )
+  const handleDragStart = (index: number) => {
+    setDraggedGalleryIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleGalleryDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (draggedGalleryIndex === null || draggedGalleryIndex === dropIndex) {
+      setDraggedGalleryIndex(null)
       return
     }
 
-    const stillQueued = newImagesRef.current.find((x) => x.id === entry.id)
-    if (!stillQueued || stillQueued.status === 'cancelled') return
+    const nextGalleryOrder = [...galleryOrderRef.current]
+    const [moved] = nextGalleryOrder.splice(draggedGalleryIndex, 1)
+    nextGalleryOrder.splice(dropIndex, 0, moved)
+    galleryOrderRef.current = nextGalleryOrder
+    setGalleryOrder(nextGalleryOrder)
 
-    const supabase = createClient()
-    setNewImages((prev) =>
-      prev.map((x) => (x.id === entry.id ? { ...x, status: 'uploading', error: null } : x)),
-    )
-
-    const createMutableCopy = (obj: any): any => {
-      if (typeof structuredClone !== 'undefined') return structuredClone(obj)
-      return JSON.parse(JSON.stringify(obj))
-    }
-
-    try {
-      const order = nextImageOrderRef.current++
-      const stem = `${Date.now()}-${order}-${Math.random().toString(36).slice(2, 10)}`
-      const uploaded = await uploadGymImageWithVariants({ supabase, gymId, file: entry.file, stem })
-
-      if (cancelImageUploadsRef.current) {
-        await supabase.storage.from('gym-images').remove(uploaded.storagePaths).catch(() => {})
-        setNewImages((prev) =>
-          prev.map((x) => (x.id === entry.id ? { ...x, status: 'cancelled' } : x)),
-        )
-        return
+    setGym((prev) => {
+      if (!prev) return prev
+      const createMutableCopy = (obj: any): any => {
+        if (typeof structuredClone !== 'undefined') return structuredClone(obj)
+        return JSON.parse(JSON.stringify(obj))
       }
-
-      if (!newImagesRef.current.find((x) => x.id === entry.id)) {
-        await supabase.storage.from('gym-images').remove(uploaded.storagePaths).catch(() => {})
-        return
+      return {
+        ...createMutableCopy(prev),
+        images: reorderGymImagesForGallery(prev.images, nextGalleryOrder),
       }
-
-      setNewImages((prev) =>
-        prev.map((x) => (x.id === entry.id ? { ...x, status: 'saving' } : x)),
-      )
-
-      const { data: insertedImage, error: insertError } = await supabase
-        .from('gym_images')
-        .insert({
-          gym_id: gymId,
-          url: uploaded.url,
-          variants: uploaded.variants,
-          order,
-        })
-        .select()
-        .single()
-
-      if (insertError) {
-        await supabase.storage.from('gym-images').remove(uploaded.storagePaths).catch(() => {})
-        throw new Error(insertError.message || 'Failed to save image record')
-      }
-
-      URL.revokeObjectURL(entry.previewUrl)
-      setNewImages((prev) => {
-        const next = prev.filter((x) => x.id !== entry.id)
-        newImagesRef.current = next
-        return next
-      })
-      setImageUploadSummary((s) => ({ ...s, completed: s.completed + 1 }))
-
-      if (insertedImage) {
-        setGym((prev) => {
-          if (!prev || prev.id !== gymId) return prev
-          const updatedImages = [...(prev.images || []), insertedImage].sort(
-            (a, b) => (a.order || 0) - (b.order || 0),
-          )
-          return { ...createMutableCopy(prev), images: updatedImages }
-        })
-      }
-    } catch (e: any) {
-      const errorMessage = e?.message || e?.toString() || 'Upload failed'
-      setImageUploadSummary((s) => ({ ...s, failed: s.failed + 1 }))
-      setNewImages((prev) =>
-        prev.map((x) => (x.id === entry.id ? { ...x, status: 'failed', error: errorMessage } : x)),
-      )
-    }
-  }
-
-  const processUploadQueue = async (gymId: string) => {
-    if (uploadPumpRunningRef.current) return
-
-    const initialPending = newImagesRef.current.filter(
-      (x) => x.status === 'queued' || x.status === 'failed',
-    )
-    if (initialPending.length === 0) return
-
-    uploadPumpRunningRef.current = true
-    cancelImageUploadsRef.current = false
-    setImageUploadSummary({ active: true, completed: 0, failed: 0, total: initialPending.length })
-
-    try {
-      while (!cancelImageUploadsRef.current) {
-        const pending = newImagesRef.current.filter(
-          (x) => x.status === 'queued' || x.status === 'failed',
-        )
-        if (pending.length === 0) break
-
-        const batch = pending.slice(0, GYM_IMAGE_UPLOAD_CONCURRENCY)
-        await Promise.all(batch.map((entry) => uploadOnePendingImage(gymId, entry)))
-
-        const remaining = newImagesRef.current.filter((x) =>
-          ['queued', 'failed', 'uploading', 'saving'].includes(x.status),
-        ).length
-        setImageUploadSummary((s) => ({
-          ...s,
-          total: Math.max(s.total, s.completed + s.failed + remaining),
-        }))
-      }
-    } finally {
-      uploadPumpRunningRef.current = false
-      const stillUploading = newImagesRef.current.some((x) =>
-        ['queued', 'uploading', 'saving'].includes(x.status),
-      )
-      if (!stillUploading) {
-        setImageUploadSummary({ active: false, completed: 0, failed: 0, total: 0 })
-      } else if (!cancelImageUploadsRef.current) {
-        void processUploadQueue(gymId)
-      }
-    }
-  }
-
-  const waitForImageUploads = async (gymId: string) => {
-    const failed = newImagesRef.current.filter((x) => x.status === 'failed')
-    if (failed.length > 0) {
-      setNewImages((prev) => {
-        const next = prev.map((x) =>
-          x.status === 'failed' ? { ...x, status: 'queued' as const, error: null } : x,
-        )
-        newImagesRef.current = next
-        return next
-      })
-      await processUploadQueue(gymId)
-    }
-
-    while (
-      newImagesRef.current.some((x) =>
-        ['queued', 'uploading', 'saving'].includes(x.status),
-      )
-    ) {
-      await new Promise((resolve) => window.setTimeout(resolve, 200))
-    }
-
-    if (newImagesRef.current.some((x) => x.status === 'failed')) {
-      throw new Error('Some photos failed to upload. Remove them or try selecting them again.')
-    }
-  }
-
-  const handleDragStart = (index: number) => {
-    setDraggedImageIndex(index)
-  }
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-  }
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault()
-    if (draggedImageIndex === null || !gym) return
-
-    const images = [...gym.images]
-    const draggedImage = images[draggedImageIndex]
-    
-    images.splice(draggedImageIndex, 1)
-    images.splice(dropIndex, 0, draggedImage)
-    
-    const updatedImages = images.map((img, index) => ({
-      ...img,
-      order: index
-    }))
-
-    // Update state immediately for UI feedback
-    // Create a new mutable object to avoid readonly property errors
-    const createMutableCopy = (obj: any): any => {
-      if (typeof structuredClone !== 'undefined') {
-        return structuredClone(obj)
-      }
-      return JSON.parse(JSON.stringify(obj))
-    }
-    setGym({
-      ...createMutableCopy(gym),
-      images: updatedImages
     })
 
-    // Save to database
-    const supabase = createClient()
-    const updatePromises = updatedImages.map((img) =>
-      supabase
-        .from('gym_images')
-        .update({ order: img.order })
-        .eq('id', img.id)
-    )
-
-    const results = await Promise.allSettled(updatePromises)
-    const failed = results.filter(r => r.status === 'rejected')
-    
-    if (failed.length > 0) {
-      console.error('Failed to update image order:', failed)
-      alert('Some image order updates failed. Please try again.')
-      // Reload gym data to restore correct order
-      if (gymId) {
-        await fetchGym(gymId)
-      }
-    }
-    
-    setDraggedImageIndex(null)
+    setDraggedGalleryIndex(null)
   }
 
   const addTrainer = () => {
@@ -962,8 +831,6 @@ function EditGymForm() {
     const supabase = createClient()
     const formData = new FormData(formElement)
 
-    let pendingImagesSnapshot: PendingGymImage[] = []
-
     try {
       // Upload trainer photos (optional) before saving gym JSONB.
       // Use unique keys and avoid upsert to keep Storage RLS requirements minimal.
@@ -1027,8 +894,6 @@ function EditGymForm() {
         faq: [...faq].filter(f => f.question && f.answer), // Create new array
       }
 
-      pendingImagesSnapshot = [...newImages]
-
       const { error, data } = await supabase
         .from('gyms')
         .update(updates)
@@ -1059,33 +924,8 @@ function EditGymForm() {
         return {}
       })
 
-      // Persist image order when owners reordered existing photos.
-      if (gym.images && gym.images.length > 0) {
-        // Create a mutable copy of images array to avoid readonly errors
-        const imagesCopy = [...gym.images]
-        const orderUpdates = imagesCopy.map((img, index) => ({
-          id: img.id,
-          order: index
-        }))
-
-        const updatePromises = orderUpdates.map(({ id, order }) =>
-          supabase
-            .from('gym_images')
-            .update({ order })
-            .eq('id', id)
-        )
-
-        const results = await Promise.allSettled(updatePromises)
-        const failed = results.filter(r => r.status === 'rejected')
-        
-        if (failed.length > 0) {
-          console.error('Failed to update some image orders:', failed)
-          // Don't throw - allow save to complete, just log the error
-        }
-      }
-
-      // Wait for any in-flight photo uploads before leaving the editor.
-      await waitForImageUploads(gym.id)
+      // Persist gallery order now; any still-uploading photos finish in the background.
+      await commitGalleryOrderOnSave(gym.id, galleryOrderRef.current)
 
       // Clear cached form state on successful save
       clearFormState()
@@ -1115,9 +955,6 @@ function EditGymForm() {
 
       router.push(afterEditPath)
     } catch (err: any) {
-      if (pendingImagesSnapshot.length > 0) {
-        setNewImages(pendingImagesSnapshot)
-      }
       console.error('Error updating gym:', err)
       setErrorMsg(`Update failed: ${err.message}`)
     } finally {
@@ -1677,159 +1514,130 @@ function EditGymForm() {
             <CardHeader>
               <CardTitle>Images</CardTitle>
               <CardDescription>
-                Upload up to 30 images. The first image is your main photo.
+                Upload up to 30 images. The first image is your cover photo.
                 {imageDragEnabled
-                  ? ' Drag photos to reorder.'
-                  : ' On desktop you can drag to reorder; on mobile use the × control to remove a photo.'}
+                  ? ' Drag to reorder — order is saved when you save the gym.'
+                  : ' On desktop you can drag to reorder.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 font-medium">
-                    Images ({(gym.images?.length || 0) + newImages.length}/30)
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-gray-600">
+                    {galleryOrder.length}/30 photos
                   </p>
-                  <div className="space-y-2 max-w-md">
-                    <Input 
-                      type="file" 
-                      accept="image/*" 
-                      multiple 
+                  <label
+                    className={`inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors ${
+                      galleryOrder.length >= 30
+                        ? 'cursor-not-allowed opacity-50'
+                        : 'cursor-pointer hover:bg-gray-50'
+                    }`}
+                  >
+                    <ImagePlus className="h-4 w-4" aria-hidden />
+                    Add photos
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
                       onChange={handleNewImageSelect}
-                      disabled={(gym.images?.length || 0) + newImages.length >= 30}
-                      className="text-sm"
+                      disabled={galleryOrder.length >= 30}
+                      className="sr-only"
                     />
-                  </div>
+                  </label>
                 </div>
 
-                {(gym.images && gym.images.length > 0) || newImages.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Existing images */}
-                    {gym.images && gym.images.map((img, index) => (
-                      <div
-                        key={img.id}
-                        draggable={imageDragEnabled}
-                        onDragStart={imageDragEnabled ? () => handleDragStart(index) : undefined}
-                        onDragOver={imageDragEnabled ? (e) => handleDragOver(e, index) : undefined}
-                        onDrop={imageDragEnabled ? (e) => handleDrop(e, index) : undefined}
-                        className={`relative aspect-video group rounded-lg overflow-hidden border-2 touch-manipulation ${
-                          imageDragEnabled ? 'cursor-move' : 'cursor-default'
-                        } ${
-                          draggedImageIndex === index 
-                            ? 'opacity-50 border-[#003580]' 
-                            : 'border-gray-200 hover:border-[#003580]'
-                        } transition-all`}
-                      >
-                        <div className="absolute inset-0">
-                          <ResponsiveGymImage
-                            image={img}
-                            alt="Gym"
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
-                          #{index + 1}
-                        </div>
-                        <button
-                          type="button"
-                          onPointerDown={(ev) => ev.stopPropagation()}
-                          onClick={() => deleteExistingImage(img.id)}
-                          className="absolute top-1 right-1 z-20 min-h-10 min-w-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full text-lg font-bold transition-colors shadow-lg touch-manipulation"
-                          aria-label="Remove image"
-                        >
-                          ×
-                        </button>
-                        <button
-                          type="button"
-                          onPointerDown={(ev) => ev.stopPropagation()}
-                          onClick={() => openFocusAdjust(img)}
-                          className="absolute bottom-1 right-1 z-20 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-gray-900 shadow hover:bg-white"
-                        >
-                          Adjust
-                        </button>
-                        {index === 0 && (
-                          <div className="absolute bottom-2 left-2 bg-[#003580] text-white text-xs px-2 py-1 rounded font-medium">
-                            Main Photo
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {/* New images (preview before upload) */}
-                    {newImages.map((entry, i) => {
-                      const displayIndex = (gym.images?.length || 0) + i
-                      const badge =
-                        entry.status === 'queued'
-                          ? 'Queued'
-                          : entry.status === 'uploading'
-                            ? 'Uploading…'
-                            : entry.status === 'saving'
-                              ? 'Saving…'
-                              : entry.status === 'failed'
-                                ? 'Failed'
-                                : entry.status === 'cancelled'
-                                  ? 'Cancelled'
-                                  : 'New'
-                      const badgeClass =
-                        entry.status === 'failed'
-                          ? 'bg-red-600'
-                          : entry.status === 'uploading' || entry.status === 'saving'
-                            ? 'bg-amber-600'
-                            : entry.status === 'cancelled'
-                              ? 'bg-gray-600'
-                              : 'bg-blue-600'
+                {galleryDisplayItems.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {galleryDisplayItems.map((item) => {
+                      const isDragging = draggedGalleryIndex === item.index
+                      const isUploading =
+                        item.kind === 'pending' &&
+                        (item.pending.status === 'uploading' || item.pending.status === 'saving')
+                      const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
+
                       return (
                         <div
-                          key={entry.previewUrl}
-                          draggable={false}
-                          className="relative aspect-video rounded-lg overflow-hidden border-2 border-blue-300 border-dashed touch-manipulation"
+                          key={item.key}
+                          draggable={imageDragEnabled}
+                          onDragStart={imageDragEnabled ? () => handleDragStart(item.index) : undefined}
+                          onDragOver={imageDragEnabled ? handleDragOver : undefined}
+                          onDrop={imageDragEnabled ? (e) => handleGalleryDrop(e, item.index) : undefined}
+                          className={`relative aspect-video group rounded-lg overflow-hidden border touch-manipulation ${
+                            imageDragEnabled ? 'cursor-move' : 'cursor-default'
+                          } ${
+                            isDragging
+                              ? 'opacity-50 border-[#003580]'
+                              : isFailed
+                                ? 'border-red-300'
+                                : 'border-gray-200 hover:border-gray-400'
+                          } transition-colors`}
                         >
-                          <img 
-                            src={entry.previewUrl} 
-                            alt="Preview" 
-                            className="w-full h-full object-cover pointer-events-none" 
-                          />
-                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium pointer-events-none">
-                            #{displayIndex + 1} (New)
+                          <div className="absolute inset-0">
+                            {item.kind === 'saved' ? (
+                              <ResponsiveGymImage
+                                image={item.image}
+                                alt="Gym"
+                                sizes="(max-width: 768px) 50vw, 25vw"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={item.pending.previewUrl}
+                                alt="Preview"
+                                className="h-full w-full object-cover pointer-events-none"
+                              />
+                            )}
                           </div>
-                          <div className={`absolute top-2 right-2 ${badgeClass} text-white text-[11px] px-2 py-1 rounded font-medium pointer-events-none`}>
-                            {badge}
-                          </div>
+
+                          {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
+                              <span className="sr-only">Uploading</span>
+                            </div>
+                          )}
+
+                          {item.index === 0 && (
+                            <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
+                              Cover
+                            </div>
+                          )}
+
                           <button
                             type="button"
                             onPointerDown={(ev) => ev.stopPropagation()}
-                            onClick={() => removeNewImage(i)}
-                            className="absolute top-1 right-1 z-20 min-h-10 min-w-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full text-lg font-bold transition-colors shadow-lg touch-manipulation"
-                            aria-label="Remove pending image"
+                            onClick={() =>
+                              item.kind === 'saved'
+                                ? deleteExistingImage(item.image.id)
+                                : removePendingImage(item.pending.id)
+                            }
+                            className="absolute top-1.5 right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/80 touch-manipulation"
+                            aria-label="Remove image"
                           >
-                            ×
+                            <X className="h-4 w-4" aria-hidden />
                           </button>
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded font-medium">
-                            {entry.error
-                              ? entry.error
-                              : entry.status === 'queued'
-                                ? 'Starting upload…'
-                                : entry.status === 'uploading' || entry.status === 'saving'
-                                  ? 'Uploading…'
-                                  : entry.status === 'failed'
-                                    ? 'Upload failed'
-                                    : 'Uploaded'}
-                          </div>
+
+                          {item.kind === 'saved' && (
+                            <button
+                              type="button"
+                              onPointerDown={(ev) => ev.stopPropagation()}
+                              onClick={() => openFocusAdjust(item.image)}
+                              className="absolute bottom-1.5 right-1.5 z-20 rounded bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-900 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
+                            >
+                              Focus
+                            </button>
+                          )}
                         </div>
                       )
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p className="text-sm">No images uploaded yet. Upload images above to get started.</p>
+                  <div className="rounded-lg border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
+                    No photos yet. Add images to showcase your gym.
                   </div>
                 )}
-                
+
                 <p className="text-xs text-gray-500">
-                  {imageDragEnabled
-                    ? 'Drag existing images to reorder. '
-                    : 'Reorder on desktop with drag-and-drop. '}
-                  New photos upload automatically when selected. Keep this tab open until uploads finish.
+                  Photos upload automatically in the background. You can save and leave — progress shows in the bottom-right toast.
                 </p>
               </div>
             </CardContent>
@@ -2297,15 +2105,6 @@ function EditGymForm() {
               </DialogContent>
             </Dialog>
       </main>
-      <GymImageUploadToast
-        active={imageUploadSummary.active}
-        completed={imageUploadSummary.completed}
-        failed={imageUploadSummary.failed}
-        total={imageUploadSummary.total}
-        onCancel={() => {
-          cancelImageUploadsRef.current = true
-        }}
-      />
     </div>
   )
 }

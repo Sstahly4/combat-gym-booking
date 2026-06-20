@@ -154,6 +154,26 @@ export function canonicalGymImageUrl(variants: GymImageVariants): string {
   return variants.w1200 || variants.w800 || variants.w400 || ''
 }
 
+async function createGymImageVariantBlobsFromSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+): Promise<GeneratedGymImageVariant[]> {
+  return Promise.all(
+    variantTargetsForWidth(sourceWidth).map(async ({ key, width }) => {
+      const height = Math.max(1, Math.round((sourceHeight / sourceWidth) * width))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not prepare image variant canvas')
+      ctx.drawImage(source, 0, 0, width, height)
+      const blob = await canvasToWebp(canvas, 0.78)
+      return { key, width, blob }
+    }),
+  )
+}
+
 export async function createGymImageVariantBlobs(file: File): Promise<GeneratedGymImageVariant[]> {
   if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) {
     return []
@@ -161,19 +181,7 @@ export async function createGymImageVariantBlobs(file: File): Promise<GeneratedG
 
   const loaded = await loadImage(file)
   try {
-    return await Promise.all(
-      variantTargetsForWidth(loaded.width).map(async ({ key, width }) => {
-        const height = Math.max(1, Math.round((loaded.height / loaded.width) * width))
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) throw new Error('Could not prepare image variant canvas')
-        ctx.drawImage(loaded.image, 0, 0, width, height)
-        const blob = await canvasToWebp(canvas, 0.78)
-        return { key, width, blob }
-      }),
-    )
+    return await createGymImageVariantBlobsFromSource(loaded.image, loaded.width, loaded.height)
   } finally {
     loaded.cleanup()
   }
@@ -195,34 +203,66 @@ export async function uploadGymImageWithVariants({
 }): Promise<UploadedGymImageWithVariants> {
   const bucket = supabase.storage.from('gym-images')
   const assetBase = gymImageAssetBase(gymId, subdir)
-  const prepared = await prepareGymImageUploadFile(file)
 
+  const loaded = await loadImage(file)
   const variants: GymImageVariants = {}
   const storagePaths: string[] = []
   const uploadedVariantPaths: string[] = []
 
   try {
-    const generated = await createGymImageVariantBlobs(prepared)
+    const maxEdge = Math.max(loaded.width, loaded.height)
+    const needsResize = maxEdge > GYM_UPLOAD_MAX_EDGE
+    const needsCompress = file.size > GYM_UPLOAD_SKIP_PREPARE_MAX_BYTES
+
+    let source: CanvasImageSource = loaded.image
+    let sourceWidth = loaded.width
+    let sourceHeight = loaded.height
+
+    if (needsResize || needsCompress) {
+      const scale = needsResize ? GYM_UPLOAD_MAX_EDGE / maxEdge : 1
+      sourceWidth = Math.max(1, Math.round(loaded.width * scale))
+      sourceHeight = Math.max(1, Math.round(loaded.height * scale))
+      const prepCanvas = document.createElement('canvas')
+      prepCanvas.width = sourceWidth
+      prepCanvas.height = sourceHeight
+      const ctx = prepCanvas.getContext('2d')
+      if (!ctx) throw new Error('Could not prepare image canvas')
+      ctx.drawImage(loaded.image, 0, 0, sourceWidth, sourceHeight)
+      source = prepCanvas
+    }
+
+    const generated = await createGymImageVariantBlobsFromSource(source, sourceWidth, sourceHeight)
     if (generated.length === 0) {
       throw new Error(
         'Could not generate WebP variants from this file. Use JPEG, PNG, or WebP — HEIC/HEIF is not supported in the browser uploader.',
       )
     }
-    for (const variant of generated) {
-      const variantPath = variantStoragePath(assetBase, stem, variant.key)
-      const { error: variantUploadError } = await bucket.upload(variantPath, variant.blob, {
-        cacheControl: '31536000',
-        contentType: 'image/webp',
-        upsert: false,
-      })
-      if (variantUploadError) throw new Error(variantUploadError.message)
-      variants[variant.key] = bucket.getPublicUrl(variantPath).data.publicUrl
-      storagePaths.push(variantPath)
-      uploadedVariantPaths.push(variantPath)
+    const uploadResults = await Promise.all(
+      generated.map(async (variant) => {
+        const variantPath = variantStoragePath(assetBase, stem, variant.key)
+        const { error: variantUploadError } = await bucket.upload(variantPath, variant.blob, {
+          cacheControl: '31536000',
+          contentType: 'image/webp',
+          upsert: false,
+        })
+        if (variantUploadError) throw new Error(variantUploadError.message)
+        return {
+          key: variant.key,
+          variantPath,
+          publicUrl: bucket.getPublicUrl(variantPath).data.publicUrl,
+        }
+      }),
+    )
+    for (const result of uploadResults) {
+      variants[result.key] = result.publicUrl
+      storagePaths.push(result.variantPath)
+      uploadedVariantPaths.push(result.variantPath)
     }
   } catch (error) {
     await bucket.remove(uploadedVariantPaths).catch(() => {})
     throw error instanceof Error ? error : new Error('Image variant generation failed')
+  } finally {
+    loaded.cleanup()
   }
 
   if (!variants.w400) {
