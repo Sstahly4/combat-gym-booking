@@ -19,6 +19,8 @@ import {
   type PackageCancellationPresetId,
 } from '@/lib/manage/package-cancellation-policy-presets'
 import { PackageCancellationPolicyFields } from '@/components/manage/package-cancellation-policy-fields'
+import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
+import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { TrainingAccessPicker } from '@/components/manage/training-access-picker'
 import {
   offerTypeUsesTrainingAccess,
@@ -51,7 +53,6 @@ import {
 } from 'lucide-react'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
-const CURRENCIES = ['USD', 'THB', 'EUR', 'GBP', 'AUD', 'IDR', 'JPY', 'CNY', 'SGD', 'MYR', 'NZD', 'CAD', 'HKD', 'INR', 'KRW', 'PHP', 'VND']
 
 const OFFER_TYPES = [
   {
@@ -102,6 +103,7 @@ interface OfferStepperProps {
 }
 
 export function OfferStepper({ gymId, currency, onComplete, existingPackage, embedded = false }: OfferStepperProps) {
+  const listingCurrency = normalizeGymCurrency(currency, 'USD')
   const [currentStep, setCurrentStep] = useState(1)
   const [saving, setSaving] = useState(false)
   
@@ -125,7 +127,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [name, setName] = useState('')
   const [sport, setSport] = useState('Muay Thai')
   const [description, setDescription] = useState('')
-  const [packageCurrency, setPackageCurrency] = useState(currency)
+  const [packageCurrency, setPackageCurrency] = useState(listingCurrency)
   const [trainingTierOptions, setTrainingTierOptions] = useState<TrainingTierOptions>(
     DEFAULT_TRAINING_TIER_OPTIONS
   )
@@ -140,6 +142,12 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setTrainingTierOptions({ twice_daily: false, once_daily: false })
     }
   }, [selectedOfferType])
+  
+  useEffect(() => {
+    if (!existingPackage) {
+      setPackageCurrency(normalizeGymCurrency(currency, 'USD'))
+    }
+  }, [currency, existingPackage])
   
   // Step 3: Minimum Stay (defaults based on offer type)
   const [minStayDays, setMinStayDays] = useState(7)
@@ -218,7 +226,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setName(existingPackage.name)
       setSport(existingPackage.sport)
       setDescription(existingPackage.description || '')
-      setPackageCurrency(existingPackage.currency || currency)
+      setPackageCurrency(normalizeGymCurrency(existingPackage.currency || currency, 'USD'))
       setTrainingTierOptions(
         offerTypeUsesTrainingAccess(existingPackage.offer_type)
           ? inferTrainingTierOptionsFromPackage(existingPackage)
@@ -846,19 +854,20 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Sport *</Label>
                   <Select value={sport} onChange={e => setSport(e.target.value)}>
                     {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
                   </Select>
                 </div>
-                <div>
-                  <Label>Currency *</Label>
-                  <Select value={packageCurrency} onChange={e => setPackageCurrency(e.target.value)}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </Select>
-                </div>
+                <GymCurrencyPicker
+                  id="package-currency"
+                  value={packageCurrency}
+                  onChange={setPackageCurrency}
+                  required
+                  helperText="Defaults to your listing currency."
+                />
               </div>
               <div>
                 <Label>Description</Label>
