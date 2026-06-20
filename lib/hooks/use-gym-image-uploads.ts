@@ -1,6 +1,6 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import {
   getGymImageUploadSummary,
   getGymImageUploads,
@@ -16,22 +16,18 @@ const EMPTY_SUMMARY: GymImageUploadSummary = {
   total: 0,
 }
 
-function getUploadsSnapshot(gymId?: string): GymImageUploadEntry[] {
-  return gymId ? getGymImageUploads(gymId) : []
-}
+const EMPTY_UPLOADS: GymImageUploadEntry[] = []
 
 export function useGymImageUploads(gymId?: string) {
-  const summary = useSyncExternalStore(
-    subscribeGymImageUploads,
-    getGymImageUploadSummary,
-    () => EMPTY_SUMMARY,
+  const getSummary = useCallback(() => getGymImageUploadSummary(), [])
+  const getUploads = useCallback(
+    () => (gymId ? getGymImageUploads(gymId) : EMPTY_UPLOADS),
+    [gymId],
   )
 
-  const uploads = useSyncExternalStore(
-    subscribeGymImageUploads,
-    () => getUploadsSnapshot(gymId),
-    () => [],
-  )
+  const summary = useSyncExternalStore(subscribeGymImageUploads, getSummary, () => EMPTY_SUMMARY)
+
+  const uploads = useSyncExternalStore(subscribeGymImageUploads, getUploads, () => EMPTY_UPLOADS)
 
   return { summary, uploads }
 }

@@ -47,7 +47,23 @@ let sessionCompleted = 0
 let sessionFailed = 0
 let sessionTotal = 0
 
+/** useSyncExternalStore requires referentially stable snapshots between notifications. */
+const EMPTY_UPLOADS_SNAPSHOT: GymImageUploadEntry[] = []
+const uploadsSnapshotCache = new Map<string, GymImageUploadEntry[]>()
+
+function buildUploadsSnapshot(gymId: string): GymImageUploadEntry[] {
+  const list = [...entries.values()]
+    .filter((e) => e.gymId === gymId)
+    .map((e) => ({ ...e }))
+  return list.length > 0 ? list : EMPTY_UPLOADS_SNAPSHOT
+}
+
+function invalidateUploadSnapshots() {
+  uploadsSnapshotCache.clear()
+}
+
 function notify() {
+  invalidateUploadSnapshots()
   listeners.forEach((fn) => fn())
 }
 
@@ -263,9 +279,13 @@ export function getGymImageUploadSummary(): GymImageUploadSummary {
 }
 
 export function getGymImageUploads(gymId: string): GymImageUploadEntry[] {
-  return [...entries.values()]
-    .filter((e) => e.gymId === gymId)
-    .map((e) => ({ ...e }))
+  const cached = uploadsSnapshotCache.get(gymId)
+  if (cached) return cached
+  const snapshot = buildUploadsSnapshot(gymId)
+  if (snapshot !== EMPTY_UPLOADS_SNAPSHOT) {
+    uploadsSnapshotCache.set(gymId, snapshot)
+  }
+  return snapshot
 }
 
 export function buildGalleryOrderWithPendingUploads(
