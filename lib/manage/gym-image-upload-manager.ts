@@ -174,22 +174,25 @@ async function uploadOne(entry: GymImageUploadEntry): Promise<void> {
     if (!insertedImage) throw new Error('Failed to save image record')
 
     pendingToImageId.set(entry.id, insertedImage.id)
-    URL.revokeObjectURL(entry.previewUrl)
-    entries.delete(entry.id)
-    sessionCompleted += 1
-    recomputeSummary()
-    notify()
 
+    // Notify UI before revoking previews so gallery can switch pending → saved first.
     completeListeners.forEach((fn) =>
       fn({ gymId: entry.gymId, pendingId: entry.id, image: insertedImage as GymImage }),
     )
 
+    const previewUrl = entry.previewUrl
+    entries.delete(entry.id)
+    sessionCompleted += 1
+    recomputeSummary()
+    notify()
+    URL.revokeObjectURL(previewUrl)
+
     const snapshot = committedGalleryOrderByGym.get(entry.gymId)
     if (snapshot) {
-      await persistGalleryOrder(entry.gymId, snapshot)
+      void persistGalleryOrder(entry.gymId, snapshot)
     }
 
-    await maybeReconcileGalleryOrder(entry.gymId)
+    void maybeReconcileGalleryOrder(entry.gymId)
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e) || 'Upload failed'
     entry.status = 'failed'
@@ -260,7 +263,28 @@ export function getGymImageUploadSummary(): GymImageUploadSummary {
 }
 
 export function getGymImageUploads(gymId: string): GymImageUploadEntry[] {
-  return [...entries.values()].filter((e) => e.gymId === gymId)
+  return [...entries.values()]
+    .filter((e) => e.gymId === gymId)
+    .map((e) => ({ ...e }))
+}
+
+export function buildGalleryOrderWithPendingUploads(
+  gymId: string,
+  saved: GalleryOrderSnapshotItem[],
+): GalleryOrderSnapshotItem[] {
+  const pendingIds = new Set(
+    saved
+      .filter((item): item is { kind: 'pending'; pendingId: string } => item.kind === 'pending')
+      .map((item) => item.pendingId),
+  )
+
+  const merged: GalleryOrderSnapshotItem[] = [...saved]
+  for (const entry of entries.values()) {
+    if (entry.gymId !== gymId || pendingIds.has(entry.id)) continue
+    merged.push({ kind: 'pending', pendingId: entry.id })
+    pendingIds.add(entry.id)
+  }
+  return merged
 }
 
 export function hasActiveGymImageUploads(gymId?: string): boolean {

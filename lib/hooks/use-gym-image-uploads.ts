@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import {
   getGymImageUploadSummary,
   getGymImageUploads,
@@ -9,20 +9,29 @@ import {
   type GymImageUploadSummary,
 } from '@/lib/manage/gym-image-upload-manager'
 
+const EMPTY_SUMMARY: GymImageUploadSummary = {
+  active: false,
+  completed: 0,
+  failed: 0,
+  total: 0,
+}
+
+function getUploadsSnapshot(gymId?: string): GymImageUploadEntry[] {
+  return gymId ? getGymImageUploads(gymId) : []
+}
+
 export function useGymImageUploads(gymId?: string) {
-  const [summary, setSummary] = useState<GymImageUploadSummary>(() => getGymImageUploadSummary())
-  const [uploads, setUploads] = useState<GymImageUploadEntry[]>(() =>
-    gymId ? getGymImageUploads(gymId) : [],
+  const summary = useSyncExternalStore(
+    subscribeGymImageUploads,
+    getGymImageUploadSummary,
+    () => EMPTY_SUMMARY,
   )
 
-  useEffect(() => {
-    const sync = () => {
-      setSummary(getGymImageUploadSummary())
-      if (gymId) setUploads(getGymImageUploads(gymId))
-    }
-    sync()
-    return subscribeGymImageUploads(sync)
-  }, [gymId])
+  const uploads = useSyncExternalStore(
+    subscribeGymImageUploads,
+    () => getUploadsSnapshot(gymId),
+    () => [],
+  )
 
   return { summary, uploads }
 }

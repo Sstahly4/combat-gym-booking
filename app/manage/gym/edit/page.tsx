@@ -40,6 +40,8 @@ import {
   removeGymImageUpload,
   setGalleryOrderForGym,
   subscribeGymImageUploadComplete,
+  buildGalleryOrderWithPendingUploads,
+  getGymImageUploads,
   type GalleryOrderSnapshotItem,
 } from '@/lib/manage/gym-image-upload-manager'
 import { useGymImageUploads } from '@/lib/hooks/use-gym-image-uploads'
@@ -145,6 +147,7 @@ function EditGymForm() {
   const [galleryOrder, setGalleryOrder] = useState<GalleryOrderItem[]>([])
   const galleryOrderRef = useRef<GalleryOrderItem[]>([])
   galleryOrderRef.current = galleryOrder
+  const [pendingPreviewUrls, setPendingPreviewUrls] = useState<Record<string, string>>({})
   const nextImageOrderRef = useRef(0)
   const { uploads: pendingUploads } = useGymImageUploads(gymId ?? undefined)
 
@@ -182,11 +185,24 @@ function EditGymForm() {
           return { kind: 'saved' as const, key: item.imageId, index, image }
         }
         const pending = pendingUploads.find((p) => p.id === item.pendingId)
-        if (!pending) return null
-        return { kind: 'pending' as const, key: item.pendingId, index, pending }
+        const previewUrl = pendingPreviewUrls[item.pendingId] ?? pending?.previewUrl
+        if (!previewUrl && !pending) return null
+        return {
+          kind: 'pending' as const,
+          key: item.pendingId,
+          index,
+          pending: pending ?? {
+            id: item.pendingId,
+            gymId: gym.id,
+            file: new File([], 'pending'),
+            previewUrl,
+            order: index,
+            status: 'uploading' as const,
+          },
+        }
       })
       .filter((x): x is NonNullable<typeof x> => x != null)
-  }, [galleryOrder, gym, pendingUploads])
+  }, [galleryOrder, gym, pendingUploads, pendingPreviewUrls])
   const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
     monday: false,
@@ -436,6 +452,13 @@ function EditGymForm() {
     if (!gymId) return
     return subscribeGymImageUploadComplete(({ gymId: gId, pendingId, image }) => {
       if (gId !== gymId) return
+      setPendingPreviewUrls((prev) => {
+        const url = prev[pendingId]
+        if (url) URL.revokeObjectURL(url)
+        const next = { ...prev }
+        delete next[pendingId]
+        return next
+      })
       setGalleryOrder((prev) => {
         const next = prev.map((item) =>
           item.kind === 'pending' && item.pendingId === pendingId
@@ -505,12 +528,19 @@ function EditGymForm() {
       mutableGym.images = [...mutableGym.images]
     }
     setGym(mutableGym as any)
-    setGalleryOrder(
-      (mutableGym.images || []).map((img: GymImage) => ({
-        kind: 'saved' as const,
-        imageId: img.id,
-      })),
-    )
+    const savedGalleryOrder = (mutableGym.images || []).map((img: GymImage) => ({
+      kind: 'saved' as const,
+      imageId: img.id,
+    }))
+    const mergedGalleryOrder = buildGalleryOrderWithPendingUploads(id, savedGalleryOrder)
+    const previews: Record<string, string> = {}
+    for (const entry of getGymImageUploads(id)) {
+      previews[entry.id] = entry.previewUrl
+    }
+    galleryOrderRef.current = mergedGalleryOrder
+    setGalleryOrder(mergedGalleryOrder)
+    setPendingPreviewUrls(previews)
+    setGalleryOrderForGym(id, mergedGalleryOrder)
 
     // Try to restore cached form state first
     const { hasCachedState, restoredLocationFromCache } = restoreFormState()
@@ -636,15 +666,30 @@ function EditGymForm() {
     }
     const toAdd = files.slice(0, remainingSlots)
     const added = enqueueGymImageUploads(gym.id, toAdd, currentCount)
-    setGalleryOrder((prev) => [
-      ...prev,
+    setPendingPreviewUrls((prev) => {
+      const next = { ...prev }
+      for (const entry of added) next[entry.id] = entry.previewUrl
+      return next
+    })
+    const nextGalleryOrder = [
+      ...galleryOrderRef.current,
       ...added.map((p) => ({ kind: 'pending' as const, pendingId: p.id })),
-    ])
+    ]
+    galleryOrderRef.current = nextGalleryOrder
+    setGalleryOrder(nextGalleryOrder)
+    setGalleryOrderForGym(gym.id, nextGalleryOrder)
     e.target.value = ''
   }
 
   const removePendingImage = (pendingId: string) => {
     removeGymImageUpload(pendingId)
+    setPendingPreviewUrls((prev) => {
+      const url = prev[pendingId]
+      if (url) URL.revokeObjectURL(url)
+      const next = { ...prev }
+      delete next[pendingId]
+      return next
+    })
     setGalleryOrder((prev) =>
       prev.filter((item) => !(item.kind === 'pending' && item.pendingId === pendingId)),
     )
@@ -924,8 +969,8 @@ function EditGymForm() {
         return {}
       })
 
-      // Persist gallery order now; any still-uploading photos finish in the background.
-      await commitGalleryOrderOnSave(gym.id, galleryOrderRef.current)
+      // Persist gallery order in the background; still-uploading photos follow this snapshot.
+      void commitGalleryOrderOnSave(gym.id, galleryOrderRef.current)
 
       // Clear cached form state on successful save
       clearFormState()
@@ -1582,7 +1627,7 @@ function EditGymForm() {
                               />
                             ) : (
                               <img
-                                src={item.pending.previewUrl}
+                                src={pendingPreviewUrls[item.pending.id] ?? item.pending.previewUrl}
                                 alt="Preview"
                                 className="h-full w-full object-cover pointer-events-none"
                               />
