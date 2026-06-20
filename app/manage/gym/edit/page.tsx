@@ -152,6 +152,7 @@ function EditGymForm() {
   pendingPreviewUrlsRef.current = pendingPreviewUrls
   const [transitionPreviewUrls, setTransitionPreviewUrls] = useState<Record<string, string>>({})
   const nextImageOrderRef = useRef(0)
+  const uploadCompleteChainRef = useRef(Promise.resolve())
   const { uploads: pendingUploads } = useGymImageUploads(gymId ?? undefined)
 
   const focusFrameRef = useRef<HTMLDivElement | null>(null)
@@ -200,7 +201,8 @@ function EditGymForm() {
         }
         const pending = pendingUploads.find((p) => p.id === item.pendingId)
         const previewUrl = pendingPreviewUrls[item.pendingId] ?? pending?.previewUrl
-        if (!previewUrl && !pending) return null
+        if (!previewUrl) return null
+        const status = pending?.status ?? 'uploading'
         return {
           kind: 'pending' as const,
           key: item.pendingId,
@@ -211,7 +213,7 @@ function EditGymForm() {
             file: new File([], 'pending'),
             previewUrl,
             order: index,
-            status: 'uploading' as const,
+            status,
           },
         }
       })
@@ -464,9 +466,8 @@ function EditGymForm() {
 
   useEffect(() => {
     if (!gymId) return
-    return subscribeGymImageUploadComplete(({ gymId: gId, pendingId, image }) => {
-      if (gId !== gymId) return
 
+    const applyUploadComplete = (pendingId: string, image: GymImage) => {
       const previewUrl = pendingPreviewUrlsRef.current[pendingId]
       const nextGalleryOrder = galleryOrderRef.current.map((item) =>
         item.kind === 'pending' && item.pendingId === pendingId
@@ -474,7 +475,8 @@ function EditGymForm() {
           : item,
       )
       galleryOrderRef.current = nextGalleryOrder
-      setGalleryOrderForGym(gId, nextGalleryOrder)
+      setGalleryOrderForGym(gymId, nextGalleryOrder)
+      setGalleryOrder(nextGalleryOrder)
 
       setPendingPreviewUrls((prev) => {
         if (!(pendingId in prev)) return prev
@@ -482,23 +484,31 @@ function EditGymForm() {
         delete next[pendingId]
         return next
       })
+
       if (previewUrl) {
         setTransitionPreviewUrls((prev) => ({ ...prev, [image.id]: previewUrl }))
       }
 
-      setGalleryOrder(nextGalleryOrder)
       setGym((prev) => {
-        if (!prev || prev.id !== gId) return prev
+        if (!prev || prev.id !== gymId) return prev
         const createMutableCopy = (obj: unknown) => {
           if (typeof structuredClone !== 'undefined') return structuredClone(obj)
           return JSON.parse(JSON.stringify(obj))
         }
-        const existingIds = new Set((prev.images || []).map((img) => img.id))
-        const allImages = existingIds.has(image.id)
+        const images = (prev.images || []).some((img) => img.id === image.id)
           ? [...(prev.images || [])]
           : [...(prev.images || []), image]
-        const reordered = reorderGymImagesForGallery(allImages, nextGalleryOrder)
-        return { ...createMutableCopy(prev), images: reordered } as GymWithImages
+        return {
+          ...createMutableCopy(prev),
+          images: reorderGymImagesForGallery(images, nextGalleryOrder),
+        } as GymWithImages
+      })
+    }
+
+    return subscribeGymImageUploadComplete(({ gymId: gId, pendingId, image }) => {
+      if (gId !== gymId) return
+      uploadCompleteChainRef.current = uploadCompleteChainRef.current.then(() => {
+        applyUploadComplete(pendingId, image)
       })
     })
   }, [gymId])
@@ -1633,11 +1643,10 @@ function EditGymForm() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {galleryDisplayItems.map((item) => {
                       const isDragging = draggedGalleryIndex === item.index
-                      const isUploading =
+                      const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
+                      const showUploadSpinner =
                         item.kind === 'pending' &&
                         (item.pending.status === 'uploading' || item.pending.status === 'saving')
-                      const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
-                      const isTransitioning = item.kind === 'transition'
 
                       return (
                         <div
@@ -1677,7 +1686,7 @@ function EditGymForm() {
                             )}
                           </div>
 
-                          {(isUploading || isTransitioning) && (
+                          {showUploadSpinner && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                               <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
                               <span className="sr-only">Uploading</span>

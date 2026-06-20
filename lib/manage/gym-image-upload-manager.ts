@@ -44,8 +44,6 @@ let summary: GymImageUploadSummary = { active: false, completed: 0, failed: 0, t
 let pumpRunning = false
 let cancelRequested = false
 let sessionCompleted = 0
-let sessionFailed = 0
-let sessionTotal = 0
 
 /** useSyncExternalStore requires referentially stable snapshots between notifications. */
 const EMPTY_UPLOADS_SNAPSHOT: GymImageUploadEntry[] = []
@@ -71,13 +69,13 @@ function recomputeSummary() {
   const inFlight = [...entries.values()].filter((e) =>
     ['queued', 'uploading', 'saving'].includes(e.status),
   ).length
-  const failed = [...entries.values()].filter((e) => e.status === 'failed').length
+  const failedInQueue = [...entries.values()].filter((e) => e.status === 'failed').length
 
   summary = {
     active: inFlight > 0,
     completed: sessionCompleted,
-    failed: sessionFailed + failed,
-    total: Math.max(sessionTotal, sessionCompleted + sessionFailed + inFlight + failed),
+    failed: failedInQueue,
+    total: sessionCompleted + failedInQueue + inFlight,
   }
 }
 
@@ -191,7 +189,6 @@ async function uploadOne(entry: GymImageUploadEntry): Promise<void> {
 
     pendingToImageId.set(entry.id, insertedImage.id)
 
-    // Notify UI before revoking previews so gallery can switch pending → saved first.
     completeListeners.forEach((fn) =>
       fn({ gymId: entry.gymId, pendingId: entry.id, image: insertedImage as GymImage }),
     )
@@ -200,7 +197,6 @@ async function uploadOne(entry: GymImageUploadEntry): Promise<void> {
     sessionCompleted += 1
     recomputeSummary()
     notify()
-    // Preview blob URLs are owned by the edit page — it revokes when safe to drop.
 
     const snapshot = committedGalleryOrderByGym.get(entry.gymId)
     if (snapshot) {
@@ -212,7 +208,6 @@ async function uploadOne(entry: GymImageUploadEntry): Promise<void> {
     const errorMessage = e instanceof Error ? e.message : String(e) || 'Upload failed'
     entry.status = 'failed'
     entry.error = errorMessage
-    sessionFailed += 1
     recomputeSummary()
     notify()
   }
@@ -230,12 +225,6 @@ async function runPump() {
       )
       if (pending.length === 0) break
 
-      if (sessionTotal === 0) {
-        sessionTotal = pending.length
-        sessionCompleted = 0
-        sessionFailed = 0
-      }
-
       recomputeSummary()
       notify()
 
@@ -250,8 +239,6 @@ async function runPump() {
     if (!stillUploading) {
       summary = { active: false, completed: 0, failed: 0, total: 0 }
       sessionCompleted = 0
-      sessionFailed = 0
-      sessionTotal = 0
       notify()
     } else if (!cancelRequested) {
       void runPump()
@@ -335,14 +322,6 @@ export function enqueueGymImageUploads(
     entries.set(id, entry)
     return entry
   })
-
-  if (sessionTotal === 0 && !summary.active) {
-    sessionTotal = added.length
-    sessionCompleted = 0
-    sessionFailed = 0
-  } else {
-    sessionTotal += added.length
-  }
 
   recomputeSummary()
   notify()
