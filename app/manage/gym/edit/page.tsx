@@ -1911,6 +1911,7 @@ function EditGymForm() {
                   <TrainingScheduleImportPanel
                     gymId={gym.id}
                     currentSchedule={trainingSchedule}
+                    isAdmin={profile?.role === 'admin'}
                     onApply={(schedule) => {
                       setTrainingSchedule(schedule)
                       setTrainingScheduleExpanded(true)

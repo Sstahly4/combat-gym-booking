@@ -31,6 +31,8 @@ export type TrainingScheduleImportPanelProps = {
   gymId: string
   currentSchedule: Record<string, TrainingScheduleSession[] | undefined>
   onApply: (schedule: TrainingSchedule) => void
+  /** When true, show provider/debug detail returned by the API. */
+  isAdmin?: boolean
 }
 
 const btnPrimary = 'bg-[#003580] text-white hover:bg-[#003580]/90'
@@ -40,6 +42,7 @@ export function TrainingScheduleImportPanel({
   gymId,
   currentSchedule,
   onApply,
+  isAdmin = false,
 }: TrainingScheduleImportPanelProps) {
   const inputId = useId().replace(/:/g, '')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -50,6 +53,7 @@ export function TrainingScheduleImportPanel({
   const [draft, setDraft] = useState<TrainingSchedule | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [adminErrorDetail, setAdminErrorDetail] = useState<string | null>(null)
   const [applyMode, setApplyMode] = useState<'replace' | 'merge'>('replace')
   const [dragOver, setDragOver] = useState(false)
 
@@ -72,6 +76,7 @@ export function TrainingScheduleImportPanel({
     setDraft(null)
     setWarnings([])
     setError(null)
+    setAdminErrorDetail(null)
     setDragOver(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }, [])
@@ -80,6 +85,7 @@ export function TrainingScheduleImportPanel({
     async (picked: File) => {
       setPhase('parsing')
       setError(null)
+      setAdminErrorDetail(null)
 
       try {
         const formData = new FormData()
@@ -92,6 +98,8 @@ export function TrainingScheduleImportPanel({
 
         let data: {
           error?: string
+          detail?: string
+          code?: string
           schedule?: TrainingSchedule
           warnings?: string[]
         } = {}
@@ -106,6 +114,7 @@ export function TrainingScheduleImportPanel({
         }
 
         if (!res.ok) {
+          setAdminErrorDetail(isAdmin ? data.detail ?? null : null)
           throw new Error(data.error || 'Could not read this timetable.')
         }
 
@@ -122,7 +131,7 @@ export function TrainingScheduleImportPanel({
         setPhase('error')
       }
     },
-    [gymId, existingCount],
+    [gymId, existingCount, isAdmin],
   )
 
   const handleFilePick = useCallback(
@@ -360,8 +369,13 @@ export function TrainingScheduleImportPanel({
             {error ? (
               <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <div>
+                <div className="min-w-0">
                   <p>{error}</p>
+                  {isAdmin && adminErrorDetail ? (
+                    <p className="mt-2 rounded-md border border-red-200/80 bg-white/70 px-2.5 py-2 font-mono text-xs text-red-900">
+                      Admin detail: {adminErrorDetail}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     className="mt-2 text-xs font-medium underline"

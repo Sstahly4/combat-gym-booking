@@ -13,6 +13,10 @@ import {
   TRAINING_SCHEDULE_MAX_BYTES,
   TrainingScheduleParseError,
 } from '@/lib/manage/parse-training-schedule-vision'
+import {
+  formatParseScheduleErrorResponse,
+  OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+} from '@/lib/manage/training-schedule-parse-errors'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 async function assertCanEditGym(
@@ -48,6 +52,7 @@ function inferImageMimeType(file: File): string | null {
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  let isAdmin = false
   try {
     const rate = await checkRateLimit(request, 'manage:parse-schedule')
     if (!rate.allowed) return rate.response
@@ -69,6 +74,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!gym) {
       return NextResponse.json({ error: 'Gym not found or access denied' }, { status: 404 })
     }
+
+    isAdmin = access.profile?.role === 'admin'
 
     const formData = await request.formData()
     const file = formData.get('file')
@@ -113,22 +120,29 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
   } catch (error) {
     if (error instanceof TrainingScheduleParseError) {
-      const status =
-        error.code === 'missing_api_key'
-          ? 503
-          : error.code === 'empty_result'
-            ? 422
-            : error.code === 'upstream'
-              ? 502
-              : 400
-      return NextResponse.json({ error: error.message, code: error.code }, { status })
+      console.error('[parse-schedule]', {
+        gymId: params.id,
+        code: error.code,
+        detail: error.detail,
+      })
+      return NextResponse.json(formatParseScheduleErrorResponse(error, isAdmin), {
+        status: error.httpStatus,
+      })
     }
 
     console.error('[parse-schedule]', error)
-    const message =
+    const detail =
       error instanceof Error && error.message.trim()
         ? error.message
         : 'Failed to parse timetable.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const fallback = new TrainingScheduleParseError({
+      code: 'upstream',
+      ownerMessage: OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+      detail,
+      httpStatus: 500,
+    })
+    return NextResponse.json(formatParseScheduleErrorResponse(fallback, isAdmin), {
+      status: fallback.httpStatus,
+    })
   }
 }

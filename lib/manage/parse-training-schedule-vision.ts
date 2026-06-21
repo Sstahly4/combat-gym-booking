@@ -7,6 +7,13 @@ import {
   type ParsedScheduleVisionResult,
   type TrainingSchedule,
 } from '@/lib/manage/training-schedule'
+import {
+  TrainingScheduleParseError,
+  classifyUpstreamOpenAiError,
+  OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+} from '@/lib/manage/training-schedule-parse-errors'
+
+export { TrainingScheduleParseError } from '@/lib/manage/training-schedule-parse-errors'
 
 const OPENAI_CHAT_URL = 'https://api.openai.com/v1/chat/completions'
 const PARSE_MODEL = process.env.TRAINING_SCHEDULE_PARSE_MODEL ?? 'gpt-4o-mini'
@@ -49,17 +56,19 @@ function buildUserPrompt(disciplines: string[]): string {
 
 type OpenAIChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>
-  error?: { message?: string }
+  error?: { message?: string; type?: string; code?: string }
 }
 
-export class TrainingScheduleParseError extends Error {
-  constructor(
-    message: string,
-    readonly code: 'missing_api_key' | 'upstream' | 'invalid_response' | 'empty_result',
-  ) {
-    super(message)
-    this.name = 'TrainingScheduleParseError'
-  }
+function userFacingParseError(
+  ownerMessage: string,
+  detail: string,
+  code: 'invalid_response' | 'empty_result',
+): TrainingScheduleParseError {
+  return new TrainingScheduleParseError({
+    code,
+    ownerMessage,
+    detail,
+  })
 }
 
 function extractJsonContent(content: string): string {
@@ -131,12 +140,20 @@ function parseModelJson(content: string): ParsedScheduleVisionResult {
   try {
     parsed = JSON.parse(extractJsonContent(content))
   } catch {
-    throw new TrainingScheduleParseError('Could not read a timetable from this image.', 'invalid_response')
+    throw userFacingParseError(
+      'Could not read a timetable from this image.',
+      'Model returned invalid JSON while parsing timetable.',
+      'invalid_response',
+    )
   }
 
   const sessions = normalizeSessionsPayload(parsed)
   if (sessions.length === 0) {
-    throw new TrainingScheduleParseError('Unexpected response format from parser.', 'invalid_response')
+    throw userFacingParseError(
+      'Could not read a timetable from this image.',
+      'Model JSON did not include any recognizable sessions.',
+      'invalid_response',
+    )
   }
 
   const obj = parsed as { warnings?: unknown }
@@ -159,10 +176,12 @@ export async function parseTrainingScheduleImage(params: {
 }> {
   const apiKey = readOpenAiApiKey()
   if (!apiKey) {
-    throw new TrainingScheduleParseError(
-      'Schedule import is not configured (missing OPENAI_API_KEY).',
-      'missing_api_key',
-    )
+    throw new TrainingScheduleParseError({
+      code: 'missing_api_key',
+      ownerMessage: OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+      detail: 'Schedule import is not configured (missing OPENAI_API_KEY).',
+      httpStatus: 503,
+    })
   }
 
   const disciplines = params.disciplines?.filter(Boolean) ?? []
@@ -194,8 +213,13 @@ export async function parseTrainingScheduleImage(params: {
       }),
     })
   } catch (cause) {
-    const msg = cause instanceof Error ? cause.message : 'Network error calling OpenAI'
-    throw new TrainingScheduleParseError(msg, 'upstream')
+    const detail = cause instanceof Error ? cause.message : 'Network error calling OpenAI'
+    throw new TrainingScheduleParseError({
+      code: 'upstream',
+      ownerMessage: OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+      detail,
+      httpStatus: 502,
+    })
   }
 
   const rawBody = await response.text()
@@ -203,28 +227,41 @@ export async function parseTrainingScheduleImage(params: {
   try {
     payload = rawBody ? (JSON.parse(rawBody) as OpenAIChatResponse) : {}
   } catch {
-    throw new TrainingScheduleParseError(
-      `Vision API returned an invalid response (${response.status}).`,
-      'upstream',
-    )
+    throw new TrainingScheduleParseError({
+      code: 'upstream',
+      ownerMessage: OWNER_SCHEDULE_PARSE_UNAVAILABLE,
+      detail: `Vision API returned an invalid response (${response.status}).`,
+      httpStatus: 502,
+    })
   }
 
   if (!response.ok) {
-    const msg = payload.error?.message || rawBody.slice(0, 200) || `Vision API error (${response.status})`
-    throw new TrainingScheduleParseError(msg, 'upstream')
+    const msg =
+      payload.error?.message || rawBody.slice(0, 500) || `Vision API error (${response.status})`
+    const classified = classifyUpstreamOpenAiError({
+      httpStatus: response.status,
+      message: msg,
+      providerCode: payload.error?.code ?? payload.error?.type,
+    })
+    throw new TrainingScheduleParseError({ ...classified })
   }
 
   const content = payload.choices?.[0]?.message?.content
   if (!content?.trim()) {
-    throw new TrainingScheduleParseError('Empty response from parser.', 'invalid_response')
+    throw userFacingParseError(
+      'Could not read a timetable from this image.',
+      'Empty response from vision parser.',
+      'invalid_response',
+    )
   }
 
   const parsed = parseModelJson(content)
   const { schedule, skipped, sessionCount } = buildTrainingScheduleFromParsedRows(parsed.sessions)
 
   if (sessionCount === 0) {
-    throw new TrainingScheduleParseError(
+    throw userFacingParseError(
       'No class sessions found. Try a clearer photo or enter times manually.',
+      'Parsed timetable contained no mappable class sessions.',
       'empty_result',
     )
   }
