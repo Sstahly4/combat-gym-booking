@@ -30,11 +30,6 @@ import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-secti
 import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
 import { TrainingScheduleImportPanel } from '@/components/manage/training-schedule-import-panel'
 import {
-  GymScheduleModePicker,
-  GymSchedulePhotoUpload,
-  type GymScheduleDisplayMode,
-} from '@/components/manage/gym-schedule-photo-upload'
-import {
   serializeManagedImageRef,
   uploadGymImageWithVariants,
 } from '@/lib/images/gym-image-variants'
@@ -284,10 +279,6 @@ function EditGymForm() {
     saturday: [],
     sunday: [],
   })
-  const [scheduleDisplayMode, setScheduleDisplayMode] = useState<GymScheduleDisplayMode>('manual')
-  const [scheduleImageRef, setScheduleImageRef] = useState<string | null>(null)
-  const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null)
-  const [scheduleImagePreviewUrl, setScheduleImagePreviewUrl] = useState<string | null>(null)
   const [trainers, setTrainers] = useState<
     Array<{
       name: string
@@ -329,8 +320,6 @@ function EditGymForm() {
         locationLng,
         openingHours,
         trainingSchedule,
-        scheduleDisplayMode,
-        scheduleImageRef,
         trainers,
         faq,
         // Note: newImages (File objects) can't be serialized, so we skip them
@@ -412,12 +401,6 @@ function EditGymForm() {
       }
       if (formState.openingHours) setOpeningHours(formState.openingHours)
       if (formState.trainingSchedule) setTrainingSchedule(formState.trainingSchedule)
-      if (formState.scheduleDisplayMode === 'manual' || formState.scheduleDisplayMode === 'photo') {
-        setScheduleDisplayMode(formState.scheduleDisplayMode)
-      }
-      if (typeof formState.scheduleImageRef === 'string') {
-        setScheduleImageRef(formState.scheduleImageRef)
-      }
       if (formState.trainers) setTrainers(formState.trainers)
       if (formState.faq) setFaq(formState.faq)
 
@@ -476,8 +459,6 @@ function EditGymForm() {
     locationLng,
     openingHours,
     trainingSchedule,
-    scheduleDisplayMode,
-    scheduleImageRef,
     trainers,
     faq,
     gymId,
@@ -780,25 +761,6 @@ function EditGymForm() {
       }
     }
 
-    const scheduleMeta = data as {
-      training_schedule_image?: string | null
-      training_schedule_use_image?: boolean
-    }
-    try {
-      const cacheKey = getCacheKey()
-      const cached = cacheKey ? localStorage.getItem(cacheKey) : null
-      const parsed = cached ? JSON.parse(cached) : null
-      const hasCachedScheduleMode =
-        parsed?.scheduleDisplayMode === 'manual' || parsed?.scheduleDisplayMode === 'photo'
-      if (!hasCachedScheduleMode) {
-        setScheduleDisplayMode(scheduleMeta.training_schedule_use_image ? 'photo' : 'manual')
-        setScheduleImageRef(scheduleMeta.training_schedule_image ?? null)
-      }
-    } catch {
-      setScheduleDisplayMode(scheduleMeta.training_schedule_use_image ? 'photo' : 'manual')
-      setScheduleImageRef(scheduleMeta.training_schedule_image ?? null)
-    }
-    
     setLoading(false)
   }
 
@@ -1072,26 +1034,6 @@ function EditGymForm() {
         return out
       })()
 
-      let nextScheduleImageRef = scheduleImageRef
-      if (scheduleDisplayMode === 'photo') {
-        if (scheduleImageFile) {
-          const stem = `${Date.now()}-timetable`
-          const uploaded = await uploadGymImageWithVariants({
-            supabase,
-            gymId: gym.id,
-            file: scheduleImageFile,
-            stem,
-            subdir: 'schedules',
-          })
-          nextScheduleImageRef = serializeManagedImageRef(uploaded)
-        }
-        if (!nextScheduleImageRef) {
-          throw new Error(
-            'Upload a timetable image or switch to entering class times manually.',
-          )
-        }
-      }
-
       const updates = {
         name: gymName.trim(),
         tagline: tagline.trim() || null,
@@ -1116,9 +1058,8 @@ function EditGymForm() {
             [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
           ])
         ),
-        training_schedule_use_image: scheduleDisplayMode === 'photo',
-        training_schedule_image:
-          scheduleDisplayMode === 'photo' ? nextScheduleImageRef : null,
+        training_schedule_use_image: false,
+        training_schedule_image: null,
         trainers: [...trainersWithUploadedPhotos]
           .map((t) => ({
             name: t.name,
@@ -1151,15 +1092,6 @@ function EditGymForm() {
 
       // Sync tagline state with what was saved so the field shows the persisted value.
       setTagline((updates as { tagline?: string | null }).tagline || '')
-
-      if (scheduleDisplayMode === 'photo' && nextScheduleImageRef) {
-        setScheduleImageRef(nextScheduleImageRef)
-        setScheduleImageFile(null)
-        setScheduleImagePreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-      }
 
       // Clear any pending local photo files after a successful save.
       setTrainerPhotoFiles({})
@@ -1944,55 +1876,27 @@ function EditGymForm() {
 
               {/* Training Schedule */}
               <div className="pt-4 border-t space-y-4">
-                <div>
-                  <Label className="text-base font-medium">Class schedule (optional)</Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Help guests see when classes run. Choose the fastest option for you.
-                  </p>
-                </div>
-
-                <GymScheduleModePicker
-                  mode={scheduleDisplayMode}
-                  onModeChange={setScheduleDisplayMode}
-                />
-
-                {scheduleDisplayMode === 'photo' ? (
-                  <GymSchedulePhotoUpload
-                    savedImageRef={scheduleImageRef}
-                    pendingFile={scheduleImageFile}
-                    pendingPreviewUrl={scheduleImagePreviewUrl}
-                    disabled={saving}
-                    onPickFile={(file) => {
-                      setScheduleImageFile(file)
-                      setScheduleImagePreviewUrl((prev) => {
-                        if (prev) URL.revokeObjectURL(prev)
-                        return URL.createObjectURL(file)
-                      })
-                    }}
-                    onClear={() => {
-                      setScheduleImageFile(null)
-                      setScheduleImageRef(null)
-                      setScheduleImagePreviewUrl((prev) => {
-                        if (prev) URL.revokeObjectURL(prev)
-                        return null
+                {gym?.id ? (
+                  <TrainingScheduleImportPanel
+                    gymId={gym.id}
+                    currentSchedule={trainingSchedule}
+                    onApply={(schedule) => {
+                      setTrainingSchedule(schedule)
+                      setTrainingScheduleExpanded(true)
+                      setExpandedDays((prev) => {
+                        const next = { ...prev }
+                        for (const day of DAYS_OF_WEEK) {
+                          if (schedule[day]?.some((s) => s.time.trim())) {
+                            next[day] = true
+                          }
+                        }
+                        return next
                       })
                     }}
                   />
-                ) : (
-                  <>
-                    {gym?.id ? (
-                      <TrainingScheduleImportPanel
-                        gymId={gym.id}
-                        currentSchedule={trainingSchedule}
-                        collapsible
-                        onApply={(schedule) => {
-                          setTrainingSchedule(schedule)
-                          setTrainingScheduleExpanded(true)
-                        }}
-                      />
-                    ) : null}
+                ) : null}
 
-                    <button
+                <button
                   type="button"
                   onClick={() => setTrainingScheduleExpanded(!trainingScheduleExpanded)}
                   className="w-full flex items-center justify-between p-2 -m-2 rounded-md hover:bg-gray-50 transition-colors"
@@ -2000,7 +1904,7 @@ function EditGymForm() {
                   <div className="text-left">
                     <Label className="text-base font-medium cursor-pointer">Enter sessions by day</Label>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Add training sessions for each day — or use optional AI auto-fill above.
+                      Review and edit class times below, or enter them manually.
                     </p>
                   </div>
                   {trainingScheduleExpanded ? (
@@ -2119,8 +2023,6 @@ function EditGymForm() {
                       )
                     })}
                   </div>
-                )}
-                  </>
                 )}
               </div>
 
