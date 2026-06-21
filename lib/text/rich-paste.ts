@@ -131,12 +131,21 @@ export function structuredTextFromClipboard(html: string, plain: string): string
 export function insertTextAtSelection(
   textarea: HTMLTextAreaElement,
   insert: string,
-): void {
+): string {
   const start = textarea.selectionStart ?? textarea.value.length
   const end = textarea.selectionEnd ?? textarea.value.length
   const next = `${textarea.value.slice(0, start)}${insert}${textarea.value.slice(end)}`
-  textarea.value = next
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    'value',
+  )?.set
+  if (valueSetter) {
+    valueSetter.call(textarea, next)
+  } else {
+    textarea.value = next
+  }
   const caret = start + insert.length
   textarea.setSelectionRange(caret, caret)
   textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  return next
 }

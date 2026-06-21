@@ -29,6 +29,7 @@ import {
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
 import { TrainingScheduleImportPanel } from '@/components/manage/training-schedule-import-panel'
+import { TRAINING_SCHEDULE_DAYS } from '@/lib/manage/training-schedule'
 import {
   serializeManagedImageRef,
   uploadGymImageWithVariants,
@@ -104,6 +105,11 @@ function reorderGymImagesForGallery(
       return img ? { ...img, order: idx } : null
     })
     .filter((img): img is GymImage => img != null)
+}
+
+function formFieldValue(formData: FormData, name: string, fallback: string): string {
+  const raw = formData.get(name)
+  return typeof raw === 'string' ? raw : fallback
 }
 
 interface GymWithImages extends Gym {
@@ -188,6 +194,7 @@ function EditGymForm() {
     error: null,
   })
   const saveInProgressRef = useRef(false)
+  const gymFormHydratedRef = useRef(false)
   const [imageDragEnabled, setImageDragEnabled] = useState(false)
   const [draggedGalleryIndex, setDraggedGalleryIndex] = useState<number | null>(null)
 
@@ -483,6 +490,10 @@ function EditGymForm() {
   }, [gymId, loading])
 
   useEffect(() => {
+    gymFormHydratedRef.current = false
+  }, [gymId])
+
+  useEffect(() => {
     if (authLoading) return
     
     if (!user || (profile?.role !== 'owner' && profile?.role !== 'admin')) {
@@ -660,104 +671,108 @@ function EditGymForm() {
     setPendingPreviewUrls(previews)
     setGalleryOrderForGym(id, mergedGalleryOrder)
 
-    // Try to restore cached form state first
-    const { hasCachedState, restoredLocationFromCache, restoredBasicFieldsFromCache } =
-      restoreFormState()
+    if (!gymFormHydratedRef.current) {
+      gymFormHydratedRef.current = true
 
-    const initBasicFieldsFromDb = () => {
-      setGymName(data.name || '')
-      setDescription(data.description || '')
-      setTagline((data as { tagline?: string | null }).tagline || '')
-      setPricePerDay(data.price_per_day != null ? String(data.price_per_day) : '')
-      setPricePerWeek(data.price_per_week != null ? String(data.price_per_week) : '')
-      setGoogleMapsLink((data as { google_maps_link?: string | null }).google_maps_link || '')
-      setInstagramLink((data as { instagram_link?: string | null }).instagram_link || '')
-      setFacebookLink((data as { facebook_link?: string | null }).facebook_link || '')
-    }
+      // Try to restore cached form state first
+      const { hasCachedState, restoredLocationFromCache, restoredBasicFieldsFromCache } =
+        restoreFormState()
 
-    if (!hasCachedState || !restoredBasicFieldsFromCache) {
-      initBasicFieldsFromDb()
-    }
-
-    if (!restoredLocationFromCache) {
-      setLocationAddress(data.address || '')
-      const loadedCity = data.city || ''
-      setLocationCity(loadedCity)
-      if (hasNonLatinChars(loadedCity)) setCityNonLatinWarning(true)
-      setLocationLat(
-        data.latitude != null && !Number.isNaN(Number(data.latitude)) ? String(data.latitude) : ''
-      )
-      setLocationLng(
-        data.longitude != null && !Number.isNaN(Number(data.longitude)) ? String(data.longitude) : ''
-      )
-    }
-
-    // If no cached state, use data from database
-    if (!hasCachedState) {
-      setSelectedCountry(data.country || '')
-      setDisciplines(data.disciplines || [])
-    }
-
-    // Currency should reflect DB on load (not cached)
-    setSelectedCurrencyCode(normalizeGymCurrency(data.currency, 'USD'))
-    currencyTouchedRef.current = false
-    
-    if (!hasCachedState) {
-      setAmenities(mergeGymAmenitiesFromDb(data.amenities))
-    } else {
-      setAmenities((prev) => {
-        const fromDb = mergeGymAmenitiesFromDb(data.amenities)
-        const out = { ...fromDb }
-        for (const k of GYM_AMENITY_ORDER) {
-          if (k in prev) out[k] = prev[k] as boolean
-        }
-        return out
-      })
-    }
-    
-    // Load optional fields (only if not cached)
-    if (!hasCachedState) {
-      if (data.opening_hours) {
-        setOpeningHours(data.opening_hours)
+      const initBasicFieldsFromDb = () => {
+        setGymName(data.name || '')
+        setDescription(data.description || '')
+        setTagline((data as { tagline?: string | null }).tagline || '')
+        setPricePerDay(data.price_per_day != null ? String(data.price_per_day) : '')
+        setPricePerWeek(data.price_per_week != null ? String(data.price_per_week) : '')
+        setGoogleMapsLink((data as { google_maps_link?: string | null }).google_maps_link || '')
+        setInstagramLink((data as { instagram_link?: string | null }).instagram_link || '')
+        setFacebookLink((data as { facebook_link?: string | null }).facebook_link || '')
       }
-      if (data.training_schedule) {
-        // Handle both old string format and new array format
-        const schedule = data.training_schedule
-        if (typeof schedule === 'object' && !Array.isArray(schedule)) {
-          const converted: Record<string, Array<{ time: string; type?: string }>> = {}
-          DAYS_OF_WEEK.forEach(day => {
-            if (schedule[day]) {
-              if (typeof schedule[day] === 'string') {
-                // Old format: convert string to array
-                converted[day] = [{ time: schedule[day] }]
-              } else if (Array.isArray(schedule[day])) {
-                // New format: already array - create a new mutable array copy to avoid readonly issues
-                converted[day] = Array.from(schedule[day]).map(session => ({ 
-                  time: session.time || '', 
-                  type: session.type || '' 
-                }))
+
+      if (!hasCachedState || !restoredBasicFieldsFromCache) {
+        initBasicFieldsFromDb()
+      }
+
+      if (!restoredLocationFromCache) {
+        setLocationAddress(data.address || '')
+        const loadedCity = data.city || ''
+        setLocationCity(loadedCity)
+        if (hasNonLatinChars(loadedCity)) setCityNonLatinWarning(true)
+        setLocationLat(
+          data.latitude != null && !Number.isNaN(Number(data.latitude)) ? String(data.latitude) : '',
+        )
+        setLocationLng(
+          data.longitude != null && !Number.isNaN(Number(data.longitude)) ? String(data.longitude) : '',
+        )
+      }
+
+      // If no cached state, use data from database
+      if (!hasCachedState) {
+        setSelectedCountry(data.country || '')
+        setDisciplines(data.disciplines || [])
+      }
+
+      // Currency should reflect DB on load (not cached)
+      setSelectedCurrencyCode(normalizeGymCurrency(data.currency, 'USD'))
+      currencyTouchedRef.current = false
+
+      if (!hasCachedState) {
+        setAmenities(mergeGymAmenitiesFromDb(data.amenities))
+      } else {
+        setAmenities((prev) => {
+          const fromDb = mergeGymAmenitiesFromDb(data.amenities)
+          const out = { ...fromDb }
+          for (const k of GYM_AMENITY_ORDER) {
+            if (k in prev) out[k] = prev[k] as boolean
+          }
+          return out
+        })
+      }
+
+      // Load optional fields (only if not cached)
+      if (!hasCachedState) {
+        if (data.opening_hours) {
+          setOpeningHours(data.opening_hours)
+        }
+        if (data.training_schedule) {
+          // Handle both old string format and new array format
+          const schedule = data.training_schedule
+          if (typeof schedule === 'object' && !Array.isArray(schedule)) {
+            const converted: Record<string, Array<{ time: string; type?: string }>> = {}
+            DAYS_OF_WEEK.forEach((day) => {
+              if (schedule[day]) {
+                if (typeof schedule[day] === 'string') {
+                  // Old format: convert string to array
+                  converted[day] = [{ time: schedule[day] }]
+                } else if (Array.isArray(schedule[day])) {
+                  // New format: already array - create a new mutable array copy to avoid readonly issues
+                  converted[day] = Array.from(schedule[day]).map((session) => ({
+                    time: session.time || '',
+                    type: session.type || '',
+                  }))
+                } else {
+                  converted[day] = []
+                }
               } else {
                 converted[day] = []
               }
-            } else {
-              converted[day] = []
-            }
-          })
-          setTrainingSchedule(converted)
-        } else {
-          // Initialize empty if not present
-          const empty: Record<string, Array<{ time: string; type?: string }>> = {}
-          DAYS_OF_WEEK.forEach(day => {
-            empty[day] = []
-          })
-          setTrainingSchedule(empty)
+            })
+            setTrainingSchedule(converted)
+          } else {
+            // Initialize empty if not present
+            const empty: Record<string, Array<{ time: string; type?: string }>> = {}
+            DAYS_OF_WEEK.forEach((day) => {
+              empty[day] = []
+            })
+            setTrainingSchedule(empty)
+          }
         }
-      }
-      if (data.trainers && Array.isArray(data.trainers)) {
-        setTrainers(data.trainers)
-      }
-      if (data.faq && Array.isArray(data.faq)) {
-        setFaq(data.faq)
+        if (data.trainers && Array.isArray(data.trainers)) {
+          setTrainers(data.trainers)
+        }
+        if (data.faq && Array.isArray(data.faq)) {
+          setFaq(data.faq)
+        }
       }
     }
 
@@ -1034,23 +1049,32 @@ function EditGymForm() {
         return out
       })()
 
+      const savedName = formFieldValue(formData, 'name', gymName).trim()
+      const savedDescription = formFieldValue(formData, 'description', description).trim()
+      const savedTagline = formFieldValue(formData, 'tagline', tagline).trim()
+      const savedPricePerDay = formFieldValue(formData, 'price_per_day', pricePerDay)
+      const savedPricePerWeek = formFieldValue(formData, 'price_per_week', pricePerWeek)
+      const savedGoogleMapsLink = formFieldValue(formData, 'google_maps_link', googleMapsLink).trim()
+      const savedInstagramLink = formFieldValue(formData, 'instagram_link', instagramLink).trim()
+      const savedFacebookLink = formFieldValue(formData, 'facebook_link', facebookLink).trim()
+
       const updates = {
-        name: gymName.trim(),
-        tagline: tagline.trim() || null,
-        description: description.trim(),
+        name: savedName,
+        tagline: savedTagline || null,
+        description: savedDescription,
         address: formData.get('address') as string,
         city: formData.get('city') as string,
         country: selectedCountry,
         latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
         longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
-        price_per_day: parseFloat(pricePerDay),
-        price_per_week: pricePerWeek ? parseFloat(pricePerWeek) : null,
+        price_per_day: parseFloat(savedPricePerDay),
+        price_per_week: savedPricePerWeek ? parseFloat(savedPricePerWeek) : null,
         currency: formData.get('currency') as string,
         disciplines: [...disciplines], // Create new array to avoid readonly issues
         amenities: mergeGymAmenitiesFromDb(amenities),
-        google_maps_link: googleMapsLink.trim() || null,
-        instagram_link: instagramLink.trim() || null,
-        facebook_link: facebookLink.trim() || null,
+        google_maps_link: savedGoogleMapsLink || null,
+        instagram_link: savedInstagramLink || null,
+        facebook_link: savedFacebookLink || null,
         opening_hours: { ...openingHours }, // Create new object to avoid readonly issues
         training_schedule: Object.fromEntries(
           Object.entries(trainingSchedule).map(([day, sessions]) => [
@@ -1090,8 +1114,15 @@ function EditGymForm() {
         )
       }
 
-      // Sync tagline state with what was saved so the field shows the persisted value.
-      setTagline((updates as { tagline?: string | null }).tagline || '')
+      // Sync basic fields with what was saved so the form reflects persisted values.
+      setGymName(savedName)
+      setDescription(savedDescription)
+      setTagline(savedTagline)
+      setPricePerDay(savedPricePerDay)
+      setPricePerWeek(savedPricePerWeek)
+      setGoogleMapsLink(savedGoogleMapsLink)
+      setInstagramLink(savedInstagramLink)
+      setFacebookLink(savedFacebookLink)
 
       // Clear any pending local photo files after a successful save.
       setTrainerPhotoFiles({})
@@ -1885,7 +1916,7 @@ function EditGymForm() {
                       setTrainingScheduleExpanded(true)
                       setExpandedDays((prev) => {
                         const next = { ...prev }
-                        for (const day of DAYS_OF_WEEK) {
+                        for (const day of TRAINING_SCHEDULE_DAYS) {
                           if (schedule[day]?.some((s) => s.time.trim())) {
                             next[day] = true
                           }
