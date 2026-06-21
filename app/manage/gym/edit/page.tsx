@@ -28,6 +28,16 @@ import {
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
+import { TrainingScheduleImportPanel } from '@/components/manage/training-schedule-import-panel'
+import {
+  GymScheduleModePicker,
+  GymSchedulePhotoUpload,
+  type GymScheduleDisplayMode,
+} from '@/components/manage/gym-schedule-photo-upload'
+import {
+  serializeManagedImageRef,
+  uploadGymImageWithVariants,
+} from '@/lib/images/gym-image-variants'
 import { hasNonLatinChars } from '@/lib/geo/nominatim-address'
 import {
   manageGymEditHubBreadcrumb,
@@ -140,6 +150,13 @@ function EditGymForm() {
 
   // Form State
   const [tagline, setTagline] = useState('')
+  const [gymName, setGymName] = useState('')
+  const [description, setDescription] = useState('')
+  const [pricePerDay, setPricePerDay] = useState('')
+  const [pricePerWeek, setPricePerWeek] = useState('')
+  const [googleMapsLink, setGoogleMapsLink] = useState('')
+  const [instagramLink, setInstagramLink] = useState('')
+  const [facebookLink, setFacebookLink] = useState('')
   const [disciplines, setDisciplines] = useState<string[]>([])
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() => ({
     ...DEFAULT_GYM_AMENITIES,
@@ -267,6 +284,10 @@ function EditGymForm() {
     saturday: [],
     sunday: [],
   })
+  const [scheduleDisplayMode, setScheduleDisplayMode] = useState<GymScheduleDisplayMode>('manual')
+  const [scheduleImageRef, setScheduleImageRef] = useState<string | null>(null)
+  const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null)
+  const [scheduleImagePreviewUrl, setScheduleImagePreviewUrl] = useState<string | null>(null)
   const [trainers, setTrainers] = useState<
     Array<{
       name: string
@@ -290,6 +311,14 @@ function EditGymForm() {
 
     try {
       const formState = {
+        gymName,
+        description,
+        tagline,
+        pricePerDay,
+        pricePerWeek,
+        googleMapsLink,
+        instagramLink,
+        facebookLink,
         disciplines,
         amenities,
         selectedCountry,
@@ -300,6 +329,8 @@ function EditGymForm() {
         locationLng,
         openingHours,
         trainingSchedule,
+        scheduleDisplayMode,
+        scheduleImageRef,
         trainers,
         faq,
         // Note: newImages (File objects) can't be serialized, so we skip them
@@ -312,13 +343,21 @@ function EditGymForm() {
   }
 
   /** Restores cached edit state. `restoredLocationFromCache` is true when cache included location fields (in-progress address survives refresh). */
-  const restoreFormState = (): { hasCachedState: boolean; restoredLocationFromCache: boolean } => {
+  const restoreFormState = (): {
+    hasCachedState: boolean
+    restoredLocationFromCache: boolean
+    restoredBasicFieldsFromCache: boolean
+  } => {
     const cacheKey = getCacheKey()
-    if (!cacheKey) return { hasCachedState: false, restoredLocationFromCache: false }
+    if (!cacheKey) {
+      return { hasCachedState: false, restoredLocationFromCache: false, restoredBasicFieldsFromCache: false }
+    }
 
     try {
       const cached = localStorage.getItem(cacheKey)
-      if (!cached) return { hasCachedState: false, restoredLocationFromCache: false }
+      if (!cached) {
+        return { hasCachedState: false, restoredLocationFromCache: false, restoredBasicFieldsFromCache: false }
+      }
 
       const formState = JSON.parse(cached)
 
@@ -326,7 +365,41 @@ function EditGymForm() {
       const cacheAge = Date.now() - (formState.timestamp || 0)
       if (cacheAge > 24 * 60 * 60 * 1000) {
         localStorage.removeItem(cacheKey)
-        return { hasCachedState: false, restoredLocationFromCache: false }
+        return { hasCachedState: false, restoredLocationFromCache: false, restoredBasicFieldsFromCache: false }
+      }
+
+      let restoredBasicFieldsFromCache = false
+      if (typeof formState.gymName === 'string') {
+        setGymName(formState.gymName)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.description === 'string') {
+        setDescription(formState.description)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.tagline === 'string') {
+        setTagline(formState.tagline)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.pricePerDay === 'string') {
+        setPricePerDay(formState.pricePerDay)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.pricePerWeek === 'string') {
+        setPricePerWeek(formState.pricePerWeek)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.googleMapsLink === 'string') {
+        setGoogleMapsLink(formState.googleMapsLink)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.instagramLink === 'string') {
+        setInstagramLink(formState.instagramLink)
+        restoredBasicFieldsFromCache = true
+      }
+      if (typeof formState.facebookLink === 'string') {
+        setFacebookLink(formState.facebookLink)
+        restoredBasicFieldsFromCache = true
       }
 
       // Restore form state
@@ -339,6 +412,12 @@ function EditGymForm() {
       }
       if (formState.openingHours) setOpeningHours(formState.openingHours)
       if (formState.trainingSchedule) setTrainingSchedule(formState.trainingSchedule)
+      if (formState.scheduleDisplayMode === 'manual' || formState.scheduleDisplayMode === 'photo') {
+        setScheduleDisplayMode(formState.scheduleDisplayMode)
+      }
+      if (typeof formState.scheduleImageRef === 'string') {
+        setScheduleImageRef(formState.scheduleImageRef)
+      }
       if (formState.trainers) setTrainers(formState.trainers)
       if (formState.faq) setFaq(formState.faq)
 
@@ -359,10 +438,10 @@ function EditGymForm() {
         restoredLocationFromCache = true
       }
 
-      return { hasCachedState: true, restoredLocationFromCache }
+      return { hasCachedState: true, restoredLocationFromCache, restoredBasicFieldsFromCache }
     } catch (error) {
       console.error('Failed to restore form state from localStorage:', error)
-      return { hasCachedState: false, restoredLocationFromCache: false }
+      return { hasCachedState: false, restoredLocationFromCache: false, restoredBasicFieldsFromCache: false }
     }
   }
 
@@ -379,6 +458,14 @@ function EditGymForm() {
     if (!gymId || loading) return
     saveFormState()
   }, [
+    gymName,
+    description,
+    tagline,
+    pricePerDay,
+    pricePerWeek,
+    googleMapsLink,
+    instagramLink,
+    facebookLink,
     disciplines,
     amenities,
     selectedCountry,
@@ -389,6 +476,8 @@ function EditGymForm() {
     locationLng,
     openingHours,
     trainingSchedule,
+    scheduleDisplayMode,
+    scheduleImageRef,
     trainers,
     faq,
     gymId,
@@ -591,7 +680,23 @@ function EditGymForm() {
     setGalleryOrderForGym(id, mergedGalleryOrder)
 
     // Try to restore cached form state first
-    const { hasCachedState, restoredLocationFromCache } = restoreFormState()
+    const { hasCachedState, restoredLocationFromCache, restoredBasicFieldsFromCache } =
+      restoreFormState()
+
+    const initBasicFieldsFromDb = () => {
+      setGymName(data.name || '')
+      setDescription(data.description || '')
+      setTagline((data as { tagline?: string | null }).tagline || '')
+      setPricePerDay(data.price_per_day != null ? String(data.price_per_day) : '')
+      setPricePerWeek(data.price_per_week != null ? String(data.price_per_week) : '')
+      setGoogleMapsLink((data as { google_maps_link?: string | null }).google_maps_link || '')
+      setInstagramLink((data as { instagram_link?: string | null }).instagram_link || '')
+      setFacebookLink((data as { facebook_link?: string | null }).facebook_link || '')
+    }
+
+    if (!hasCachedState || !restoredBasicFieldsFromCache) {
+      initBasicFieldsFromDb()
+    }
 
     if (!restoredLocationFromCache) {
       setLocationAddress(data.address || '')
@@ -605,9 +710,6 @@ function EditGymForm() {
         data.longitude != null && !Number.isNaN(Number(data.longitude)) ? String(data.longitude) : ''
       )
     }
-
-    // tagline is always loaded fresh from DB (not cached)
-    setTagline((data as { tagline?: string | null }).tagline || '')
 
     // If no cached state, use data from database
     if (!hasCachedState) {
@@ -676,6 +778,25 @@ function EditGymForm() {
       if (data.faq && Array.isArray(data.faq)) {
         setFaq(data.faq)
       }
+    }
+
+    const scheduleMeta = data as {
+      training_schedule_image?: string | null
+      training_schedule_use_image?: boolean
+    }
+    try {
+      const cacheKey = getCacheKey()
+      const cached = cacheKey ? localStorage.getItem(cacheKey) : null
+      const parsed = cached ? JSON.parse(cached) : null
+      const hasCachedScheduleMode =
+        parsed?.scheduleDisplayMode === 'manual' || parsed?.scheduleDisplayMode === 'photo'
+      if (!hasCachedScheduleMode) {
+        setScheduleDisplayMode(scheduleMeta.training_schedule_use_image ? 'photo' : 'manual')
+        setScheduleImageRef(scheduleMeta.training_schedule_image ?? null)
+      }
+    } catch {
+      setScheduleDisplayMode(scheduleMeta.training_schedule_use_image ? 'photo' : 'manual')
+      setScheduleImageRef(scheduleMeta.training_schedule_image ?? null)
     }
     
     setLoading(false)
@@ -951,23 +1072,43 @@ function EditGymForm() {
         return out
       })()
 
+      let nextScheduleImageRef = scheduleImageRef
+      if (scheduleDisplayMode === 'photo') {
+        if (scheduleImageFile) {
+          const stem = `${Date.now()}-timetable`
+          const uploaded = await uploadGymImageWithVariants({
+            supabase,
+            gymId: gym.id,
+            file: scheduleImageFile,
+            stem,
+            subdir: 'schedules',
+          })
+          nextScheduleImageRef = serializeManagedImageRef(uploaded)
+        }
+        if (!nextScheduleImageRef) {
+          throw new Error(
+            'Upload a timetable image or switch to entering class times manually.',
+          )
+        }
+      }
+
       const updates = {
-        name: formData.get('name') as string,
+        name: gymName.trim(),
         tagline: tagline.trim() || null,
-        description: formData.get('description') as string,
+        description: description.trim(),
         address: formData.get('address') as string,
         city: formData.get('city') as string,
         country: selectedCountry,
         latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
         longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
-        price_per_day: parseFloat(formData.get('price_per_day') as string),
-        price_per_week: formData.get('price_per_week') ? parseFloat(formData.get('price_per_week') as string) : null,
+        price_per_day: parseFloat(pricePerDay),
+        price_per_week: pricePerWeek ? parseFloat(pricePerWeek) : null,
         currency: formData.get('currency') as string,
         disciplines: [...disciplines], // Create new array to avoid readonly issues
         amenities: mergeGymAmenitiesFromDb(amenities),
-        google_maps_link: formData.get('google_maps_link') as string || null,
-        instagram_link: formData.get('instagram_link') as string || null,
-        facebook_link: formData.get('facebook_link') as string || null,
+        google_maps_link: googleMapsLink.trim() || null,
+        instagram_link: instagramLink.trim() || null,
+        facebook_link: facebookLink.trim() || null,
         opening_hours: { ...openingHours }, // Create new object to avoid readonly issues
         training_schedule: Object.fromEntries(
           Object.entries(trainingSchedule).map(([day, sessions]) => [
@@ -975,6 +1116,9 @@ function EditGymForm() {
             [...sessions].filter(s => s.time.trim() !== '') // Create new array and filter
           ])
         ),
+        training_schedule_use_image: scheduleDisplayMode === 'photo',
+        training_schedule_image:
+          scheduleDisplayMode === 'photo' ? nextScheduleImageRef : null,
         trainers: [...trainersWithUploadedPhotos]
           .map((t) => ({
             name: t.name,
@@ -1007,6 +1151,15 @@ function EditGymForm() {
 
       // Sync tagline state with what was saved so the field shows the persisted value.
       setTagline((updates as { tagline?: string | null }).tagline || '')
+
+      if (scheduleDisplayMode === 'photo' && nextScheduleImageRef) {
+        setScheduleImageRef(nextScheduleImageRef)
+        setScheduleImageFile(null)
+        setScheduleImagePreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
 
       // Clear any pending local photo files after a successful save.
       setTrainerPhotoFiles({})
@@ -1099,6 +1252,11 @@ function EditGymForm() {
     setPackagesListRefreshKey((key) => key + 1)
   }
 
+  const openPackageEditor = (mode: PackageEditorMode) => {
+    saveFormState()
+    setPackageEditorMode(mode)
+  }
+
   if (packageEditorMode) {
     const listingCurrency = normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')
 
@@ -1126,7 +1284,7 @@ function EditGymForm() {
 
   // Calculate section completion status
   const sectionStatus = {
-    basic: { completed: !!(gym.name && gym.description && gym.price_per_day), required: true },
+    basic: { completed: !!(gymName.trim() && description.trim() && pricePerDay.trim()), required: true },
     location: { completed: !!(locationAddress && locationCity && selectedCountry), required: true },
     images: { completed: !!(gym.images && gym.images.length > 0), required: true },
     disciplines: { completed: disciplines.length > 0, required: true },
@@ -1186,7 +1344,8 @@ function EditGymForm() {
                 <Input 
                   id="name" 
                   name="name" 
-                  defaultValue={gym.name} 
+                  value={gymName}
+                  onChange={(e) => setGymName(e.target.value)}
                   required 
                   className="max-w-2xl"
                 />
@@ -1217,7 +1376,8 @@ function EditGymForm() {
                 <GymDescriptionField 
                   id="description" 
                   name="description" 
-                  defaultValue={gym.description || ''} 
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   required 
                   rows={10}
                   className="max-w-4xl"
@@ -1246,7 +1406,8 @@ function EditGymForm() {
                       name="price_per_day" 
                       type="number" 
                       step="0.01" 
-                      defaultValue={gym.price_per_day} 
+                      value={pricePerDay}
+                      onChange={(e) => setPricePerDay(e.target.value)}
                       required 
                     />
                     <p className="text-xs text-gray-500">Shown in search results and "Starting from" price displays</p>
@@ -1258,7 +1419,8 @@ function EditGymForm() {
                       name="price_per_week" 
                       type="number" 
                       step="0.01" 
-                      defaultValue={gym.price_per_week || ''} 
+                      value={pricePerWeek}
+                      onChange={(e) => setPricePerWeek(e.target.value)}
                     />
                   </div>
                   <GymCurrencyPicker
@@ -1479,7 +1641,8 @@ function EditGymForm() {
                     id="google_maps_link" 
                     name="google_maps_link" 
                     type="url"
-                    defaultValue={(gym as any).google_maps_link || ''} 
+                    value={googleMapsLink}
+                    onChange={(e) => setGoogleMapsLink(e.target.value)}
                     placeholder="https://maps.google.com/..."
                     required={profile?.role !== 'admin'} 
                   />
@@ -1497,7 +1660,8 @@ function EditGymForm() {
                       id="instagram_link" 
                       name="instagram_link" 
                       type="url"
-                      defaultValue={(gym as any).instagram_link || ''} 
+                      value={instagramLink}
+                      onChange={(e) => setInstagramLink(e.target.value)}
                       placeholder="https://instagram.com/yourgym"
                       required={profile?.role !== 'admin'} 
                     />
@@ -1508,7 +1672,8 @@ function EditGymForm() {
                       id="facebook_link" 
                       name="facebook_link" 
                       type="url"
-                      defaultValue={(gym as any).facebook_link || ''} 
+                      value={facebookLink}
+                      onChange={(e) => setFacebookLink(e.target.value)}
                       placeholder="https://facebook.com/yourgym"
                     />
                   </div>
@@ -1778,16 +1943,64 @@ function EditGymForm() {
               </div>
 
               {/* Training Schedule */}
-              <div className="pt-4 border-t">
-                <button
+              <div className="pt-4 border-t space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Class schedule (optional)</Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Help guests see when classes run. Choose the fastest option for you.
+                  </p>
+                </div>
+
+                <GymScheduleModePicker
+                  mode={scheduleDisplayMode}
+                  onModeChange={setScheduleDisplayMode}
+                />
+
+                {scheduleDisplayMode === 'photo' ? (
+                  <GymSchedulePhotoUpload
+                    savedImageRef={scheduleImageRef}
+                    pendingFile={scheduleImageFile}
+                    pendingPreviewUrl={scheduleImagePreviewUrl}
+                    disabled={saving}
+                    onPickFile={(file) => {
+                      setScheduleImageFile(file)
+                      setScheduleImagePreviewUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev)
+                        return URL.createObjectURL(file)
+                      })
+                    }}
+                    onClear={() => {
+                      setScheduleImageFile(null)
+                      setScheduleImageRef(null)
+                      setScheduleImagePreviewUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev)
+                        return null
+                      })
+                    }}
+                  />
+                ) : (
+                  <>
+                    {gym?.id ? (
+                      <TrainingScheduleImportPanel
+                        gymId={gym.id}
+                        currentSchedule={trainingSchedule}
+                        collapsible
+                        onApply={(schedule) => {
+                          setTrainingSchedule(schedule)
+                          setTrainingScheduleExpanded(true)
+                        }}
+                      />
+                    ) : null}
+
+                    <button
                   type="button"
                   onClick={() => setTrainingScheduleExpanded(!trainingScheduleExpanded)}
                   className="w-full flex items-center justify-between p-2 -m-2 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <div className="text-left">
-                    <Label className="text-base font-medium cursor-pointer">Training Schedule (optional)</Label>
+                    <Label className="text-base font-medium cursor-pointer">Enter sessions by day</Label>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Add training sessions for each day. You can add multiple sessions per day.
+                      Add training sessions for each day — or use optional AI auto-fill above.
                     </p>
                   </div>
                   {trainingScheduleExpanded ? (
@@ -1906,6 +2119,8 @@ function EditGymForm() {
                       )
                     })}
                   </div>
+                )}
+                  </>
                 )}
               </div>
 
@@ -2071,8 +2286,8 @@ function EditGymForm() {
                     currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
                     isAdmin={profile?.role === 'admin'}
                     listRefreshKey={packagesListRefreshKey}
-                    onEditPackage={(pkg) => setPackageEditorMode({ kind: 'edit', package: pkg })}
-                    onCreatePackage={() => setPackageEditorMode({ kind: 'create' })}
+                    onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
+                    onCreatePackage={() => openPackageEditor({ kind: 'create' })}
                   />
                 </CardContent>
               </Card>

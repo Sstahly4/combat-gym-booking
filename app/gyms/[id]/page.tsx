@@ -20,7 +20,7 @@ import { SaveButton } from '@/components/save-button'
 import { PropertyHighlightsCard } from '@/components/property-highlights-card'
 import { ReviewsLinkButton } from '@/components/reviews-link-button'
 import { GymDescription } from '@/components/gym-description'
-import { TrainingSchedule } from '@/components/training-schedule'
+import { GymTrainingSchedulePublic } from '@/components/gym-training-schedule-public'
 import { ShowOnMapLink } from '@/components/show-on-map-link'
 import { GymAddressCopy } from '@/components/gym-address-copy'
 import { MapPin, Star } from 'lucide-react'
@@ -437,7 +437,9 @@ export default async function GymDetailsPage({
                 </div>
               )}
 
-              {(gym.opening_hours || gym.training_schedule) && (
+              {(gym.opening_hours ||
+                gym.training_schedule_use_image ||
+                gym.training_schedule) && (
                 <Card className="border border-gray-200 shadow-sm">
                   <CardContent className="p-4 md:p-5">
                     {gym.opening_hours && (() => {
@@ -462,9 +464,11 @@ export default async function GymDetailsPage({
                         </>
                       )
                     })()}
-                    {gym.training_schedule && (
-                      <TrainingSchedule trainingSchedule={gym.training_schedule} />
-                    )}
+                    <GymTrainingSchedulePublic
+                      trainingSchedule={gym.training_schedule}
+                      trainingScheduleImage={gym.training_schedule_image}
+                      trainingScheduleUseImage={gym.training_schedule_use_image}
+                    />
                   </CardContent>
                 </Card>
               )}

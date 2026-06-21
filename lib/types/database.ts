@@ -118,6 +118,9 @@ export interface Gym {
   amenities: Record<string, any>
   opening_hours?: Record<string, string> | null
   training_schedule?: Record<string, Array<{ time: string; type?: string }>> | null
+  /** Timetable flyer / screenshot when owner prefers image over structured schedule. */
+  training_schedule_image?: string | null
+  training_schedule_use_image?: boolean
   price_per_day: number
   price_per_week: number | null
   price_per_month: number | null

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,6 +128,8 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [sport, setSport] = useState('Muay Thai')
   const [description, setDescription] = useState('')
   const [packageCurrency, setPackageCurrency] = useState(listingCurrency)
+  const packageCurrencyTouchedRef = useRef(false)
+  const packageDataLoadedIdRef = useRef<string | null>(null)
   const [trainingTierOptions, setTrainingTierOptions] = useState<TrainingTierOptions>(
     DEFAULT_TRAINING_TIER_OPTIONS
   )
@@ -144,9 +146,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   }, [selectedOfferType])
   
   useEffect(() => {
-    if (!existingPackage) {
-      setPackageCurrency(normalizeGymCurrency(currency, 'USD'))
-    }
+    if (existingPackage) return
+    if (packageCurrencyTouchedRef.current) return
+    setPackageCurrency(normalizeGymCurrency(currency, 'USD'))
   }, [currency, existingPackage])
   
   // Step 3: Minimum Stay (defaults based on offer type)
@@ -219,14 +221,21 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     { id: 'review', label: 'Review', number: 5 },
   ]
   
-  // Load existing package data
+  // Load existing package data once per package — avoid resetting in-progress edits when listing currency changes.
   useEffect(() => {
-    if (existingPackage) {
-      setSelectedOfferType(existingPackage.offer_type || 'TYPE_TRAINING_ONLY')
+    if (!existingPackage) {
+      packageDataLoadedIdRef.current = null
+      return
+    }
+    if (packageDataLoadedIdRef.current === existingPackage.id) return
+    packageDataLoadedIdRef.current = existingPackage.id
+
+    setSelectedOfferType(existingPackage.offer_type || 'TYPE_TRAINING_ONLY')
       setName(existingPackage.name)
       setSport(existingPackage.sport)
       setDescription(existingPackage.description || '')
       setPackageCurrency(normalizeGymCurrency(existingPackage.currency || currency, 'USD'))
+      packageCurrencyTouchedRef.current = true
       setTrainingTierOptions(
         offerTypeUsesTrainingAccess(existingPackage.offer_type)
           ? inferTrainingTierOptionsFromPackage(existingPackage)
@@ -285,8 +294,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         // Load linked accommodations for non-event types
         loadLinkedAccommodations(existingPackage.id)
       }
-    }
-  }, [existingPackage, currency])
+  }, [existingPackage])
   
   // Load linked accommodations for existing package
   const loadLinkedAccommodations = async (packageId: string) => {
@@ -864,7 +872,10 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                 <GymCurrencyPicker
                   id="package-currency"
                   value={packageCurrency}
-                  onChange={setPackageCurrency}
+                  onChange={(code) => {
+                    packageCurrencyTouchedRef.current = true
+                    setPackageCurrency(code)
+                  }}
                   required
                   helperText="Defaults to your listing currency."
                 />

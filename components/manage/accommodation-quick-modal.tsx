@@ -12,9 +12,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils'
 import { syncGymAccommodationFlags } from '@/lib/manage/sync-gym-accommodation-flags'
 import {
-  serializeManagedImageRef,
-  uploadGymImageWithVariants,
+  managedImageDisplayUrl,
+  parseManagedImageRef,
 } from '@/lib/images/gym-image-variants'
+import {
+  clearCompletedAccommodationImageUploads,
+  enqueueAccommodationImageUploads,
+  getAccommodationImageUpload,
+  removeAccommodationImageUpload,
+  waitForAccommodationImageUploads,
+} from '@/lib/manage/accommodation-image-upload-manager'
+import { useAccommodationImageUploads } from '@/lib/hooks/use-accommodation-image-uploads'
 import {
   BedDouble,
   ChevronDown,
@@ -22,6 +30,7 @@ import {
   ChevronRight,
   GripVertical,
   ImageIcon,
+  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -162,7 +171,7 @@ const AMENITIES_PREVIEW_COUNT = 6
 
 type PhotoItem =
   | { id: string; kind: 'saved'; url: string }
-  | { id: string; kind: 'pending'; file: File; previewUrl: string }
+  | { id: string; kind: 'pending'; file: File; previewUrl: string; uploadId: string }
 
 function newPhotoId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -170,9 +179,15 @@ function newPhotoId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
-function fileNameFromSavedUrl(url: string): string {
+function photoItemDisplaySrc(item: PhotoItem): string {
+  if (item.kind === 'pending') return item.previewUrl
+  return managedImageDisplayUrl(item.url) ?? item.url
+}
+
+function fileNameFromSavedUrl(ref: string): string {
+  const display = managedImageDisplayUrl(ref) ?? parseManagedImageRef(ref).url
   try {
-    const last = new URL(url).pathname.split('/').filter(Boolean).pop()
+    const last = new URL(display).pathname.split('/').filter(Boolean).pop()
     return last ? decodeURIComponent(last) : 'Photo'
   } catch {
     return 'Photo'
@@ -181,7 +196,9 @@ function fileNameFromSavedUrl(url: string): string {
 
 function revokePendingPreviews(items: PhotoItem[]) {
   for (const p of items) {
-    if (p.kind === 'pending') URL.revokeObjectURL(p.previewUrl)
+    if (p.kind === 'pending') {
+      removeAccommodationImageUpload(p.uploadId)
+    }
   }
 }
 
@@ -219,6 +236,13 @@ export function AccommodationQuickModal({
   const [draggingPhotoId, setDraggingPhotoId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const photoInputId = useId().replace(/:/g, '')
+  const { uploads: pendingUploads } = useAccommodationImageUploads(gymId)
+
+  const uploadStatusById = useMemo(() => {
+    const map = new Map<string, (typeof pendingUploads)[number]['status']>()
+    for (const upload of pendingUploads) map.set(upload.id, upload.status)
+    return map
+  }, [pendingUploads])
 
   const selectedAmenityCount = useMemo(() => {
     return AMENITY_BOOL_KEYS.filter((k) => amenities[k]).length
@@ -325,11 +349,13 @@ export function AccommodationQuickModal({
       if (picked.length > slice.length) {
         alert(`Only ${slice.length} more image(s) added (max ${MAX_IMAGES} total).`)
       }
-      const additions: PhotoItem[] = slice.map((file) => ({
+      const uploaded = enqueueAccommodationImageUploads(gymId, slice)
+      const additions: PhotoItem[] = uploaded.map((entry, index) => ({
         id: newPhotoId(),
         kind: 'pending',
-        file,
-        previewUrl: URL.createObjectURL(file),
+        file: slice[index]!,
+        previewUrl: entry.previewUrl,
+        uploadId: entry.id,
       }))
       return [...prev, ...additions]
     })
@@ -339,7 +365,7 @@ export function AccommodationQuickModal({
   const removePhotoItem = (id: string) => {
     setPhotoItems((prev) => {
       const item = prev.find((p) => p.id === id)
-      if (item?.kind === 'pending') URL.revokeObjectURL(item.previewUrl)
+      if (item?.kind === 'pending') removeAccommodationImageUpload(item.uploadId)
       return prev.filter((p) => p.id !== id)
     })
   }
@@ -382,6 +408,35 @@ export function AccommodationQuickModal({
     }
   }, [photoLightbox])
 
+  const buildImageListFromPhotoItems = async (items: PhotoItem[]): Promise<string[]> => {
+    const pendingIds = items
+      .filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending')
+      .map((p) => p.uploadId)
+
+    if (pendingIds.length > 0) {
+      await waitForAccommodationImageUploads(pendingIds)
+    }
+
+    const failed = pendingIds.filter((id) => getAccommodationImageUpload(id)?.status === 'failed')
+    if (failed.length > 0) {
+      throw new Error('One or more images failed to upload. Remove them or try again.')
+    }
+
+    const refs: string[] = []
+    for (const item of items) {
+      if (item.kind === 'saved') {
+        refs.push(item.url)
+        continue
+      }
+      const entry = getAccommodationImageUpload(item.uploadId)
+      if (!entry?.serializedRef) {
+        throw new Error('Image upload did not finish. Wait a moment and try saving again.')
+      }
+      refs.push(entry.serializedRef)
+    }
+    return refs
+  }
+
   const handleSave = async () => {
     if (!name.trim()) {
       alert('Enter a room name')
@@ -394,54 +449,28 @@ export function AccommodationQuickModal({
     setSaving(true)
     const supabase = createClient()
 
-    const pendingFiles = photoItems.filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending')
-    const uploadedByOrder: string[] = []
-    for (let i = 0; i < pendingFiles.length; i++) {
-      const image = pendingFiles[i].file
-      try {
-        const stem = `${Date.now()}-${i}-${newPhotoId().slice(0, 8)}`
-        const uploaded = await uploadGymImageWithVariants({
-          supabase,
-          gymId,
-          file: image,
-          stem,
-          subdir: 'accommodations',
-        })
-        uploadedByOrder.push(serializeManagedImageRef(uploaded))
-      } catch (err) {
-        console.error(err)
-        alert('One or more images failed to upload. Try smaller files or check your connection.')
-        setSaving(false)
-        return
-      }
-    }
-
-    let uploadIdx = 0
-    const allImages: string[] = []
-    for (const item of photoItems) {
-      if (item.kind === 'saved') allImages.push(item.url)
-      else {
-        allImages.push(uploadedByOrder[uploadIdx]!)
-        uploadIdx += 1
-      }
-    }
-    const amenitiesPayload = buildAmenitiesPayload(amenities, amenitiesBaseline)
-
-    const basePayload = {
-      name: name.trim(),
-      description: description.trim() || null,
-      room_type: (roomType || null) as 'private' | 'shared' | 'dorm' | null,
-      capacity: capacity ? parseInt(capacity, 10) : null,
-      price_per_day: priceDay ? parseFloat(priceDay) : null,
-      price_per_week: priceWeek ? parseFloat(priceWeek) : null,
-      price_per_month: priceMonth ? parseFloat(priceMonth) : null,
-      currency: accCurrency,
-      images: allImages,
-      amenities: amenitiesPayload,
-      is_active: isActive,
-    }
-
     try {
+      const allImages = await buildImageListFromPhotoItems(photoItems)
+      const pendingUploadIds = photoItems
+        .filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending')
+        .map((p) => p.uploadId)
+
+      const amenitiesPayload = buildAmenitiesPayload(amenities, amenitiesBaseline)
+
+      const basePayload = {
+        name: name.trim(),
+        description: description.trim() || null,
+        room_type: (roomType || null) as 'private' | 'shared' | 'dorm' | null,
+        capacity: capacity ? parseInt(capacity, 10) : null,
+        price_per_day: priceDay ? parseFloat(priceDay) : null,
+        price_per_week: priceWeek ? parseFloat(priceWeek) : null,
+        price_per_month: priceMonth ? parseFloat(priceMonth) : null,
+        currency: accCurrency,
+        images: allImages,
+        amenities: amenitiesPayload,
+        is_active: isActive,
+      }
+
       if (editingId) {
         const { error } = await supabase.from('accommodations').update(basePayload).eq('id', editingId)
         if (error) throw error
@@ -452,6 +481,8 @@ export function AccommodationQuickModal({
         })
         if (error) throw error
       }
+
+      clearCompletedAccommodationImageUploads(pendingUploadIds)
       await syncGymAccommodationFlags(supabase, gymId)
       await fetchRows()
       onSaved?.()
@@ -494,7 +525,10 @@ export function AccommodationQuickModal({
 
   const openPhotoPreview = (item: PhotoItem) => {
     if (item.kind === 'saved') {
-      setPhotoLightbox({ src: item.url, fileName: fileNameFromSavedUrl(item.url) })
+      setPhotoLightbox({
+        src: photoItemDisplaySrc(item),
+        fileName: fileNameFromSavedUrl(item.url),
+      })
     } else {
       setPhotoLightbox({ src: item.previewUrl, fileName: item.file.name })
     }
@@ -548,6 +582,7 @@ export function AccommodationQuickModal({
                 <ul className="space-y-3">
                   {rows.map((r) => {
                     const thumb = r.images?.[0]
+                    const thumbSrc = managedImageDisplayUrl(thumb)
                     return (
                       <li
                         key={r.id}
@@ -555,8 +590,8 @@ export function AccommodationQuickModal({
                       >
                         <div className="flex min-w-0 flex-1 items-start gap-4">
                           <div className="flex h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-gray-200/90 bg-white shadow-sm">
-                            {thumb ? (
-                              <img src={thumb} alt="" className="h-full w-full object-cover" />
+                            {thumbSrc ? (
+                              <img src={thumbSrc} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-gray-300">
                                 <ImageIcon className="h-7 w-7" aria-hidden />
@@ -828,9 +863,9 @@ export function AccommodationQuickModal({
               <div className={sectionCard}>
                 <h3 className={sectionTitle}>Photos</h3>
                 <p className={sectionHint}>
-                  Up to {MAX_IMAGES} images — the first slot is the main listing thumbnail. As soon as you choose files
-                  from your device, small previews appear below (nothing extra to click). Reorder with drag or arrows;
-                  tap a tile for a large preview. Saving the room uploads them to your listing.
+                  Up to {MAX_IMAGES} images — the first slot is the main listing thumbnail. Photos upload in the
+                  background as soon as you pick them; saving the room only waits if uploads are still finishing.
+                  Reorder with drag or arrows; tap a tile for a large preview.
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-800">
                   {photoItems.length} / {MAX_IMAGES}
@@ -843,8 +878,11 @@ export function AccommodationQuickModal({
                   {photoItems.length > 0 ? (
                     <div className="flex flex-wrap gap-3 sm:gap-4">
                       {photoItems.map((item, index) => {
-                        const src = item.kind === 'saved' ? item.url : item.previewUrl
+                        const src = photoItemDisplaySrc(item)
                         const pending = item.kind === 'pending'
+                        const uploadStatus = pending ? uploadStatusById.get(item.uploadId) : null
+                        const uploading = uploadStatus === 'queued' || uploadStatus === 'uploading'
+                        const uploadFailed = uploadStatus === 'failed'
                         return (
                           <div key={item.id} className="flex shrink-0 flex-col items-center gap-1.5">
                             <div
@@ -876,6 +914,7 @@ export function AccommodationQuickModal({
                               className={cn(
                                 'relative h-20 w-20 shrink-0 cursor-grab overflow-hidden rounded-lg border bg-gray-100 shadow-sm outline-none ring-offset-2 transition-opacity focus-visible:ring-2 focus-visible:ring-[#003580]/40 active:cursor-grabbing',
                                 pending ? 'border-dashed border-[#003580]/40' : 'border-gray-200/90',
+                                uploadFailed && 'border-red-400',
                                 draggingPhotoId === item.id && 'opacity-55'
                               )}
                               title="Drag to reorder · click to preview"
@@ -889,7 +928,17 @@ export function AccommodationQuickModal({
                                 width={80}
                                 height={80}
                               />
-                              {index === 0 ? (
+                              {uploading ? (
+                                <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                                  <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                                </span>
+                              ) : null}
+                              {uploadFailed ? (
+                                <span className="absolute inset-x-0 bottom-0 bg-red-600/90 py-0.5 text-center text-[9px] font-semibold uppercase text-white">
+                                  Failed
+                                </span>
+                              ) : null}
+                              {index === 0 && !uploadFailed ? (
                                 <span className="absolute bottom-0 left-0 right-0 bg-[#003580]/92 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide text-white">
                                   Main
                                 </span>
