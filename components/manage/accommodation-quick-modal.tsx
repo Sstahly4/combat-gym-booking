@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -16,11 +16,12 @@ import {
   parseManagedImageRef,
 } from '@/lib/images/gym-image-variants'
 import {
-  clearCompletedAccommodationImageUploads,
+  commitAccommodationImagesOnSave,
   enqueueAccommodationImageUploads,
   getAccommodationImageUpload,
   removeAccommodationImageUpload,
-  waitForAccommodationImageUploads,
+  resolveAccommodationImageOrder,
+  type AccommodationImageOrderItem,
 } from '@/lib/manage/accommodation-image-upload-manager'
 import { useAccommodationImageUploads } from '@/lib/hooks/use-accommodation-image-uploads'
 import {
@@ -179,9 +180,39 @@ function newPhotoId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
-function photoItemDisplaySrc(item: PhotoItem): string {
-  if (item.kind === 'pending') return item.previewUrl
-  return managedImageDisplayUrl(item.url) ?? item.url
+function normalizeAccommodationImageRef(raw: unknown): string {
+  if (typeof raw === 'string') return raw.trim()
+  if (raw && typeof raw === 'object' && 'url' in raw && typeof (raw as { url: unknown }).url === 'string') {
+    const obj = raw as { url: string; variants?: unknown }
+    if (obj.variants && typeof obj.variants === 'object') {
+      return JSON.stringify({ url: obj.url, variants: obj.variants })
+    }
+    return obj.url.trim()
+  }
+  return ''
+}
+
+function accommodationImageDisplayUrl(ref: string | null | undefined): string | null {
+  if (!ref) return null
+  const display = managedImageDisplayUrl(ref)
+  if (display) return display
+  if (ref.startsWith('http://') || ref.startsWith('https://')) return ref
+  return null
+}
+
+function photoItemDisplaySrc(
+  item: PhotoItem,
+  pendingPreviewUrls: Record<string, string>,
+): string | null {
+  if (item.kind === 'pending') {
+    return (
+      pendingPreviewUrls[item.uploadId] ??
+      getAccommodationImageUpload(item.uploadId)?.previewUrl ??
+      item.previewUrl ??
+      null
+    )
+  }
+  return accommodationImageDisplayUrl(item.url)
 }
 
 function fileNameFromSavedUrl(ref: string): string {
@@ -194,10 +225,27 @@ function fileNameFromSavedUrl(ref: string): string {
   }
 }
 
-function revokePendingPreviews(items: PhotoItem[]) {
-  for (const p of items) {
-    if (p.kind === 'pending') {
-      removeAccommodationImageUpload(p.uploadId)
+function cancelFormSessionUploads(uploadIds: Iterable<string>) {
+  for (const id of uploadIds) {
+    removeAccommodationImageUpload(id)
+  }
+}
+
+function revokePendingPreviews(
+  items: PhotoItem[],
+  pendingPreviewUrls: Record<string, string>,
+  options?: { cancelUploads?: boolean; uploadIds?: Iterable<string> },
+) {
+  const cancelUploads = options?.cancelUploads !== false
+  if (cancelUploads) {
+    const ids =
+      options?.uploadIds ??
+      items.filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending').map((p) => p.uploadId)
+    cancelFormSessionUploads(ids)
+  }
+  if (cancelUploads) {
+    for (const url of Object.values(pendingPreviewUrls)) {
+      URL.revokeObjectURL(url)
     }
   }
 }
@@ -232,11 +280,16 @@ export function AccommodationQuickModal({
   const [amenitiesBaseline, setAmenitiesBaseline] = useState<Record<string, unknown>>({})
   const [amenitiesGridExpanded, setAmenitiesGridExpanded] = useState(false)
   const [photoItems, setPhotoItems] = useState<PhotoItem[]>([])
+  const [pendingPreviewUrls, setPendingPreviewUrls] = useState<Record<string, string>>({})
   const [photoLightbox, setPhotoLightbox] = useState<{ src: string; fileName: string } | null>(null)
   const [draggingPhotoId, setDraggingPhotoId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const photoInputId = useId().replace(/:/g, '')
-  const { uploads: pendingUploads } = useAccommodationImageUploads(gymId)
+  const { uploads: pendingUploads, summary: accUploadSummary } = useAccommodationImageUploads(gymId)
+  const accUploadWasActiveRef = useRef(false)
+  const formSessionUploadIdsRef = useRef<Set<string>>(new Set())
+  const pendingPreviewUrlsRef = useRef<Record<string, string>>({})
+  pendingPreviewUrlsRef.current = pendingPreviewUrls
 
   const uploadStatusById = useMemo(() => {
     const map = new Map<string, (typeof pendingUploads)[number]['status']>()
@@ -269,20 +322,35 @@ export function AccommodationQuickModal({
       setEditingId(null)
       setAmenitiesGridExpanded(false)
       setPhotoLightbox(null)
-      setPhotoItems((prev) => {
-        revokePendingPreviews(prev)
-        return []
-      })
+      cancelFormSessionUploads(formSessionUploadIdsRef.current)
+      formSessionUploadIdsRef.current = new Set()
+      for (const url of Object.values(pendingPreviewUrlsRef.current)) {
+        URL.revokeObjectURL(url)
+      }
+      setPendingPreviewUrls({})
+      setPhotoItems([])
       return
     }
     void fetchRows()
   }, [open, fetchRows])
 
   useEffect(() => {
+    if (accUploadWasActiveRef.current && !accUploadSummary.active && open && mode === 'list') {
+      void fetchRows()
+    }
+    accUploadWasActiveRef.current = accUploadSummary.active
+  }, [accUploadSummary.active, open, mode, fetchRows])
+
+  useEffect(() => {
     if (open) setAccCurrency(currency)
   }, [open, currency])
 
-  const resetForm = () => {
+  const resetForm = (options?: { cancelPendingUploads?: boolean }) => {
+    const cancelPendingUploads = options?.cancelPendingUploads !== false
+    if (cancelPendingUploads) {
+      cancelFormSessionUploads(formSessionUploadIdsRef.current)
+      formSessionUploadIdsRef.current = new Set()
+    }
     setEditingId(null)
     setName('')
     setDescription('')
@@ -297,10 +365,13 @@ export function AccommodationQuickModal({
     setAmenitiesBaseline({})
     setAmenitiesGridExpanded(false)
     setPhotoLightbox(null)
-    setPhotoItems((prev) => {
-      revokePendingPreviews(prev)
-      return []
-    })
+    if (cancelPendingUploads) {
+      for (const url of Object.values(pendingPreviewUrlsRef.current)) {
+        URL.revokeObjectURL(url)
+      }
+      setPendingPreviewUrls({})
+    }
+    setPhotoItems([])
   }
 
   const openNew = () => {
@@ -329,9 +400,20 @@ export function AccommodationQuickModal({
     setAmenitiesGridExpanded(false)
     setPhotoLightbox(null)
     setPhotoItems((prev) => {
-      revokePendingPreviews(prev)
+      revokePendingPreviews(prev, pendingPreviewUrlsRef.current, {
+        cancelUploads: true,
+        uploadIds: formSessionUploadIdsRef.current,
+      })
+      formSessionUploadIdsRef.current = new Set()
+      for (const url of Object.values(pendingPreviewUrlsRef.current)) {
+        URL.revokeObjectURL(url)
+      }
+      setPendingPreviewUrls({})
       const urls = Array.isArray(row.images) ? row.images : []
-      return urls.map((url) => ({ id: newPhotoId(), kind: 'saved' as const, url }))
+      return urls
+        .map((raw) => normalizeAccommodationImageRef(raw))
+        .filter(Boolean)
+        .map((url) => ({ id: newPhotoId(), kind: 'saved' as const, url }))
     })
     setMode('form')
   }
@@ -350,6 +432,14 @@ export function AccommodationQuickModal({
         alert(`Only ${slice.length} more image(s) added (max ${MAX_IMAGES} total).`)
       }
       const uploaded = enqueueAccommodationImageUploads(gymId, slice)
+      for (const entry of uploaded) {
+        formSessionUploadIdsRef.current.add(entry.id)
+      }
+      setPendingPreviewUrls((prev) => {
+        const next = { ...prev }
+        for (const entry of uploaded) next[entry.id] = entry.previewUrl
+        return next
+      })
       const additions: PhotoItem[] = uploaded.map((entry, index) => ({
         id: newPhotoId(),
         kind: 'pending',
@@ -365,7 +455,17 @@ export function AccommodationQuickModal({
   const removePhotoItem = (id: string) => {
     setPhotoItems((prev) => {
       const item = prev.find((p) => p.id === id)
-      if (item?.kind === 'pending') removeAccommodationImageUpload(item.uploadId)
+      if (item?.kind === 'pending') {
+        removeAccommodationImageUpload(item.uploadId)
+        formSessionUploadIdsRef.current.delete(item.uploadId)
+        setPendingPreviewUrls((urls) => {
+          const next = { ...urls }
+          const url = next[item.uploadId]
+          if (url) URL.revokeObjectURL(url)
+          delete next[item.uploadId]
+          return next
+        })
+      }
       return prev.filter((p) => p.id !== id)
     })
   }
@@ -408,34 +508,12 @@ export function AccommodationQuickModal({
     }
   }, [photoLightbox])
 
-  const buildImageListFromPhotoItems = async (items: PhotoItem[]): Promise<string[]> => {
-    const pendingIds = items
-      .filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending')
-      .map((p) => p.uploadId)
-
-    if (pendingIds.length > 0) {
-      await waitForAccommodationImageUploads(pendingIds)
-    }
-
-    const failed = pendingIds.filter((id) => getAccommodationImageUpload(id)?.status === 'failed')
-    if (failed.length > 0) {
-      throw new Error('One or more images failed to upload. Remove them or try again.')
-    }
-
-    const refs: string[] = []
-    for (const item of items) {
-      if (item.kind === 'saved') {
-        refs.push(item.url)
-        continue
-      }
-      const entry = getAccommodationImageUpload(item.uploadId)
-      if (!entry?.serializedRef) {
-        throw new Error('Image upload did not finish. Wait a moment and try saving again.')
-      }
-      refs.push(entry.serializedRef)
-    }
-    return refs
-  }
+  const buildImageOrderFromPhotoItems = (items: PhotoItem[]): AccommodationImageOrderItem[] =>
+    items.map((item) =>
+      item.kind === 'saved'
+        ? { kind: 'saved', ref: item.url }
+        : { kind: 'pending', uploadId: item.uploadId },
+    )
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -446,15 +524,18 @@ export function AccommodationQuickModal({
       alert('Enter at least one price (per day, week, or month)')
       return
     }
+
+    const order = buildImageOrderFromPhotoItems(photoItems)
+    const { refs, failed } = resolveAccommodationImageOrder(order)
+    if (failed) {
+      alert('One or more images failed to upload. Remove them or try again.')
+      return
+    }
+
     setSaving(true)
     const supabase = createClient()
 
     try {
-      const allImages = await buildImageListFromPhotoItems(photoItems)
-      const pendingUploadIds = photoItems
-        .filter((p): p is Extract<PhotoItem, { kind: 'pending' }> => p.kind === 'pending')
-        .map((p) => p.uploadId)
-
       const amenitiesPayload = buildAmenitiesPayload(amenities, amenitiesBaseline)
 
       const basePayload = {
@@ -466,28 +547,39 @@ export function AccommodationQuickModal({
         price_per_week: priceWeek ? parseFloat(priceWeek) : null,
         price_per_month: priceMonth ? parseFloat(priceMonth) : null,
         currency: accCurrency,
-        images: allImages,
+        images: refs,
         amenities: amenitiesPayload,
         is_active: isActive,
       }
+
+      let accommodationId = editingId
 
       if (editingId) {
         const { error } = await supabase.from('accommodations').update(basePayload).eq('id', editingId)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('accommodations').insert({
-          ...basePayload,
-          gym_id: gymId,
-        })
+        const { data: inserted, error } = await supabase
+          .from('accommodations')
+          .insert({
+            ...basePayload,
+            gym_id: gymId,
+          })
+          .select('id')
+          .single()
         if (error) throw error
+        accommodationId = inserted.id
       }
 
-      clearCompletedAccommodationImageUploads(pendingUploadIds)
+      if (!accommodationId) throw new Error('Could not save room')
+
+      commitAccommodationImagesOnSave(accommodationId, gymId, order)
+      formSessionUploadIdsRef.current = new Set()
+
       await syncGymAccommodationFlags(supabase, gymId)
       await fetchRows()
       onSaved?.()
       setMode('list')
-      resetForm()
+      resetForm({ cancelPendingUploads: false })
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to save')
     } finally {
@@ -524,14 +616,12 @@ export function AccommodationQuickModal({
       : 'space-y-6 px-5 py-6 md:px-8 md:py-8 lg:px-10'
 
   const openPhotoPreview = (item: PhotoItem) => {
-    if (item.kind === 'saved') {
-      setPhotoLightbox({
-        src: photoItemDisplaySrc(item),
-        fileName: fileNameFromSavedUrl(item.url),
-      })
-    } else {
-      setPhotoLightbox({ src: item.previewUrl, fileName: item.file.name })
-    }
+    const src = photoItemDisplaySrc(item, pendingPreviewUrls)
+    if (!src) return
+    setPhotoLightbox({
+      src,
+      fileName: item.kind === 'saved' ? fileNameFromSavedUrl(item.url) : item.file.name,
+    })
   }
 
   return (
@@ -582,7 +672,9 @@ export function AccommodationQuickModal({
                 <ul className="space-y-3">
                   {rows.map((r) => {
                     const thumb = r.images?.[0]
-                    const thumbSrc = managedImageDisplayUrl(thumb)
+                    const thumbSrc = accommodationImageDisplayUrl(
+                      thumb ? normalizeAccommodationImageRef(thumb) : '',
+                    )
                     return (
                       <li
                         key={r.id}
@@ -864,8 +956,8 @@ export function AccommodationQuickModal({
                 <h3 className={sectionTitle}>Photos</h3>
                 <p className={sectionHint}>
                   Up to {MAX_IMAGES} images — the first slot is the main listing thumbnail. Photos upload in the
-                  background as soon as you pick them; saving the room only waits if uploads are still finishing.
-                  Reorder with drag or arrows; tap a tile for a large preview.
+                  background as soon as you pick them; save the room anytime and remaining uploads finish via the
+                  toast at the bottom of the screen. Reorder with drag or arrows; tap a tile for a large preview.
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-800">
                   {photoItems.length} / {MAX_IMAGES}
@@ -878,7 +970,7 @@ export function AccommodationQuickModal({
                   {photoItems.length > 0 ? (
                     <div className="flex flex-wrap gap-3 sm:gap-4">
                       {photoItems.map((item, index) => {
-                        const src = photoItemDisplaySrc(item)
+                        const src = photoItemDisplaySrc(item, pendingPreviewUrls)
                         const pending = item.kind === 'pending'
                         const uploadStatus = pending ? uploadStatusById.get(item.uploadId) : null
                         const uploading = uploadStatus === 'queued' || uploadStatus === 'uploading'
@@ -919,15 +1011,21 @@ export function AccommodationQuickModal({
                               )}
                               title="Drag to reorder · click to preview"
                             >
-                              <img
-                                src={src}
-                                alt=""
-                                className="pointer-events-none h-full w-full object-cover"
-                                loading="eager"
-                                decoding="async"
-                                width={80}
-                                height={80}
-                              />
+                              {src ? (
+                                <img
+                                  src={src}
+                                  alt=""
+                                  className="pointer-events-none h-full w-full object-cover"
+                                  loading="eager"
+                                  decoding="async"
+                                  width={80}
+                                  height={80}
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-gray-300">
+                                  <ImageIcon className="h-6 w-6" aria-hidden />
+                                </div>
+                              )}
                               {uploading ? (
                                 <span className="absolute inset-0 flex items-center justify-center bg-black/35">
                                   <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />

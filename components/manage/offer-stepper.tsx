@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { GymStepper } from './gym-stepper'
 import { AccommodationQuickModal } from './accommodation-quick-modal'
-import type { CanonicalOfferType, Package } from '@/lib/types/database'
+import type { CanonicalOfferType, Package, PackageVariant } from '@/lib/types/database'
 import {
   inferCancellationPresetFromDays,
   isCancellationPolicySelectionValid,
@@ -22,6 +22,7 @@ import { PackageCancellationPolicyFields } from '@/components/manage/package-can
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { TrainingAccessPicker } from '@/components/manage/training-access-picker'
+import { PackageSeasonalPricingPanel } from '@/components/manage/package-seasonal-pricing-panel'
 import {
   offerTypeUsesTrainingAccess,
   trainingTierOptionsSummary,
@@ -130,6 +131,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const [packageCurrency, setPackageCurrency] = useState(listingCurrency)
   const packageCurrencyTouchedRef = useRef(false)
   const packageDataLoadedIdRef = useRef<string | null>(null)
+  const [seasonalPanelVariants, setSeasonalPanelVariants] = useState<PackageVariant[]>([])
   const [trainingTierOptions, setTrainingTierOptions] = useState<TrainingTierOptions>(
     DEFAULT_TRAINING_TIER_OPTIONS
   )
@@ -345,6 +347,71 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       loadAccommodations()
     }
   }, [selectedOfferType, currentStep])
+
+  const loadSeasonalPanelVariants = async (packageId: string) => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('package_variants')
+      .select('*')
+      .eq('package_id', packageId)
+      .order('created_at')
+
+    setSeasonalPanelVariants((data ?? []) as PackageVariant[])
+  }
+
+  useEffect(() => {
+    if (
+      !existingPackage?.id ||
+      selectedOfferType === 'TYPE_ONE_TIME_EVENT' ||
+      currentStep !== 3
+    ) {
+      return
+    }
+    void loadSeasonalPanelVariants(existingPackage.id)
+  }, [existingPackage?.id, selectedOfferType, currentStep])
+
+  const packageForSeasonal = useMemo((): Package | null => {
+    if (!existingPackage) return null
+    const parseOptional = (raw: string, fallback: number | null | undefined) => {
+      const trimmed = raw.trim()
+      if (!trimmed) return fallback ?? null
+      const n = parseFloat(trimmed)
+      return Number.isFinite(n) ? n : fallback ?? null
+    }
+    return {
+      ...existingPackage,
+      offer_type: selectedOfferType ?? existingPackage.offer_type,
+      currency: packageCurrency,
+      price_per_day: parseOptional(pricePerDay, existingPackage.price_per_day),
+      price_per_week: parseOptional(pricePerWeek, existingPackage.price_per_week),
+      price_per_month: parseOptional(pricePerMonth, existingPackage.price_per_month),
+      once_daily_price_per_day: parseOptional(
+        onceDailyPricePerDay,
+        existingPackage.once_daily_price_per_day,
+      ),
+      once_daily_price_per_week: parseOptional(
+        onceDailyPricePerWeek,
+        existingPackage.once_daily_price_per_week,
+      ),
+      once_daily_price_per_month: parseOptional(
+        onceDailyPricePerMonth,
+        existingPackage.once_daily_price_per_month,
+      ),
+    }
+  }, [
+    existingPackage,
+    selectedOfferType,
+    packageCurrency,
+    pricePerDay,
+    pricePerWeek,
+    pricePerMonth,
+    onceDailyPricePerDay,
+    onceDailyPricePerWeek,
+    onceDailyPricePerMonth,
+  ])
+
+  const showSeasonalPricing =
+    selectedOfferType != null && selectedOfferType !== 'TYPE_ONE_TIME_EVENT'
   
   const loadAccommodations = async () => {
     const supabase = createClient()
@@ -1625,6 +1692,27 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   )}
                 </div>
               )}
+
+              {showSeasonalPricing ? (
+                <div className="border-t pt-6">
+                  {existingPackage?.id && packageForSeasonal ? (
+                    <PackageSeasonalPricingPanel
+                      package={packageForSeasonal}
+                      currency={packageCurrency}
+                      variants={seasonalPanelVariants}
+                    />
+                  ) : (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-5 py-6">
+                      <h3 className="text-base font-semibold text-gray-900">High &amp; low season pricing</h3>
+                      <p className="mt-2 max-w-xl text-sm text-gray-600">
+                        After you create this offer, open it again to add high season and low season date
+                        windows. Checkout will blend the correct rate across each night of a guest&apos;s
+                        stay automatically.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
         )

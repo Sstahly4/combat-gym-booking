@@ -114,9 +114,9 @@ export function PackageSeasonalPricingPanel({
     return v ? variantLabel(v) : 'Variant'
   }
 
-  const openCreate = () => {
+  const openCreate = (presetName?: string) => {
     setEditing(null)
-    setForm(EMPTY_FORM)
+    setForm(presetName ? { ...EMPTY_FORM, name: presetName } : EMPTY_FORM)
     setFormError(null)
     setSheetOpen(true)
   }
@@ -231,20 +231,41 @@ export function PackageSeasonalPricingPanel({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Seasonal pricing</h3>
+          <h3 className="text-base font-semibold text-gray-900">High &amp; low season pricing</h3>
           <p className="mt-1 max-w-xl text-sm text-gray-500">
-            Override daily, weekly, or monthly tiers for specific date windows. Checkout blends these
-            rates across the guest&apos;s stay automatically.
+            Set higher rates for peak months and lower rates for off-season. These overrides apply to
+            the whole package or individual room options — checkout blends them across the guest&apos;s
+            stay automatically.
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={openCreate}
-          className="bg-[#003580] text-white hover:bg-[#002a66]"
-        >
-          <Plus className="mr-1.5 h-4 w-4" />
-          Add custom seasonal rate
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="border-gray-200 bg-white"
+            onClick={() => openCreate('High season')}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            High season
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-gray-200 bg-white"
+            onClick={() => openCreate('Low season')}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Low season
+          </Button>
+          <Button
+            type="button"
+            onClick={() => openCreate()}
+            className="bg-[#003580] text-white hover:bg-[#002a66]"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Custom season
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -255,18 +276,29 @@ export function PackageSeasonalPricingPanel({
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center shadow-sm">
           <CalendarRange className="mx-auto mb-3 h-8 w-8 text-gray-300" strokeWidth={1.5} />
           <p className="text-sm text-gray-600">
-            No seasonal rates active. Your package will always charge its default base rate unless you
-            add a custom date rule.
+            No seasonal rates yet. Add high season and low season windows so guests see the right
+            price for their travel dates.
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-5 border-[#003580] text-[#003580] hover:bg-[#003580]/5"
-            onClick={openCreate}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add custom seasonal rate
-          </Button>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#003580] text-[#003580] hover:bg-[#003580]/5"
+              onClick={() => openCreate('High season')}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              High season
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#003580] text-[#003580] hover:bg-[#003580]/5"
+              onClick={() => openCreate('Low season')}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Low season
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -371,7 +403,7 @@ export function PackageSeasonalPricingPanel({
               id="season-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g., High Season Peak"
+              placeholder="e.g., High season or Low season"
               className="mt-1.5"
             />
           </div>
