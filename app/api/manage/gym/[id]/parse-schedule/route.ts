@@ -1,8 +1,12 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+/** Vision parsing can take 20–40s on large timetable photos. */
+export const maxDuration = 60
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerOrAdminAccessContext } from '@/lib/auth/owner-guard'
+import { prepareScheduleImageForVision } from '@/lib/manage/prepare-schedule-image-for-vision'
 import {
   parseTrainingScheduleImage,
   TRAINING_SCHEDULE_ACCEPTED_MIME,
@@ -25,6 +29,22 @@ async function assertCanEditGym(
   if (access.profile?.role === 'admin') return gym
   if (gym.owner_id === access.userId) return gym
   return null
+}
+
+function inferImageMimeType(file: File): string | null {
+  const type = file.type?.trim().toLowerCase()
+  if (type && TRAINING_SCHEDULE_ACCEPTED_MIME.includes(type as (typeof TRAINING_SCHEDULE_ACCEPTED_MIME)[number])) {
+    return type
+  }
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  const byExt: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+  }
+  return ext ? byExt[ext] ?? null : null
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -60,8 +80,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Image must be 10 MB or smaller.' }, { status: 400 })
     }
 
-    const mimeType = file.type || 'application/octet-stream'
-    if (!TRAINING_SCHEDULE_ACCEPTED_MIME.includes(mimeType as (typeof TRAINING_SCHEDULE_ACCEPTED_MIME)[number])) {
+    const mimeType = inferImageMimeType(file)
+    if (!mimeType) {
       return NextResponse.json(
         { error: 'Unsupported file type. Use PNG, JPEG, WebP, or GIF.' },
         { status: 400 },
@@ -69,13 +89,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const imageBase64 = buffer.toString('base64')
+    let prepared: { base64: string; mimeType: string }
+    try {
+      prepared = await prepareScheduleImageForVision(buffer)
+    } catch (prepError) {
+      const message = prepError instanceof Error ? prepError.message : 'Could not read image.'
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
 
     const disciplines = Array.isArray(gym.disciplines) ? (gym.disciplines as string[]) : []
 
     const result = await parseTrainingScheduleImage({
-      imageBase64,
-      mimeType,
+      imageBase64: prepared.base64,
+      mimeType: prepared.mimeType,
       disciplines,
     })
 
@@ -99,6 +125,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     console.error('[parse-schedule]', error)
-    return NextResponse.json({ error: 'Failed to parse timetable.' }, { status: 500 })
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : 'Failed to parse timetable.'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

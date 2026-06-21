@@ -126,10 +126,20 @@ export function TrainingScheduleImportPanel({
         body: formData,
       })
 
-      const data = (await res.json()) as {
+      let data: {
         error?: string
+        code?: string
         schedule?: TrainingSchedule
         warnings?: string[]
+      } = {}
+      try {
+        data = (await res.json()) as typeof data
+      } catch {
+        throw new Error(
+          res.status === 504
+            ? 'Parsing timed out — try a smaller or clearer photo.'
+            : `Server error (${res.status}). Try again.`,
+        )
       }
 
       if (!res.ok) {
