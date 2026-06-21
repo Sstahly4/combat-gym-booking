@@ -22,24 +22,49 @@ const MAX_REQUESTS = 10
 
 let ratelimit: Ratelimit | null = null
 
+/** Strip whitespace and surrounding quotes (common when pasting into Vercel env). */
+function sanitizeEnvValue(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  let v = value.trim()
+  while (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim()
+  }
+  return v || undefined
+}
+
 function getRatelimiter(): Ratelimit | null {
   if (ratelimit) return ratelimit
 
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const url = sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_URL)
+  const token = sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN)
 
   if (!url || !token) {
     return null
   }
 
-  ratelimit = new Ratelimit({
-    redis: new Redis({ url, token }),
-    limiter: Ratelimit.slidingWindow(MAX_REQUESTS, WINDOW),
-    // Prefix all keys so they're easy to inspect in the Upstash console.
-    prefix: 'combatstay:rl',
-    // Never throw if Redis is temporarily unreachable — fail open.
-    analytics: false,
-  })
+  if (!url.startsWith('https://')) {
+    console.warn(
+      '[rate-limit] UPSTASH_REDIS_REST_URL must start with https:// — rate limiting disabled',
+    )
+    return null
+  }
+
+  try {
+    ratelimit = new Ratelimit({
+      redis: new Redis({ url, token }),
+      limiter: Ratelimit.slidingWindow(MAX_REQUESTS, WINDOW),
+      // Prefix all keys so they're easy to inspect in the Upstash console.
+      prefix: 'combatstay:rl',
+      // Never throw if Redis is temporarily unreachable — fail open.
+      analytics: false,
+    })
+  } catch (error) {
+    console.warn('[rate-limit] Failed to initialize Upstash Redis — rate limiting disabled', error)
+    return null
+  }
 
   return ratelimit
 }
