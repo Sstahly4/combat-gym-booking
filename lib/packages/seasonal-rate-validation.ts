@@ -77,3 +77,44 @@ export function isoTodayLocal(): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
+/** In-memory seasonal rule while creating a package (before package_id exists). */
+export type LocalSeasonalRate = {
+  id: string
+  /** Real variant id, or `acc:{accommodationId}` while room variants are still draft. */
+  variant_id: string | null
+  name: string
+  start_date: string
+  end_date: string
+  price_per_day: number | null
+  price_per_week: number | null
+  price_per_month: number | null
+}
+
+export function resolveSeasonalVariantIdForPersist(
+  variantId: string | null,
+  accommodationToVariantId: Map<string, string>,
+): string | null {
+  if (!variantId) return null
+  if (variantId.startsWith('acc:')) {
+    return accommodationToVariantId.get(variantId.slice(4)) ?? null
+  }
+  return variantId
+}
+
+export function buildSeasonalRateInsertRows(
+  packageId: string,
+  rates: LocalSeasonalRate[],
+  accommodationToVariantId: Map<string, string>,
+) {
+  return rates.map((r) => ({
+    package_id: packageId,
+    variant_id: resolveSeasonalVariantIdForPersist(r.variant_id, accommodationToVariantId),
+    name: r.name,
+    start_date: r.start_date,
+    end_date: r.end_date,
+    price_per_day: r.price_per_day,
+    price_per_week: r.price_per_week,
+    price_per_month: r.price_per_month,
+  }))
+}

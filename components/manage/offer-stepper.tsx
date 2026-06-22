@@ -24,6 +24,10 @@ import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { TrainingAccessPicker } from '@/components/manage/training-access-picker'
 import { PackageSeasonalPricingPanel } from '@/components/manage/package-seasonal-pricing-panel'
 import {
+  buildSeasonalRateInsertRows,
+  type LocalSeasonalRate,
+} from '@/lib/packages/seasonal-rate-validation'
+import {
   offerTypeUsesTrainingAccess,
   trainingTierOptionsSummary,
   trainingAccessFromTierOptions,
@@ -132,6 +136,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   const packageCurrencyTouchedRef = useRef(false)
   const packageDataLoadedIdRef = useRef<string | null>(null)
   const [seasonalPanelVariants, setSeasonalPanelVariants] = useState<PackageVariant[]>([])
+  const [draftSeasonalRates, setDraftSeasonalRates] = useState<LocalSeasonalRate[]>([])
   const [trainingTierOptions, setTrainingTierOptions] = useState<TrainingTierOptions>(
     DEFAULT_TRAINING_TIER_OPTIONS
   )
@@ -348,6 +353,12 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     }
   }, [selectedOfferType, currentStep])
 
+  useEffect(() => {
+    if (existingPackage) {
+      setDraftSeasonalRates([])
+    }
+  }, [existingPackage])
+
   const loadSeasonalPanelVariants = async (packageId: string) => {
     const supabase = createClient()
     const { data } = await supabase
@@ -371,43 +382,141 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   }, [existingPackage?.id, selectedOfferType, currentStep])
 
   const packageForSeasonal = useMemo((): Package | null => {
-    if (!existingPackage) return null
+    if (!selectedOfferType || selectedOfferType === 'TYPE_ONE_TIME_EVENT') return null
     const parseOptional = (raw: string, fallback: number | null | undefined) => {
       const trimmed = raw.trim()
       if (!trimmed) return fallback ?? null
       const n = parseFloat(trimmed)
       return Number.isFinite(n) ? n : fallback ?? null
     }
+
+    const usesRoomVariants =
+      selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'
+
+    const base: Package =
+      existingPackage ??
+      ({
+        id: '',
+        gym_id: gymId,
+        name: name.trim() || 'New offer',
+        description: description.trim() || null,
+        sport,
+        currency: packageCurrency,
+        offer_type: selectedOfferType,
+        type: 'training',
+        booking_mode: bookingMode,
+        image: existingImageUrl,
+        min_stay_days: minStayDays,
+        available_year_round: availableYearRound,
+        blackout_dates: blackoutDates,
+        cancellation_policy_days: resolvePackageCancellationDays(
+          cancellationPresetId,
+          customCancellationDays,
+        ),
+        includes_accommodation: usesRoomVariants,
+        includes_meals: selectedOfferType === 'TYPE_ALL_INCLUSIVE',
+        accommodation_name: null,
+        meal_plan_details: null,
+        training_access: offerTypeUsesTrainingAccess(selectedOfferType)
+          ? trainingAccessFromTierOptions(trainingTierOptions)
+          : null,
+        price_per_day: null,
+        price_per_week: null,
+        price_per_month: null,
+        once_daily_price_per_day: null,
+        once_daily_price_per_week: null,
+        once_daily_price_per_month: null,
+        event_date: null,
+        event_end_date: null,
+        max_attendees: null,
+        pricing_config: null,
+        created_at: '',
+        updated_at: '',
+      } satisfies Package)
+
     return {
-      ...existingPackage,
-      offer_type: selectedOfferType ?? existingPackage.offer_type,
+      ...base,
+      offer_type: selectedOfferType,
       currency: packageCurrency,
-      price_per_day: parseOptional(pricePerDay, existingPackage.price_per_day),
-      price_per_week: parseOptional(pricePerWeek, existingPackage.price_per_week),
-      price_per_month: parseOptional(pricePerMonth, existingPackage.price_per_month),
+      price_per_day: usesRoomVariants
+        ? null
+        : parseOptional(pricePerDay, existingPackage?.price_per_day),
+      price_per_week: usesRoomVariants
+        ? null
+        : parseOptional(pricePerWeek, existingPackage?.price_per_week),
+      price_per_month: usesRoomVariants
+        ? null
+        : parseOptional(pricePerMonth, existingPackage?.price_per_month),
       once_daily_price_per_day: parseOptional(
         onceDailyPricePerDay,
-        existingPackage.once_daily_price_per_day,
+        existingPackage?.once_daily_price_per_day,
       ),
       once_daily_price_per_week: parseOptional(
         onceDailyPricePerWeek,
-        existingPackage.once_daily_price_per_week,
+        existingPackage?.once_daily_price_per_week,
       ),
       once_daily_price_per_month: parseOptional(
         onceDailyPricePerMonth,
-        existingPackage.once_daily_price_per_month,
+        existingPackage?.once_daily_price_per_month,
       ),
     }
   }, [
-    existingPackage,
     selectedOfferType,
+    existingPackage,
+    gymId,
+    name,
+    description,
+    sport,
     packageCurrency,
+    bookingMode,
+    existingImageUrl,
+    minStayDays,
+    availableYearRound,
+    blackoutDates,
+    cancellationPresetId,
+    customCancellationDays,
+    trainingTierOptions,
     pricePerDay,
     pricePerWeek,
     pricePerMonth,
     onceDailyPricePerDay,
     onceDailyPricePerWeek,
     onceDailyPricePerMonth,
+  ])
+
+  const seasonalVariantOptions = useMemo(() => {
+    const usesRoomVariants =
+      selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE'
+    if (!usesRoomVariants) return []
+
+    if (existingPackage?.id && seasonalPanelVariants.length > 0) {
+      return seasonalPanelVariants.map((v) => ({
+        id: v.id,
+        label: v.name?.trim() || (v.room_type ? `${v.room_type} room` : 'Variant'),
+        price_per_day: v.price_per_day,
+        price_per_week: v.price_per_week,
+        price_per_month: v.price_per_month,
+      }))
+    }
+
+    return linkedAccommodationIds.map((accId) => {
+      const acc = availableAccommodations.find((a) => a.id === accId)
+      const bundle = bundlePricesByAccommodationId[accId]
+      return {
+        id: `acc:${accId}`,
+        label: acc?.name ?? 'Room',
+        price_per_day: bundle?.night ? parseFloat(bundle.night) : null,
+        price_per_week: bundle?.week ? parseFloat(bundle.week) : null,
+        price_per_month: bundle?.month ? parseFloat(bundle.month) : null,
+      }
+    })
+  }, [
+    selectedOfferType,
+    existingPackage?.id,
+    seasonalPanelVariants,
+    linkedAccommodationIds,
+    availableAccommodations,
+    bundlePricesByAccommodationId,
   ])
 
   const showSeasonalPricing =
@@ -661,6 +770,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
 
     try {
       let packageId: string
+      const accommodationToVariantId = new Map<string, string>()
 
       if (existingPackage) {
         const { error } = await supabase
@@ -763,8 +873,30 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
           }
         })
 
-        const { error: variantError } = await supabase.from('package_variants').insert(variantRows)
+        const { data: insertedVariants, error: variantError } = await supabase
+          .from('package_variants')
+          .insert(variantRows)
+          .select('id, accommodation_id')
+
         if (variantError) throw variantError
+        for (const row of insertedVariants ?? []) {
+          if (row.accommodation_id) {
+            accommodationToVariantId.set(row.accommodation_id, row.id)
+          }
+        }
+      }
+
+      if (!existingPackage && draftSeasonalRates.length > 0) {
+        const seasonalRows = buildSeasonalRateInsertRows(
+          packageId,
+          draftSeasonalRates,
+          accommodationToVariantId,
+        )
+        const { error: seasonalError } = await supabase
+          .from('package_seasonal_rates')
+          .insert(seasonalRows)
+        if (seasonalError) throw seasonalError
+        setDraftSeasonalRates([])
       }
 
       const { error: gymCurrencyError } = await supabase
@@ -1693,24 +1825,16 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                 </div>
               )}
 
-              {showSeasonalPricing ? (
+              {showSeasonalPricing && packageForSeasonal ? (
                 <div className="border-t pt-6">
-                  {existingPackage?.id && packageForSeasonal ? (
-                    <PackageSeasonalPricingPanel
-                      package={packageForSeasonal}
-                      currency={packageCurrency}
-                      variants={seasonalPanelVariants}
-                    />
-                  ) : (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-5 py-6">
-                      <h3 className="text-base font-semibold text-gray-900">High &amp; low season pricing</h3>
-                      <p className="mt-2 max-w-xl text-sm text-gray-600">
-                        After you create this offer, open it again to add high season and low season date
-                        windows. Checkout will blend the correct rate across each night of a guest&apos;s
-                        stay automatically.
-                      </p>
-                    </div>
-                  )}
+                  <PackageSeasonalPricingPanel
+                    package={packageForSeasonal}
+                    currency={packageCurrency}
+                    variants={seasonalPanelVariants}
+                    variantOptions={seasonalVariantOptions}
+                    localRates={existingPackage ? undefined : draftSeasonalRates}
+                    onLocalRatesChange={existingPackage ? undefined : setDraftSeasonalRates}
+                  />
                 </div>
               ) : null}
             </div>

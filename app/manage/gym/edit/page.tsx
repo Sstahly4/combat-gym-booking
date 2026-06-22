@@ -51,6 +51,15 @@ import {
   type GalleryOrderSnapshotItem,
 } from '@/lib/manage/gym-image-upload-manager'
 import { useGymImageUploads } from '@/lib/hooks/use-gym-image-uploads'
+import {
+  commitTrainerPhotosOnSave,
+  enqueueTrainerPhotoUpload,
+  getTrainerPhotoUpload,
+  removeTrainerPhotoUpload,
+  resolveTrainerRowsForSave,
+  type TrainerPhotoCommitSlot,
+} from '@/lib/manage/trainer-photo-upload-manager'
+import { useTrainerPhotoUploads } from '@/lib/hooks/use-trainer-photo-uploads'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
@@ -124,6 +133,33 @@ type PackageEditorMode =
   | { kind: 'create' }
   | null
 
+type TrainerFormRow = {
+  clientKey: string
+  name: string
+  discipline: string
+  experience: string
+  photo_url?: string | null
+  description?: string
+}
+
+function newTrainerClientKey(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `trainer-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function normalizeTrainerRow(raw: unknown): TrainerFormRow {
+  const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  return {
+    clientKey: typeof row.clientKey === 'string' ? row.clientKey : newTrainerClientKey(),
+    name: typeof row.name === 'string' ? row.name : '',
+    discipline: typeof row.discipline === 'string' ? row.discipline : '',
+    experience: typeof row.experience === 'string' ? row.experience : '',
+    photo_url: typeof row.photo_url === 'string' ? row.photo_url : null,
+    description: typeof row.description === 'string' ? row.description : '',
+  }
+}
+
 function EditGymForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -172,6 +208,7 @@ function EditGymForm() {
   const nextImageOrderRef = useRef(0)
   const uploadCompleteChainRef = useRef(Promise.resolve())
   const { uploads: pendingUploads } = useGymImageUploads(gymId ?? undefined)
+  const { uploads: pendingTrainerUploads } = useTrainerPhotoUploads(gymId ?? undefined)
 
   const focusFrameRef = useRef<HTMLDivElement | null>(null)
   const focusDraggingRef = useRef(false)
@@ -286,17 +323,8 @@ function EditGymForm() {
     saturday: [],
     sunday: [],
   })
-  const [trainers, setTrainers] = useState<
-    Array<{
-      name: string
-      discipline: string
-      experience: string
-      photo_url?: string | null
-      description?: string
-    }>
-  >([])
-  const [trainerPhotoFiles, setTrainerPhotoFiles] = useState<Record<number, File | null>>({})
-  const [trainerPhotoPreviews, setTrainerPhotoPreviews] = useState<Record<number, string | null>>({})
+  const [trainers, setTrainers] = useState<TrainerFormRow[]>([])
+  const [trainerPhotoUploadIds, setTrainerPhotoUploadIds] = useState<Record<string, string>>({})
   const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([])
 
   // Get cache key for this gym
@@ -408,7 +436,13 @@ function EditGymForm() {
       }
       if (formState.openingHours) setOpeningHours(formState.openingHours)
       if (formState.trainingSchedule) setTrainingSchedule(formState.trainingSchedule)
-      if (formState.trainers) setTrainers(formState.trainers)
+      if (formState.trainers) {
+        setTrainers(
+          (Array.isArray(formState.trainers) ? formState.trainers : []).map((t: unknown) =>
+            normalizeTrainerRow(t),
+          ),
+        )
+      }
       if (formState.faq) setFaq(formState.faq)
 
       const loc = formState as Record<string, unknown>
@@ -768,7 +802,7 @@ function EditGymForm() {
           }
         }
         if (data.trainers && Array.isArray(data.trainers)) {
-          setTrainers(data.trainers)
+          setTrainers(data.trainers.map((t: unknown) => normalizeTrainerRow(t)))
         }
         if (data.faq && Array.isArray(data.faq)) {
           setFaq(data.faq)
@@ -958,36 +992,67 @@ function EditGymForm() {
   }
 
   const addTrainer = () => {
-    setTrainers([...trainers, { name: '', discipline: '', experience: '', photo_url: null, description: '' }])
+    setTrainers([
+      ...trainers,
+      {
+        clientKey: newTrainerClientKey(),
+        name: '',
+        discipline: '',
+        experience: '',
+        photo_url: null,
+        description: '',
+      },
+    ])
   }
 
-  const removeTrainer = (index: number) => {
-    setTrainers(trainers.filter((_, i) => i !== index))
-    setTrainerPhotoFiles((prev) => {
+  const removeTrainer = (clientKey: string) => {
+    const uploadId = trainerPhotoUploadIds[clientKey]
+    if (uploadId) removeTrainerPhotoUpload(uploadId)
+    setTrainerPhotoUploadIds((prev) => {
       const next = { ...prev }
-      delete next[index]
+      delete next[clientKey]
       return next
     })
-    setTrainerPhotoPreviews((prev) => {
-      const next = { ...prev }
-      delete next[index]
-      return next
-    })
+    setTrainers(trainers.filter((t) => t.clientKey !== clientKey))
   }
 
-  const updateTrainer = (index: number, field: string, value: string) => {
-    const updated = [...trainers]
-    updated[index] = { ...updated[index], [field]: value }
-    setTrainers(updated)
+  const updateTrainer = (
+    clientKey: string,
+    field: Exclude<keyof TrainerFormRow, 'clientKey'>,
+    value: string,
+  ) => {
+    setTrainers((prev) =>
+      prev.map((t) => (t.clientKey === clientKey ? { ...t, [field]: value } : t)),
+    )
   }
 
-  const setTrainerPhotoFile = (index: number, file: File | null) => {
-    setTrainerPhotoFiles((prev) => ({ ...prev, [index]: file }))
-    setTrainerPhotoPreviews((prev) => {
-      const next = { ...prev }
-      if (next[index]) URL.revokeObjectURL(next[index]!)
-      return { ...next, [index]: file ? URL.createObjectURL(file) : null }
-    })
+  const setTrainerPhotoFile = (clientKey: string, file: File | null) => {
+    if (!gym?.id) return
+    const prevUploadId = trainerPhotoUploadIds[clientKey]
+    if (prevUploadId) removeTrainerPhotoUpload(prevUploadId)
+
+    if (!file) {
+      setTrainerPhotoUploadIds((prev) => {
+        const next = { ...prev }
+        delete next[clientKey]
+        return next
+      })
+      return
+    }
+
+    const entry = enqueueTrainerPhotoUpload(gym.id, clientKey, file)
+    setTrainerPhotoUploadIds((prev) => ({ ...prev, [clientKey]: entry.id }))
+  }
+
+  const trainerPhotoDisplay = (trainer: TrainerFormRow) => {
+    const uploadId = trainerPhotoUploadIds[trainer.clientKey]
+    const pending =
+      pendingTrainerUploads.find((u) => u.id === uploadId) ??
+      (uploadId ? getTrainerPhotoUpload(uploadId) : undefined)
+    const src = pending?.previewUrl ?? trainer.photo_url ?? null
+    const uploading = pending && (pending.status === 'queued' || pending.status === 'uploading')
+    const failed = pending?.status === 'failed'
+    return { src, uploading: Boolean(uploading), failed: Boolean(failed) }
   }
 
   const addFaq = () => {
@@ -1023,31 +1088,33 @@ function EditGymForm() {
     const formData = new FormData(formElement)
 
     try {
-      // Upload trainer photos (optional) before saving gym JSONB.
-      // Use unique keys and avoid upsert to keep Storage RLS requirements minimal.
-      const trainersWithUploadedPhotos = await (async () => {
-        if (!gym?.id) return [...trainers]
-        const out = [...trainers]
-        for (let i = 0; i < out.length; i++) {
-          const file = trainerPhotoFiles[i]
-          if (!file) continue
-          try {
-            const ext = file.name.split('.').pop() || 'jpg'
-            const safeExt = ext.length <= 10 ? ext : 'jpg'
-            const fileName = `trainers/${gym.id}/${Date.now()}-${i}.${safeExt}`
-            const { error: uploadError } = await supabase.storage
-              .from('gym-images')
-              .upload(fileName, file, { cacheControl: '3600', upsert: false })
-            if (uploadError) throw uploadError
-            const { data: urlData } = supabase.storage.from('gym-images').getPublicUrl(fileName)
-            out[i] = { ...out[i], photo_url: urlData.publicUrl }
-          } catch (err: any) {
-            console.error('Failed to upload trainer photo:', err)
-            throw new Error(`Failed to upload trainer photo (${out[i]?.name || `Trainer ${i + 1}`}): ${err?.message || 'Unknown error'}`)
-          }
+      const trainerCommitSlots: TrainerPhotoCommitSlot[] = trainers.map((t) => {
+        const uploadId = trainerPhotoUploadIds[t.clientKey]
+        let photo: TrainerPhotoCommitSlot['photo']
+        if (uploadId) {
+          photo = { kind: 'pending', uploadId }
+        } else if (t.photo_url?.trim()) {
+          photo = { kind: 'saved', url: t.photo_url.trim() }
+        } else {
+          photo = { kind: 'none' }
         }
-        return out
-      })()
+        return {
+          clientKey: t.clientKey,
+          name: t.name,
+          discipline: t.discipline,
+          experience: t.experience,
+          description: (t.description ?? '').trim() || null,
+          photo,
+        }
+      })
+
+      const { rows: trainerRows, failed: trainerUploadsFailed } =
+        resolveTrainerRowsForSave(trainerCommitSlots)
+      if (trainerUploadsFailed) {
+        throw new Error(
+          'One or more trainer photos failed to upload. Remove them or pick again before saving.',
+        )
+      }
 
       const savedName = formFieldValue(formData, 'name', gymName).trim()
       const savedDescription = formFieldValue(formData, 'description', description).trim()
@@ -1084,15 +1151,7 @@ function EditGymForm() {
         ),
         training_schedule_use_image: false,
         training_schedule_image: null,
-        trainers: [...trainersWithUploadedPhotos]
-          .map((t) => ({
-            name: t.name,
-            discipline: t.discipline,
-            experience: t.experience,
-            photo_url: t.photo_url ?? null,
-            description: (t.description ?? '').trim() || null,
-          }))
-          .filter((t) => t.name && t.discipline),
+        trainers: trainerRows.filter((t) => t.name && t.discipline),
         faq: [...faq].filter(f => f.question && f.answer), // Create new array
       }
 
@@ -1124,17 +1183,14 @@ function EditGymForm() {
       setInstagramLink(savedInstagramLink)
       setFacebookLink(savedFacebookLink)
 
-      // Clear any pending local photo files after a successful save.
-      setTrainerPhotoFiles({})
-      setTrainerPhotoPreviews((prev) => {
-        Object.values(prev).forEach((u) => {
-          if (u) URL.revokeObjectURL(u)
-        })
-        return {}
-      })
-
       // Persist gallery order in the background; still-uploading photos follow this snapshot.
       void commitGalleryOrderOnSave(gym.id, galleryOrderRef.current)
+
+      if (trainerCommitSlots.some((t) => t.photo.kind === 'pending')) {
+        commitTrainerPhotosOnSave(gym.id, trainerCommitSlots)
+      }
+
+      setTrainerPhotoUploadIds({})
 
       // Clear cached form state on successful save
       clearFormState()
@@ -2074,31 +2130,36 @@ function EditGymForm() {
                   + Add Trainer
                 </Button>
               </div>
-              {trainers.map((trainer, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg max-w-4xl space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Trainer photos upload in the background — save anytime; progress shows in the bottom-right toast.
+              </p>
+              {trainers.map((trainer) => {
+                const photo = trainerPhotoDisplay(trainer)
+                return (
+                <div key={trainer.clientKey} className="p-4 bg-gray-50 rounded-lg max-w-4xl space-y-3">
                   <div className="grid md:grid-cols-3 gap-3">
                     <Input
                       placeholder="Trainer name"
                       value={trainer.name}
-                      onChange={(e) => updateTrainer(index, 'name', e.target.value)}
+                      onChange={(e) => updateTrainer(trainer.clientKey, 'name', e.target.value)}
                     />
                     <Input
                       placeholder="Discipline"
                       value={trainer.discipline}
-                      onChange={(e) => updateTrainer(index, 'discipline', e.target.value)}
+                      onChange={(e) => updateTrainer(trainer.clientKey, 'discipline', e.target.value)}
                     />
                     <div className="flex gap-2">
                       <Input
                         placeholder="Experience (e.g., 10 years)"
                         value={trainer.experience}
-                        onChange={(e) => updateTrainer(index, 'experience', e.target.value)}
+                        onChange={(e) => updateTrainer(trainer.clientKey, 'experience', e.target.value)}
                         className="flex-1"
                       />
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => removeTrainer(index)}
+                        onClick={() => removeTrainer(trainer.clientKey)}
                       >
                         Remove
                       </Button>
@@ -2108,10 +2169,10 @@ function EditGymForm() {
                   <div className="grid md:grid-cols-[10rem_1fr] gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs text-gray-600">Photo (optional)</Label>
-                      <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        {trainerPhotoPreviews[index] || trainer.photo_url ? (
+                      <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
+                        {photo.src ? (
                           <img
-                            src={(trainerPhotoPreviews[index] as string) || (trainer.photo_url as string)}
+                            src={photo.src}
                             alt={trainer.name ? `${trainer.name} photo` : 'Trainer photo'}
                             className="h-28 w-full object-cover"
                           />
@@ -2120,6 +2181,16 @@ function EditGymForm() {
                             No photo
                           </div>
                         )}
+                        {photo.uploading ? (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                            <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                          </span>
+                        ) : null}
+                        {photo.failed ? (
+                          <span className="absolute inset-x-0 bottom-0 bg-red-600/90 py-0.5 text-center text-[9px] font-semibold uppercase text-white">
+                            Upload failed
+                          </span>
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-2">
                         <Input
@@ -2127,17 +2198,18 @@ function EditGymForm() {
                           accept="image/*"
                           onChange={(e) => {
                             const f = e.target.files?.[0] ?? null
-                            setTrainerPhotoFile(index, f)
+                            setTrainerPhotoFile(trainer.clientKey, f)
+                            e.target.value = ''
                           }}
                         />
-                        {(trainerPhotoPreviews[index] || trainer.photo_url) ? (
+                        {photo.src ? (
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setTrainerPhotoFile(index, null)
-                              updateTrainer(index, 'photo_url', '')
+                              setTrainerPhotoFile(trainer.clientKey, null)
+                              updateTrainer(trainer.clientKey, 'photo_url', '')
                             }}
                           >
                             Clear
@@ -2151,13 +2223,13 @@ function EditGymForm() {
                       <Textarea
                         placeholder="Short bio, specialties, titles, notable fights, coaching style…"
                         value={trainer.description || ''}
-                        onChange={(e) => updateTrainer(index, 'description', e.target.value)}
+                        onChange={(e) => updateTrainer(trainer.clientKey, 'description', e.target.value)}
                         rows={3}
                       />
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </CardContent>
           </Card>
 

@@ -6,14 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { SlideOver } from '@/components/ui/slide-over'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import type { Package, PackageSeasonalRate, PackageVariant } from '@/lib/types/database'
 import {
+  buildSeasonalRateInsertRows,
   findOverlappingSeasonalRate,
   formatSeasonalDateWindow,
   formatSeasonalOverrides,
   hasAtLeastOneSeasonalTier,
   isoTodayLocal,
+  type LocalSeasonalRate,
 } from '@/lib/packages/seasonal-rate-validation'
 import { CalendarRange, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,14 +46,39 @@ const EMPTY_FORM: FormState = {
   price_per_month: '',
 }
 
+export type SeasonalVariantOption = {
+  id: string
+  label: string
+  price_per_day?: number | null
+  price_per_week?: number | null
+  price_per_month?: number | null
+}
+
+export type SeasonalPricingPackageRef = Pick<
+  Package,
+  'id' | 'offer_type' | 'price_per_day' | 'price_per_week' | 'price_per_month'
+>
+
+type SeasonalRateRow = PackageSeasonalRate | LocalSeasonalRate
+
 function variantLabel(v: PackageVariant): string {
   return v.name?.trim() || (v.room_type ? `${v.room_type} room` : 'Variant')
 }
 
+function newLocalRateId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
 function baseTierReference(
-  pkg: Package,
-  variant: PackageVariant | null,
-  currency: string
+  pkg: SeasonalPricingPackageRef,
+  variant: {
+    price_per_day?: number | null
+    price_per_week?: number | null
+    price_per_month?: number | null
+  } | null,
+  currency: string,
 ): { daily: string; weekly: string; monthly: string } {
   const daily = variant?.price_per_day ?? pkg.price_per_day
   const weekly = variant?.price_per_week ?? pkg.price_per_week
@@ -64,23 +97,48 @@ export function PackageSeasonalPricingPanel({
   package: pkg,
   currency,
   variants = [],
+  variantOptions = [],
+  localRates,
+  onLocalRatesChange,
 }: {
-  package: Package
+  package: SeasonalPricingPackageRef
   currency: string
   variants?: PackageVariant[]
+  variantOptions?: SeasonalVariantOption[]
+  /** When provided, rates are held in memory until the parent saves the new package. */
+  localRates?: LocalSeasonalRate[]
+  onLocalRatesChange?: (rates: LocalSeasonalRate[]) => void
 }) {
-  const [rates, setRates] = useState<PackageSeasonalRate[]>([])
-  const [loading, setLoading] = useState(true)
+  const isLocalMode = onLocalRatesChange != null
+  const [dbRates, setDbRates] = useState<PackageSeasonalRate[]>([])
+  const [loading, setLoading] = useState(!isLocalMode)
   const [saving, setSaving] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editing, setEditing] = useState<PackageSeasonalRate | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<SeasonalRateRow | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
 
   const todayMin = isoTodayLocal()
   const isEvent = pkg.offer_type === 'TYPE_ONE_TIME_EVENT'
 
+  const scopeOptions = useMemo((): SeasonalVariantOption[] => {
+    if (variantOptions.length > 0) return variantOptions
+    return variants.map((v) => ({
+      id: v.id,
+      label: variantLabel(v),
+      price_per_day: v.price_per_day,
+      price_per_week: v.price_per_week,
+      price_per_month: v.price_per_month,
+    }))
+  }, [variantOptions, variants])
+
+  const rates: SeasonalRateRow[] = isLocalMode ? (localRates ?? []) : dbRates
+
   const loadRates = useCallback(async () => {
+    if (isLocalMode || !pkg.id) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const supabase = createClient()
     const { data, error } = await supabase
@@ -89,27 +147,36 @@ export function PackageSeasonalPricingPanel({
       .eq('package_id', pkg.id)
       .order('start_date', { ascending: true })
 
-    if (!error && data) setRates(data as PackageSeasonalRate[])
+    if (!error && data) setDbRates(data as PackageSeasonalRate[])
     setLoading(false)
-  }, [pkg.id])
+  }, [isLocalMode, pkg.id])
 
   useEffect(() => {
-    if (!isEvent) void loadRates()
-    else setLoading(false)
-  }, [isEvent, loadRates])
+    if (isEvent) {
+      setLoading(false)
+      return
+    }
+    if (isLocalMode) {
+      setLoading(false)
+      return
+    }
+    void loadRates()
+  }, [isEvent, isLocalMode, loadRates])
 
-  const selectedVariant = useMemo(() => {
+  const selectedScope = useMemo(() => {
     if (!form.variant_id) return null
-    return variants.find((v) => v.id === form.variant_id) ?? null
-  }, [form.variant_id, variants])
+    return scopeOptions.find((o) => o.id === form.variant_id) ?? null
+  }, [form.variant_id, scopeOptions])
 
   const baseRef = useMemo(
-    () => baseTierReference(pkg, selectedVariant, currency),
-    [pkg, selectedVariant, currency]
+    () => baseTierReference(pkg, selectedScope, currency),
+    [pkg, selectedScope, currency],
   )
 
-  const appliedToLabel = (rule: PackageSeasonalRate) => {
+  const appliedToLabel = (rule: SeasonalRateRow) => {
     if (!rule.variant_id) return 'All variants'
+    const scoped = scopeOptions.find((o) => o.id === rule.variant_id)
+    if (scoped) return scoped.label
     const v = variants.find((x) => x.id === rule.variant_id)
     return v ? variantLabel(v) : 'Variant'
   }
@@ -118,10 +185,10 @@ export function PackageSeasonalPricingPanel({
     setEditing(null)
     setForm(presetName ? { ...EMPTY_FORM, name: presetName } : EMPTY_FORM)
     setFormError(null)
-    setSheetOpen(true)
+    setFormOpen(true)
   }
 
-  const openEdit = (rule: PackageSeasonalRate) => {
+  const openEdit = (rule: SeasonalRateRow) => {
     setEditing(rule)
     setForm({
       name: rule.name,
@@ -133,11 +200,11 @@ export function PackageSeasonalPricingPanel({
       price_per_month: rule.price_per_month != null ? String(rule.price_per_month) : '',
     })
     setFormError(null)
-    setSheetOpen(true)
+    setFormOpen(true)
   }
 
-  const closeSheet = () => {
-    setSheetOpen(false)
+  const closeForm = () => {
+    setFormOpen(false)
     setEditing(null)
     setForm(EMPTY_FORM)
     setFormError(null)
@@ -161,16 +228,16 @@ export function PackageSeasonalPricingPanel({
       end_date: form.end_date,
     }
 
-    const overlap = findOverlappingSeasonalRate(candidate, rates, editing?.id)
+    const overlap = findOverlappingSeasonalRate(candidate, rates as PackageSeasonalRate[], editing?.id)
     if (overlap) {
       setFormError(
-        'This date range overlaps with an existing seasonal rule for this variant. Please edit your existing rule or choose different dates.'
+        'This date range overlaps with an existing seasonal rule for this variant. Please edit your existing rule or choose different dates.',
       )
       return
     }
 
-    const payload = {
-      package_id: pkg.id,
+    const nextRule: LocalSeasonalRate = {
+      id: editing?.id ?? newLocalRateId(),
       variant_id: candidate.variant_id,
       name: form.name.trim(),
       start_date: form.start_date,
@@ -178,6 +245,29 @@ export function PackageSeasonalPricingPanel({
       price_per_day: form.price_per_day.trim() === '' ? null : Number(form.price_per_day),
       price_per_week: form.price_per_week.trim() === '' ? null : Number(form.price_per_week),
       price_per_month: form.price_per_month.trim() === '' ? null : Number(form.price_per_month),
+    }
+
+    if (isLocalMode) {
+      if (editing) {
+        onLocalRatesChange!(
+          (localRates ?? []).map((r) => (r.id === editing.id ? nextRule : r)),
+        )
+      } else {
+        onLocalRatesChange!([...(localRates ?? []), nextRule])
+      }
+      closeForm()
+      return
+    }
+
+    const payload = {
+      package_id: pkg.id,
+      variant_id: candidate.variant_id,
+      name: nextRule.name,
+      start_date: nextRule.start_date,
+      end_date: nextRule.end_date,
+      price_per_day: nextRule.price_per_day,
+      price_per_week: nextRule.price_per_week,
+      price_per_month: nextRule.price_per_month,
     }
 
     setSaving(true)
@@ -204,11 +294,17 @@ export function PackageSeasonalPricingPanel({
 
     await loadRates()
     setSaving(false)
-    closeSheet()
+    closeForm()
   }
 
-  const handleDelete = async (rule: PackageSeasonalRate) => {
+  const handleDelete = async (rule: SeasonalRateRow) => {
     if (!confirm(`Delete "${rule.name}"? This cannot be undone.`)) return
+
+    if (isLocalMode) {
+      onLocalRatesChange!((localRates ?? []).filter((r) => r.id !== rule.id))
+      return
+    }
+
     setSaving(true)
     const supabase = createClient()
     await supabase.from('package_seasonal_rates').delete().eq('id', rule.id)
@@ -355,7 +451,6 @@ export function PackageSeasonalPricingPanel({
             </table>
           </div>
 
-          {/* Mobile cards */}
           <div className="divide-y divide-gray-100 md:hidden">
             {rates.map((rule) => (
               <div key={rule.id} className="space-y-2 px-4 py-4">
@@ -384,141 +479,151 @@ export function PackageSeasonalPricingPanel({
         </div>
       )}
 
-      <SlideOver
-        open={sheetOpen}
-        onClose={closeSheet}
-        title={editing ? 'Edit seasonal rate' : 'Add seasonal rate'}
-        description="Set a friendly label and the date window when these tiers apply."
-      >
-        {formError ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
-            {formError}
-          </div>
-        ) : null}
+      <Dialog open={formOpen} onOpenChange={(open) => !open && closeForm()} stackClassName="z-[140]">
+        <DialogContent className="flex max-h-[min(90dvh,720px)] w-[calc(100vw-1.5rem)] max-w-lg flex-col overflow-hidden rounded-xl border border-gray-200/90 p-0 shadow-md">
+          <DialogHeader className="shrink-0 space-y-1.5 border-b border-gray-100 px-5 py-4 text-left md:px-6">
+            <DialogTitle className="text-lg font-semibold tracking-tight text-gray-900">
+              {editing ? 'Edit seasonal rate' : 'Add seasonal rate'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Set a friendly label and the date window when these tiers apply.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-5">
-          <div>
-            <Label htmlFor="season-name">Rule label</Label>
-            <Input
-              id="season-name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g., High season or Low season"
-              className="mt-1.5"
-            />
-          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
+            {formError ? (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+                {formError}
+              </div>
+            ) : null}
 
-          <div>
-            <Label htmlFor="season-variant">Variant scope</Label>
-            <Select
-              id="season-variant"
-              value={form.variant_id}
-              onChange={(e) => setForm((f) => ({ ...f, variant_id: e.target.value }))}
-              className="mt-1.5"
-            >
-              <option value="">Apply to entire package (all variants)</option>
-              {variants.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {variantLabel(v)}
-                </option>
-              ))}
-            </Select>
-            <p className="mt-1.5 text-xs text-gray-500">
-              Variant-specific rules take priority over package-wide rules on checkout.
-            </p>
-          </div>
+            <div className="space-y-5">
+              <div>
+                <Label htmlFor="season-name">Rule label</Label>
+                <Input
+                  id="season-name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g., High season or Low season"
+                  className="mt-1.5"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="season-start">Start date</Label>
-              <Input
-                id="season-start"
-                type="date"
-                min={editing ? undefined : todayMin}
-                value={form.start_date}
-                onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                className="mt-1.5"
-              />
+              {scopeOptions.length > 0 ? (
+                <div>
+                  <Label htmlFor="season-variant">Variant scope</Label>
+                  <Select
+                    id="season-variant"
+                    value={form.variant_id}
+                    onChange={(e) => setForm((f) => ({ ...f, variant_id: e.target.value }))}
+                    className="mt-1.5"
+                  >
+                    <option value="">Apply to entire package (all variants)</option>
+                    {scopeOptions.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Variant-specific rules take priority over package-wide rules on checkout.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="season-start">Start date</Label>
+                  <Input
+                    id="season-start"
+                    type="date"
+                    min={editing ? undefined : todayMin}
+                    value={form.start_date}
+                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="season-end">End date</Label>
+                  <Input
+                    id="season-end"
+                    type="date"
+                    min={form.start_date || todayMin}
+                    value={form.end_date}
+                    onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
+                    className="mt-1.5"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                <p className="text-sm font-medium text-gray-900">Rate overrides</p>
+                <p className="text-xs text-gray-500">
+                  Fill only the tiers you want to change. Leave others blank to keep the base default for
+                  that tier.
+                </p>
+
+                <div>
+                  <Label htmlFor="season-daily">New daily rate</Label>
+                  <p className="text-[11px] text-gray-500">Base daily default: {baseRef.daily}</p>
+                  <Input
+                    id="season-daily"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.price_per_day}
+                    onChange={(e) => setForm((f) => ({ ...f, price_per_day: e.target.value }))}
+                    className="mt-1"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="season-weekly">New weekly rate</Label>
+                  <p className="text-[11px] text-gray-500">Base weekly default: {baseRef.weekly}</p>
+                  <Input
+                    id="season-weekly"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.price_per_week}
+                    onChange={(e) => setForm((f) => ({ ...f, price_per_week: e.target.value }))}
+                    className="mt-1"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="season-monthly">New monthly rate</Label>
+                  <p className="text-[11px] text-gray-500">Base monthly default: {baseRef.monthly}</p>
+                  <Input
+                    id="season-monthly"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.price_per_month}
+                    onChange={(e) => setForm((f) => ({ ...f, price_per_month: e.target.value }))}
+                    className="mt-1"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={closeForm}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn('flex-1 bg-[#003580] text-white hover:bg-[#002a66]', !canSave && 'opacity-50')}
+                  disabled={!canSave || saving}
+                  onClick={() => void handleSave()}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="season-end">End date</Label>
-              <Input
-                id="season-end"
-                type="date"
-                min={form.start_date || todayMin}
-                value={form.end_date}
-                onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-                className="mt-1.5"
-              />
-            </div>
           </div>
-
-          <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-            <p className="text-sm font-medium text-gray-900">Rate overrides</p>
-            <p className="text-xs text-gray-500">
-              Fill only the tiers you want to change. Leave others blank to keep the base default for
-              that tier.
-            </p>
-
-            <div>
-              <Label htmlFor="season-daily">New daily rate</Label>
-              <p className="text-[11px] text-gray-500">Base daily default: {baseRef.daily}</p>
-              <Input
-                id="season-daily"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price_per_day}
-                onChange={(e) => setForm((f) => ({ ...f, price_per_day: e.target.value }))}
-                className="mt-1"
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <Label htmlFor="season-weekly">New weekly rate</Label>
-              <p className="text-[11px] text-gray-500">Base weekly default: {baseRef.weekly}</p>
-              <Input
-                id="season-weekly"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price_per_week}
-                onChange={(e) => setForm((f) => ({ ...f, price_per_week: e.target.value }))}
-                className="mt-1"
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <Label htmlFor="season-monthly">New monthly rate</Label>
-              <p className="text-[11px] text-gray-500">Base monthly default: {baseRef.monthly}</p>
-              <Input
-                id="season-monthly"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price_per_month}
-                onChange={(e) => setForm((f) => ({ ...f, price_per_month: e.target.value }))}
-                className="mt-1"
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={closeSheet}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className={cn('flex-1 bg-[#003580] text-white hover:bg-[#002a66]', !canSave && 'opacity-50')}
-              disabled={!canSave || saving}
-              onClick={() => void handleSave()}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </SlideOver>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
