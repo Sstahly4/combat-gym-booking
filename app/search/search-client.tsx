@@ -444,7 +444,9 @@ function SearchPageContent() {
     setLoading(true)
     const supabase = createClient()
 
-    const applyCatalogFilters = (baseQuery: ReturnType<typeof supabase.from>) => {
+    const applyCatalogFilters = (
+      baseQuery: ReturnType<ReturnType<typeof supabase.from>['select']>,
+    ) => {
       let query = baseQuery
         .eq('verification_status', 'verified')
         .eq('status', 'approved')
