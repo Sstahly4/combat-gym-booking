@@ -26,6 +26,12 @@ import {
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { SearchResultGymImageCarousel } from '@/components/search-result-gym-image-carousel'
 import { DATES_CONFIRMED_QUERY, gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
+import { logSearchEvent, logSearchGymClick } from '@/lib/marketplace/log-search-client'
+import {
+  searchCatalogFiltersKey,
+  type SearchCatalogFilters,
+} from '@/lib/search/search-filters'
+import type { SearchServerPayload } from '@/lib/search/search-server-listings'
 
 const COUNTRIES = ['Thailand', 'Indonesia', 'Australia', 'Japan', 'USA', 'Brazil', 'Philippines', 'Malaysia']
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -98,9 +104,10 @@ function snippetFromGymDescription(raw: string | null | undefined): string | nul
 const MOVE_CANCEL_PX = 12
 const MOVE_CANCEL_SQ = MOVE_CANCEL_PX * MOVE_CANCEL_PX
 
-function TapGuardLink(
-  props: React.ComponentProps<typeof Link> & { className?: string; children: React.ReactNode },
-) {
+function TapGuardLink({
+  onClick,
+  ...props
+}: React.ComponentProps<typeof Link> & { className?: string; children: React.ReactNode }) {
   const movedRef = useRef(false)
   const pointerSessionCleanupRef = useRef<(() => void) | null>(null)
 
@@ -149,11 +156,13 @@ function TapGuardLink(
     window.addEventListener('pointercancel', end)
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (movedRef.current) {
       e.preventDefault()
       e.stopPropagation()
+      return
     }
+    onClick?.(e)
   }
 
   return <Link {...props} onPointerDown={handlePointerDown} onClick={handleClick} />
@@ -311,12 +320,37 @@ async function geocodeLocationAnchor(
   }
 }
 
-function SearchPageContent() {
+function catalogFiltersFromState(filters: {
+  location: string
+  discipline: string
+  country: string
+  minPrice: string
+  maxPrice: string
+  accommodation: boolean
+  popularFilters: string[]
+}): SearchCatalogFilters {
+  return {
+    location: filters.location.trim(),
+    discipline: filters.discipline.trim(),
+    country: filters.country.trim(),
+    minPrice: filters.minPrice.trim(),
+    maxPrice: filters.maxPrice.trim(),
+    accommodation:
+      filters.accommodation || filters.popularFilters.includes('Accommodation included'),
+  }
+}
+
+function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPayload }) {
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
-  const [gyms, setGyms] = useState<GymWithImages[]>([])
-  const [nearbyGyms, setNearbyGyms] = useState<NearbySearchGym<GymWithImages>[]>([])
-  const [loading, setLoading] = useState(true)
+  const [gyms, setGyms] = useState<GymWithImages[]>(
+    () => (initialPayload?.gyms as GymWithImages[]) ?? [],
+  )
+  const [nearbyGyms, setNearbyGyms] = useState<NearbySearchGym<GymWithImages>[]>(
+    () => (initialPayload?.nearbyGyms as NearbySearchGym<GymWithImages>[]) ?? [],
+  )
+  const [loading, setLoading] = useState(() => !initialPayload)
+  const skipNextFetchRef = useRef(!!initialPayload)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   useEffect(() => {
@@ -435,6 +469,12 @@ function SearchPageContent() {
   // at 60fps. 250ms is short enough to feel instant but long enough to
   // coalesce rapid input/checkbox storms.
   useEffect(() => {
+    const catalogKey = searchCatalogFiltersKey(catalogFiltersFromState(filters))
+    if (skipNextFetchRef.current && initialPayload?.filtersKey === catalogKey) {
+      skipNextFetchRef.current = false
+      return
+    }
+
     const t = setTimeout(() => { fetchGyms() }, 250)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -448,7 +488,7 @@ function SearchPageContent() {
       baseQuery: ReturnType<ReturnType<typeof supabase.from>['select']>,
     ) => {
       let query = baseQuery
-        .eq('verification_status', 'verified')
+        .in('verification_status', ['verified', 'trusted'])
         .eq('status', 'approved')
         .eq('is_live', true)
         .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
@@ -495,6 +535,29 @@ function SearchPageContent() {
     const locationQuery = filters.location.trim()
     const useNearbyExpansion = Boolean(locationQuery) && !isCountryOnlyLocationSearch(locationQuery)
 
+    const disciplinesForLog = [
+      filters.discipline,
+      ...filters.disciplines,
+    ].filter((d): d is string => Boolean(d && d.trim()))
+
+    const emitSearchLedger = (
+      primaryCount: number,
+      nearbyCount: number,
+      anchor: { lat: number; lng: number } | null,
+    ) => {
+      logSearchEvent({
+        destination_input: locationQuery || null,
+        resolved_latitude: anchor?.lat ?? null,
+        resolved_longitude: anchor?.lng ?? null,
+        disciplines: disciplinesForLog,
+        start_date: filters.checkin || null,
+        end_date: filters.checkout || null,
+        results_count: primaryCount + nearbyCount,
+        primary_results_count: primaryCount,
+        nearby_results_count: nearbyCount,
+      })
+    }
+
     try {
       if (useNearbyExpansion) {
         let country = inferCountryFromLocationQuery(locationQuery)
@@ -538,9 +601,11 @@ function SearchPageContent() {
           })
           setGyms(primary)
           setNearbyGyms(nearby)
+          emitSearchLedger(primary.length, nearby.length, resolvedAnchor)
         } else {
           setGyms(primaryMatches)
           setNearbyGyms([])
+          emitSearchLedger(primaryMatches.length, 0, null)
         }
         return
       }
@@ -558,8 +623,10 @@ function SearchPageContent() {
         return
       }
 
-      setGyms(await enrichGyms(data || []))
+      const enriched = await enrichGyms(data || [])
+      setGyms(enriched)
       setNearbyGyms([])
+      emitSearchLedger(enriched.length, 0, null)
     } finally {
       setLoading(false)
     }
@@ -748,7 +815,9 @@ function SearchPageContent() {
   )
 
   // ─── Result card ──────────────────────────────────────────────────────────
-  const renderCard = (gym: GymWithImages) => {
+  const renderCard = (gym: GymWithImages, options?: { fromNearby?: boolean }) => {
+    const fromNearby = options?.fromNearby ?? false
+    const onResultClick = () => logSearchGymClick(gym.id, { fromNearby })
     const hasReviews = (gym.review_count || 0) > 0 && (gym.average_rating || 0) > 0
     const rawRating = hasReviews ? (gym.average_rating as number) : getFallbackRating(gym.id)
     const displayRating = Math.round(rawRating * 2) / 2
@@ -808,6 +877,7 @@ function SearchPageContent() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${mobileTitle} — ${mobileTagline}`}
+            onClick={onResultClick}
             className="block text-left outline-none focus-visible:ring-2 focus-visible:ring-[#003580] focus-visible:ring-offset-2 rounded-[12px] active:bg-gray-50/50"
           >
             <div className="relative px-0 pt-0 sm:px-2 sm:pt-2">
@@ -872,6 +942,7 @@ function SearchPageContent() {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={onResultClick}
               className="relative block w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100"
             >
               <div className="absolute inset-0">
@@ -898,6 +969,7 @@ function SearchPageContent() {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={onResultClick}
                   className="font-bold text-[#006ce4] hover:underline text-[15px] md:text-base leading-snug inline-block"
                 >
                   {gym.name}
@@ -993,6 +1065,7 @@ function SearchPageContent() {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={onResultClick}
                 className="mt-3 inline-flex w-full items-center justify-center bg-[#006ce4] hover:bg-[#0057b8] text-white font-bold py-2.5 rounded text-sm transition-colors"
               >
                 See availability
@@ -1085,7 +1158,7 @@ function SearchPageContent() {
             <main className="flex-1 min-w-0 w-full max-w-2xl mx-auto md:max-w-none md:mx-0">
               {/* Results header (aligned with results column); title hidden on mobile for cleaner OTA toolbar */}
               <div className="mb-3 md:mb-4">
-                <h1 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">
+                <h2 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">
                   {loading ? (
                     <span className="text-gray-400 text-base font-normal">Searching…</span>
                   ) : (
@@ -1102,7 +1175,7 @@ function SearchPageContent() {
                       )}
                     </>
                   )}
-                </h1>
+                </h2>
 
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Sort pill */}
@@ -1193,7 +1266,7 @@ function SearchPageContent() {
                           Within about 150 km — options travelers often compare when planning a trip.
                         </p>
                       </div>
-                      {filteredNearbyByRating.map((gym) => renderCard(gym))}
+                      {filteredNearbyByRating.map((gym) => renderCard(gym, { fromNearby: true }))}
                     </div>
                   ) : null}
                 </div>
@@ -1236,14 +1309,18 @@ function SearchPageContent() {
   )
 }
 
-export default function SearchPage() {
+export default function SearchClient({
+  initialPayload,
+}: {
+  initialPayload?: SearchServerPayload
+}) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#f2f6fa] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#003580] border-t-transparent rounded-full animate-spin" />
       </div>
     }>
-      <SearchPageContent />
+      <SearchPageContent initialPayload={initialPayload} />
     </Suspense>
   )
 }

@@ -49,6 +49,7 @@ import {
   queryLooksLikeDestination,
   type LiveDestination,
 } from '@/lib/search/live-destinations'
+import { logSearchDateChange } from '@/lib/marketplace/log-search-client'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -943,6 +944,12 @@ export function SearchBarRedesign({
     setCheckout(format(end, 'yyyy-MM-dd'))
     setHoverDate(null)
     setUserHasSelectedDates(true)
+    logSearchDateChange({
+      source: 'search_bar',
+      start_date: format(anchor, 'yyyy-MM-dd'),
+      end_date: format(end, 'yyyy-MM-dd'),
+      metadata: { timeline: opt.id },
+    })
     if ('months' in opt && opt.months && opt.months > 1) {
       setCurrentMonth(anchor)
     }
@@ -961,6 +968,7 @@ export function SearchBarRedesign({
       setHoverDate(null)
       setSelectedTimeline('exact')
       setUserHasSelectedDates(true)
+      logSearchDateChange({ source: 'search_bar', start_date: dateStr, end_date: null })
       return
     }
 
@@ -970,12 +978,18 @@ export function SearchBarRedesign({
         setCheckout('')
         setSelectedTimeline('exact')
         setUserHasSelectedDates(true)
+        logSearchDateChange({ source: 'search_bar', start_date: dateStr, end_date: null })
         return
       }
       setCheckout(dateStr)
       setHoverDate(null)
       setSelectedTimeline('exact')
       setUserHasSelectedDates(true)
+      logSearchDateChange({
+        source: 'search_bar',
+        start_date: format(checkinDate, 'yyyy-MM-dd'),
+        end_date: dateStr,
+      })
     }
   }
 

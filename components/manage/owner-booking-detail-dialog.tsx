@@ -252,6 +252,7 @@ export function OwnerBookingDetailDialog({
             <div className="space-y-2">
               <Row label="Booking created" value={formatDateTime(booking.created_at)} />
               <Row label="Request submitted" value={formatDateTime(booking.request_submitted_at)} />
+              <Row label="Gym responded" value={formatDateTime(booking.gym_responded_at)} />
               <Row label="Gym confirmed" value={formatDateTime(booking.gym_confirmed_at)} />
               <Row label="Payment captured" value={formatDateTime(booking.payment_captured_at)} />
               <Row label="Last updated" value={formatDateTime(booking.updated_at)} />

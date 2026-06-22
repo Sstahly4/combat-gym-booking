@@ -35,8 +35,14 @@ function sanitizeEnvValue(value: string | undefined): string | undefined {
   return v || undefined
 }
 
-function getRatelimiter(): Ratelimit | null {
-  if (ratelimit) return ratelimit
+function getRatelimiter(options?: {
+  maxRequests?: number
+  window?: `${number} ${'s' | 'm' | 'h' | 'd'}`
+}): Ratelimit | null {
+  const maxRequests = options?.maxRequests ?? MAX_REQUESTS
+  const window = options?.window ?? WINDOW
+
+  if (!options && ratelimit) return ratelimit
 
   const url = sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_URL)
   const token = sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN)
@@ -53,20 +59,18 @@ function getRatelimiter(): Ratelimit | null {
   }
 
   try {
-    ratelimit = new Ratelimit({
+    const instance = new Ratelimit({
       redis: new Redis({ url, token }),
-      limiter: Ratelimit.slidingWindow(MAX_REQUESTS, WINDOW),
-      // Prefix all keys so they're easy to inspect in the Upstash console.
+      limiter: Ratelimit.slidingWindow(maxRequests, window),
       prefix: 'combatstay:rl',
-      // Never throw if Redis is temporarily unreachable — fail open.
       analytics: false,
     })
+    if (!options) ratelimit = instance
+    return instance
   } catch (error) {
     console.warn('[rate-limit] Failed to initialize Upstash Redis — rate limiting disabled', error)
     return null
   }
-
-  return ratelimit
 }
 
 type RateLimitResult =
@@ -83,8 +87,9 @@ type RateLimitResult =
 export async function checkRateLimit(
   request: NextRequest,
   identifier: string,
+  options?: { maxRequests?: number; window?: `${number} ${'s' | 'm' | 'h' | 'd'}` },
 ): Promise<RateLimitResult> {
-  const limiter = getRatelimiter()
+  const limiter = getRatelimiter(options)
 
   // Fail open: if Redis isn't configured (local dev), allow all requests.
   if (!limiter) return { allowed: true }

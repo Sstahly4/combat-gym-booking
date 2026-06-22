@@ -14,6 +14,7 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
+import { GuideAmenityMatrixLinks } from '@/components/guides/guide-amenity-matrix-links'
 import { GuideLogisticsBlocks } from '@/components/guides/guide-logistics-blocks'
 import {
   GuideAccentIntro,
@@ -291,6 +292,8 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
         <p className="mb-8 text-gray-600">{city} Muay Thai training questions that show up in search.</p>
         <GuideFaqList items={FAQ_ITEMS(city)} />
       </GuideSection>
+
+      <GuideAmenityMatrixLinks city={city} />
 
       <GuideCtaStrip
         title={`Ready to pick your ${city} Muay Thai gym?`}

@@ -1,18 +1,19 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-server'
 import { Card, CardContent } from '@/components/ui/card'
-import type { Package } from '@/lib/types/database'
+import type { GymImage } from '@/lib/types/database'
 import { PackagesList } from '@/components/packages-list'
 import { GymGallery } from '@/components/gym-gallery'
 import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper'
 import { GymMap } from '@/components/gym-map'
+import { GymContextNav } from '@/components/gym/gym-context-nav'
+import { GymFaqSection } from '@/components/gym/gym-faq-section'
 import { GymCheckoutExitCleanup } from '@/components/gym/gym-checkout-exit-cleanup'
 import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
 import { GymPageClientShell } from '@/components/gym/gym-page-client-shell'
-import { GymSlugRedirectBoundary } from '@/components/gym/gym-slug-redirect'
 import { GymReviewsCarouselSection } from '@/components/gym/gym-reviews-section'
 import { GymReviewsCarouselSkeleton } from '@/components/gym/gym-reviews-skeleton'
 import { ReserveButton } from '@/components/reserve-button'
@@ -25,15 +26,19 @@ import { ShowOnMapLink } from '@/components/show-on-map-link'
 import { GymAddressCopy } from '@/components/gym-address-copy'
 import { MapPin, Star } from 'lucide-react'
 import { formatLandmarksText } from '@/lib/utils/landmarks'
-import { absoluteUrl, siteUrl } from '@/lib/seo/site-url'
 import { ThingsToDoCard } from '@/components/things-to-do-card'
 import { gymImageSrc, gymImageSrcSet } from '@/lib/images/gym-image-variants'
 import {
   getOwnerDraftGym,
   getPublicGym,
   getPublicGymBySlug,
+  getGymReviews,
 } from '@/lib/gym/gym-listing-data'
 import { looksLikeUuid } from '@/lib/utils/gym-route'
+import { isPublicGymListing, PUBLIC_GYM_VERIFICATION_STATUSES } from '@/lib/seo/gym-public-status'
+import { buildGymMetaDescription } from '@/lib/seo/gym-meta-description'
+import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
+import { buildGymPageJsonLd, normalizeGymFaq } from '@/lib/seo/gym-page-schema'
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -61,7 +66,7 @@ export async function generateStaticParams() {
     const { data, error } = await supabase
       .from('gyms')
       .select('id, reviews:bookings(reviews(id))')
-      .eq('verification_status', 'verified')
+      .in('verification_status', [...PUBLIC_GYM_VERIFICATION_STATUSES])
       .eq('status', 'approved')
       .limit(300)
     if (error || !data) return []
@@ -89,7 +94,9 @@ const getGymMetadata = unstable_cache(
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('gyms')
-      .select('id, slug, name, description, tagline, city, disciplines, verification_status')
+      .select(
+        'id, slug, name, description, tagline, city, disciplines, verification_status, amenities, images:gym_images(url, variants, order)',
+      )
       .or(looksLikeUuid(idOrSlug) ? `id.eq.${idOrSlug}` : `slug.eq.${idOrSlug}`)
       .maybeSingle()
     return data
@@ -105,7 +112,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const data = await getGymMetadata(params.id)
 
-  if (!data || data.verification_status !== 'verified') {
+  if (!data || !isPublicGymListing(data.verification_status)) {
     return {
       title: 'Gym Not Found | CombatStay',
       robots: { index: false, follow: false },
@@ -123,103 +130,53 @@ export async function generateMetadata({
   const titleCity = city ? ` ${city}` : ''
   const pageTitle = `${name}${titleCity} | ${disciplineLabel} Training | CombatStay`
 
-  const tagline: string | null = data.tagline ?? null
-  const rawDesc: string | null = data.description ?? null
-  const firstDiscipline = rawDisciplines[0] ?? 'combat sports'
-  let metaDescription = `Train ${firstDiscipline} at ${name}${city ? ` in ${city}` : ''}.`
-  if (tagline) {
-    metaDescription += ` ${tagline}`
-  } else if (rawDesc) {
-    const firstSentence = rawDesc.split(/[.!?]/)[0]?.trim()
-    if (firstSentence && firstSentence.length > 15) {
-      metaDescription += ` ${firstSentence}.`
-    }
-  }
-  metaDescription += ' Book instantly.'
-  if (metaDescription.length > 160) metaDescription = `${metaDescription.substring(0, 157)}...`
+  const metaDescription = buildGymMetaDescription({
+    name,
+    city,
+    tagline: data.tagline,
+    description: data.description,
+    firstDiscipline: rawDisciplines[0] ?? 'combat sports',
+    amenities: data.amenities as Record<string, unknown> | null,
+  })
 
   const canonicalSlug = data.slug || params.id
+  const canonicalPath = gymCanonicalPath({ id: data.id, slug: canonicalSlug })
+
+  type MetadataCoverImage = { url: string; variants?: GymImage['variants']; order?: number | null }
+  const metaImages = (data as { images?: MetadataCoverImage[] }).images
+  const coverImage = Array.isArray(metaImages)
+    ? [...metaImages].sort((a, b) => (a.order ?? 999) - (b.order ?? 999))[0]
+    : undefined
+  const ogImage = coverImage ? gymImageSrc(coverImage) : undefined
 
   return {
     title: pageTitle,
     description: metaDescription,
     alternates: {
-      canonical: `/gyms/${canonicalSlug}`,
+      canonical: canonicalPath,
     },
     openGraph: {
       title: pageTitle,
       description: metaDescription,
-      url: `/gyms/${canonicalSlug}`,
+      url: canonicalPath,
       type: 'website',
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+    },
+    twitter: {
+      card: ogImage ? 'summary_large_image' : 'summary',
+      title: pageTitle,
+      description: metaDescription,
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
   }
 }
 
-function schemaLowestPricePerDay(
-  packages: Package[],
-  gymCurrency: string,
-  gymPricePerDay: number,
-): string | undefined {
-  const SYMBOLS: Record<string, string> = {
-    USD: '$', EUR: '€', GBP: '£', AUD: 'A$', THB: '฿',
-    IDR: 'Rp', JPY: '¥', CNY: '¥', SGD: 'S$', MYR: 'RM',
-    NZD: 'NZ$', CAD: 'C$', HKD: 'HK$', INR: '₹', KRW: '₩',
-    PHP: '₱', VND: '₫',
-  }
-  const currency = (gymCurrency || 'USD').toUpperCase()
-  const symbol = SYMBOLS[currency] ?? currency
-
-  let min: number | null = null
-  for (const pkg of packages) {
-    if (pkg.pricing_config?.mode === 'rate') {
-      const daily = pkg.pricing_config.rates?.daily
-      if (daily && daily > 0) min = min === null ? daily : Math.min(min, daily)
-      continue
-    }
-    if (pkg.pricing_config?.mode === 'fixed') {
-      for (const d of pkg.pricing_config.durations ?? []) {
-        if (d.price > 0 && d.days > 0) {
-          const perDay = d.price / d.days
-          min = min === null ? perDay : Math.min(min, perDay)
-        }
-      }
-      continue
-    }
-    if (pkg.price_per_day && pkg.price_per_day > 0) {
-      min = min === null ? pkg.price_per_day : Math.min(min, pkg.price_per_day)
-    }
-  }
-
-  if (min === null && gymPricePerDay > 0) min = gymPricePerDay
-  if (min === null) return undefined
-  return `From ${symbol}${Math.round(min).toLocaleString('en-US')}/day`
-}
-
-function gymOpeningHoursToSchema(hours: Record<string, string> | undefined): string[] | undefined {
-  if (!hours || typeof hours !== 'object') return undefined
-  const abbr: Record<string, string> = {
-    monday: 'Mo', tuesday: 'Tu', wednesday: 'We', thursday: 'Th',
-    friday: 'Fr', saturday: 'Sa', sunday: 'Su',
-  }
-  const result: string[] = []
-  for (const [day, val] of Object.entries(hours)) {
-    const short = abbr[day.toLowerCase()]
-    if (!short || !val || /closed/i.test(val)) continue
-    const parts = val.replace(/[–—]/g, '-').replace(/\s/g, '').split('-')
-    if (parts.length < 2) continue
-    const pad = (t: string) => {
-      const [h, m = '00'] = t.split(':')
-      return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
-    }
-    result.push(`${short} ${pad(parts[0])}-${pad(parts[1])}`)
-  }
-  return result.length > 0 ? result : undefined
-}
-
 export default async function GymDetailsPage({
   params,
+  searchParams,
 }: {
   params: { id: string }
+  searchParams?: Record<string, string | string[] | undefined>
 }) {
   const idOrSlug = params.id
   let gym = looksLikeUuid(idOrSlug) ? await getPublicGym(idOrSlug) : await getPublicGymBySlug(idOrSlug)
@@ -233,63 +190,43 @@ export default async function GymDetailsPage({
     notFound()
   }
 
-  const isVerified = gym.verification_status === 'verified'
   const isDraft = gym.verification_status === 'draft'
 
-  if (!isVerified && !isOwner) {
+  if (!isPublicGymListing(gym.verification_status) && !isOwner) {
     notFound()
   }
 
+  if (looksLikeUuid(idOrSlug) && gym.slug?.trim()) {
+    const qs = new URLSearchParams()
+    if (searchParams) {
+      for (const [key, value] of Object.entries(searchParams)) {
+        if (typeof value === 'string') qs.set(key, value)
+        else if (Array.isArray(value)) value.forEach((v) => qs.append(key, v))
+      }
+    }
+    const query = qs.toString()
+    permanentRedirect(`${gymCanonicalPath(gym)}${query ? `?${query}` : ''}`)
+  }
+
   const { reviewCount, averageRating } = gym
-  const needsSlugRedirect = looksLikeUuid(idOrSlug) && !!gym.slug
 
   const primaryImage =
     gym.images && gym.images.length > 0 ? gym.images[0]?.url : undefined
 
-  const gymPublicPath = `/gyms/${gym.slug?.trim() || gym.id}`
+  const gymPublicPath = gymCanonicalPath(gym)
+  const faqItems = normalizeGymFaq(gym.faq)
+  const schemaReviews = reviewCount > 0 ? await getGymReviews(gym.id) : []
 
-  const sportsActivityLd: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'SportsActivityLocation',
-    '@id': absoluteUrl(gymPublicPath),
-    name: gym.name,
-    url: absoluteUrl(gymPublicPath),
-    description: gym.description || `Train at ${gym.name} in ${gym.city}, ${gym.country}. Book combat sports camps on CombatStay.`,
-    image: primaryImage ? [primaryImage] : undefined,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: gym.address || undefined,
-      addressLocality: gym.city || undefined,
-      addressCountry: gym.country || undefined,
-    },
-    geo:
-      typeof gym.latitude === 'number' && typeof gym.longitude === 'number'
-        ? {
-            '@type': 'GeoCoordinates',
-            latitude: gym.latitude,
-            longitude: gym.longitude,
-          }
-        : undefined,
-    telephone: gym.public_contact_phone || undefined,
-    sport: Array.isArray(gym.disciplines) && gym.disciplines.length > 0 ? gym.disciplines : undefined,
-    priceRange: schemaLowestPricePerDay(gym.packages, gym.currency, gym.price_per_day),
-    aggregateRating:
-      reviewCount > 0
-        ? {
-            '@type': 'AggregateRating',
-            ratingValue: Number(averageRating.toFixed(2)),
-            reviewCount,
-            bestRating: 5,
-            worstRating: 1,
-          }
-        : undefined,
-    openingHours: gymOpeningHoursToSchema(gym.opening_hours),
-    isPartOf: {
-      '@type': 'WebSite',
-      name: 'CombatStay',
-      url: siteUrl,
-    },
-  }
+  const gymPageLd = buildGymPageJsonLd({
+    gym,
+    gymPublicPath,
+    packages: gym.packages,
+    reviewCount,
+    averageRating,
+    primaryImage: primaryImage || undefined,
+    reviews: schemaReviews,
+    faqItems,
+  })
 
   let landmarksText = ''
   if (gym.nearby_attractions && Array.isArray(gym.nearby_attractions) && gym.nearby_attractions.length > 0) {
@@ -314,14 +251,11 @@ export default async function GymDetailsPage({
           fetchPriority="high"
         />
       ) : null}
-      {needsSlugRedirect && gym.slug ? (
-        <GymSlugRedirectBoundary slug={gym.slug} />
-      ) : null}
       <GymCheckoutExitCleanup gymId={gym.id} />
       <GymPageCurrencyHint currency={gym.currency} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsActivityLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(gymPageLd) }}
       />
       <div className="min-h-screen bg-white pb-12">
         {isDraft && isOwner && (
@@ -537,6 +471,9 @@ export default async function GymDetailsPage({
               </Suspense>
             )}
           </div>
+
+          <GymFaqSection items={faqItems} />
+          <GymContextNav gym={gym} />
         </div>
       </div>
     </GymPageClientShell>

@@ -86,3 +86,18 @@ export function mergeGymAmenitiesFromDb(
 export function labelGymAmenity(key: string): string {
   return GYM_AMENITY_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
+
+/** Human-readable labels for enabled amenities, in catalog display order. */
+export function enabledGymAmenityLabels(
+  amenities: Record<string, unknown> | null | undefined,
+  max = 4,
+): string[] {
+  const merged = mergeGymAmenitiesFromDb(amenities)
+  const labels: string[] = []
+  for (const key of GYM_AMENITY_ORDER) {
+    if (!merged[key]) continue
+    labels.push(labelGymAmenity(key))
+    if (labels.length >= max) break
+  }
+  return labels
+}

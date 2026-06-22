@@ -74,6 +74,7 @@ export async function POST(
       .update({
         status: 'confirmed',
         gym_confirmed_at: new Date().toISOString(),
+        gym_responded_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId)

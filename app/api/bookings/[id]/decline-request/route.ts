@@ -76,9 +76,13 @@ export async function POST(
       }, { status: 400 })
     }
 
+    const respondedAt = new Date().toISOString()
     const { error: updateError } = await supabase
       .from('bookings')
-      .update(buildBookingStatusUpdate(BOOKING_STATUS_CANCELLED_BY_GYM))
+      .update({
+        ...buildBookingStatusUpdate(BOOKING_STATUS_CANCELLED_BY_GYM),
+        gym_responded_at: respondedAt,
+      })
       .eq('id', bookingId)
 
     if (updateError) {

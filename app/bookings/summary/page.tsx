@@ -42,6 +42,7 @@ import {
   writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
+import { getMarketplaceAttribution } from '@/lib/marketplace/search-session'
 import {
   BOOKING_DATES_EXPIRED_ERROR,
   BOOKING_DATES_EXPIRED_INLINE,
@@ -657,11 +658,11 @@ function BookingSummaryPageContent() {
           discipline: discipline || gym.disciplines?.[0] || null,
           experience_level: 'beginner',
           notes: notes || null,
-          // Guest booking details
           guest_email: email,
           guest_phone: phone,
           guest_name: `${firstName} ${lastName}`,
           training_tier: effectiveTrainingTier,
+          ...getMarketplaceAttribution(),
         }),
       })
 

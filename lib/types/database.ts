@@ -89,6 +89,8 @@ export interface Profile {
   updated_at: string
 }
 
+export type GymFaqItem = { question: string; answer: string }
+
 export interface Gym {
   id: string
   owner_id: string
@@ -161,6 +163,8 @@ export interface Gym {
   verified_at: string | null
   trusted_at: string | null
   nearby_attractions?: Array<{ name: string; distance: number }> | null
+  /** Owner-written Q&A shown on the public profile when populated. */
+  faq?: GymFaqItem[] | null
   /** Pre-fetched nearby POIs from OpenStreetMap Overpass API. Populated via admin enrichment endpoint. */
   things_to_do?: Array<{ name: string; category: 'eat' | 'nature' | 'training' | 'explore'; distanceKm: number }> | null
   /** IANA timezone for schedules and reports. */
@@ -389,6 +393,7 @@ export interface Booking {
   // Request-to-Book timestamps
   request_submitted_at?: string | null
   gym_confirmed_at?: string | null
+  gym_responded_at?: string | null
   payment_captured_at?: string | null
   start_date: string
   end_date: string
@@ -568,5 +573,76 @@ export interface SecurityEvent {
   user_id: string
   event_type: string
   metadata: Record<string, any>
+  created_at: string
+}
+
+export interface SearchEvent {
+  id: string
+  search_session_id: string
+  user_id: string | null
+  destination_input: string | null
+  resolved_latitude: number | null
+  resolved_longitude: number | null
+  disciplines: string[]
+  start_date: string | null
+  end_date: string | null
+  lead_time_days: number | null
+  results_count: number
+  primary_results_count: number
+  nearby_results_count: number
+  clicked_gym_id: string | null
+  clicked_from_nearby: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface SearchDateEvent {
+  id: string
+  search_session_id: string
+  user_id: string | null
+  source: 'search_bar' | 'search_page'
+  start_date: string | null
+  end_date: string | null
+  lead_time_days: number | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export type DestinationSubstitutionKind =
+  | 'city_switch'
+  | 'nearby_gym_click'
+  | 'search_gym_click'
+
+export interface DestinationSubstitution {
+  id: string
+  search_session_id: string
+  user_id: string | null
+  kind: DestinationSubstitutionKind
+  from_destination: string | null
+  to_destination: string | null
+  from_gym_id: string | null
+  to_gym_id: string | null
+  search_event_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface BookingPriceSnapshot {
+  id: string
+  booking_id: string
+  search_session_id: string | null
+  search_event_id: string | null
+  gym_id: string
+  package_id: string | null
+  package_variant_id: string | null
+  training_tier: 'once_daily' | 'twice_daily' | null
+  currency: string | null
+  base_package_total: number
+  seasonal_premium_applied: number
+  tier_multiplier_delta: number
+  quoted_total: number
+  lead_time_days: number
+  stay_nights: number | null
+  snapshot: Record<string, unknown>
   created_at: string
 }

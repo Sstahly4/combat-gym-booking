@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { insertBookingPriceSnapshot } from '@/lib/booking/booking-price-snapshot'
 import { randomBytes } from 'crypto'
 import {
   BOOKING_DATES_EXPIRED_ERROR,
@@ -46,7 +47,16 @@ export async function POST(request: NextRequest) {
       guest_phone,
       guest_name,
       training_tier: rawTrainingTier,
+      search_session_id: rawSearchSessionId,
+      search_event_id: rawSearchEventId,
     } = body
+
+    const search_session_id =
+      typeof rawSearchSessionId === 'string' && rawSearchSessionId.length > 0
+        ? rawSearchSessionId
+        : null
+    const search_event_id =
+      typeof rawSearchEventId === 'string' && rawSearchEventId.length > 0 ? rawSearchEventId : null
 
     const training_tier =
       rawTrainingTier === 'once_daily' || rawTrainingTier === 'twice_daily'
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Verify gym exists and is verified (not draft)
     const { data: gym, error: gymError } = await supabase
       .from('gyms')
-      .select('id, name, owner_id, verification_status, status, disciplines')
+      .select('id, name, owner_id, verification_status, status, disciplines, currency')
       .eq('id', gym_id)
       .single()
 
@@ -230,6 +240,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
     }
 
+    try {
+      const admin = createAdminClient()
+      await insertBookingPriceSnapshot(admin, {
+        bookingId: booking.id,
+        searchSessionId: search_session_id,
+        searchEventId: search_event_id,
+        gymId: gym_id,
+        packageId: package_id,
+        packageVariantId: package_variant_id || null,
+        startDate: start_date,
+        endDate: end_date,
+        trainingTier: training_tier,
+        currency: (gym as { currency?: string | null }).currency ?? null,
+        quotedTotal: verifiedTotalPrice,
+      })
+    } catch (e) {
+      console.warn('[bookings/create] price snapshot failed (non-fatal)', e)
+    }
+
     // Combat profile capture (authenticated users only; no UI yet).
     // - Store stable attributes on profiles for later segmentation.
     // - Maintain a normalized rollup table for "gyms visited / booked".
@@ -240,7 +269,7 @@ export async function POST(request: NextRequest) {
         // Update profile fields opportunistically (best-effort; never block booking creation).
         const { data: existingProfile } = await supabase
           .from('profiles')
-          .select('combat_primary_discipline, combat_disciplines')
+          .select('combat_primary_discipline, combat_disciplines, combat_skill_level')
           .eq('id', user.id)
           .maybeSingle()
 
@@ -252,11 +281,18 @@ export async function POST(request: NextRequest) {
           ? Array.from(new Set([...existingDisciplines, disciplineNorm]))
           : existingDisciplines
 
+        const skillFromBooking = allowedExperience.has(resolvedExperienceLevel)
+          ? resolvedExperienceLevel
+          : null
+
         await supabase
           .from('profiles')
           .update({
             combat_primary_discipline: disciplineNorm || null,
             combat_disciplines: mergedDisciplines.length > 0 ? mergedDisciplines : null,
+            ...(existingProfile?.combat_skill_level || !skillFromBooking
+              ? {}
+              : { combat_skill_level: skillFromBooking }),
           })
           .eq('id', user.id)
 
