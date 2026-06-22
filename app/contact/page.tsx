@@ -6,8 +6,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  CREATOR_PROGRAM_MESSAGE_PROMPT,
+  CREATOR_PROGRAM_SUBJECT,
+  validateContactMessage,
+} from '@/lib/contact-form'
 
 export default function ContactPage() {
+  const [isCreatorProgram, setIsCreatorProgram] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,13 +27,17 @@ export default function ContactPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const intent = params.get('intent')
     const subject = params.get('subject')
-    const message = params.get('message')
-    if (!subject && !message) return
+    const creatorProgram =
+      intent === 'creator-program' || subject === CREATOR_PROGRAM_SUBJECT
+
+    setIsCreatorProgram(creatorProgram)
+    if (!creatorProgram && !subject) return
+
     setFormData(prev => ({
       ...prev,
-      subject: subject || prev.subject,
-      message: message || prev.message,
+      subject: creatorProgram ? CREATOR_PROGRAM_SUBJECT : subject || prev.subject,
     }))
   }, [])
 
@@ -43,6 +53,15 @@ export default function ContactPage() {
     setLoading(true)
     setError('')
     setSuccess(false)
+
+    const messageError = validateContactMessage(formData.message, {
+      creatorProgram: isCreatorProgram,
+    })
+    if (messageError) {
+      setError(messageError)
+      setLoading(false)
+      return
+    }
 
     try {
       const response = await fetch('/api/contact', {
@@ -79,10 +98,13 @@ export default function ContactPage() {
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Customer service</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {isCreatorProgram ? 'Apply to the Creator Program' : 'Customer service'}
+          </h1>
           <p className="text-base text-gray-600">
-            Bookings, payments, and account questions — send a message below. We aim to reply within one business day;
-            include your booking reference when you have one so we can help faster.
+            {isCreatorProgram
+              ? 'Tell us about your audience and channels. We review every application personally and aim to reply within one business day.'
+              : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
           </p>
         </div>
 
@@ -91,15 +113,20 @@ export default function ContactPage() {
           <div className="md:col-span-2">
             <Card className="border border-gray-200 rounded-lg shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl font-semibold text-gray-900">Send us a message</CardTitle>
+                <CardTitle className="text-xl font-semibold text-gray-900">
+                  {isCreatorProgram ? 'Your application' : 'Send us a message'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {success ? (
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-6">
-                    <p className="text-green-800 font-semibold mb-1">Message received</p>
+                    <p className="text-green-800 font-semibold mb-1">
+                      {isCreatorProgram ? 'Application received' : 'Message received'}
+                    </p>
                     <p className="text-sm text-green-700">
-                      We&apos;ve received your message and will get back to you as soon as we can — typically within
-                      one business day.
+                      {isCreatorProgram
+                        ? 'Thanks for applying. We will review your application and get back to you as soon as we can — typically within one business day.'
+                        : 'We&apos;ve received your message and will get back to you as soon as we can — typically within one business day.'}
                     </p>
                   </div>
                 ) : null}
@@ -145,23 +172,25 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="bookingReference" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Booking Reference <span className="text-gray-500 font-normal">(if applicable)</span>
-                    </Label>
-                    <Input
-                      id="bookingReference"
-                      name="bookingReference"
-                      type="text"
-                      value={formData.bookingReference}
-                      onChange={handleChange}
-                      className="h-11 border-gray-300 focus:border-[#003580] focus:ring-[#003580]"
-                      placeholder="BK-XXXX"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Include your booking reference if your inquiry is about an existing booking
-                    </p>
-                  </div>
+                  {!isCreatorProgram ? (
+                    <div>
+                      <Label htmlFor="bookingReference" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Booking Reference <span className="text-gray-500 font-normal">(if applicable)</span>
+                      </Label>
+                      <Input
+                        id="bookingReference"
+                        name="bookingReference"
+                        type="text"
+                        value={formData.bookingReference}
+                        onChange={handleChange}
+                        className="h-11 border-gray-300 focus:border-[#003580] focus:ring-[#003580]"
+                        placeholder="BK-XXXX"
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        Include your booking reference if your inquiry is about an existing booking
+                      </p>
+                    </div>
+                  ) : null}
 
                   <div>
                     <Label htmlFor="subject" className="text-sm font-medium text-gray-700 mb-2 block">
@@ -172,16 +201,17 @@ export default function ContactPage() {
                       name="subject"
                       type="text"
                       required
+                      readOnly={isCreatorProgram}
                       value={formData.subject}
                       onChange={handleChange}
-                      className="h-11 border-gray-300 focus:border-[#003580] focus:ring-[#003580]"
+                      className="h-11 border-gray-300 focus:border-[#003580] focus:ring-[#003580] read-only:bg-gray-50 read-only:text-gray-600"
                       placeholder="What is your inquiry about?"
                     />
                   </div>
 
                   <div>
                     <Label htmlFor="message" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Message *
+                      {isCreatorProgram ? 'About you and your audience *' : 'Message *'}
                     </Label>
                     <Textarea
                       id="message"
@@ -191,8 +221,17 @@ export default function ContactPage() {
                       onChange={handleChange}
                       rows={8}
                       className="resize-none border-gray-300 focus:border-[#003580] focus:ring-[#003580]"
-                      placeholder="Please provide as much detail as possible so we can assist you better..."
+                      placeholder={
+                        isCreatorProgram
+                          ? CREATOR_PROGRAM_MESSAGE_PROMPT
+                          : 'Please provide as much detail as possible so we can assist you better...'
+                      }
                     />
+                    {isCreatorProgram ? (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Include your audience size, main channels, and how you would like to partner with CombatStay.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="pt-2">
@@ -201,7 +240,15 @@ export default function ContactPage() {
                       disabled={loading || success}
                       className="w-full bg-[#003580] hover:bg-[#003580]/90 text-white font-medium h-11 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {loading ? 'Sending...' : success ? 'Message Sent' : 'Send Message'}
+                      {loading
+                        ? 'Sending...'
+                        : success
+                          ? isCreatorProgram
+                            ? 'Application Sent'
+                            : 'Message Sent'
+                          : isCreatorProgram
+                            ? 'Submit application'
+                            : 'Send Message'}
                     </Button>
                   </div>
                 </form>

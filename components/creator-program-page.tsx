@@ -4,8 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 
-const contactHref =
-  '/contact?subject=Creator%20Program&message=Tell%20us%20about%20your%20audience%2C%20channels%2C%20and%20how%20you%27d%20like%20to%20work%20with%20CombatStay.'
+const contactHref = '/contact?intent=creator-program'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 

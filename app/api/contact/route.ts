@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  isCreatorProgramSubject,
+  validateContactMessage,
+} from '@/lib/contact-form'
 
 /**
  * Contact support endpoint - sends email to admin
@@ -14,6 +18,12 @@ export async function POST(request: NextRequest) {
         { error: 'All fields are required' },
         { status: 400 }
       )
+    }
+
+    const creatorProgram = isCreatorProgramSubject(subject)
+    const messageError = validateContactMessage(message, { creatorProgram })
+    if (messageError) {
+      return NextResponse.json({ error: messageError }, { status: 400 })
     }
 
     const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL
