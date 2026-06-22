@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import {
+  BarChart3,
   Banknote,
   Building2,
   ClipboardList,
@@ -68,6 +69,12 @@ function buildNav(counts: AdminSidebarProps['counts']): {
         label: 'Overview',
         icon: Home,
         isActive: (p) => p === '/admin',
+      },
+      {
+        href: '/admin/analytics',
+        label: 'Insights',
+        icon: BarChart3,
+        isActive: (p) => p === '/admin/analytics' || p.startsWith('/admin/analytics/'),
       },
       {
         href: ADMIN_CREATE_GYM_ONBOARDING_HREF,

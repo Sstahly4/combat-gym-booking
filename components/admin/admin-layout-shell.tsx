@@ -23,6 +23,7 @@ interface SidebarCounts {
 
 function adminSectionTitle(pathname: string): string {
   if (pathname === '/admin') return 'Overview'
+  if (pathname.startsWith('/admin/analytics')) return 'Insights'
   if (pathname.startsWith('/admin/verification')) return 'Verification'
   if (pathname.startsWith('/admin/gyms/bulk-import')) return 'Bulk import'
   if (pathname.startsWith('/admin/bookings')) return 'Bookings'
