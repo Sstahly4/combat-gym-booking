@@ -120,7 +120,6 @@ export function PackageSeasonalPricingPanel({
 
   const todayMin = isoTodayLocal()
   const isEvent = pkg.offer_type === 'TYPE_ONE_TIME_EVENT'
-  const isDropIn = pkg.offer_type === 'TYPE_DROP_IN'
 
   const scopeOptions = useMemo((): SeasonalVariantOption[] => {
     if (variantOptions.length > 0) return variantOptions
@@ -153,7 +152,7 @@ export function PackageSeasonalPricingPanel({
   }, [isLocalMode, pkg.id])
 
   useEffect(() => {
-    if (isEvent || isDropIn) {
+    if (isEvent) {
       setLoading(false)
       return
     }
@@ -162,7 +161,7 @@ export function PackageSeasonalPricingPanel({
       return
     }
     void loadRates()
-  }, [isEvent, isDropIn, isLocalMode, loadRates])
+  }, [isEvent, isLocalMode, loadRates])
 
   const selectedScope = useMemo(() => {
     if (!form.variant_id) return null
@@ -313,13 +312,12 @@ export function PackageSeasonalPricingPanel({
     setSaving(false)
   }
 
-  if (isEvent || isDropIn) {
+  if (isEvent) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-10 text-center">
         <p className="text-sm text-gray-600">
-          {isDropIn
-            ? 'Drop-in sessions use a flat visit price. Seasonal rates apply to multi-day training and stay packages.'
-            : 'Seasonal rates apply to multi-day training and stay packages. One-time event tickets use fixed tier pricing instead.'}
+          Seasonal rates apply to multi-day training and stay packages. One-time event tickets use
+          fixed tier pricing instead.
         </p>
       </div>
     )

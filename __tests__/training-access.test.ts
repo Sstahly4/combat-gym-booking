@@ -14,7 +14,6 @@ describe('offerTypeUsesTrainingAccess', () => {
 
   it('excludes one-time events', () => {
     expect(offerTypeUsesTrainingAccess('TYPE_ONE_TIME_EVENT')).toBe(false)
-    expect(offerTypeUsesTrainingAccess('TYPE_DROP_IN')).toBe(false)
   })
 })
 

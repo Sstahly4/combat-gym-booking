@@ -227,7 +227,6 @@ export type CanonicalOfferType =
   | 'TYPE_ALL_INCLUSIVE'
   | 'TYPE_CUSTOM_EXP'
   | 'TYPE_ONE_TIME_EVENT'
-  | 'TYPE_DROP_IN'
 
 export interface Package {
   id: string
@@ -292,8 +291,6 @@ export interface Package {
   event_date?: string | null
   event_end_date?: string | null
   max_attendees?: number | null
-  /** Max drop-in bookings per visit day (NULL = unlimited). Used for TYPE_DROP_IN. */
-  daily_capacity?: number | null
   created_at: string
   updated_at: string
   variants?: PackageVariant[]

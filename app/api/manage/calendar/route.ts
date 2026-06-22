@@ -4,8 +4,6 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
-import { OCCUPYING_BOOKING_STATUSES } from '@/lib/booking/occupying-statuses'
-import { bookingOccupiedDates } from '@/lib/packages/drop-in-capacity'
 
 /**
  * Owner calendar API.
@@ -45,7 +43,17 @@ const upsertSchema = z
   )
 
 /** Booking statuses that occupy a spot on a given date. */
-const OCCUPYING_STATUSES = OCCUPYING_BOOKING_STATUSES
+const OCCUPYING_STATUSES = [
+  'pending',
+  'gym_confirmed',
+  'confirmed',
+  'paid',
+  'completed',
+  // legacy
+  'pending_payment',
+  'pending_confirmation',
+  'awaiting_approval',
+] as const
 
 async function assertOwnsGym(
   access: Awaited<ReturnType<typeof getOwnerAccessContext>>,
@@ -74,6 +82,19 @@ function diffDays(fromIso: string, toIso: string): number {
   const a = Date.UTC(fy, fm - 1, fd)
   const b = Date.UTC(ty, tm - 1, td)
   return Math.round((b - a) / 86_400_000)
+}
+
+/** Inclusive visit days; same-day training bookings count as one spot. */
+function bookingOccupiedDates(start: string, end: string): string[] {
+  if (!start || !end || end < start) return []
+  const dates: string[] = []
+  let d = start
+  while (d <= end) {
+    dates.push(d)
+    if (d === end) break
+    d = addDaysISO(d, 1)
+  }
+  return dates
 }
 
 export async function GET(request: NextRequest) {

@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe, PLATFORM_COMMISSION_RATE } from '@/lib/stripe'
 import { computeBreakdownForStay } from '@/lib/booking/resolve-booking-price'
-import { assertDropInCapacityAvailable } from '@/lib/packages/drop-in-capacity'
 import {
   cancellationPolicyToStripeMetadata,
   resolveCancellationPolicy,
@@ -13,7 +12,6 @@ import {
   BOOKING_DATES_EXPIRED_ERROR,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
-import { isDropInPackage, validateDropInBookingDates } from '@/lib/packages/drop-in'
 
 /**
  * Fetch a single booking with its related gym/package/variant.
@@ -109,7 +107,7 @@ export async function PATCH(
         `
         *,
         gym:gyms(cancellation_policy_tone),
-        package:packages(id, type, offer_type, daily_capacity, price_per_day, price_per_week, price_per_month, cancellation_policy_days),
+        package:packages(id, type, price_per_day, price_per_week, price_per_month, cancellation_policy_days),
         variant:package_variants(id, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month)
       `
       )
@@ -134,8 +132,6 @@ export async function PATCH(
     const pkg = booking.package as {
       id: string
       type: 'training' | 'accommodation' | 'all_inclusive'
-      offer_type?: string | null
-      daily_capacity?: number | null
       price_per_day: number | null
       price_per_week: number | null
       price_per_month: number | null
@@ -146,29 +142,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Booking package not found' }, { status: 400 })
     }
 
-    const dropInDateError = validateDropInBookingDates(pkg.offer_type, start_date, end_date)
-    if (dropInDateError) {
-      return NextResponse.json({ error: dropInDateError }, { status: 400 })
-    }
-
-    if (
-      !isDropInPackage({ offer_type: pkg.offer_type }) &&
-      pkg.type !== 'training' &&
-      new Date(end_date) <= new Date(start_date)
-    ) {
+    if (pkg.type !== 'training' && new Date(end_date) <= new Date(start_date)) {
       return NextResponse.json({ error: 'checkout must be after checkin' }, { status: 400 })
-    }
-
-    const dbForRates = booking.user_id && user ? supabase : createAdminClient()
-    const capacityCheck = await assertDropInCapacityAvailable(createAdminClient(), {
-      packageId: pkg.id,
-      offerType: pkg.offer_type,
-      dailyCapacity: pkg.daily_capacity,
-      visitDate: start_date,
-      excludeBookingId: bookingId,
-    })
-    if (!capacityCheck.ok) {
-      return NextResponse.json({ error: capacityCheck.error }, { status: 409 })
     }
 
     const variant = booking.variant as {
@@ -186,6 +161,7 @@ export async function PATCH(
         ? booking.training_tier
         : 'twice_daily'
 
+    const dbForRates = booking.user_id && user ? supabase : createAdminClient()
     const { data: seasonalRows } = await dbForRates
       .from('package_seasonal_rates')
       .select('*')

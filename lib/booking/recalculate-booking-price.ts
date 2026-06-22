@@ -26,8 +26,7 @@ export function computeBookingPriceFromDates(
 
   if (isTraining) {
     if (nights < 0) return null
-    const duration = nights + 1
-    return calculatePackagePrice(duration, package_.type, {
+    return calculatePackagePrice(nights + 1, package_.type, {
       daily: variant?.price_per_day ?? package_.price_per_day,
       weekly: variant?.price_per_week ?? package_.price_per_week,
       monthly: variant?.price_per_month ?? package_.price_per_month,

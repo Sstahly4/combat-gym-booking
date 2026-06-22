@@ -7,7 +7,6 @@ import {
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
 import { resolveBookingPrice } from '@/lib/booking/resolve-booking-price'
-import { assertDropInCapacityAvailable } from '@/lib/packages/drop-in-capacity'
 import { readAffiliateRefCookie } from '@/lib/affiliates/cookie'
 import { affiliatePayoutAud } from '@/lib/affiliates/commission'
 import { PLATFORM_COMMISSION_RATE } from '@/lib/affiliates/constants'
@@ -100,27 +99,6 @@ export async function POST(request: NextRequest) {
 
     if (!priceResult.ok) {
       return NextResponse.json({ error: priceResult.error }, { status: priceResult.status })
-    }
-
-    const admin = createAdminClient()
-    const { data: pkgMeta, error: pkgMetaError } = await admin
-      .from('packages')
-      .select('offer_type, daily_capacity')
-      .eq('id', package_id)
-      .single()
-
-    if (pkgMetaError || !pkgMeta) {
-      return NextResponse.json({ error: 'Package not found' }, { status: 404 })
-    }
-
-    const capacityCheck = await assertDropInCapacityAvailable(admin, {
-      packageId: package_id,
-      offerType: pkgMeta.offer_type,
-      dailyCapacity: pkgMeta.daily_capacity,
-      visitDate: start_date,
-    })
-    if (!capacityCheck.ok) {
-      return NextResponse.json({ error: capacityCheck.error }, { status: 409 })
     }
 
     const verifiedTotalPrice = priceResult.totalPrice
