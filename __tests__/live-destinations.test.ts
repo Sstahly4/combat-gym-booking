@@ -19,6 +19,21 @@ describe('live destinations', () => {
     expect(destinations.find((d) => d.name === 'Pai')?.visual).toBe('mountain')
   })
 
+  it('uses curated travel blurbs instead of gym-count inventory copy', () => {
+    const destinations = buildLiveDestinationsFromGyms([
+      { city: 'Krabi', country: 'Thailand' },
+      { city: 'Rayong', country: 'Thailand' },
+    ])
+
+    expect(destinations.find((d) => d.name === 'Krabi')?.subtitle).toBe(
+      'Quiet beaches and dramatic limestone coast',
+    )
+    expect(destinations.find((d) => d.name === 'Rayong')?.subtitle).toBe(
+      'Quiet beaches and coastal scenery',
+    )
+    expect(destinations.find((d) => d.name === 'Rayong')?.subtitle).not.toMatch(/training camp/i)
+  })
+
   it('filters destinations for typeahead queries', () => {
     const destinations = buildLiveDestinationsFromGyms([
       { city: 'Pai', country: 'Thailand' },

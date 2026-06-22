@@ -13,6 +13,16 @@ import { CategoryTabs } from '@/components/category-tabs'
 import { SearchBarRedesign } from '@/components/search-bar-redesign'
 import { SaveButton } from '@/components/save-button'
 import { parseSearchQuery, SEARCH_DISCIPLINES } from '@/lib/search/search-browse-title'
+import {
+  centroidOfGyms,
+  formatNearbyDistanceKm,
+  gymMatchesLocationQuery,
+  inferCountryFromLocationQuery,
+  isCountryOnlyLocationSearch,
+  locationSearchLabel,
+  partitionLocationSearchGyms,
+  type NearbySearchGym,
+} from '@/lib/search/search-location-results'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { SearchResultGymImageCarousel } from '@/components/search-result-gym-image-carousel'
 import { DATES_CONFIRMED_QUERY, gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
@@ -34,6 +44,7 @@ interface GymWithImages extends Gym {
   images: GymImage[]
   average_rating?: number
   review_count?: number
+  distanceKm?: number
 }
 
 /** Search list payload — explicit columns + one thumbnail image per gym (not select *). */
@@ -53,6 +64,8 @@ const SEARCH_GYM_SELECT = `
   disciplines,
   amenities,
   created_at,
+  latitude,
+  longitude,
   images:gym_images(url, variants, order)
 `
 
@@ -278,10 +291,31 @@ function ScoreBadge({ score }: { score: number }) {
 
 // ─── Main content ─────────────────────────────────────────────────────────────
 
+async function geocodeLocationAnchor(
+  query: string,
+): Promise<{ lat: number; lng: number; country: string | null } | null> {
+  try {
+    const res = await fetch(`/api/geo/address-search?q=${encodeURIComponent(query)}`)
+    if (!res.ok) return null
+    const json = (await res.json()) as {
+      results?: Array<{ lat?: string; lon?: string; country?: string | null }>
+    }
+    const hit = json.results?.[0]
+    if (!hit?.lat || !hit?.lon) return null
+    const lat = parseFloat(hit.lat)
+    const lng = parseFloat(hit.lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng, country: hit.country?.trim() || null }
+  } catch {
+    return null
+  }
+}
+
 function SearchPageContent() {
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
   const [gyms, setGyms] = useState<GymWithImages[]>([])
+  const [nearbyGyms, setNearbyGyms] = useState<NearbySearchGym<GymWithImages>[]>([])
   const [loading, setLoading] = useState(true)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
@@ -409,52 +443,124 @@ function SearchPageContent() {
   const fetchGyms = async () => {
     setLoading(true)
     const supabase = createClient()
-    let query = supabase
-      .from('gyms')
-      .select(SEARCH_GYM_SELECT)
-      .eq('verification_status', 'verified')
-      .eq('status', 'approved')
-      .eq('is_live', true)
-      .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
-      .limit(1, { foreignTable: 'gym_images' })
 
-    if (filters.location) query = query.or(`city.ilike.%${filters.location}%,country.ilike.%${filters.location}%`)
-    if (filters.country) query = query.ilike('country', `%${filters.country}%`)
-    if (filters.countries.length > 0) query = query.or(filters.countries.map(c => `country.ilike.%${c}%`).join(','))
-    if (filters.discipline) query = query.contains('disciplines', [filters.discipline])
-    if (filters.disciplines.length > 0) query = query.contains('disciplines', filters.disciplines)
-    if (filters.minPrice) query = query.gte('price_per_day', parseFloat(filters.minPrice))
-    if (filters.maxPrice) query = query.lte('price_per_day', parseFloat(filters.maxPrice))
-    if (filters.accommodation || filters.popularFilters.includes('Accommodation included')) {
-      query = query.eq('amenities->accommodation', true)
+    const applyCatalogFilters = (baseQuery: ReturnType<typeof supabase.from>) => {
+      let query = baseQuery
+        .eq('verification_status', 'verified')
+        .eq('status', 'approved')
+        .eq('is_live', true)
+        .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
+        .limit(1, { foreignTable: 'gym_images' })
+
+      if (filters.country) query = query.ilike('country', `%${filters.country}%`)
+      if (filters.countries.length > 0) {
+        query = query.or(filters.countries.map((c) => `country.ilike.%${c}%`).join(','))
+      }
+      if (filters.discipline) query = query.contains('disciplines', [filters.discipline])
+      if (filters.disciplines.length > 0) query = query.contains('disciplines', filters.disciplines)
+      if (filters.minPrice) query = query.gte('price_per_day', parseFloat(filters.minPrice))
+      if (filters.maxPrice) query = query.lte('price_per_day', parseFloat(filters.maxPrice))
+      if (filters.accommodation || filters.popularFilters.includes('Accommodation included')) {
+        query = query.eq('amenities->accommodation', true)
+      }
+      return query
     }
 
-    const { data, error } = await query
-    if (error) { console.error(error); setLoading(false); return }
+    const enrichGyms = async (gymsRaw: any[]) => {
+      const ids = gymsRaw.map((g: any) => g.id).filter(Boolean)
+      let statsByGym: Record<string, { avg: number; count: number }> = {}
+      if (ids.length > 0) {
+        const { data: reviews } = await supabase.from('reviews').select('gym_id, rating').in('gym_id', ids)
+        const byGym: Record<string, number[]> = {}
+        reviews?.forEach((r: any) => {
+          if (!r?.gym_id || typeof r.rating !== 'number') return
+          if (!byGym[r.gym_id]) byGym[r.gym_id] = []
+          byGym[r.gym_id].push(r.rating)
+        })
+        Object.entries(byGym).forEach(([gymId, ratings]) => {
+          statsByGym[gymId] = { avg: ratings.reduce((s, n) => s + n, 0) / ratings.length, count: ratings.length }
+        })
+      }
 
-    const gymsRaw = data || []
-    const ids = gymsRaw.map((g: any) => g.id).filter(Boolean)
-    let statsByGym: Record<string, { avg: number; count: number }> = {}
-    if (ids.length > 0) {
-      const { data: reviews } = await supabase.from('reviews').select('gym_id, rating').in('gym_id', ids)
-      const byGym: Record<string, number[]> = {}
-      reviews?.forEach((r: any) => {
-        if (!r?.gym_id || typeof r.rating !== 'number') return
-        if (!byGym[r.gym_id]) byGym[r.gym_id] = []
-        byGym[r.gym_id].push(r.rating)
-      })
-      Object.entries(byGym).forEach(([gymId, ratings]) => {
-        statsByGym[gymId] = { avg: ratings.reduce((s, n) => s + n, 0) / ratings.length, count: ratings.length }
-      })
+      return gymsRaw.map((gym: any) => ({
+        ...gym,
+        images: (gym.images || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0)),
+        average_rating: statsByGym[gym.id]?.avg || 0,
+        review_count: statsByGym[gym.id]?.count || 0,
+      })) as GymWithImages[]
     }
 
-    setGyms(gymsRaw.map((gym: any) => ({
-      ...gym,
-      images: (gym.images || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0)),
-      average_rating: statsByGym[gym.id]?.avg || 0,
-      review_count: statsByGym[gym.id]?.count || 0,
-    })))
-    setLoading(false)
+    const locationQuery = filters.location.trim()
+    const useNearbyExpansion = Boolean(locationQuery) && !isCountryOnlyLocationSearch(locationQuery)
+
+    try {
+      if (useNearbyExpansion) {
+        let country = inferCountryFromLocationQuery(locationQuery)
+        let anchor = await geocodeLocationAnchor(locationQuery)
+
+        if (!country && anchor?.country) {
+          country = inferCountryFromLocationQuery(anchor.country) ?? anchor.country
+        }
+
+        let regionalQuery = applyCatalogFilters(supabase.from('gyms').select(SEARCH_GYM_SELECT))
+        if (country) {
+          regionalQuery = regionalQuery.ilike('country', `%${country}%`)
+        } else {
+          regionalQuery = regionalQuery.or(
+            `city.ilike.%${locationQuery}%,country.ilike.%${locationQuery}%`,
+          )
+        }
+
+        const { data, error } = await regionalQuery
+        if (error) {
+          console.error(error)
+          setGyms([])
+          setNearbyGyms([])
+          return
+        }
+
+        const enriched = await enrichGyms(data || [])
+        const primaryMatches = enriched.filter((g) => gymMatchesLocationQuery(g, locationQuery))
+
+        const centroid = centroidOfGyms(primaryMatches)
+        let resolvedAnchor = centroid ?? (anchor ? { lat: anchor.lat, lng: anchor.lng } : null)
+        if (!resolvedAnchor && country) {
+          const geo = await geocodeLocationAnchor(`${locationSearchLabel(locationQuery)}, ${country}`)
+          if (geo) resolvedAnchor = { lat: geo.lat, lng: geo.lng }
+        }
+
+        if (resolvedAnchor) {
+          const { primary, nearby } = partitionLocationSearchGyms(enriched, {
+            locationQuery,
+            anchor: resolvedAnchor,
+          })
+          setGyms(primary)
+          setNearbyGyms(nearby)
+        } else {
+          setGyms(primaryMatches)
+          setNearbyGyms([])
+        }
+        return
+      }
+
+      let query = applyCatalogFilters(supabase.from('gyms').select(SEARCH_GYM_SELECT))
+      if (locationQuery) {
+        query = query.or(`city.ilike.%${locationQuery}%,country.ilike.%${locationQuery}%`)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        console.error(error)
+        setGyms([])
+        setNearbyGyms([])
+        return
+      }
+
+      setGyms(await enrichGyms(data || []))
+      setNearbyGyms([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleFilterChange = (key: string, value: any) =>
@@ -529,6 +635,18 @@ function SearchPageContent() {
       return r >= min
     })
   }, [sortedGyms, filters.minRating])
+
+  const filteredNearbyByRating = useMemo(() => {
+    if (!filters.minRating) return nearbyGyms
+    const min = parseFloat(filters.minRating)
+    return nearbyGyms.filter((g) => {
+      const r = (g.review_count || 0) > 0 ? (g.average_rating || 0) : 3.5
+      return r >= min
+    })
+  }, [nearbyGyms, filters.minRating])
+
+  const locationLabel = locationSearchLabel(filters.location)
+  const totalVisibleResults = filteredByRating.length + filteredNearbyByRating.length
 
   // ─── Sidebar ──────────────────────────────────────────────────────────────
   const sidebar = (
@@ -673,6 +791,8 @@ function SearchPageContent() {
     const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
     const { tagline: mobileTagline, facts: mobileFacts } = buildMobileCardLines(gym)
     const mobileTitle = (gym.name || '').trim() || 'Gym'
+    const distanceHint =
+      typeof gym.distanceKm === 'number' ? formatNearbyDistanceKm(gym.distanceKm) : null
 
     return (
       <div
@@ -721,6 +841,9 @@ function SearchPageContent() {
               <p className="mt-[4px] min-w-0 truncate text-[13px] leading-tight text-gray-500">{mobileTagline}</p>
               {/* Line 2: scannable facts chips — 4px below tagline */}
               <p className="mt-[4px] min-w-0 truncate text-[12px] leading-tight text-gray-500">{mobileFacts}</p>
+              {distanceHint ? (
+                <p className="mt-[4px] min-w-0 truncate text-[12px] leading-tight text-gray-500">{distanceHint}</p>
+              ) : null}
               {/* Price block — 10px below fact chips to separate data blocks */}
               <div className="mt-[10px] flex items-end justify-between gap-3">
                 <div className="min-w-0">
@@ -780,6 +903,12 @@ function SearchPageContent() {
                 <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
                   <MapPin className="w-3 h-3 flex-shrink-0" />
                   <span className="truncate">{gym.city}, {gym.country}</span>
+                  {distanceHint ? (
+                    <>
+                      <span className="text-gray-300 mx-1">•</span>
+                      <span className="whitespace-nowrap text-gray-500">{distanceHint}</span>
+                    </>
+                  ) : null}
                   <span className="text-gray-300 mx-1">•</span>
                   <a
                     href={mapHref}
@@ -959,8 +1088,16 @@ function SearchPageContent() {
                     <span className="text-gray-400 text-base font-normal">Searching…</span>
                   ) : (
                     <>
-                      {filters.location ? <>{filters.location}: </> : null}
-                      {filteredByRating.length} {filteredByRating.length === 1 ? 'gym' : 'gyms'} found
+                      {filters.location ? <>{locationLabel}: </> : null}
+                      {filteredByRating.length > 0 ? (
+                        <>
+                          {filteredByRating.length} {filteredByRating.length === 1 ? 'gym' : 'gyms'} found
+                        </>
+                      ) : filteredNearbyByRating.length > 0 ? (
+                        <>showing nearby gyms</>
+                      ) : (
+                        <>0 gyms found</>
+                      )}
                     </>
                   )}
                 </h1>
@@ -1032,7 +1169,7 @@ function SearchPageContent() {
                     </div>
                   ))}
                 </div>
-              ) : filteredByRating.length === 0 ? (
+              ) : filteredByRating.length === 0 && filteredNearbyByRating.length === 0 ? (
                 <div className="bg-white border border-gray-200 rounded-xl p-12 text-center text-gray-500">
                   <Search className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                   <p className="font-semibold text-gray-700">No gyms found</p>
@@ -1043,7 +1180,20 @@ function SearchPageContent() {
                 </div>
               ) : (
                 <div className="space-y-10 sm:space-y-3">
-                  {filteredByRating.map(gym => renderCard(gym))}
+                  {filteredByRating.map((gym) => renderCard(gym))}
+                  {filteredNearbyByRating.length > 0 ? (
+                    <div className="pt-8 sm:pt-6 border-t border-gray-200 space-y-6 sm:space-y-3">
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900">
+                          More gyms near {locationLabel || filters.location}
+                        </h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Within about 150 km — options travelers often compare when planning a trip.
+                        </p>
+                      </div>
+                      {filteredNearbyByRating.map((gym) => renderCard(gym))}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </main>
@@ -1073,7 +1223,7 @@ function SearchPageContent() {
                   onClick={() => setMobileFiltersOpen(false)}
                   className="w-full bg-[#006ce4] hover:bg-[#0057b8] text-white font-bold py-3 rounded text-sm transition-colors"
                 >
-                  Show {filteredByRating.length} result{filteredByRating.length !== 1 ? 's' : ''}
+                  Show {totalVisibleResults} result{totalVisibleResults !== 1 ? 's' : ''}
                 </button>
               </div>
             </div>

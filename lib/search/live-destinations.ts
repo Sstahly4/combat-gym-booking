@@ -54,8 +54,33 @@ const CITY_SUBTITLES: Record<string, string> = {
   'koh samui': 'Island training with beach-town energy',
   'koh phangan': 'Island stays close to Gulf beaches',
   'koh tao': 'Small island with a tight-knit camp scene',
+  'koh lanta': 'Laid-back island with long sandy beaches',
   bali: 'Tropical island with a huge camp scene',
+  canggu: 'Surf town with a growing fight-camp scene',
+  ubud: 'Jungle hills and wellness-minded stays',
   'hua hin': 'Coastal town with a relaxed pace',
+  'chiang rai': 'Northern hills and a quieter rhythm',
+  singapore: 'Compact city with world-class facilities',
+  'kuala lumpur': 'Modern city hub in Southeast Asia',
+  'ho chi minh': 'Bustling city with street-food culture',
+  hanoi: 'Historic capital with old-quarter charm',
+  manila: 'Metro hub with easy island hops nearby',
+  jakarta: 'Sprawling capital with diverse gym options',
+  'da nang': 'Coastal city with beach and mountain views',
+  'nha trang': 'Beach resort city on the south coast',
+  sydney: 'Harbour city with strong combat-sports gyms',
+  melbourne: 'Culture-forward city with serious training',
+  london: 'Major hub for MMA, boxing, and BJJ',
+  dubai: 'Luxury city stays with premium facilities',
+}
+
+/** OTA-style vibe lines when we do not have a curated city blurb (Airbnb shows place character, not inventory). */
+const VISUAL_SUBTITLES: Record<DestinationVisual, string> = {
+  island: 'Island beaches and tropical stays',
+  metro: 'City culture, markets, and easy transit',
+  coast: 'Quiet beaches and coastal scenery',
+  beachTown: 'Beach resorts and lively waterfront',
+  mountain: 'Mountain air and a slower pace',
 }
 
 const CITY_IMAGES: Record<string, string> = {
@@ -105,11 +130,20 @@ export function inferDestinationVisual(city: string, country: string): Destinati
   return 'coast'
 }
 
-function destinationSubtitle(city: string, country: string, gymCount: number): string {
-  const custom = CITY_SUBTITLES[normalizeKey(city)]
+function lookupCuratedCitySubtitle(city: string): string | undefined {
+  const key = normalizeKey(city)
+  const exact = CITY_SUBTITLES[key]
+  if (exact) return exact
+  for (const [curated, subtitle] of Object.entries(CITY_SUBTITLES)) {
+    if (curated.length >= 4 && key.includes(curated)) return subtitle
+  }
+  return undefined
+}
+
+function destinationSubtitle(city: string, country: string): string {
+  const custom = lookupCuratedCitySubtitle(city)
   if (custom) return custom
-  const place = country ? `${city}, ${country}` : city
-  return `${gymCount} training camp${gymCount === 1 ? '' : 's'} in ${place}`
+  return VISUAL_SUBTITLES[inferDestinationVisual(city, country)]
 }
 
 function destinationImage(city: string): string {
@@ -140,7 +174,7 @@ export function buildLiveDestinationsFromGyms(
       name: city,
       country,
       gymCount: count,
-      subtitle: destinationSubtitle(city, country, count),
+      subtitle: destinationSubtitle(city, country),
       visual: inferDestinationVisual(city, country),
       flag: countryFlagEmoji(country),
       image: destinationImage(city),

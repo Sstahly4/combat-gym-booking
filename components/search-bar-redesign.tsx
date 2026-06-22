@@ -335,8 +335,6 @@ export function SearchBarRedesign({
   const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([])
   const [gymSuggestions, setGymSuggestions] = useState<GymSuggestRow[]>([])
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
-  /** True when every hit was pg_trgm fuzzy (no substring match on name or aliases). */
-  const [gymDidYouMean, setGymDidYouMean] = useState(false)
   const [liveDestinations, setLiveDestinations] = useState<LiveDestination[]>([])
 
   useEffect(() => { setMounted(true) }, [])
@@ -827,32 +825,27 @@ export function SearchBarRedesign({
     if (activeCategory === 'seminars') {
       setGymSuggestions([])
       setGymSuggestLoading(false)
-      setGymDidYouMean(false)
       return
     }
     const q = whereQuery.trim()
     if (q.length < 2) {
       setGymSuggestions([])
       setGymSuggestLoading(false)
-      setGymDidYouMean(false)
       return
     }
 
     const ac = new AbortController()
     const t = window.setTimeout(async () => {
       setGymSuggestLoading(true)
-      setGymDidYouMean(false)
       try {
         const res = await fetch(`/api/gyms/suggest?q=${encodeURIComponent(q)}`, { signal: ac.signal })
-        const json = (await res.json()) as { gyms?: GymSuggestRow[]; did_you_mean?: boolean }
+        const json = (await res.json()) as { gyms?: GymSuggestRow[] }
         if (!ac.signal.aborted) {
           setGymSuggestions(Array.isArray(json.gyms) ? json.gyms : [])
-          setGymDidYouMean(Boolean(json.did_you_mean))
         }
       } catch {
         if (!ac.signal.aborted) {
           setGymSuggestions([])
-          setGymDidYouMean(false)
         }
       } finally {
         if (!ac.signal.aborted) setGymSuggestLoading(false)
@@ -1155,15 +1148,6 @@ export function SearchBarRedesign({
         <p className={`${titleMb} font-semibold uppercase tracking-widest text-gray-400 ${titleSize}`}>
           Gyms on CombatStay
         </p>
-        {gymDidYouMean && gymSuggestions.length > 0 ? (
-          <p
-            className={`mb-2 rounded-lg bg-[#003580]/5 px-2.5 py-2 text-[#003580] ${
-              variant === 'desktop' ? 'text-xs leading-snug' : mobileCompact ? 'text-[11px] leading-snug' : 'text-[13px] leading-snug'
-            }`}
-          >
-            No exact name match — showing similar gyms (fuzzy match on our catalog).
-          </p>
-        ) : null}
         {gymSuggestLoading ? (
           <p className={`text-gray-500 ${mobileCompact ? 'text-xs' : 'text-sm'}`}>Searching gyms…</p>
         ) : gymSuggestions.length > 0 ? (
