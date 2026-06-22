@@ -12,7 +12,8 @@ import { calculatePackagePrice } from '@/lib/utils'
 import { packageShowsFreeCancellation } from '@/lib/manage/package-cancellation-policy-presets'
 import {
   offerTypeUsesTrainingAccess,
-  trainingAccessCardLabel,
+  getTravelerTrainingTierOptions,
+  travelerSessionCardLabel,
 } from '@/lib/packages/training-access'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
 import {
@@ -346,9 +347,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
             const activeAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 5)
 
-            const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
-              ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
-              : null
+            const trainingSessionLabel =
+              pkg.type === 'training' || offerTypeUsesTrainingAccess(pkg.offer_type)
+                ? travelerSessionCardLabel(getTravelerTrainingTierOptions(pkg, null))
+                : null
 
             return (
               <Card 
@@ -376,10 +378,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         
                         {/* Facility Icons - Small icons row */}
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {trainingAccessLabel && (
+                          {trainingSessionLabel && (
                             <div className="flex items-center gap-1 text-xs text-gray-600">
                               <Dumbbell className="w-3.5 h-3.5" />
-                              <span>{trainingAccessLabel}</span>
+                              <span>{trainingSessionLabel}</span>
                             </div>
                           )}
                           {pkg.includes_accommodation && (
@@ -575,10 +577,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                       
                         {/* Plan Extras - Booking.com Style */}
                       <div className="flex flex-wrap gap-2 md:gap-4 pt-2">
-                        {trainingAccessLabel && (
+                        {trainingSessionLabel && (
                           <div className="flex items-center gap-1.5 text-xs md:text-sm text-green-700 font-medium">
                             <Check className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                            <span>{trainingAccessLabel}</span>
+                            <span>{trainingSessionLabel}</span>
                           </div>
                         )}
                         {pkg.includes_accommodation && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
+import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,18 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
-import { offersOnceDailyTrainingChoice, parseTrainingTier, type TrainingTier } from '@/lib/packages/training-access'
+import {
+  parseTrainingTier,
+  getTravelerTrainingTierOptions,
+  travelerCanChooseTrainingSession,
+  resolveEffectiveTrainingTier,
+  travelerSessionLabel,
+  type TrainingTier,
+} from '@/lib/packages/training-access'
+import {
+  TrainingSessionInlineChoice,
+  TrainingSessionSheet,
+} from '@/components/booking/training-session-picker'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
   prepareCheckoutExitToGym,
@@ -222,6 +233,7 @@ function BookingSummaryPageContent() {
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self')
   const [addressCopied, setAddressCopied] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [trainingSessionSheetOpen, setTrainingSessionSheetOpen] = useState(false)
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null)
   const [hasSeasonalOverlap, setHasSeasonalOverlap] = useState(false)
   // Tracks when initial data load is done; prevents persist from overwriting restored data.
@@ -250,8 +262,9 @@ function BookingSummaryPageContent() {
       const backCheckin = checkin || searchParams.get('checkin') || ''
       const backCheckout = checkout || searchParams.get('checkout') || ''
       const backVariantId = variant?.id || searchParams.get('variantId') || undefined
-      const backTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
-        ? trainingTier
+      const backOptions = getTravelerTrainingTierOptions(package_, variant)
+      const backTrainingTier = backOptions
+        ? resolveEffectiveTrainingTier(backOptions, trainingTier)
         : undefined
 
       writeBookingPrefill({
@@ -533,7 +546,19 @@ function BookingSummaryPageContent() {
       })
     : null
 
-  const showTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
+  const trainingTierOptions = useMemo(
+    () => getTravelerTrainingTierOptions(package_, variant),
+    [package_, variant]
+  )
+  const showTrainingTier = travelerCanChooseTrainingSession(trainingTierOptions)
+  const effectiveTrainingTier = resolveEffectiveTrainingTier(trainingTierOptions, trainingTier)
+
+  useEffect(() => {
+    const resolved = resolveEffectiveTrainingTier(trainingTierOptions, trainingTier)
+    if (resolved !== trainingTier) {
+      setTrainingTier(resolved)
+    }
+  }, [trainingTierOptions, trainingTier])
 
   useEffect(() => {
     if (!package_ || !isValidDuration || !checkin || !checkout) {
@@ -560,7 +585,7 @@ function BookingSummaryPageContent() {
       pricingDuration,
       checkin,
       checkout,
-      training_tier: showTrainingTier ? trainingTier : 'twice_daily',
+      training_tier: effectiveTrainingTier,
     }).then(({ breakdown, has_seasonal_overlap }) => {
       if (!cancelled) {
         setPriceBreakdown(breakdown)
@@ -571,7 +596,7 @@ function BookingSummaryPageContent() {
     return () => {
       cancelled = true
     }
-  }, [package_, variant, checkin, checkout, isValidDuration, pricingDuration, trainingTier, showTrainingTier])
+  }, [package_, variant, checkin, checkout, isValidDuration, pricingDuration, effectiveTrainingTier])
 
   const calculatedPriceBreakdown = priceBreakdown ?? priceInfo
   const totalPrice = calculatedPriceBreakdown?.price || 0
@@ -636,7 +661,7 @@ function BookingSummaryPageContent() {
           guest_email: email,
           guest_phone: phone,
           guest_name: `${firstName} ${lastName}`,
-          training_tier: showTrainingTier ? trainingTier : 'twice_daily',
+          training_tier: effectiveTrainingTier,
         }),
       })
 
@@ -779,6 +804,21 @@ function BookingSummaryPageContent() {
                     <div className="mt-2">
                       <CheckoutSummaryFieldError>{BOOKING_DATES_EXPIRED_INLINE}</CheckoutSummaryFieldError>
                     </div>
+                  )}
+                  {trainingTierOptions && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      <span className="font-medium text-gray-800">Sessions: </span>
+                      {travelerSessionLabel(effectiveTrainingTier)}
+                      {showTrainingTier && (
+                        <button
+                          type="button"
+                          onClick={() => setTrainingSessionSheetOpen(true)}
+                          className="ml-2 text-[#003580] hover:underline font-medium"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1083,6 +1123,20 @@ function BookingSummaryPageContent() {
                     </button>
                   </div>
                 </div>
+
+                {trainingTierOptions && (
+                  <div className="space-y-3 pb-4 border-b border-gray-300">
+                    <div className="text-xs text-gray-500">Sessions per day</div>
+                    {showTrainingTier ? (
+                      <TrainingSessionInlineChoice
+                        value={trainingTier}
+                        onChange={setTrainingTier}
+                      />
+                    ) : (
+                      <div className="font-semibold">{travelerSessionLabel(effectiveTrainingTier)}</div>
+                    )}
+                  </div>
+                )}
                 
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Total length of stay:</div>
@@ -1451,6 +1505,14 @@ function BookingSummaryPageContent() {
           </Dialog>
         </>
         )}
+
+      {trainingSessionSheetOpen && showTrainingTier && (
+        <TrainingSessionSheet
+          value={trainingTier}
+          onChange={setTrainingTier}
+          onClose={() => setTrainingSessionSheetOpen(false)}
+        />
+      )}
     </div>
   )
 }

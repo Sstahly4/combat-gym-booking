@@ -137,10 +137,82 @@ export function packageShowsTrainingTierSelection(pkg: {
 }
 
 /** True when travelers can pick between full-access and once-daily at checkout. */
+export function getTravelerTrainingTierOptions(
+  pkg: {
+    type?: string | null
+    offer_type?: string | null
+    training_access?: PackageTrainingAccess | null
+    price_per_day?: number | null
+    price_per_week?: number | null
+    once_daily_price_per_day?: number | null
+  } | null
+  | undefined,
+  variant: {
+    price_per_day?: number | null
+    price_per_week?: number | null
+    once_daily_price_per_day?: number | null
+  } | null
+  | undefined
+): TrainingTierOptions | null {
+  if (!packageShowsTrainingTierSelection(pkg)) return null
+  return inferTrainingTierOptionsFromPackage({
+    training_access: pkg?.training_access,
+    price_per_day: variant?.price_per_day ?? pkg?.price_per_day,
+    price_per_week: variant?.price_per_week ?? pkg?.price_per_week,
+    once_daily_price_per_day: variant?.once_daily_price_per_day ?? pkg?.once_daily_price_per_day,
+  })
+}
+
+export function travelerCanChooseTrainingSession(
+  options: TrainingTierOptions | null | undefined
+): boolean {
+  return !!(options?.twice_daily && options?.once_daily)
+}
+
+export function lockedTravelerTrainingTier(options: TrainingTierOptions): TrainingTier {
+  if (options.once_daily && !options.twice_daily) return 'once_daily'
+  return 'twice_daily'
+}
+
+export function resolveEffectiveTrainingTier(
+  options: TrainingTierOptions | null | undefined,
+  selectedTier: TrainingTier
+): TrainingTier {
+  if (!options || (!options.once_daily && !options.twice_daily)) {
+    return TRAINING_TIER_DEFAULT
+  }
+  if (!travelerCanChooseTrainingSession(options)) {
+    return lockedTravelerTrainingTier(options)
+  }
+  if (selectedTier === 'once_daily' && options.once_daily) return 'once_daily'
+  if (selectedTier === 'twice_daily' && options.twice_daily) return 'twice_daily'
+  return lockedTravelerTrainingTier(options)
+}
+
+/** Traveler-facing session labels (single visit day or multi-day). */
+export function travelerSessionLabel(tier: TrainingTier): string {
+  return tier === 'once_daily' ? 'Single session' : 'Double session'
+}
+
+export function travelerSessionDescription(tier: TrainingTier): string {
+  return tier === 'once_daily'
+    ? 'One session on your visit day — choose morning or evening.'
+    : 'Morning and evening sessions on each training day.'
+}
+
+export function travelerSessionCardLabel(
+  options: TrainingTierOptions | null | undefined
+): string | null {
+  if (!options || (!options.once_daily && !options.twice_daily)) return null
+  if (travelerCanChooseTrainingSession(options)) return 'Single or double session'
+  return travelerSessionLabel(lockedTravelerTrainingTier(options))
+}
+
 export function offersOnceDailyTrainingChoice(
   pkg: {
     type?: string | null
     offer_type?: string | null
+    training_access?: PackageTrainingAccess | null
     price_per_day?: number | null
     price_per_week?: number | null
     once_daily_price_per_day?: number | null
@@ -153,17 +225,7 @@ export function offersOnceDailyTrainingChoice(
   } | null
   | undefined
 ): boolean {
-  if (!packageShowsTrainingTierSelection(pkg)) return false
-
-  const hasTwiceDailyTrack = variant
-    ? variant.price_per_day != null || variant.price_per_week != null
-    : pkg?.price_per_day != null || pkg?.price_per_week != null
-
-  const hasOnceDailyTrack = variant
-    ? variant.once_daily_price_per_day != null
-    : pkg?.once_daily_price_per_day != null
-
-  return hasTwiceDailyTrack && hasOnceDailyTrack
+  return travelerCanChooseTrainingSession(getTravelerTrainingTierOptions(pkg, variant))
 }
 
 /** Short label for package cards and checkout rows. */

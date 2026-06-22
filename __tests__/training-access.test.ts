@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   offerTypeUsesTrainingAccess,
   offersOnceDailyTrainingChoice,
+  getTravelerTrainingTierOptions,
+  travelerCanChooseTrainingSession,
+  resolveEffectiveTrainingTier,
+  travelerSessionCardLabel,
+  travelerSessionLabel,
   trainingAccessInclusionLabel,
   trainingAccessCardLabel,
 } from '@/lib/packages/training-access'
@@ -49,6 +54,37 @@ describe('offersOnceDailyTrainingChoice', () => {
         once_daily_price_per_day: 1500,
       })
     ).toBe(true)
+  })
+})
+
+describe('traveler session helpers', () => {
+  const trainingPkg = {
+    type: 'training' as const,
+    offer_type: 'TYPE_TRAINING_ONLY' as const,
+    training_access: 'once_daily' as const,
+    price_per_day: 1500,
+  }
+
+  it('locks once-daily when only that track is configured', () => {
+    const options = getTravelerTrainingTierOptions(trainingPkg, null)
+    expect(options).toEqual({ twice_daily: false, once_daily: true })
+    expect(travelerCanChooseTrainingSession(options)).toBe(false)
+    expect(resolveEffectiveTrainingTier(options, 'twice_daily')).toBe('once_daily')
+    expect(travelerSessionCardLabel(options)).toBe('Single session')
+  })
+
+  it('allows choice when both tracks are configured', () => {
+    const options = getTravelerTrainingTierOptions(
+      { ...trainingPkg, training_access: 'twice_daily', once_daily_price_per_day: 1200 },
+      null
+    )
+    expect(travelerCanChooseTrainingSession(options)).toBe(true)
+    expect(offersOnceDailyTrainingChoice(
+      { ...trainingPkg, training_access: 'twice_daily', once_daily_price_per_day: 1200 },
+      null
+    )).toBe(true)
+    expect(travelerSessionCardLabel(options)).toBe('Single or double session')
+    expect(travelerSessionLabel('twice_daily')).toBe('Double session')
   })
 })
 
