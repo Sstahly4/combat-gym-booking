@@ -43,6 +43,12 @@ import {
   startOfWeek,
   endOfWeek,
 } from 'date-fns'
+import {
+  filterLiveDestinations,
+  findLiveDestinationByQuery,
+  queryLooksLikeDestination,
+  type LiveDestination,
+} from '@/lib/search/live-destinations'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,44 +88,13 @@ const WHERE_RECENT_FALLBACK: Array<{ Icon: LucideIcon; bg: string; iconClass: st
   { Icon: Trees, bg: 'bg-lime-100', iconClass: 'text-lime-800' },
 ]
 
-const SUGGESTED_DESTINATIONS = [
-  {
-    name: 'Nearby',
-    subtitle: "Find what's around you",
-    type: 'nearby' as const,
-    visual: 'nearby' as const,
-  },
-  {
-    name: 'Phuket',
-    subtitle: 'Popular beach & island destination',
-    type: 'place' as const,
-    visual: 'island' as const,
-  },
-  {
-    name: 'Bangkok',
-    subtitle: 'Great for city stays and night markets',
-    type: 'place' as const,
-    visual: 'metro' as const,
-  },
-  {
-    name: 'Krabi',
-    subtitle: 'Quiet beaches and dramatic limestone coast',
-    type: 'place' as const,
-    visual: 'coast' as const,
-  },
-  {
-    name: 'Pattaya',
-    subtitle: 'Lively beach city with long resort strips',
-    type: 'place' as const,
-    visual: 'beachTown' as const,
-  },
-  {
-    name: 'Chiang Mai',
-    subtitle: 'Cooler mountain city with a slower pace',
-    type: 'place' as const,
-    visual: 'mountain' as const,
-  },
-] as const
+const NEARBY_DESTINATION = {
+  name: 'Nearby',
+  subtitle: "Find what's around you",
+  visual: 'nearby' as const,
+}
+
+const POPULAR_DESTINATIONS_LIMIT = 12
 
 type RecentSearchEntry = {
   query: string
@@ -162,49 +137,30 @@ function formatRecentSearchDateRange(checkin?: string, checkout?: string): strin
 }
 
 /** Subtitle under any Where row (recents or free text) — matches suggested copy when we recognize a place. */
-function whereRowSubtitleForLabel(raw: string): string {
+function whereRowSubtitleForLabel(raw: string, destinations: LiveDestination[]): string {
   const q = raw.trim().toLowerCase()
   if (!q) return ''
   const nearbyPhrases = ['near me', 'nearby', 'close to me', 'around me']
   if (nearbyPhrases.some((w) => q.includes(w))) {
-    return "Find what's around you"
+    return NEARBY_DESTINATION.subtitle
   }
 
-  const places = [...SUGGESTED_DESTINATIONS.filter((d) => d.type === 'place')].sort(
-    (a, b) => b.name.length - a.name.length,
-  )
-  for (const d of places) {
-    const name = d.name.toLowerCase()
-    if (
-      q === name ||
-      q.startsWith(`${name} `) ||
-      q.startsWith(`${name},`) ||
-      q.includes(`, ${name}`) ||
-      q.includes(` ${name}`) ||
-      q.includes(name)
-    ) {
-      return d.subtitle
-    }
-  }
+  const matched = findLiveDestinationByQuery(destinations, raw)
+  if (matched) return matched.subtitle
 
   if (/\bthailand\b/.test(q)) return 'Training camps and long-stay stays'
 
   return 'From your recent searches'
 }
 
-function recentSearchRowSubtitle(entry: RecentSearchEntry): string {
+function recentSearchRowSubtitle(entry: RecentSearchEntry, destinations: LiveDestination[]): string {
   const range = formatRecentSearchDateRange(entry.checkin, entry.checkout)
   if (range) return range
-  return whereRowSubtitleForLabel(entry.query)
+  return whereRowSubtitleForLabel(entry.query, destinations)
 }
 
-function isDestinationLikeWhereQuery(raw: string): boolean {
-  const q = raw.trim().toLowerCase()
-  if (!q) return false
-  const nearbyPhrases = ['near me', 'nearby', 'close to me', 'around me']
-  if (nearbyPhrases.some((w) => q.includes(w))) return true
-  if (/\bthailand\b/.test(q)) return true
-  return SUGGESTED_DESTINATIONS.some((d) => q === d.name.toLowerCase())
+function isDestinationLikeWhereQuery(raw: string, destinations: LiveDestination[]): boolean {
+  return queryLooksLikeDestination(raw, destinations)
 }
 
 function hashWhereRecentLabel(s: string): number {
@@ -213,30 +169,27 @@ function hashWhereRecentLabel(s: string): number {
   return Math.abs(h)
 }
 
-function styleForWhereLocationLabel(query: string): { Icon: LucideIcon; bg: string; iconClass: string } {
+function styleForWhereLocationLabel(
+  query: string,
+  destinations: LiveDestination[],
+): { Icon: LucideIcon; bg: string; iconClass: string } {
   const q = query.trim().toLowerCase()
   if (!q) return WHERE_LOCATION_STYLES.nearby
   const nearbyHint = ['near me', 'nearby', 'close to me', 'around me'].some((w) => q.includes(w))
   if (nearbyHint) return WHERE_LOCATION_STYLES.nearby
 
-  const places = [...SUGGESTED_DESTINATIONS.filter((d) => d.type === 'place')].sort(
-    (a, b) => b.name.length - a.name.length,
-  )
-  for (const d of places) {
-    const name = d.name.toLowerCase()
-    if (
-      q === name ||
-      q.startsWith(`${name} `) ||
-      q.startsWith(`${name},`) ||
-      q.includes(`, ${name}`) ||
-      q.includes(` ${name}`) ||
-      q.includes(name)
-    ) {
-      return WHERE_LOCATION_STYLES[d.visual]
-    }
-  }
+  const matched = findLiveDestinationByQuery(destinations, query)
+  if (matched) return WHERE_LOCATION_STYLES[matched.visual]
+
   const idx = hashWhereRecentLabel(q) % WHERE_RECENT_FALLBACK.length
   return WHERE_RECENT_FALLBACK[idx]!
+}
+
+function shouldShowNearbyDestination(query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const nearbyPhrases = ['near me', 'nearby', 'close to me', 'around me']
+  return nearbyPhrases.some((w) => q.includes(w))
 }
 
 function WhereLocationIconTile({
@@ -256,8 +209,16 @@ function WhereLocationIconTile({
   )
 }
 
-function WhereRecentSearchIconTile({ label, size }: { label: string; size: 'sm' | 'md' }) {
-  const { Icon, bg, iconClass } = styleForWhereLocationLabel(label)
+function WhereRecentSearchIconTile({
+  label,
+  size,
+  destinations,
+}: {
+  label: string
+  size: 'sm' | 'md'
+  destinations: LiveDestination[]
+}) {
+  const { Icon, bg, iconClass } = styleForWhereLocationLabel(label, destinations)
   const box = size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-xl'
   const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'
   return (
@@ -376,8 +337,25 @@ export function SearchBarRedesign({
   const [gymSuggestLoading, setGymSuggestLoading] = useState(false)
   /** True when every hit was pg_trgm fuzzy (no substring match on name or aliases). */
   const [gymDidYouMean, setGymDidYouMean] = useState(false)
+  const [liveDestinations, setLiveDestinations] = useState<LiveDestination[]>([])
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    let cancelled = false
+    void fetch('/api/destinations')
+      .then((res) => res.json())
+      .then((json: { destinations?: LiveDestination[] }) => {
+        if (!cancelled && Array.isArray(json.destinations)) {
+          setLiveDestinations(json.destinations)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [mounted])
 
   // Load recent searches from localStorage once mounted
   useEffect(() => {
@@ -806,7 +784,7 @@ export function SearchBarRedesign({
                 )}
               </div>
               <div className="flex-shrink-0">
-                {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
+                {renderGymSuggestBlock('mobile')}
               </div>
               {/* NOTE: remaining Where card content unchanged below in existing JSX */}
             </div>
@@ -816,16 +794,13 @@ export function SearchBarRedesign({
     )
   }
 
-  const mobileFilteredSuggested = useMemo(
-    () =>
-      SUGGESTED_DESTINATIONS.filter(
-        (d) =>
-          !whereQuery ||
-          d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
-          d.subtitle.toLowerCase().includes(whereQuery.toLowerCase()),
-      ),
-    [whereQuery],
-  )
+  const mobileFilteredSuggested = useMemo(() => {
+    const places = filterLiveDestinations(liveDestinations, whereQuery, POPULAR_DESTINATIONS_LIMIT)
+    if (!whereQuery.trim()) {
+      return places.length > 0 ? places : liveDestinations.slice(0, POPULAR_DESTINATIONS_LIMIT)
+    }
+    return places
+  }, [liveDestinations, whereQuery])
 
   // Close desktop dropdowns on outside click
   useEffect(() => {
@@ -1422,7 +1397,7 @@ export function SearchBarRedesign({
                 className="mb-4 w-full border-b border-gray-100 pb-3 text-sm text-gray-800 outline-none placeholder-gray-400"
               />
               {renderGymSuggestBlock('desktop')}
-              {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
+              {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery, liveDestinations)) ? (
                 <div className="mb-5">
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">
                     Recent searches
@@ -1445,10 +1420,10 @@ export function SearchBarRedesign({
                         }}
                         className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-gray-50"
                       >
-                        <WhereRecentSearchIconTile label={entry.query} size="sm" />
+                        <WhereRecentSearchIconTile label={entry.query} size="sm" destinations={liveDestinations} />
                         <div className="min-w-0 flex-1 text-left">
                           <div className="truncate text-sm font-semibold text-gray-900">{entry.query}</div>
-                          <div className="truncate text-xs text-gray-500">{recentSearchRowSubtitle(entry)}</div>
+                          <div className="truncate text-xs text-gray-500">{recentSearchRowSubtitle(entry, liveDestinations)}</div>
                         </div>
                       </button>
                     ))}
@@ -1459,17 +1434,29 @@ export function SearchBarRedesign({
                 Suggested destinations
               </p>
               <div className="space-y-0.5">
-                {SUGGESTED_DESTINATIONS.filter(
-                  (d) =>
-                    !whereQuery ||
-                    d.name.toLowerCase().includes(whereQuery.toLowerCase()) ||
-                    d.subtitle.toLowerCase().includes(whereQuery.toLowerCase())
-                ).map((dest) => (
+                {shouldShowNearbyDestination(whereQuery) ? (
                   <button
-                    key={dest.name}
+                    key="nearby"
                     type="button"
                     onClick={() => {
-                      setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                      setWhereQuery('')
+                      setActiveSlot('when')
+                    }}
+                    className="flex items-center gap-3 w-full px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
+                  >
+                    <WhereLocationIconTile visual={NEARBY_DESTINATION.visual} size="sm" />
+                    <div className="text-left">
+                      <div className="text-sm font-semibold text-gray-900">{NEARBY_DESTINATION.name}</div>
+                      <div className="text-xs text-gray-500">{NEARBY_DESTINATION.subtitle}</div>
+                    </div>
+                  </button>
+                ) : null}
+                {mobileFilteredSuggested.map((dest) => (
+                  <button
+                    key={`${dest.name}-${dest.country}`}
+                    type="button"
+                    onClick={() => {
+                      setWhereQuery(dest.name)
                       setActiveSlot('when')
                     }}
                     className="flex items-center gap-3 w-full px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
@@ -1662,8 +1649,8 @@ export function SearchBarRedesign({
                     }
                   }}
                 >
-                {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
-                {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
+                {renderGymSuggestBlock('mobile')}
+                {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery, liveDestinations)) ? (
                   <div className="mb-6 mt-1">
                     <p className="mb-3 text-[12px] font-medium text-gray-700">Recent searches</p>
                     <div className="space-y-1">
@@ -1685,11 +1672,11 @@ export function SearchBarRedesign({
                           }}
                           className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-100"
                         >
-                          <WhereRecentSearchIconTile label={entry.query} size="md" />
+                          <WhereRecentSearchIconTile label={entry.query} size="md" destinations={liveDestinations} />
                           <div className="min-w-0 flex-1">
                             <div className="text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
                             <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
-                              {recentSearchRowSubtitle(entry)}
+                              {recentSearchRowSubtitle(entry, liveDestinations)}
                             </div>
                           </div>
                         </button>
@@ -1700,12 +1687,34 @@ export function SearchBarRedesign({
                 <div>
                   <p className="mb-3 text-[12px] font-medium text-gray-700">Suggested destinations</p>
                   <div className="space-y-1">
-                    {mobileFilteredSuggested.map((dest) => (
+                    {shouldShowNearbyDestination(whereQuery) ? (
                       <button
-                        key={dest.name}
+                        key="nearby"
                         type="button"
                         onClick={() => {
-                          setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                          setWhereQuery('')
+                          setMobileWhereImmersive(false)
+                          setMobilePanel('when')
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-100"
+                      >
+                        <WhereLocationIconTile visual={NEARBY_DESTINATION.visual} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[14px] font-medium leading-tight text-gray-900">
+                            {NEARBY_DESTINATION.name}
+                          </div>
+                          <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
+                            {NEARBY_DESTINATION.subtitle}
+                          </div>
+                        </div>
+                      </button>
+                    ) : null}
+                    {mobileFilteredSuggested.map((dest) => (
+                      <button
+                        key={`${dest.name}-${dest.country}`}
+                        type="button"
+                        onClick={() => {
+                          setWhereQuery(dest.name)
                           setMobileWhereImmersive(false)
                           setMobilePanel('when')
                         }}
@@ -1812,13 +1821,13 @@ export function SearchBarRedesign({
                   </div>
 
                   <div className="flex-shrink-0">
-                    {!isDestinationLikeWhereQuery(whereQuery) ? renderGymSuggestBlock('mobile') : null}
+                    {renderGymSuggestBlock('mobile')}
                   </div>
 
                   {/* Recents + suggested: preview with fade; immersive = full list */}
                   {((recentSearches.length > 0 && !whereQuery.trim()) || mobileFilteredSuggested.length > 0) ? (
                     <div className="relative mt-1 overflow-hidden max-h-[min(44dvh,20rem)] pb-4">
-                      {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery)) ? (
+                      {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery, liveDestinations)) ? (
                         <div className="mb-3 flex-shrink-0">
                           <p className="mb-2 text-[12px] font-medium text-gray-700">Recent searches</p>
                           <div className="space-y-1">
@@ -1839,11 +1848,11 @@ export function SearchBarRedesign({
                                 }}
                                 className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-50"
                               >
-                                <WhereRecentSearchIconTile label={entry.query} size="md" />
+                                <WhereRecentSearchIconTile label={entry.query} size="md" destinations={liveDestinations} />
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">
-                                    {recentSearchRowSubtitle(entry)}
+                                    {recentSearchRowSubtitle(entry, liveDestinations)}
                                   </div>
                                 </div>
                               </button>
@@ -1865,10 +1874,10 @@ export function SearchBarRedesign({
                           <div className="space-y-1">
                             {mobileFilteredSuggested.slice(0, 8).map((dest) => (
                               <button
-                                key={dest.name}
+                                key={`${dest.name}-${dest.country}`}
                                 type="button"
                                 onClick={() => {
-                                  setWhereQuery(dest.type === 'nearby' ? '' : dest.name)
+                                  setWhereQuery(dest.name)
                                   setMobilePanel('when')
                                 }}
                                 className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left touch-manipulation active:bg-gray-50"

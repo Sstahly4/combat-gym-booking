@@ -15,7 +15,7 @@ import { getHomepageDataCached, getHomepageFirstRowCached } from '@/lib/homepage
 import {
   buildHomepageRow,
   compareByQuality,
-  countGymsInDestination,
+  deriveTopRatedGyms,
   hasBeachsideSignal,
   hasBeginnerSignal,
   hasHolidaySignal,
@@ -23,6 +23,7 @@ import {
   HOMEPAGE_ROW_SIZE_DESKTOP,
   HOMEPAGE_ROW_SIZE_MOBILE,
 } from '@/lib/homepage/homepage-rows'
+import { getLiveDestinationsCached } from '@/lib/search/live-destinations'
 
 export default async function HomepageRedesign() {
   const popularGymsMobile = await getHomepageFirstRowCached()
@@ -65,38 +66,13 @@ async function HomepageCarouselContent() {
       count: disciplineCounts[sport] || 0,
     }))
 
-  const destinations = [
-    {
-      name: 'Phuket',
-      image: '/phuket.jpg',
-      flag: '🇹🇭',
-      availableCount: countGymsInDestination(allGymsWithPackages, 'Phuket'),
-    },
-    {
-      name: 'Bangkok',
-      image: '/Bangkok-Thailand.jpg',
-      flag: '🇹🇭',
-      availableCount: countGymsInDestination(allGymsWithPackages, 'Bangkok'),
-    },
-    {
-      name: 'Krabi',
-      image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=800&q=80',
-      flag: '🇹🇭',
-      availableCount: countGymsInDestination(allGymsWithPackages, 'Krabi'),
-    },
-    {
-      name: 'Pattaya',
-      image: '/pattaya.jpg',
-      flag: '🇹🇭',
-      availableCount: countGymsInDestination(allGymsWithPackages, 'Pattaya'),
-    },
-    {
-      name: 'Chiang Mai',
-      image: '/chiang-mai-thailand-16by9.webp',
-      flag: '🇹🇭',
-      availableCount: countGymsInDestination(allGymsWithPackages, 'Chiang Mai'),
-    },
-  ]
+  const liveDestinations = await getLiveDestinationsCached()
+  const destinations = liveDestinations.slice(0, 5).map((dest) => ({
+    name: dest.name,
+    image: dest.image,
+    flag: dest.flag,
+    availableCount: dest.gymCount,
+  }))
 
   const homepagePool = [...allGymsWithPackages].sort(compareByQuality)
   const topRatedIds = new Set<string>(topRatedGyms.map((gym: any) => gym.id).filter(Boolean))

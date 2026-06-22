@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/public-server'
+import {
+  filterLiveDestinations,
+  getLiveDestinationsCached,
+} from '@/lib/search/live-destinations'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,7 +54,7 @@ export async function GET(req: NextRequest) {
   const q = sanitizeIlikeToken(req.nextUrl.searchParams.get('q') || '')
   if (q.length < 2) {
     return NextResponse.json(
-      { gyms: [], did_you_mean: false },
+      { gyms: [], destinations: [], did_you_mean: false },
       { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' } },
     )
   }
@@ -73,8 +77,10 @@ export async function GET(req: NextRequest) {
     const did_you_mean =
       rows.length > 0 &&
       rows.every((r) => r.match_kind === 'fuzzy_name' || r.match_kind === 'fuzzy_alias')
+    const allDestinations = await getLiveDestinationsCached()
+    const destinations = filterLiveDestinations(allDestinations, q, 8)
     return NextResponse.json(
-      { gyms, did_you_mean },
+      { gyms, destinations, did_you_mean },
       { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' } },
     )
   }
@@ -84,7 +90,12 @@ export async function GET(req: NextRequest) {
   }
 
   const fallback = await suggestFallbackIlike(supabase, q)
-  return NextResponse.json(fallback, {
-    headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' },
-  })
+  const allDestinations = await getLiveDestinationsCached()
+  const destinations = filterLiveDestinations(allDestinations, q, 8)
+  return NextResponse.json(
+    { ...fallback, destinations },
+    {
+      headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' },
+    },
+  )
 }
