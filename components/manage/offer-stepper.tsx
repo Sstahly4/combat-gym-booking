@@ -36,6 +36,7 @@ import {
   DEFAULT_TRAINING_TIER_OPTIONS,
   type TrainingTierOptions,
 } from '@/lib/packages/training-access'
+import { sanitizePackageWritePayload } from '@/lib/manage/package-write-payload'
 import {
   managedImageDisplayUrl,
   serializeManagedImageRef,
@@ -771,11 +772,12 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     try {
       let packageId: string
       const accommodationToVariantId = new Map<string, string>()
+      const writePayload = sanitizePackageWritePayload(payload)
 
       if (existingPackage) {
         const { error } = await supabase
           .from('packages')
-          .update(payload)
+          .update(writePayload)
           .eq('id', existingPackage.id)
 
         if (error) throw error
@@ -793,7 +795,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       } else {
         const { error, data } = await supabase
           .from('packages')
-          .insert(payload)
+          .insert(writePayload)
           .select()
           .single()
 
