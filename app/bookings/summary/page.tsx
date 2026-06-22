@@ -24,7 +24,14 @@ import {
   writeBookingPrefill,
   writePaymentIntentCache,
 } from '@/lib/utils/booking-prefill'
-import { offersOnceDailyTrainingChoice, parseTrainingTier, type TrainingTier } from '@/lib/packages/training-access'
+import {
+  offersOnceDailyTrainingChoice,
+  parseTrainingTier,
+  normalizeTrainingAccess,
+  type TrainingTier,
+} from '@/lib/packages/training-access'
+import { isDropInPackage, validateDropInBookingDates } from '@/lib/packages/drop-in'
+import { useDropInAvailability } from '@/lib/hooks/use-drop-in-availability'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
   prepareCheckoutExitToGym,
@@ -202,6 +209,12 @@ function BookingSummaryPageContent() {
   
   const [checkin, setCheckin] = useState(searchParams.get('checkin') || '')
   const [checkout, setCheckout] = useState(searchParams.get('checkout') || '')
+
+  const dropInAvailabilityPackageId =
+    package_ && isDropInPackage(package_) ? package_.id : null
+  const { soldOutDates, isSoldOut: isDropInDateSoldOut } =
+    useDropInAvailability(dropInAvailabilityPackageId)
+
   const [guestCount, setGuestCount] = useState(
     parseInt(searchParams.get('guests') || '1') || 1
   )
@@ -512,6 +525,7 @@ function BookingSummaryPageContent() {
 
   const rangeIsNonNegative = duration >= 0
   const isTraining = package_?.type === 'training'
+  const isDropIn = isDropInPackage(package_)
   const isAllInclusive = package_?.type === 'all_inclusive'
   const isValidDuration = isTraining ? rangeIsNonNegative : duration > 0
   const minStay = package_?.min_stay_days ?? (package_?.type === 'training' ? 1 : 7)
@@ -521,6 +535,11 @@ function BookingSummaryPageContent() {
       : duration
   const durationForMinStay = package_?.type === 'training' ? pricingDuration : duration
   const meetsMinimumStay = !package_ || durationForMinStay >= minStay
+  const dropInDateError = package_
+    ? validateDropInBookingDates(package_.offer_type, checkin, checkout)
+    : null
+  const dropInVisitSoldOut =
+    isDropIn && !!checkin && checkin === checkout && isDropInDateSoldOut(checkin)
 
   // Calculate price (sync fallback; seasonal-aware breakdown loaded in effect below)
   const priceInfo = (package_ && isValidDuration)
@@ -531,7 +550,9 @@ function BookingSummaryPageContent() {
       })
     : null
 
-  const showTrainingTier = offersOnceDailyTrainingChoice(package_, variant)
+  const showTrainingTier = !isDropIn && offersOnceDailyTrainingChoice(package_, variant)
+  const lockedDropInTier =
+    normalizeTrainingAccess(package_?.training_access ?? null) ?? 'once_daily'
 
   useEffect(() => {
     if (!package_ || !isValidDuration || !checkin || !checkout) {
@@ -558,7 +579,7 @@ function BookingSummaryPageContent() {
       pricingDuration,
       checkin,
       checkout,
-      training_tier: showTrainingTier ? trainingTier : 'twice_daily',
+      training_tier: showTrainingTier ? trainingTier : isDropIn ? lockedDropInTier : 'twice_daily',
     }).then(({ breakdown, has_seasonal_overlap }) => {
       if (!cancelled) {
         setPriceBreakdown(breakdown)
@@ -600,6 +621,14 @@ function BookingSummaryPageContent() {
       setError(BOOKING_DATES_EXPIRED_ERROR)
       return
     }
+    if (dropInDateError) {
+      setError(dropInDateError)
+      return
+    }
+    if (dropInVisitSoldOut) {
+      setError('This date is sold out. Please choose another visit day.')
+      return
+    }
     if (!isValidDuration) {
       setError('Please select valid dates')
       return
@@ -634,7 +663,7 @@ function BookingSummaryPageContent() {
           guest_email: email,
           guest_phone: phone,
           guest_name: `${firstName} ${lastName}`,
-          training_tier: showTrainingTier ? trainingTier : 'twice_daily',
+          training_tier: showTrainingTier ? trainingTier : isDropIn ? lockedDropInTier : 'twice_daily',
         }),
       })
 
@@ -705,6 +734,8 @@ function BookingSummaryPageContent() {
   const submitDisabled =
     !isValidDuration ||
     !meetsMinimumStay ||
+    !!dropInDateError ||
+    dropInVisitSoldOut ||
     !firstName ||
     !lastName ||
     !email ||
@@ -776,6 +807,13 @@ function BookingSummaryPageContent() {
                   {datesExpired && (
                     <div className="mt-2">
                       <CheckoutSummaryFieldError>{BOOKING_DATES_EXPIRED_INLINE}</CheckoutSummaryFieldError>
+                    </div>
+                  )}
+                  {dropInVisitSoldOut && (
+                    <div className="mt-2">
+                      <CheckoutSummaryFieldError>
+                        This visit day is sold out. Please choose another date.
+                      </CheckoutSummaryFieldError>
                     </div>
                   )}
                 </div>
@@ -1380,18 +1418,24 @@ function BookingSummaryPageContent() {
               <DateRangePicker
                 checkin={checkin}
                 checkout={checkout}
+                mode={isDropIn ? 'single' : 'range'}
                 forceOpen={true}
+                soldOutDates={isDropIn ? soldOutDates : undefined}
                 onClose={() => setDatePickerOpen(false)}
                 onCheckinChange={(date) => {
                   setCheckin(date)
+                  if (isDropIn) setCheckout(date)
                   const params = new URLSearchParams(searchParams.toString())
                   params.set('checkin', date)
+                  if (isDropIn) params.set('checkout', date)
                   router.replace(`?${params.toString()}`, { scroll: false })
                 }}
                 onCheckoutChange={(date) => {
                   setCheckout(date)
+                  if (isDropIn) setCheckin(date)
                   const params = new URLSearchParams(searchParams.toString())
                   params.set('checkout', date)
+                  if (isDropIn) params.set('checkin', date)
                   router.replace(`?${params.toString()}`, { scroll: false })
                 }}
               />
@@ -1402,24 +1446,30 @@ function BookingSummaryPageContent() {
           <Dialog open={datePickerOpen} onOpenChange={setDatePickerOpen}>
             <DialogContent className="hidden md:block max-w-2xl p-6">
               <DialogHeader>
-                <DialogTitle>Change dates</DialogTitle>
+                <DialogTitle>{isDropIn ? 'Pick your visit date' : 'Change dates'}</DialogTitle>
               </DialogHeader>
               <div className="mt-4">
                 <DateRangePicker
                   checkin={checkin}
                   checkout={checkout}
+                  mode={isDropIn ? 'single' : 'range'}
                   forceOpen={true}
+                  soldOutDates={isDropIn ? soldOutDates : undefined}
                   onClose={() => setDatePickerOpen(false)}
                   onCheckinChange={(date) => {
                     setCheckin(date)
+                    if (isDropIn) setCheckout(date)
                     const params = new URLSearchParams(searchParams.toString())
                     params.set('checkin', date)
+                    if (isDropIn) params.set('checkout', date)
                     router.replace(`?${params.toString()}`, { scroll: false })
                   }}
                   onCheckoutChange={(date) => {
                     setCheckout(date)
+                    if (isDropIn) setCheckin(date)
                     const params = new URLSearchParams(searchParams.toString())
                     params.set('checkout', date)
+                    if (isDropIn) params.set('checkin', date)
                     router.replace(`?${params.toString()}`, { scroll: false })
                   }}
                 />

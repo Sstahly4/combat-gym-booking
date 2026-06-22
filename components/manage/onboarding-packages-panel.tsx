@@ -21,6 +21,7 @@ import {
   UtensilsCrossed,
   Dumbbell,
   ChevronRight,
+  DoorOpen,
 } from 'lucide-react'
 
 export interface OnboardingPackagesPanelProps {
@@ -37,6 +38,7 @@ const OFFER_TYPE_META: Record<string, { label: string; color: string; icon: Reac
   TYPE_ALL_INCLUSIVE: { label: 'All-Inclusive', color: 'bg-purple-100 text-purple-700', icon: UtensilsCrossed },
   TYPE_CUSTOM_EXP: { label: 'Short-term Experience', color: 'bg-orange-100 text-orange-700', icon: Calendar },
   TYPE_ONE_TIME_EVENT: { label: 'One-Time Event', color: 'bg-amber-100 text-amber-700', icon: Ticket },
+  TYPE_DROP_IN: { label: 'Drop-in Session', color: 'bg-teal-100 text-teal-700', icon: DoorOpen },
 }
 
 /**

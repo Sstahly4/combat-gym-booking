@@ -55,7 +55,17 @@ import {
   Upload,
   ImageIcon,
   Users,
+  DoorOpen,
 } from 'lucide-react'
+import {
+  DEFAULT_DROP_IN_BOOKING_MODE,
+  DEFAULT_DROP_IN_SESSION,
+  dropInSessionDescription,
+  dropInSessionFromTrainingAccess,
+  dropInSessionLabel,
+  trainingAccessFromDropInSession,
+  type DropInSessionOption,
+} from '@/lib/packages/drop-in'
 
 const SPORTS = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing', 'All Sports']
 
@@ -66,6 +76,13 @@ const OFFER_TYPES = [
     description: 'Training sessions only. No accommodation or meals.',
     icon: Dumbbell,
     color: 'blue',
+  },
+  {
+    id: 'TYPE_DROP_IN',
+    name: 'Drop-in Session',
+    description: 'Single-day visit for travelers — one flat price, guest picks their date.',
+    icon: DoorOpen,
+    color: 'teal',
   },
   {
     id: 'TYPE_TRAINING_ACCOM',
@@ -118,11 +135,15 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   // Update min stay when offer type changes (only on initial selection, not when editing)
   useEffect(() => {
     if (!existingPackage && selectedOfferType) {
-      if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
+      if (selectedOfferType === 'TYPE_TRAINING_ONLY' || selectedOfferType === 'TYPE_DROP_IN') {
         setMinStayDays(1)
       } else if (minStayDays === 1) {
         // Only update if currently at 1 (training-only default), otherwise keep user's choice
         setMinStayDays(7)
+      }
+      if (selectedOfferType === 'TYPE_DROP_IN') {
+        setBookingMode(DEFAULT_DROP_IN_BOOKING_MODE)
+        setDropInSessions(DEFAULT_DROP_IN_SESSION)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,6 +208,8 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   
   // Step 5: Review
   const [bookingMode, setBookingMode] = useState<'request_to_book' | 'instant'>('request_to_book')
+  const [dropInSessions, setDropInSessions] = useState<DropInSessionOption>(DEFAULT_DROP_IN_SESSION)
+  const [dropInDailyCapacity, setDropInDailyCapacity] = useState('')
   const [cancellationPresetId, setCancellationPresetId] =
     useState<PackageCancellationPresetId>('flexible')
   const [customCancellationDays, setCustomCancellationDays] = useState('')
@@ -251,6 +274,12 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       setAvailableYearRound(existingPackage.available_year_round ?? true)
       setBlackoutDates(existingPackage.blackout_dates || [])
       setBookingMode(existingPackage.booking_mode || 'request_to_book')
+      if (existingPackage.offer_type === 'TYPE_DROP_IN') {
+        setDropInSessions(dropInSessionFromTrainingAccess(existingPackage.training_access))
+        setDropInDailyCapacity(
+          existingPackage.daily_capacity != null ? String(existingPackage.daily_capacity) : ''
+        )
+      }
 
       const cancellation = inferCancellationPresetFromDays(existingPackage.cancellation_policy_days)
       setCancellationPresetId(cancellation.presetId)
@@ -374,6 +403,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
     if (
       !existingPackage?.id ||
       selectedOfferType === 'TYPE_ONE_TIME_EVENT' ||
+      selectedOfferType === 'TYPE_DROP_IN' ||
       currentStep !== 3
     ) {
       return
@@ -382,7 +412,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   }, [existingPackage?.id, selectedOfferType, currentStep])
 
   const packageForSeasonal = useMemo((): Package | null => {
-    if (!selectedOfferType || selectedOfferType === 'TYPE_ONE_TIME_EVENT') return null
+    if (!selectedOfferType || selectedOfferType === 'TYPE_ONE_TIME_EVENT' || selectedOfferType === 'TYPE_DROP_IN') return null
     const parseOptional = (raw: string, fallback: number | null | undefined) => {
       const trimmed = raw.trim()
       if (!trimmed) return fallback ?? null
@@ -520,7 +550,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
   ])
 
   const showSeasonalPricing =
-    selectedOfferType != null && selectedOfferType !== 'TYPE_ONE_TIME_EVENT'
+    selectedOfferType != null &&
+    selectedOfferType !== 'TYPE_ONE_TIME_EVENT' &&
+    selectedOfferType !== 'TYPE_DROP_IN'
   
   const loadAccommodations = async () => {
     const supabase = createClient()
@@ -581,6 +613,18 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       if (!ticketTiers.some(t => t.name.trim() && t.price)) {
         alert('Please add at least one ticket tier with a price.')
         return
+      }
+    } else if (selectedOfferType === 'TYPE_DROP_IN') {
+      if (!pricePerDay) {
+        alert('Please enter a drop-in price.')
+        return
+      }
+      if (dropInDailyCapacity.trim()) {
+        const cap = parseInt(dropInDailyCapacity, 10)
+        if (!Number.isFinite(cap) || cap < 1) {
+          alert('Daily capacity must be at least 1, or leave blank for no limit.')
+          return
+        }
       }
     } else if (selectedOfferType === 'TYPE_TRAINING_ONLY') {
       if (trainingTierOptions.twice_daily && !pricePerDay) {
@@ -693,7 +737,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       booking_mode: bookingMode,
       image: imageUrl,
       // Legacy type for backward compat
-      type: selectedOfferType === 'TYPE_TRAINING_ONLY' ? 'training' :
+      type: selectedOfferType === 'TYPE_TRAINING_ONLY' || selectedOfferType === 'TYPE_DROP_IN' ? 'training' :
             selectedOfferType === 'TYPE_TRAINING_ACCOM' ? 'accommodation' :
             selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? 'all_inclusive' : 'training',
       includes_accommodation: selectedOfferType === 'TYPE_TRAINING_ACCOM' || selectedOfferType === 'TYPE_ALL_INCLUSIVE',
@@ -702,7 +746,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         cancellationPresetId,
         customCancellationDays
       ),
-      training_access: offerTypeUsesTrainingAccess(selectedOfferType)
+      training_access: selectedOfferType === 'TYPE_DROP_IN'
+        ? trainingAccessFromDropInSession(dropInSessions)
+        : offerTypeUsesTrainingAccess(selectedOfferType)
         ? trainingAccessFromTierOptions(trainingTierOptions)
         : null,
     }
@@ -723,12 +769,33 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       payload.event_date = buildDatetime(eventDate, eventStartTime)
       payload.event_end_date = buildDatetime(eventEndDate, eventEndTime)
       payload.max_attendees = maxAttendees ? parseInt(maxAttendees) : null
+      payload.daily_capacity = null
       // Cheapest ticket tier price surfaces as price_per_day for list views
       const prices = ticketTiers.map(t => parseFloat(t.price)).filter(p => !isNaN(p))
       payload.price_per_day = prices.length > 0 ? Math.min(...prices) : null
       payload.price_per_week = null
       payload.price_per_month = null
       payload.pricing_config = extrasPayload ? { mode: 'fixed', extras: extrasPayload } : null
+    } else if (selectedOfferType === 'TYPE_DROP_IN') {
+      payload.min_stay_days = 1
+      payload.available_year_round = availableYearRound
+      payload.blackout_dates = blackoutDates.length > 0 ? blackoutDates : []
+      payload.price_per_day = pricePerDay ? parseFloat(pricePerDay) : null
+      payload.price_per_week = null
+      payload.price_per_month = null
+      payload.once_daily_price_per_day = null
+      payload.once_daily_price_per_week = null
+      payload.once_daily_price_per_month = null
+      payload.event_date = null
+      payload.event_end_date = null
+      payload.max_attendees = null
+      payload.daily_capacity = dropInDailyCapacity.trim()
+        ? parseInt(dropInDailyCapacity, 10)
+        : null
+      const existingConfig = existingPackage?.pricing_config || null
+      payload.pricing_config = extrasPayload
+        ? { ...(existingConfig || { mode: 'fixed' }), extras: extrasPayload }
+        : existingConfig
     } else {
       payload.min_stay_days = selectedOfferType === 'TYPE_TRAINING_ONLY' ? 1 : minStayDays
       payload.available_year_round = availableYearRound
@@ -761,6 +828,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
       payload.event_date = null
       payload.event_end_date = null
       payload.max_attendees = null
+      payload.daily_capacity = null
       // Preserve existing pricing_config structure, just update extras
       const existingConfig = existingPackage?.pricing_config || null
       payload.pricing_config = extrasPayload
@@ -1053,11 +1121,11 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
             </div>
             <div className="space-y-4">
               <div>
-                <Label>{selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'Event Name *' : 'Package Name *'}</Label>
+                <Label>{selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'Event Name *' : selectedOfferType === 'TYPE_DROP_IN' ? 'Drop-in Name *' : 'Package Name *'}</Label>
                 <Input
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'e.g. BJJ Seminar with Gordon Ryan' : 'e.g. 1 Month All-Inclusive Muay Thai'}
+                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'e.g. BJJ Seminar with Gordon Ryan' : selectedOfferType === 'TYPE_DROP_IN' ? 'e.g. Single Session Drop-in' : 'e.g. 1 Month All-Inclusive Muay Thai'}
                   required
                 />
               </div>
@@ -1084,10 +1152,47 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                 <Textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'What will attendees learn or experience?' : 'What\'s included? e.g. private room, Sunday off...'}
+                  placeholder={selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'What will attendees learn or experience?' : selectedOfferType === 'TYPE_DROP_IN' ? 'What\'s included? e.g. gloves rental, shower access...' : 'What\'s included? e.g. private room, Sunday off...'}
                   rows={4}
                 />
               </div>
+
+              {selectedOfferType === 'TYPE_DROP_IN' && (
+                <div>
+                  <Label>Sessions included on visit day *</Label>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Most gyms offer a single session drop-in. Double session is for guests who train morning and evening on the same day.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(['single', 'double'] as const).map((option) => {
+                      const selected = dropInSessions === option
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setDropInSessions(option)}
+                          className={`p-4 border-2 rounded-lg text-left transition-all ${
+                            selected
+                              ? 'border-[#003580] bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-sm">{dropInSessionLabel(option)}</span>
+                            {selected && <Check className="w-4 h-4 text-[#003580]" />}
+                          </div>
+                          <p className="text-xs text-gray-600">{dropInSessionDescription(option)}</p>
+                          {option === 'single' && (
+                            <span className="inline-block mt-2 text-[10px] font-medium uppercase tracking-wide text-teal-700 bg-teal-100 px-2 py-0.5 rounded">
+                              Default
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {offerTypeUsesTrainingAccess(selectedOfferType) && (
                 <div>
@@ -1155,6 +1260,110 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         )
       
       case 3:
+        // ── Drop-in: flat price + availability ────────────────────────────────
+        if (selectedOfferType === 'TYPE_DROP_IN') {
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Drop-in Pricing</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Set a flat price for one visit day. Guests pick their date at checkout.
+                </p>
+              </div>
+
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
+                <p className="text-xs text-teal-800">
+                  <strong>Drop-in session:</strong> {dropInSessionLabel(dropInSessions)} — {dropInSessionDescription(dropInSessions)}
+                </p>
+              </div>
+
+              <div>
+                <Label>Drop-in Price ({packageCurrency}) <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={pricePerDay}
+                  onChange={(e) => setPricePerDay(e.target.value)}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">One flat fee per visit day (not per night).</p>
+              </div>
+
+              <div>
+                <Label>
+                  Max drop-ins per day{' '}
+                  <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={dropInDailyCapacity}
+                  onChange={(e) => setDropInDailyCapacity(e.target.value)}
+                  placeholder="No limit"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank for unlimited. When set, sold-out days are blocked at checkout so you
+                  don&apos;t overbook.
+                </p>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={availableYearRound}
+                      onChange={(e) => setAvailableYearRound(e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">Available year-round</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1 ml-6">
+                    Use blackout dates below to block holidays or days you don&apos;t accept drop-ins.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="mb-3 block">Blackout Dates</Label>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <Label className="text-xs">Start</Label>
+                      <Input type="date" value={newBlackoutStart} onChange={(e) => setNewBlackoutStart(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">End</Label>
+                      <Input type="date" value={newBlackoutEnd} onChange={(e) => setNewBlackoutEnd(e.target.value)} min={newBlackoutStart} />
+                    </div>
+                  </div>
+                  <Input
+                    value={newBlackoutReason}
+                    onChange={(e) => setNewBlackoutReason(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="mb-3"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addBlackoutDate} disabled={!newBlackoutStart || !newBlackoutEnd}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add blackout
+                  </Button>
+                  {blackoutDates.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {blackoutDates.map((b, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded border text-sm">
+                          <span>{b.start} → {b.end}{b.reason ? ` · ${b.reason}` : ''}</span>
+                          <button type="button" onClick={() => removeBlackoutDate(idx)} className="text-gray-400 hover:text-red-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        }
+
         // ── One-Time Event: Event Dates + Ticket Tiers ───────────────────────
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
           return (
@@ -1842,6 +2051,26 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         )
       
       case 4:
+        // ── Drop-in: cancellation policy only (availability set in step 3) ─
+        if (selectedOfferType === 'TYPE_DROP_IN') {
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Cancellation Policy</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Drop-ins are single-day visits. Set how far in advance guests can cancel for a refund.
+                </p>
+              </div>
+              <PackageCancellationPolicyFields
+                presetId={cancellationPresetId}
+                customDays={customCancellationDays}
+                onPresetChange={setCancellationPresetId}
+                onCustomDaysChange={setCustomCancellationDays}
+              />
+            </div>
+          )
+        }
+
         // ── One-Time Event: Capacity & Booking Settings ──────────────────────
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
           return (
@@ -2099,6 +2328,52 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         </>
                       )}
                     </>
+                  ) : selectedOfferType === 'TYPE_DROP_IN' ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sessions:</span>
+                        <span className="font-medium">{dropInSessionLabel(dropInSessions)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Visit length:</span>
+                        <span className="font-medium">Single day only</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Price:</span>
+                        <span className="font-medium">
+                          {pricePerDay
+                            ? `${packageCurrency} ${parseFloat(pricePerDay).toLocaleString()} per visit`
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Availability:</span>
+                        <span className="font-medium">{availableYearRound ? 'Year-round' : 'Limited'}</span>
+                      </div>
+                      {blackoutDates.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Blackout dates:</span>
+                          <span className="font-medium">{blackoutDates.length}</span>
+                        </div>
+                      )}
+                      {dropInDailyCapacity.trim() && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Daily capacity:</span>
+                          <span className="font-medium">
+                            {parseInt(dropInDailyCapacity, 10).toLocaleString()} per day
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Cancellation:</span>
+                        <span className="font-medium text-right max-w-[60%]">
+                          {getOwnerCancellationPreviewLine(cancellationPresetId, customCancellationDays).replace(
+                            'Guests will see: ',
+                            ''
+                          )}
+                        </span>
+                      </div>
+                    </>
                   ) : (
                     <>
                       {offerTypeUsesTrainingAccess(selectedOfferType) && hasTrainingTierSelection(trainingTierOptions) && (
@@ -2259,12 +2534,17 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   value={bookingMode}
                   onChange={e => setBookingMode(e.target.value as 'request_to_book' | 'instant')}
                 >
-                  <option value="request_to_book">Request to Book (Recommended)</option>
-                  <option value="instant">Instant Confirmation</option>
+                  <option value="instant">
+                    {selectedOfferType === 'TYPE_DROP_IN' ? 'Instant Confirmation (Recommended for drop-ins)' : 'Instant Confirmation'}
+                  </option>
+                  <option value="request_to_book">
+                    {selectedOfferType === 'TYPE_DROP_IN' ? 'Request to Book' : 'Request to Book (Recommended)'}
+                  </option>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Request-to-Book: Guests send a request, you approve, then payment is captured.
-                  Instant: Payment is authorized immediately (requires real-time availability).
+                  {selectedOfferType === 'TYPE_DROP_IN'
+                    ? 'Instant is the default for drop-ins — guests pay and get confirmed right away. Request-to-book lets you approve each visit first.'
+                    : 'Request-to-Book: Guests send a request, you approve, then payment is captured. Instant: Payment is authorized immediately (requires real-time availability).'}
                 </p>
               </div>
             </div>
@@ -2285,6 +2565,13 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         amount: Math.min(...prices),
         period: 'per ticket',
         label: prices.length > 1 ? 'Tickets from' : 'Ticket price',
+      }
+    }
+    if (selectedOfferType === 'TYPE_DROP_IN' && pricePerDay) {
+      return {
+        amount: parseFloat(pricePerDay) || 0,
+        period: 'per visit',
+        label: `${dropInSessionLabel(dropInSessions)} drop-in`,
       }
     }
     if (selectedOfferType === 'TYPE_TRAINING_ONLY' && pricePerDay) {
@@ -2352,6 +2639,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
               {offerTypeInfo && (
                 <span className={`text-xs px-2 py-0.5 rounded font-medium ml-2 flex-shrink-0 ${
                   selectedOfferType === 'TYPE_TRAINING_ONLY' ? 'bg-blue-100 text-blue-700' :
+                  selectedOfferType === 'TYPE_DROP_IN' ? 'bg-teal-100 text-teal-700' :
                   selectedOfferType === 'TYPE_TRAINING_ACCOM' ? 'bg-green-100 text-green-700' :
                   selectedOfferType === 'TYPE_ALL_INCLUSIVE' ? 'bg-purple-100 text-purple-700' :
                   selectedOfferType === 'TYPE_ONE_TIME_EVENT' ? 'bg-amber-100 text-amber-700' :
@@ -2404,6 +2692,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                   <span>Max {parseInt(maxAttendees).toLocaleString()} attendees</span>
                 </div>
               )}
+            </div>
+          ) : selectedOfferType === 'TYPE_DROP_IN' ? (
+            <div className="pt-2 border-t space-y-1">
+              <div className="flex items-center gap-1.5 text-xs text-teal-700 font-medium">
+                <DoorOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{dropInSessionLabel(dropInSessions)} · single visit day</span>
+              </div>
+              <p className="text-xs text-gray-500">Guest picks any available date at checkout</p>
             </div>
           ) : (
             <div className="flex flex-wrap gap-2 pt-2 border-t">

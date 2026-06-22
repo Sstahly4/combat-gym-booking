@@ -14,6 +14,12 @@ import {
   offerTypeUsesTrainingAccess,
   trainingAccessCardLabel,
 } from '@/lib/packages/training-access'
+import {
+  dropInSessionCardLabel,
+  isDropInPackage,
+} from '@/lib/packages/drop-in'
+import { useDropInAvailability } from '@/lib/hooks/use-drop-in-availability'
+import { DateRangePicker } from '@/components/date-range-picker'
 import type { Package, Gym, PackageVariant, GymImage } from '@/lib/types/database'
 import {
   Check,
@@ -35,6 +41,7 @@ import {
   X,
   Ticket,
   Calendar,
+  DoorOpen,
   Package as PackageIcon,
   Target,
   UserRound,
@@ -74,6 +81,14 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
   const { convertPrice, formatPrice } = useCurrency()
   const [variantsModalOpen, setVariantsModalOpen] = useState(false)
   const [activePackage, setActivePackage] = useState<Package | null>(null)
+
+  const dropInAvailabilityPackageId =
+    activePackage && isDropInPackage(activePackage) ? activePackage.id : null
+  const { soldOutDates, isSoldOut: isDropInDateSoldOut } =
+    useDropInAvailability(dropInAvailabilityPackageId)
+
+  const dropInVisitSoldOut =
+    !!checkin && checkin === checkout && isDropInDateSoldOut(checkin)
 
   const activePackageHeroImage = activePackage?.image
     ? resolveUrlToGymImage(gym, activePackage.image)
@@ -156,7 +171,30 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
     setVariantsModalOpen(false)
   }
 
+  const handleConfirmDropInVisit = (pkg: Package) => {
+    const todayIso = new Date().toISOString().split('T')[0]
+    const visit =
+      checkin && checkout && checkin === checkout
+        ? checkin
+        : checkin || todayIso
+    setCheckin(visit)
+    setCheckout(visit)
+    setVariantsModalOpen(false)
+    goToReview({ gymId: gym.id, packageId: pkg.id, checkin: visit, checkout: visit, pkg })
+  }
+
   const handleSelectPackage = (pkg: Package) => {
+    // Drop-ins open a visit-date picker before checkout
+    if (isDropInPackage(pkg)) {
+      setActivePackage(pkg)
+      const todayIso = new Date().toISOString().split('T')[0]
+      const visit = checkin && checkout === checkin ? checkin : todayIso
+      setCheckin(visit)
+      setCheckout(visit)
+      setVariantsModalOpen(true)
+      return
+    }
+
     // If package has variants (room options or ticket tiers), open modal instead of selecting directly
     if (pkg.variants && pkg.variants.length > 0) {
       setActivePackage(pkg)
@@ -231,8 +269,12 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
   // Sort: one-time events first, then training-only, then everything else
   const sortedPackages = [...packages].sort((a, b) => {
-    const rank = (p: Package) =>
-      p.offer_type === 'TYPE_ONE_TIME_EVENT' ? 0 : p.type === 'training' ? 1 : 2
+    const rank = (p: Package) => {
+      if (p.offer_type === 'TYPE_ONE_TIME_EVENT') return 0
+      if (p.offer_type === 'TYPE_DROP_IN') return 1
+      if (p.type === 'training') return 2
+      return 3
+    }
     return rank(a) - rank(b)
   })
 
@@ -249,6 +291,10 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
           {sortedPackages.map(pkg => {
             // One-time events completely bypass all date/duration/ghost logic
             const isEvent = pkg.offer_type === 'TYPE_ONE_TIME_EVENT'
+            const isDropIn = isDropInPackage(pkg)
+            const dropInSessionLabel = isDropIn
+              ? dropInSessionCardLabel(pkg.training_access)
+              : null
 
             // For events: find cheapest ticket tier price (stored in price_per_day on variants)
             const eventTicketPrice = isEvent
@@ -287,18 +333,24 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
             const durationForMinStay = pkg.type === 'training' ? getPricingDuration(pkg.type) : duration
             const meetsMinStay = !isValidDuration || durationForMinStay >= minStay
             const nightsToUnlock = isValidDuration ? Math.max(0, minStay - durationForMinStay) : 0
-            const isGhosted = !isEvent && isValidDuration && !meetsMinStay
+            const isGhosted = !isEvent && !isDropIn && isValidDuration && !meetsMinStay
 
             // Compute anchor price for ghost state — try weekly → monthly → daily, never $0
             const anchorPrice = basePrices.weekly || basePrices.monthly || basePrices.daily || 0
             const anchorLabel = basePrices.weekly ? 'week' : basePrices.monthly ? 'month' : 'day'
 
-            // Calculate price based on package type and billing units (non-event only)
-            // For Training Only: if dates are NOT user-selected (auto-defaulted), show per day pricing
-            const shouldShowPerSession = !isEvent && pkg.type === 'training' && !hasUserSelectedDates
+            const shouldShowPerSession =
+              isDropIn || (!isEvent && pkg.type === 'training' && !hasUserSelectedDates)
 
             const priceInfo = isEvent
               ? { price: eventTicketPrice ?? 0, unit: 'day' as const, duration: 1, durationLabel: '1 ticket' }
+              : isDropIn
+                ? {
+                    price: basePrices.daily || 0,
+                    unit: 'day' as const,
+                    duration: 1,
+                    durationLabel: '1 visit',
+                  }
               : (isValidDuration && !shouldShowPerSession)
                 ? calculatePackagePrice(getPricingDuration(pkg.type), pkg.type, basePrices)
                 : {
@@ -346,7 +398,9 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
 
             const activeAmenities = GYM_AMENITY_ORDER.filter((k) => gym.amenities?.[k]).slice(0, 5)
 
-            const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
+            const trainingAccessLabel = isDropIn
+              ? dropInSessionLabel
+              : offerTypeUsesTrainingAccess(pkg.offer_type)
               ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
               : null
 
@@ -448,6 +502,27 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                             onClick={() => handleSelectPackage(pkg)}
                           >
                             {isSelected ? 'Selected' : pkg.variants?.length ? 'Get Tickets' : 'Book Now'}
+                          </Button>
+                        </div>
+                      ) : isDropIn ? (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-1 text-[10px] text-teal-700 font-medium mb-1">
+                              <DoorOpen className="w-3 h-3" />
+                              {dropInSessionLabel}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mb-0.5">Drop-in price</div>
+                            <div className="text-lg font-bold text-[#003580]">
+                              {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                            </div>
+                            <div className="text-[10px] text-gray-500">per visit · single day</div>
+                          </div>
+                          <Button
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`min-w-[100px] h-9 font-semibold text-xs ${isSelected ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'}`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : 'Pick Date'}
                           </Button>
                         </div>
                       ) : isGhosted ? (
@@ -632,6 +707,25 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                             {isSelected ? 'Selected' : pkg.variants?.length ? 'Get Tickets' : 'Book Now'}
                           </Button>
                         </>
+                      ) : isDropIn ? (
+                        <>
+                          <div className="flex items-center justify-end gap-1.5 text-xs text-teal-700 font-medium mb-2">
+                            <DoorOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>{dropInSessionLabel}</span>
+                          </div>
+                          <div className="text-[10px] md:text-xs text-gray-500 mb-1">Drop-in price</div>
+                          <div className="text-2xl md:text-3xl font-bold text-[#003580] mb-1">
+                            {formatPrice(convertPrice(priceInfo.price, gym.currency))}
+                          </div>
+                          <div className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">per visit · single day</div>
+                          <Button
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${isSelected ? 'bg-[#003580] hover:bg-[#003580]/90 text-white shadow-md' : 'border-2 border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white'}`}
+                            onClick={() => handleSelectPackage(pkg)}
+                          >
+                            {isSelected ? 'Selected' : 'Pick Date'}
+                          </Button>
+                        </>
                       ) : isGhosted ? (
                         /* Ghost State — Desktop */
                         <>
@@ -688,7 +782,7 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                         </>
                       )}
 
-                      {!isEvent && !isGhosted && (
+                      {!isEvent && !isDropIn && !isGhosted && (
                       <Button 
                         variant={isSelected ? "default" : "outline"}
                           className={`w-full lg:w-auto min-w-[140px] md:min-w-[160px] h-11 md:h-12 font-semibold text-sm md:text-base ${
@@ -894,6 +988,81 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
                   })}
                     </div>
                   </div>
+                </div>
+              </>
+            ) : activePackage?.offer_type === 'TYPE_DROP_IN' ? (
+              /* ══ DROP-IN SHEET ═══════════════════════════════════════════════ */
+              <>
+                <div
+                  className="flex-shrink-0 touch-none"
+                  onTouchStart={handleSheetTouchStart}
+                  onTouchMove={handleSheetTouchMove}
+                  onTouchEnd={handleSheetTouchEnd}
+                >
+                  <div className="flex justify-center pt-3 pb-1">
+                    <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                  </div>
+                  <div className="px-4 pt-2 pb-3 border-b border-gray-100 flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-800 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-2">
+                        <DoorOpen className="w-2.5 h-2.5" /> Drop-in
+                      </span>
+                      <h2 className="text-base font-bold text-gray-900 leading-tight">{activePackage.name}</h2>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {dropInSessionCardLabel(activePackage.training_access)} · single visit day
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setVariantsModalOpen(false)} className="p-2 -mr-1 rounded-full hover:bg-gray-100" aria-label="Close">
+                      <X className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 px-4 py-4 pb-6 space-y-4">
+                  {activePackage.description && (
+                    <p className="text-sm text-gray-600 leading-relaxed">{activePackage.description}</p>
+                  )}
+                  <div className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                    <p className="text-sm font-semibold text-gray-900 mb-1">Visit price</p>
+                    <p className="text-2xl font-bold text-[#003580]">
+                      {formatPrice(convertPrice(activePackage.price_per_day ?? 0, gym.currency))}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Flat fee for one day</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 mb-2">Pick your visit date</p>
+                    <p className="text-xs text-gray-500 mb-2">Sold-out days are crossed out and can&apos;t be selected.</p>
+                    <DateRangePicker
+                      checkin={checkin}
+                      checkout={checkout}
+                      mode="single"
+                      embedded
+                      forceOpen
+                      hideMobileActions
+                      soldOutDates={soldOutDates}
+                      onCheckinChange={(date) => {
+                        setCheckin(date)
+                        setCheckout(date)
+                      }}
+                      onCheckoutChange={(date) => {
+                        setCheckin(date)
+                        setCheckout(date)
+                      }}
+                    />
+                  </div>
+                  {dropInVisitSoldOut && (
+                    <p className="text-sm text-red-600 font-medium">This date is sold out. Please choose another day.</p>
+                  )}
+                  <Button
+                    className={`w-full h-11 font-bold ${
+                      dropInVisitSoldOut
+                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed hover:bg-gray-300'
+                        : 'bg-[#003580] hover:bg-[#003580]/90 text-white'
+                    }`}
+                    disabled={!checkin || checkin !== checkout || dropInVisitSoldOut}
+                    onClick={() => handleConfirmDropInVisit(activePackage)}
+                  >
+                    {dropInVisitSoldOut ? 'Sold out' : 'Continue to booking'}
+                  </Button>
                 </div>
               </>
             ) : (
@@ -1252,8 +1421,79 @@ export function PackagesList({ packages, gym }: { packages: Package[], gym: Gym 
         </div>
       )}
 
+      {/* ─── DESKTOP: Drop-in modal ───────────────────────────────────────── */}
+      {variantsModalOpen && activePackage?.offer_type === 'TYPE_DROP_IN' && (
+        <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setVariantsModalOpen(false)} />
+          <div className="relative z-50 w-full max-w-lg max-h-[92vh] overflow-hidden flex flex-col bg-white rounded-2xl shadow-2xl mx-4">
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 bg-teal-100 text-teal-800 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-2">
+                  <DoorOpen className="w-3 h-3" /> Drop-in Session
+                </span>
+                <h2 className="text-xl font-bold text-gray-900">{activePackage.name}</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {dropInSessionCardLabel(activePackage.training_access)} · single visit day
+                </p>
+              </div>
+              <button onClick={() => setVariantsModalOpen(false)} className="p-2 rounded-full hover:bg-gray-100" aria-label="Close">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {activePackage.description && (
+                <p className="text-sm text-gray-600 leading-relaxed">{activePackage.description}</p>
+              )}
+              <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
+                <p className="text-sm font-semibold text-gray-900 mb-1">Visit price</p>
+                <p className="text-3xl font-bold text-[#003580]">
+                  {formatPrice(convertPrice(activePackage.price_per_day ?? 0, gym.currency))}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Flat fee for one day</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Pick your visit date</p>
+                <p className="text-xs text-gray-500 mb-3">Sold-out days are crossed out and can&apos;t be selected.</p>
+                <DateRangePicker
+                  checkin={checkin}
+                  checkout={checkout}
+                  mode="single"
+                  embedded
+                  forceOpen
+                  soldOutDates={soldOutDates}
+                  onCheckinChange={(date) => {
+                    setCheckin(date)
+                    setCheckout(date)
+                  }}
+                  onCheckoutChange={(date) => {
+                    setCheckin(date)
+                    setCheckout(date)
+                  }}
+                />
+              </div>
+              {dropInVisitSoldOut && (
+                <p className="text-sm text-red-600 font-medium">This date is sold out. Please choose another day.</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100">
+              <Button
+                className={`w-full h-11 font-bold ${
+                  dropInVisitSoldOut
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed hover:bg-gray-300'
+                    : 'bg-[#003580] hover:bg-[#003580]/90 text-white'
+                }`}
+                disabled={!checkin || checkin !== checkout || dropInVisitSoldOut}
+                onClick={() => handleConfirmDropInVisit(activePackage)}
+              >
+                {dropInVisitSoldOut ? 'Sold out' : 'Continue to booking'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── DESKTOP: Room modal (accommodation) — wide layout ───────────────── */}
-      {variantsModalOpen && activePackage?.offer_type !== 'TYPE_ONE_TIME_EVENT' && (
+      {variantsModalOpen && activePackage?.offer_type !== 'TYPE_ONE_TIME_EVENT' && activePackage?.offer_type !== 'TYPE_DROP_IN' && (
       <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center">
         <div className="fixed inset-0 bg-black/50" onClick={() => setVariantsModalOpen(false)} />
         <div className="relative z-50 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col bg-white rounded-lg shadow-2xl mx-4">

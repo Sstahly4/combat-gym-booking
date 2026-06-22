@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, type TouchEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, type TouchEvent } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { format, addDays, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isBefore, isAfter, startOfWeek, endOfWeek } from 'date-fns'
 
@@ -16,6 +16,10 @@ interface DateRangePickerProps {
   embedded?: boolean
   /** Hides Clear/Done footer — parent sheet owns the primary action */
   hideMobileActions?: boolean
+  /** Single-day mode — one tap selects visit date (check-in = check-out). */
+  mode?: 'range' | 'single'
+  /** ISO dates (YYYY-MM-DD) with no remaining drop-in capacity. */
+  soldOutDates?: ReadonlySet<string> | readonly string[]
 }
 
 export function DateRangePicker({
@@ -28,7 +32,13 @@ export function DateRangePicker({
   onClose,
   embedded = false,
   hideMobileActions = false,
+  mode = 'range',
+  soldOutDates,
 }: DateRangePickerProps) {
+  const soldOutSet = useMemo(() => {
+    if (!soldOutDates) return null
+    return soldOutDates instanceof Set ? soldOutDates : new Set(soldOutDates)
+  }, [soldOutDates])
   const [isOpen, setIsOpen] = useState(forceOpen)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [hoverDate, setHoverDate] = useState<Date | null>(null)
@@ -111,10 +121,14 @@ export function DateRangePicker({
   }
 
   const getDisplayText = () => {
-    // Always show dates - use defaults if not provided (1 day default)
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(today.getDate() + 1)
+
+    if (mode === 'single') {
+      const displayVisit = checkinDate || today
+      return formatDisplayDate(displayVisit)
+    }
     
     const displayCheckin = checkinDate || today
     const displayCheckout = checkoutDate || tomorrow
@@ -127,8 +141,18 @@ export function DateRangePicker({
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Can't select past dates
-    if (isBefore(date, today)) {
+    // Can't select past or sold-out dates
+    if (isBefore(date, today) || isDateSoldOut(date)) {
+      return
+    }
+
+    if (mode === 'single') {
+      onCheckinChange(dateString)
+      onCheckoutChange(dateString)
+      setHoverDate(null)
+      if (!isMobileRef.current) {
+        setIsOpen(false)
+      }
       return
     }
 
@@ -216,6 +240,7 @@ export function DateRangePicker({
     const isEnd = isDateEnd(day)
     const inRange = isDateInRange(day)
     const isSelected = isDateSelected(day)
+    const isSoldOut = isDateSoldOut(day)
     const isDisabled = isDateDisabled(day) || (variant === 'mobile' && !inCurrentMonth)
     const isSingleDay = isSingleDayRange && isStart && isEnd
 
@@ -263,7 +288,9 @@ export function DateRangePicker({
             variant === 'mobile' && !inCurrentMonth ? 'text-transparent' : '',
             variant === 'desktop' && !inCurrentMonth ? 'text-gray-300 opacity-40' : '',
             isDisabled
-              ? 'cursor-not-allowed text-gray-300 opacity-30'
+              ? isSoldOut && inCurrentMonth
+                ? 'cursor-not-allowed text-gray-400 line-through opacity-60'
+                : 'cursor-not-allowed text-gray-300 opacity-30'
               : 'cursor-pointer',
             inRange && !isSelected && inCurrentMonth ? 'text-[#003580]' : '',
             !inRange && !isSelected && !isDisabled && inCurrentMonth
@@ -281,10 +308,15 @@ export function DateRangePicker({
     )
   }
 
+  const isDateSoldOut = (date: Date) => {
+    if (!soldOutSet?.size) return false
+    return soldOutSet.has(format(date, 'yyyy-MM-dd'))
+  }
+
   const isDateDisabled = (date: Date) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return isBefore(date, today)
+    return isBefore(date, today) || isDateSoldOut(date)
   }
 
   const nextMonth = () => {

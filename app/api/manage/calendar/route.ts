@@ -4,6 +4,8 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
+import { OCCUPYING_BOOKING_STATUSES } from '@/lib/booking/occupying-statuses'
+import { bookingOccupiedDates } from '@/lib/packages/drop-in-capacity'
 
 /**
  * Owner calendar API.
@@ -43,17 +45,7 @@ const upsertSchema = z
   )
 
 /** Booking statuses that occupy a spot on a given date. */
-const OCCUPYING_STATUSES = [
-  'pending',
-  'gym_confirmed',
-  'confirmed',
-  'paid',
-  'completed',
-  // legacy
-  'pending_payment',
-  'pending_confirmation',
-  'awaiting_approval',
-] as const
+const OCCUPYING_STATUSES = OCCUPYING_BOOKING_STATUSES
 
 async function assertOwnsGym(
   access: Awaited<ReturnType<typeof getOwnerAccessContext>>,
@@ -136,18 +128,14 @@ export async function GET(request: NextRequest) {
     if (bkErr)
       return NextResponse.json({ error: 'Failed to load bookings' }, { status: 500 })
 
-    // Build booked counts per date. A booking occupies every date in [start_date, end_date).
+    // Build booked counts per date (inclusive visit days; same-day = 1 spot).
     const bookedByDate = new Map<string, number>()
     for (const b of bookingsInRange ?? []) {
       const bStart = (b as any).start_date as string
       const bEnd = (b as any).end_date as string
       if (!bStart || !bEnd) continue
-      // Clamp to requested window
-      const lo = bStart < from ? from : bStart
-      const hi = bEnd > addDaysISO(to, 1) ? addDaysISO(to, 1) : bEnd
-      const len = diffDays(lo, hi)
-      for (let i = 0; i < len; i++) {
-        const d = addDaysISO(lo, i)
+      for (const d of bookingOccupiedDates(bStart, bEnd)) {
+        if (d < from || d > to) continue
         bookedByDate.set(d, (bookedByDate.get(d) ?? 0) + 1)
       }
     }

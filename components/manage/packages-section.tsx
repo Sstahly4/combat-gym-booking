@@ -18,7 +18,9 @@ import {
   BedDouble,
   UtensilsCrossed,
   Dumbbell,
+  DoorOpen,
 } from 'lucide-react'
+import { dropInSessionCardLabel, isDropInPackage } from '@/lib/packages/drop-in'
 
 interface PackagesSectionProps {
   gymId: string
@@ -35,6 +37,7 @@ const OFFER_TYPE_META: Record<string, { label: string; color: string; icon: Reac
   TYPE_ALL_INCLUSIVE:   { label: 'All-Inclusive',          color: 'bg-purple-100 text-purple-700',icon: UtensilsCrossed },
   TYPE_CUSTOM_EXP:      { label: 'Short-term Experience',  color: 'bg-orange-100 text-orange-700',icon: Calendar },
   TYPE_ONE_TIME_EVENT:  { label: 'One-Time Event',         color: 'bg-amber-100 text-amber-700',  icon: Ticket },
+  TYPE_DROP_IN:         { label: 'Drop-in Session',        color: 'bg-teal-100 text-teal-700',    icon: DoorOpen },
 }
 
 export function PackagesSection({
@@ -112,13 +115,19 @@ export function PackagesSection({
               ? (pkg.variants && pkg.variants.length > 0
                   ? `${pkg.variants.length} ticket tier${pkg.variants.length !== 1 ? 's' : ''}`
                   : pkg.price_per_day ? `${pkg.currency} ${pkg.price_per_day.toLocaleString()} / ticket` : null)
+              : isDropInPackage(pkg)
+                ? (pkg.price_per_day
+                    ? `${pkg.currency} ${pkg.price_per_day.toLocaleString()} / visit`
+                    : null)
               : pkg.price_per_week
                 ? `${pkg.currency} ${pkg.price_per_week.toLocaleString()} / week`
                 : pkg.price_per_day
                   ? `${pkg.currency} ${pkg.price_per_day.toLocaleString()} / day`
                   : null
 
-            const trainingAccessLabel = offerTypeUsesTrainingAccess(pkg.offer_type)
+            const trainingAccessLabel = isDropInPackage(pkg)
+              ? dropInSessionCardLabel(pkg.training_access)
+              : offerTypeUsesTrainingAccess(pkg.offer_type)
               ? trainingAccessCardLabel(pkg.training_access ?? 'twice_daily')
               : null
 
@@ -155,6 +164,9 @@ export function PackagesSection({
                       </span>
                     )}
                     {priceLabel && <span className="font-medium text-gray-700">{priceLabel}</span>}
+                    {isDropInPackage(pkg) && pkg.daily_capacity != null && (
+                      <span className="text-gray-500">Max {pkg.daily_capacity}/day</span>
+                    )}
                     {pkg.offer_type === 'TYPE_ONE_TIME_EVENT' && pkg.event_date && (
                       <span className="flex items-center gap-1 text-amber-600">
                         <Calendar className="w-3 h-3" />

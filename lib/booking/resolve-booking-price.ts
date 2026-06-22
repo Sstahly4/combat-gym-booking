@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeBookingPriceFromDates, type PriceBreakdown } from '@/lib/booking/recalculate-booking-price'
 import { computeBookingPriceWithSeasons } from '@/lib/booking/resolve-seasonal-prices'
+import { validateDropInBookingDates, isDropInPackage } from '@/lib/packages/drop-in'
+import { normalizeTrainingAccess } from '@/lib/packages/training-access'
 import type { Package, PackageSeasonalRate, PackageVariant } from '@/lib/types/database'
 
 export type ResolveBookingPriceResult =
@@ -128,13 +130,13 @@ export async function resolveBookingPrice(
     return { ok: false, status: 400, error: 'package_id is required' }
   }
 
-  if (new Date(endDate) <= new Date(startDate)) {
-    return { ok: false, status: 400, error: 'checkout must be after checkin' }
+  if (new Date(endDate) < new Date(startDate)) {
+    return { ok: false, status: 400, error: 'checkout must be on or after checkin' }
   }
 
   const { data: packageData, error: pkgError } = await supabase
     .from('packages')
-    .select('id, gym_id, type, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month, booking_mode')
+    .select('id, gym_id, type, offer_type, price_per_day, price_per_week, price_per_month, once_daily_price_per_day, once_daily_price_per_week, once_daily_price_per_month, booking_mode, training_access')
     .eq('id', packageId)
     .single()
 
@@ -142,7 +144,32 @@ export async function resolveBookingPrice(
     return { ok: false, status: 404, error: 'Package not found' }
   }
 
-  const pkg = packageData as PackagePricingRow
+  const pkgRow = packageData as PackagePricingRow & {
+    offer_type?: string | null
+    training_access?: string | null
+  }
+
+  const dropInDateError = validateDropInBookingDates(pkgRow.offer_type, startDate, endDate)
+  if (dropInDateError) {
+    return { ok: false, status: 400, error: dropInDateError }
+  }
+
+  if (
+    !isDropInPackage({ offer_type: pkgRow.offer_type }) &&
+    pkgRow.type !== 'training' &&
+    new Date(endDate) <= new Date(startDate)
+  ) {
+    return { ok: false, status: 400, error: 'checkout must be after checkin' }
+  }
+
+  const effectiveTier =
+    isDropInPackage({ offer_type: pkgRow.offer_type })
+      ? normalizeTrainingAccess(
+          pkgRow.training_access as Parameters<typeof normalizeTrainingAccess>[0]
+        ) ?? 'once_daily'
+      : resolvedTier
+
+  const pkg = pkgRow
   if (pkg.gym_id !== gymId) {
     return { ok: false, status: 400, error: 'Package does not belong to this gym' }
   }
@@ -182,7 +209,7 @@ export async function resolveBookingPrice(
     seasonalRates,
     startDate,
     endDate,
-    resolvedTier
+    effectiveTier
   )
   if (!breakdown) {
     return { ok: false, status: 400, error: 'Invalid date range for pricing' }

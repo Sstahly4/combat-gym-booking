@@ -22,12 +22,21 @@ export function computeBookingPriceFromDates(
   > | null
 ) {
   const nights = nightsBetween(startDate, endDate)
+  const isTraining = package_.type === 'training'
+
+  if (isTraining) {
+    if (nights < 0) return null
+    const duration = nights + 1
+    return calculatePackagePrice(duration, package_.type, {
+      daily: variant?.price_per_day ?? package_.price_per_day,
+      weekly: variant?.price_per_week ?? package_.price_per_week,
+      monthly: variant?.price_per_month ?? package_.price_per_month,
+    })
+  }
+
   if (nights <= 0) return null
 
-  const isTraining = package_.type === 'training'
-  const duration = isTraining ? Math.max(1, nights + 1) : nights
-
-  return calculatePackagePrice(duration, package_.type, {
+  return calculatePackagePrice(nights, package_.type, {
     daily: variant?.price_per_day ?? package_.price_per_day,
     weekly: variant?.price_per_week ?? package_.price_per_week,
     monthly: variant?.price_per_month ?? package_.price_per_month,
