@@ -996,6 +996,14 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
         if (selectedOfferType === 'TYPE_ONE_TIME_EVENT') {
           return eventDate !== '' && ticketTiers.some(t => t.name.trim() !== '' && t.price !== '')
         }
+        if (selectedOfferType === 'TYPE_DROP_IN') {
+          if (!pricePerDay.trim()) return false
+          if (dropInDailyCapacity.trim()) {
+            const cap = parseInt(dropInDailyCapacity, 10)
+            if (!Number.isFinite(cap) || cap < 1) return false
+          }
+          return true
+        }
         if (offerTypeUsesTrainingAccess(selectedOfferType)) {
           const usesRoomVariants =
             selectedOfferType === 'TYPE_TRAINING_ACCOM' ||
