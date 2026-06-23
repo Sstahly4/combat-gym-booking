@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import SearchClient from './search-client'
-import { SearchSeoIntro } from './search-seo-intro'
-import {
-  buildSearchBrowseDescriptionFromSearchParams,
-  searchSeoHeadingFromSearchParams,
-} from '@/lib/search/search-seo'
+import { buildSearchBrowseDescriptionFromSearchParams } from '@/lib/search/search-seo'
 import { buildSearchBrowseTitleFromSearchParams } from '@/lib/search/search-browse-title'
+import { searchSeoHeadingFromSearchParams } from '@/lib/search/search-seo'
 import { fetchSearchServerPayload } from '@/lib/search/search-server-listings'
 import { buildSearchItemListLd } from '@/lib/seo/search-schema'
 
@@ -49,7 +46,6 @@ export default async function SearchPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
         />
       ) : null}
-      <SearchSeoIntro searchParams={searchParams} />
       <SearchClient initialPayload={initialPayload} />
     </>
   )
