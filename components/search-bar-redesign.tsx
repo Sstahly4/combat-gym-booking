@@ -708,9 +708,9 @@ export function SearchBarRedesign({
               setMobileWhereImmersive(false)
               setMobileModalOpen(false)
             }}
-            className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
+            className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
           >
-            <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
+            <X className="w-4 h-4 text-gray-800" strokeWidth={2} />
           </button>
           <nav className="flex justify-center gap-5 sm:gap-9 px-12" aria-label="Search category">
             {CATEGORIES.map((cat) => {
@@ -762,9 +762,9 @@ export function SearchBarRedesign({
               <h2 className="mb-3 flex-shrink-0 text-2xl font-bold text-gray-900">Where?</h2>
               <div
                 ref={compactWhereSearchBarRef}
-                className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
+                className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
               >
-                <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
+                <Search className="h-4 w-4 flex-shrink-0 text-gray-600" strokeWidth={2.25} />
                 <input
                   ref={mobileWhereInputRef}
                   type="text"
@@ -774,7 +774,7 @@ export function SearchBarRedesign({
                     if (e.key === 'Enter') setMobilePanel('when')
                   }}
                   placeholder="Search destinations"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] text-gray-700 outline-none placeholder:text-gray-500"
                 />
                 {whereQuery && (
                   <button type="button" onClick={() => setWhereQuery('')} className="p-1">
@@ -1588,18 +1588,18 @@ export function SearchBarRedesign({
                 >
                 <div
                   ref={immersiveWhereSearchBarRef}
-                  className="flex items-stretch gap-0.5 rounded-2xl border border-gray-200 bg-white px-1 py-1 shadow-sm ring-1 ring-black/[0.04]"
+                  className="flex items-stretch gap-0.5 rounded-2xl border border-gray-300 bg-white px-1 py-1 shadow-sm ring-1 ring-black/[0.04]"
                 >
                   <button
                     type="button"
                     aria-label="Back"
                     onClick={closeImmersiveWhere}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-900 active:bg-gray-100"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-800 active:bg-gray-100"
                   >
                     <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
                   </button>
                   <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2">
-                    <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
+                    <Search className="h-4 w-4 flex-shrink-0 text-gray-600" strokeWidth={2.25} />
                     <input
                       ref={mobileWhereInputRef}
                       type="text"
@@ -1612,7 +1612,7 @@ export function SearchBarRedesign({
                         }
                       }}
                       placeholder="Search destinations"
-                      className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
+                      className="min-w-0 flex-1 bg-transparent py-2.5 text-[13px] text-gray-700 outline-none placeholder:text-gray-500"
                     />
                     {whereQuery ? (
                       <button
@@ -1650,7 +1650,7 @@ export function SearchBarRedesign({
                 {renderGymSuggestBlock('mobile')}
                 {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery, liveDestinations)) ? (
                   <div className="mb-6 mt-1">
-                    <p className="mb-3 text-[12px] font-medium text-gray-700">Recent searches</p>
+                    <p className="mb-3 text-[12px] font-normal text-gray-700">Recent searches</p>
                     <div className="space-y-1">
                       {recentSearches.map((entry) => (
                         <button
@@ -1672,7 +1672,7 @@ export function SearchBarRedesign({
                         >
                           <WhereRecentSearchIconTile label={entry.query} size="md" destinations={liveDestinations} />
                           <div className="min-w-0 flex-1">
-                            <div className="text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
+                            <div className="text-[14px] font-normal leading-tight text-gray-900">{entry.query}</div>
                             <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
                               {recentSearchRowSubtitle(entry, liveDestinations)}
                             </div>
@@ -1683,7 +1683,7 @@ export function SearchBarRedesign({
                   </div>
                 ) : null}
                 <div>
-                  <p className="mb-3 text-[12px] font-medium text-gray-700">Suggested destinations</p>
+                  <p className="mb-3 text-[12px] font-normal text-gray-700">Suggested destinations</p>
                   <div className="space-y-1">
                     {shouldShowNearbyDestination(whereQuery) ? (
                       <button
@@ -1698,7 +1698,7 @@ export function SearchBarRedesign({
                       >
                         <WhereLocationIconTile visual={NEARBY_DESTINATION.visual} size="md" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[14px] font-medium leading-tight text-gray-900">
+                          <div className="text-[14px] font-normal leading-tight text-gray-900">
                             {NEARBY_DESTINATION.name}
                           </div>
                           <div className="mt-0.5 text-[12px] leading-tight text-gray-500">
@@ -1720,7 +1720,7 @@ export function SearchBarRedesign({
                       >
                         <WhereLocationIconTile visual={dest.visual} size="md" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[14px] font-medium leading-tight text-gray-900">{dest.name}</div>
+                          <div className="text-[14px] font-normal leading-tight text-gray-900">{dest.name}</div>
                           <div className="mt-0.5 text-[12px] leading-tight text-gray-500">{dest.subtitle}</div>
                         </div>
                       </button>
@@ -1741,9 +1741,9 @@ export function SearchBarRedesign({
                     setMobileWhereImmersive(false)
                     setMobileModalOpen(false)
                   }}
-                  className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
+                  className="absolute right-4 top-[max(1.75rem,calc(env(safe-area-inset-top)+1.125rem))] z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white ring-1 ring-gray-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.1),0_6px_20px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.06)]"
                 >
-                  <X className="w-5 h-5 text-gray-800" strokeWidth={2} />
+                  <X className="w-4 h-4 text-gray-800" strokeWidth={2} />
                 </button>
                 <nav
                   className="flex justify-center gap-5 sm:gap-9 px-12"
@@ -1800,10 +1800,10 @@ export function SearchBarRedesign({
                   {/* Search input */}
                   <div
                     ref={compactWhereSearchBarRef}
-                    className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
+                    className="mb-3 flex flex-shrink-0 items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
                     onClick={() => openImmersiveWhere(true)}
                   >
-                    <Search className="h-4 w-4 flex-shrink-0 text-gray-500" strokeWidth={2.25} />
+                    <Search className="h-4 w-4 flex-shrink-0 text-gray-600" strokeWidth={2.25} />
                     <input
                       ref={mobileWhereInputRef}
                       type="text"
@@ -1814,7 +1814,7 @@ export function SearchBarRedesign({
                         if (e.key === 'Enter') setMobilePanel('when')
                       }}
                       placeholder="Search destinations"
-                      className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-gray-700 outline-none placeholder:text-gray-500"
                     />
                   </div>
 
@@ -1827,7 +1827,7 @@ export function SearchBarRedesign({
                     <div className="relative mt-1 overflow-hidden max-h-[min(44dvh,20rem)] pb-4">
                       {recentSearches.length > 0 && (!whereQuery.trim() || isDestinationLikeWhereQuery(whereQuery, liveDestinations)) ? (
                         <div className="mb-3 flex-shrink-0">
-                          <p className="mb-2 text-[12px] font-medium text-gray-700">Recent searches</p>
+                          <p className="mb-2 text-[12px] font-normal text-gray-700">Recent searches</p>
                           <div className="space-y-1">
                             {recentSearches.map((entry) => (
                               <button
@@ -1848,7 +1848,7 @@ export function SearchBarRedesign({
                               >
                                 <WhereRecentSearchIconTile label={entry.query} size="md" destinations={liveDestinations} />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{entry.query}</div>
+                                  <div className="truncate text-[14px] font-normal leading-tight text-gray-900">{entry.query}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">
                                     {recentSearchRowSubtitle(entry, liveDestinations)}
                                   </div>
@@ -1866,7 +1866,7 @@ export function SearchBarRedesign({
                               : ''
                           }`}
                         >
-                          <p className="mb-2 flex-shrink-0 text-[12px] font-medium text-gray-700">
+                          <p className="mb-2 flex-shrink-0 text-[12px] font-normal text-gray-700">
                             Suggested destinations
                           </p>
                           <div className="space-y-1">
@@ -1882,7 +1882,7 @@ export function SearchBarRedesign({
                               >
                                 <WhereLocationIconTile visual={dest.visual} size="md" />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[14px] font-medium leading-tight text-gray-900">{dest.name}</div>
+                                  <div className="truncate text-[14px] font-normal leading-tight text-gray-900">{dest.name}</div>
                                   <div className="mt-0.5 truncate text-[12px] leading-tight text-gray-500">{dest.subtitle}</div>
                                 </div>
                               </button>
@@ -1920,8 +1920,8 @@ export function SearchBarRedesign({
                   onClick={() => setMobilePanel('where')}
                   className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
-                  <span className="text-sm text-gray-500 font-medium">Where</span>
-                  <span className="text-sm font-semibold text-gray-900">{whereQuery || 'Anywhere'}</span>
+                  <span className="text-[13px] font-semibold tracking-tight text-gray-500">Where</span>
+                  <span className="text-[13px] font-semibold tracking-tight text-gray-900">{whereQuery || 'Anywhere'}</span>
                 </button>
               )}
 
@@ -1987,8 +1987,8 @@ export function SearchBarRedesign({
                   onClick={() => setMobilePanel('when')}
                   className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
-                  <span className="text-sm text-gray-500 font-medium">When</span>
-                  <span className={`text-sm font-semibold ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                  <span className="text-[13px] font-semibold tracking-tight text-gray-500">When</span>
+                  <span className={`text-[13px] font-semibold tracking-tight ${userHasSelectedDates && checkinDate ? 'text-gray-900' : 'text-gray-400'}`}>
                     {whenDisplay()}
                   </span>
                 </button>
@@ -2011,8 +2011,8 @@ export function SearchBarRedesign({
                   onClick={() => setMobilePanel('who')}
                   className="flex w-full touch-manipulation items-center justify-between rounded-2xl border border-gray-200/90 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.035),0_4px_12px_rgba(15,23,42,0.055),0_14px_32px_-8px_rgba(15,23,42,0.04)]"
                 >
-                  <span className="text-sm text-gray-500 font-medium">Who</span>
-                  <span className={`text-sm font-semibold ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
+                  <span className="text-[13px] font-semibold tracking-tight text-gray-500">Who</span>
+                  <span className={`text-[13px] font-semibold tracking-tight ${(adults > 1 || children > 0 || infants > 0 || pets > 0) ? 'text-gray-900' : 'text-gray-400'}`}>
                     {guestDisplay()}
                   </span>
                 </button>
@@ -2021,20 +2021,20 @@ export function SearchBarRedesign({
           </div>
 
           {/* ── Sticky footer ── */}
-          <div className="flex-shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between border-t border-gray-200/80 bg-gray-100">
+          <div className="flex-shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-gray-100">
             <button
               type="button"
               onClick={handleClearAll}
-              className="text-sm font-semibold text-gray-800 underline underline-offset-2 touch-manipulation"
+              className="text-[13px] font-semibold text-gray-800 touch-manipulation"
             >
               Clear all
             </button>
             <button
               type="button"
               onClick={handleSearch}
-              className="flex items-center gap-2 bg-[#003580] hover:bg-[#003580]/90 active:scale-95 text-white px-6 py-3 rounded-full font-semibold text-sm transition-all touch-manipulation"
+              className="flex min-h-[48px] items-center gap-2 rounded-xl bg-[#003580] px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_2px_8px_rgba(0,53,128,0.32)] transition-all touch-manipulation active:scale-[0.98] hover:bg-[#002d66]"
             >
-              <Search className="w-4 h-4" strokeWidth={2.5} />
+              <Search className="w-4 h-4" strokeWidth={2.75} />
               Search
             </button>
           </div>

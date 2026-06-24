@@ -1080,11 +1080,13 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
     <BookingProvider key={category} initialCheckin={initialDates.checkin} initialCheckout={initialDates.checkout}>
       <div className="min-h-screen bg-white">
 
-        {/* ── Blue search strip — z-index so the translated search bar + dropdowns stack above the body (map iframes, listing images) ── */}
-        <div className="relative z-30 bg-[#003580] pt-5 pb-0">
+        {/* ── Search strip — white on mobile; blue + overlapping pill on desktop ── */}
+        <div className="relative z-30 bg-white pt-4 pb-3 md:bg-[#003580] md:pt-5 md:pb-0">
           <div className="max-w-6xl mx-auto px-6 md:px-4">
-            <CategoryTabs value={category} onChange={setCategory} />
-            <div className="translate-y-1/2">
+            <div className="hidden md:block">
+              <CategoryTabs value={category} onChange={setCategory} />
+            </div>
+            <div className="md:translate-y-1/2">
               <SearchBarRedesign
                 showTabs={false}
                 yellowBorder={true}
@@ -1096,8 +1098,8 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
           </div>
         </div>
 
-        {/* White spacer — absorbs the bottom half of the pill; breadcrumb desktop-only (cleaner mobile OTA layout) */}
-        <div className="bg-white pt-5 pb-3 md:pt-10 md:pb-4">
+        {/* White spacer — absorbs the bottom half of the pill on desktop; breadcrumb desktop-only */}
+        <div className="bg-white pb-3 md:pt-10 md:pb-4">
           <div className="max-w-6xl mx-auto px-6 md:px-4">
             {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
             <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
