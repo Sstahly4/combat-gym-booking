@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { HelpCircle, Users } from 'lucide-react'
 import type { DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
@@ -64,6 +64,12 @@ export function PopularTimesChart({
 }: PopularTimesChartProps) {
   const gymNow = useGymLocalClock(timezone)
   const userAdjusted = useRef(false)
+  const plotRef = useRef<HTMLDivElement>(null)
+  const barRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
+  const [barLayout, setBarLayout] = useState<{
+    centersByHour: Record<number, number>
+    selectedPx: number
+  }>({ centersByHour: {}, selectedPx: 0 })
 
   const initialDayData = findDayBusyness(data, gymNow.day) ?? data[0]
   const initialDisplay = buildDynamicHourWindow(initialDayData?.hours ?? [])
@@ -130,13 +136,46 @@ export function PopularTimesChart({
     [displayHours, hourMap],
   )
 
+  const measureBarLayout = useCallback(() => {
+    const plot = plotRef.current
+    if (!plot) return
+    const plotRect = plot.getBoundingClientRect()
+    if (plotRect.width <= 0) return
+
+    const centersByHour: Record<number, number> = {}
+    let selectedPx = plotRect.width / 2
+
+    for (const hour of displayHours) {
+      const bar = barRefs.current.get(hour)
+      if (!bar) continue
+      const barRect = bar.getBoundingClientRect()
+      const centerPx = barRect.left - plotRect.left + barRect.width / 2
+      centersByHour[hour] = (centerPx / plotRect.width) * 100
+      if (hour === selectedHour) selectedPx = centerPx
+    }
+
+    setBarLayout({ centersByHour, selectedPx })
+  }, [displayHours, selectedHour])
+
+  useLayoutEffect(() => {
+    measureBarLayout()
+    const plot = plotRef.current
+    if (!plot) return
+    const observer = new ResizeObserver(measureBarLayout)
+    observer.observe(plot)
+    return () => observer.disconnect()
+  }, [measureBarLayout])
+
   const barCenter = (hour: number): number | null => {
+    const measured = barLayout.centersByHour[hour]
+    if (measured != null) return measured
     const idx = displayHours.indexOf(hour)
     if (idx < 0) return null
     return barCenterPercent(idx, displayHours.length)
   }
 
   const selectedCenter = barCenter(selectedHour) ?? 50
+  const hasMeasuredBars = barLayout.centersByHour[selectedHour] != null
   const labelPosition = floatingLabelPosition(selectedCenter)
   const labelAlign =
     selectedCenter <= 18
@@ -192,14 +231,13 @@ export function PopularTimesChart({
         })}
       </div>
 
-      <div className={`relative ${CHART_INSET_X}`}>
+      <div ref={plotRef} className={`relative ${CHART_INSET_X}`}>
         <div className="relative mb-1 min-h-10">
           <div
-            className={`absolute bottom-0 flex flex-col transition-[left,transform] duration-200 ease-out ${labelAlign}`}
+            className={`absolute bottom-0 flex w-max max-w-[min(280px,calc(100vw-3rem))] flex-col transition-[left,transform] duration-200 ease-out ${labelAlign}`}
             style={{
               left: labelPosition.left,
               transform: labelPosition.transform,
-              maxWidth: 'min(240px, 78vw)',
             }}
           >
             <div className="flex items-center gap-1.5 text-[13px] leading-snug">
@@ -254,7 +292,9 @@ export function PopularTimesChart({
 
         <div
           className="pointer-events-none absolute top-10 bottom-5 z-20 w-px -translate-x-1/2 border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
-          style={{ left: `${selectedCenter}%` }}
+          style={{
+            left: hasMeasuredBars ? barLayout.selectedPx : `${selectedCenter}%`,
+          }}
           aria-hidden
         />
 
@@ -288,6 +328,10 @@ export function PopularTimesChart({
               return (
                 <button
                   key={hour}
+                  ref={(node) => {
+                    if (node) barRefs.current.set(hour, node)
+                    else barRefs.current.delete(hour)
+                  }}
                   type="button"
                   onClick={() => handleHourSelect(hour)}
                   className="relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end border-0 bg-transparent p-0"

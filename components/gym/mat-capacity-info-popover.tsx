@@ -29,7 +29,7 @@ export function MatCapacityInfoPopover({ open, onClose }: MatCapacityInfoPopover
   return (
     <div
       ref={ref}
-      className="absolute left-0 top-full z-30 mt-2 w-[min(240px,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs text-gray-600 shadow-lg"
+      className="absolute left-0 top-full z-30 mt-2 w-fit whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600 shadow-lg"
       role="tooltip"
     >
       Based on visits to this place

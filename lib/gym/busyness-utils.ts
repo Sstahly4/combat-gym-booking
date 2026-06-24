@@ -160,20 +160,20 @@ export function historicalStatusLabel(
   return HISTORICAL_TIER_LABEL[busynessTierForHour(percentage, dayPercentages)]
 }
 
-/** Google-style secondary hint below the main status line. */
+/** Mat-capacity secondary hint below the main status line. */
 export function historicalSecondaryHint(
   percentage: number,
   dayPercentages: number[],
 ): string | null {
   switch (busynessTierForHour(percentage, dayPercentages)) {
     case 'quiet':
-      return 'No wait'
+      return 'Plenty of room to train'
     case 'moderate':
-      return 'Usually a short wait'
+      return 'Good availability on the mats'
     case 'busy':
-      return 'May be a wait'
+      return 'One of the busiest times of the day'
     case 'peak':
-      return 'Expect a wait at peak times'
+      return 'Typically reaches maximum mat capacity'
   }
 }
 
@@ -184,20 +184,20 @@ export function liveSecondaryHint(
   dayPercentages: number[],
 ): string | null {
   if (livePercentage < historicalPercentage - LIVE_COMPARISON_DELTA) {
-    return 'Quieter than usual'
+    return 'More mat space than usual right now'
   }
   if (livePercentage > historicalPercentage + LIVE_COMPARISON_DELTA) {
-    return 'Busier than this time usually is'
+    return 'Mats filling up faster than usual'
   }
   switch (busynessTierForHour(livePercentage, dayPercentages)) {
     case 'quiet':
-      return 'Usually no wait'
+      return 'Plenty of room to train'
     case 'moderate':
-      return 'Usually a short wait'
+      return 'Good availability on the mats'
     case 'busy':
-      return 'May be a wait'
+      return 'One of the busiest times of the day'
     case 'peak':
-      return null
+      return 'Typically reaches maximum mat capacity'
   }
 }
 
