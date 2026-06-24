@@ -1,0 +1,43 @@
+export const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const
+
+export type DayOfWeek = (typeof DAYS_OF_WEEK)[number]
+
+export interface HourlyBusyness {
+  hour: number
+  percentage: number
+}
+
+export interface DayBusyness {
+  day: DayOfWeek
+  hours: HourlyBusyness[]
+}
+
+export type PopularTimes = DayBusyness[]
+
+export type BusynessSource = 'google' | 'nearby_clone' | 'template' | 'unknown'
+
+export interface GymBusynessRecord {
+  id: string
+  gym_id: string
+  popular_times: PopularTimes
+  source: BusynessSource
+  updated_at: string
+}
+
+export function isPopularTimesEmpty(data: PopularTimes | null | undefined): boolean {
+  if (!data || data.length === 0) return true
+  return data.every((day) => day.hours.length === 0)
+}
+
+export function hasDisplayableBusyness(record: GymBusynessRecord | null): boolean {
+  if (!record) return false
+  return !isPopularTimesEmpty(record.popular_times)
+}
