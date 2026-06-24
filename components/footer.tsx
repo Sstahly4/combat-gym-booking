@@ -123,7 +123,7 @@ export function Footer() {
         {FOOTER_SECTIONS.map((section, index) => (
           <div
             key={section.title}
-            className={index > 0 ? 'mt-5' : undefined}
+            className={index > 0 ? 'mt-5 border-t border-gray-200/50 pt-5' : undefined}
           >
             <h3 className="mb-2.5 text-[15px] font-semibold tracking-tight text-gray-800">
               {section.title}
@@ -140,7 +140,7 @@ export function Footer() {
           </div>
         ))}
 
-        <div className="mt-6 space-y-3 border-t border-gray-200/70 pt-5">
+        <div className="mt-5 space-y-3 border-t border-gray-200/50 pt-5">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
             <button
               type="button"
