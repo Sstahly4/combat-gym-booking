@@ -17,6 +17,7 @@ export function GymBusynessMeter({ busyness, timezone, liveByHour }: GymBusyness
   return (
     <PopularTimesChart
       data={busyness!.popular_times}
+      source={busyness!.source}
       timezone={timezone}
       liveByHour={liveByHour}
     />

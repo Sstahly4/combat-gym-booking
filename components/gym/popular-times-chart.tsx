@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { HelpCircle, Users } from 'lucide-react'
-import type { DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
+import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
   CHART_GRID_FRACTIONS,
@@ -12,6 +12,7 @@ import {
   SELECTED_BAR_COLOR,
   axisTicksForWindow,
   buildDynamicHourWindow,
+  barPercentageFloorForSource,
   defaultSelectedHour,
   findDayBusyness,
   formatAxisHour,
@@ -33,6 +34,7 @@ import { MatCapacityInfoPopover } from '@/components/gym/mat-capacity-info-popov
 
 interface PopularTimesChartProps {
   data: PopularTimes
+  source?: BusynessSource
   timezone?: string | null
   liveByHour?: Record<number, number> | null
 }
@@ -59,9 +61,17 @@ function useGymLocalClock(timezone?: string | null) {
 
 export function PopularTimesChart({
   data,
+  source = 'unknown',
   timezone,
   liveByHour,
 }: PopularTimesChartProps) {
+  const barPercentageFloor = barPercentageFloorForSource(source)
+  const buildWindow = useCallback(
+    (dayHours: { hour: number; percentage: number }[]) =>
+      buildDynamicHourWindow(dayHours, { barPercentageFloor }),
+    [barPercentageFloor],
+  )
+
   const gymNow = useGymLocalClock(timezone)
   const userAdjusted = useRef(false)
   const plotRef = useRef<HTMLDivElement>(null)
@@ -72,7 +82,7 @@ export function PopularTimesChart({
   }>({ centersByHour: {}, selectedPx: 0 })
 
   const initialDayData = findDayBusyness(data, gymNow.day) ?? data[0]
-  const initialDisplay = buildDynamicHourWindow(initialDayData?.hours ?? [])
+  const initialDisplay = buildWindow(initialDayData?.hours ?? [])
 
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
   const [selectedHour, setSelectedHour] = useState<number>(() =>
@@ -83,14 +93,14 @@ export function PopularTimesChart({
   const dayData = findDayBusyness(data, activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
   const { minHour, maxHour, barHours, displayHours, emptyHours, hourMap } = useMemo(
-    () => buildDynamicHourWindow(hours),
-    [hours],
+    () => buildWindow(hours),
+    [hours, buildWindow],
   )
 
   useEffect(() => {
     if (userAdjusted.current) return
     const todayData = findDayBusyness(data, gymNow.day)
-    const todayDisplay = buildDynamicHourWindow(todayData?.hours ?? [])
+    const todayDisplay = buildWindow(todayData?.hours ?? [])
     setActiveDay(gymNow.day)
     setSelectedHour(todaySelectedHour(todayDisplay.barHours, gymNow.hour))
   }, [gymNow.day, gymNow.hour, data])
@@ -99,7 +109,7 @@ export function PopularTimesChart({
     (day: DayOfWeek) => {
       userAdjusted.current = true
       const nextDayData = findDayBusyness(data, day)
-      const nextDisplay = buildDynamicHourWindow(nextDayData?.hours ?? [])
+      const nextDisplay = buildWindow(nextDayData?.hours ?? [])
       setActiveDay(day)
       if (day === gymNow.day) {
         setSelectedHour(todaySelectedHour(nextDisplay.barHours, gymNow.hour))
@@ -107,7 +117,7 @@ export function PopularTimesChart({
         setSelectedHour(defaultSelectedHour(nextDisplay.barHours))
       }
     },
-    [data, gymNow.day, gymNow.hour],
+    [data, gymNow.day, gymNow.hour, buildWindow],
   )
 
   const handleHourSelect = useCallback((hour: number) => {

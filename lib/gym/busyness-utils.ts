@@ -1,4 +1,4 @@
-import { DAYS_OF_WEEK, type DayBusyness, type DayOfWeek, type PopularTimes } from '@/lib/gym/busyness-types'
+import { DAYS_OF_WEEK, type BusynessSource, type DayBusyness, type DayOfWeek, type PopularTimes } from '@/lib/gym/busyness-types'
 
 export const HISTORICAL_BAR_COLOR = '#003580'
 export const SELECTED_BAR_COLOR = '#1a73e8'
@@ -12,6 +12,22 @@ export const BAR_AREA_MAX_RATIO = 0.7
 
 /** Minimum live vs historical gap before we call it "busier/less busy than usual". */
 export const LIVE_COMPARISON_DELTA = 10
+
+/**
+ * Template/clone curves use ~15% as an off-peak baseline. Bars at or below this are hidden
+ * so synthetic data matches the clean Google-style chart (peaks only, empty quiet hours).
+ */
+export const SYNTHETIC_BUSYNESS_NOISE_FLOOR = 20
+
+export function barPercentageFloorForSource(source?: BusynessSource): number {
+  if (source === 'template' || source === 'nearby_clone') return SYNTHETIC_BUSYNESS_NOISE_FLOOR
+  return 0
+}
+
+export interface BuildHourWindowOptions {
+  /** Only hours with percentage strictly above this value get a bar. Default 0. */
+  barPercentageFloor?: number
+}
 
 export function resolveChartTimezone(gymTimezone?: string | null): string {
   const trimmed = gymTimezone?.trim()
@@ -46,7 +62,7 @@ export interface HourWindow {
   /** Axis tick range — active data ±1h padding. */
   minHour: number
   maxHour: number
-  /** Hours with scraped activity (percentage > 0); only these render bars and accept clicks. */
+  /** Hours with meaningful activity; only these render bars and accept clicks. */
   barHours: number[]
   /** Full row: end spacers + padded window (bars or empty slots). */
   displayHours: number[]
@@ -83,15 +99,17 @@ function buildChartLayout(
 }
 
 /**
- * Dynamic X-axis from earliest/latest hour with activity > 0, padded ±1h on the axis.
- * Bars and selection only on hours with scraped data; padding and end spacers stay empty.
+ * Dynamic X-axis from earliest/latest visible bar hour, padded ±1h on the axis.
+ * Bars and selection only on hours above the floor; padding and end spacers stay empty.
  */
 export function buildDynamicHourWindow(
   hours: { hour: number; percentage: number }[],
+  options: BuildHourWindowOptions = {},
 ): HourWindow {
+  const floor = options.barPercentageFloor ?? 0
   const hourMap = new Map(hours.map((h) => [h.hour, h.percentage]))
   const barHours = hours
-    .filter((h) => h.percentage > 0)
+    .filter((h) => h.percentage > floor)
     .map((h) => h.hour)
     .sort((a, b) => a - b)
 
