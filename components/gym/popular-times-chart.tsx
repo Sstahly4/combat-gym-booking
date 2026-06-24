@@ -5,11 +5,14 @@ import { HelpCircle } from 'lucide-react'
 import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
-  axisTickHours,
+  barFillColor,
   busynessStatusLabel,
   formatAxisHour,
   getGymLocalDateTime,
+  googleAxisTicks,
+  isLiveBarHighlighted,
 } from '@/lib/gym/busyness-utils'
+import { MatCapacityInfoModal } from '@/components/gym/mat-capacity-info-modal'
 
 interface PopularTimesChartProps {
   data: PopularTimes
@@ -17,16 +20,7 @@ interface PopularTimesChartProps {
   timezone?: string | null
 }
 
-const CHART_HEIGHT_PX = 72
-const BAR_COLOR = '#8ab4f8'
-const LIVE_BAR_COLOR = '#e87171'
-
-const SOURCE_TOOLTIPS: Record<BusynessSource, string> = {
-  google: 'Typical busyness by hour, based on Google Popular Times.',
-  nearby_clone: 'Estimated from nearby gyms in this area.',
-  template: 'Standard training camp busyness curve.',
-  unknown: 'Estimated typical busyness by hour.',
-}
+const CHART_HEIGHT_PX = 80
 
 export function PopularTimesChart({
   data,
@@ -35,6 +29,7 @@ export function PopularTimesChart({
 }: PopularTimesChartProps) {
   const gymNow = useMemo(() => getGymLocalDateTime(timezone), [timezone])
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
+  const [infoOpen, setInfoOpen] = useState(false)
 
   const dayData = data.find((d) => d.day === activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
@@ -63,12 +58,18 @@ export function PopularTimesChart({
   const livePercentage = hourMap.get(liveHour) ?? 0
   const liveIndex = displayHours.indexOf(liveHour)
   const showLive = isToday && liveIndex >= 0
-  const ticks = axisTickHours(minHour, maxHour)
+  const ticks = googleAxisTicks(minHour, maxHour)
+  const liveHighlighted = isLiveBarHighlighted(livePercentage)
 
-  const liveLineLeft =
-    displayHours.length > 1
-      ? `${((liveIndex + 0.5) / displayHours.length) * 100}%`
+  const barCenter = (hour: number) => {
+    const idx = displayHours.indexOf(hour)
+    if (idx < 0) return null
+    return displayHours.length > 1
+      ? `${((idx + 0.5) / displayHours.length) * 100}%`
       : '50%'
+  }
+
+  const liveLineLeft = barCenter(liveHour) ?? '50%'
 
   return (
     <div className="select-none">
@@ -78,13 +79,19 @@ export function PopularTimesChart({
         </h3>
         <button
           type="button"
+          onClick={() => setInfoOpen(true)}
           className="text-gray-400 transition-colors hover:text-gray-600"
           aria-label="About mat capacity"
-          title={SOURCE_TOOLTIPS[source]}
         >
           <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
         </button>
       </div>
+
+      <MatCapacityInfoModal
+        open={infoOpen}
+        onOpenChange={setInfoOpen}
+        source={source}
+      />
 
       <div className="mb-4 flex justify-between border-b border-gray-100">
         {DAYS_OF_WEEK.map((day, i) => {
@@ -111,11 +118,25 @@ export function PopularTimesChart({
       {showLive && (
         <div className="relative mb-2 flex items-center gap-2 text-[13px]">
           <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-50" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            <span
+              className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
+                liveHighlighted ? 'bg-red-400' : 'bg-blue-400'
+              }`}
+            />
+            <span
+              className={`relative inline-flex h-2 w-2 rounded-full ${
+                liveHighlighted ? 'bg-red-500' : 'bg-[#8ab4f8]'
+              }`}
+            />
           </span>
           <span>
-            <span className="font-semibold text-red-600">Live:</span>{' '}
+            <span
+              className={`font-semibold ${
+                liveHighlighted ? 'text-red-600' : 'text-[#1a73e8]'
+              }`}
+            >
+              Live:
+            </span>{' '}
             <span className="text-gray-800">{busynessStatusLabel(livePercentage)}</span>
           </span>
         </div>
@@ -124,7 +145,7 @@ export function PopularTimesChart({
       <div className="relative">
         {showLive && (
           <div
-            className="pointer-events-none absolute -top-1 bottom-4 z-20 w-px border-l border-dotted border-gray-400"
+            className="pointer-events-none absolute -top-1 bottom-5 z-20 w-px border-l border-dotted border-gray-400"
             style={{ left: liveLineLeft }}
             aria-hidden
           />
@@ -155,14 +176,14 @@ export function PopularTimesChart({
               return (
                 <div
                   key={hour}
-                  className="group relative flex min-w-0 flex-1 justify-center"
+                  className="group relative flex min-w-0 flex-1 flex-col justify-end items-center"
                   style={{ height: CHART_HEIGHT_PX }}
                 >
                   <div
-                    className="w-full max-w-[12px] rounded-full transition-all duration-200 sm:max-w-[14px]"
+                    className="w-full max-w-[12px] shrink-0 rounded-full transition-all duration-200 sm:max-w-[14px]"
                     style={{
                       height: barHeightPx,
-                      backgroundColor: isLiveHour ? LIVE_BAR_COLOR : BAR_COLOR,
+                      backgroundColor: barFillColor(percentage, isLiveHour),
                     }}
                     title={`${formatAxisHour(hour)}: ${percentage}%`}
                   />
@@ -177,12 +198,8 @@ export function PopularTimesChart({
 
         <div className="relative mt-2 h-4">
           {ticks.map((tick) => {
-            const idx = displayHours.indexOf(tick)
-            if (idx < 0) return null
-            const left =
-              displayHours.length > 1
-                ? `${((idx + 0.5) / displayHours.length) * 100}%`
-                : '50%'
+            const left = barCenter(tick)
+            if (!left) return null
             return (
               <span
                 key={tick}
