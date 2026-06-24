@@ -1,11 +1,25 @@
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/gym/busyness-types'
 
-/** Google-style axis label: 9 → "9a", 12 → "12p", 21 → "9p". */
+/** Axis / display label: 9 → "9am", 12 → "12pm". */
 export function formatAxisHour(hour: number): string {
-  if (hour === 0) return '12a'
-  if (hour < 12) return `${hour}a`
-  if (hour === 12) return '12p'
-  return `${hour - 12}p`
+  if (hour === 0) return '12am'
+  if (hour < 12) return `${hour}am`
+  if (hour === 12) return '12pm'
+  return `${hour - 12}pm`
+}
+
+/** Default hour when viewing a day that isn't today. */
+export function defaultSelectedHour(displayHours: number[]): number {
+  if (displayHours.length === 0) return 9
+  if (displayHours.includes(9)) return 9
+  return displayHours[0]
+}
+
+/** Pick the best hour for today: current gym hour if in range, else 9am fallback. */
+export function todaySelectedHour(displayHours: number[], currentHour: number): number {
+  if (displayHours.length === 0) return 9
+  if (displayHours.includes(currentHour)) return currentHour
+  return defaultSelectedHour(displayHours)
 }
 
 /** Google Popular Times status copy for a busyness percentage. */
