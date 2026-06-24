@@ -30,6 +30,9 @@ const SOURCE_LABELS: Record<BusynessSource, string> = {
   unknown: 'Estimated busyness',
 }
 
+/** Fixed pixel height — % heights break inside nested flex columns. */
+const BAR_AREA_PX = 128
+
 export function PopularTimesChart({ data, source = 'unknown' }: PopularTimesChartProps) {
   const today = DAYS_OF_WEEK[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
   const [activeDay, setActiveDay] = useState<DayOfWeek>(today)
@@ -67,17 +70,20 @@ export function PopularTimesChart({ data, source = 'unknown' }: PopularTimesChar
         </div>
       </div>
 
-      <div className="flex items-end gap-1.5" style={{ height: 160 }}>
+      <div className="flex items-end gap-1.5">
         {displayHours.map((hour) => {
           const percentage = hourMap.get(hour) ?? 0
-          const heightPct = Math.max(4, percentage)
+          const barHeightPx = Math.max(3, Math.round((percentage / 100) * BAR_AREA_PX))
 
           return (
-            <div key={hour} className="group flex flex-1 flex-col items-center gap-1">
-              <div className="relative flex w-full flex-1 items-end">
+            <div key={hour} className="group flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div
+                className="relative flex w-full items-end"
+                style={{ height: BAR_AREA_PX }}
+              >
                 <div
                   className={`w-full rounded-t transition-all ${barColor(percentage)}`}
-                  style={{ height: `${heightPct}%` }}
+                  style={{ height: barHeightPx }}
                   title={`${formatHour(hour)}: ${percentage}% busy`}
                 />
                 <span className="pointer-events-none absolute -top-6 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
