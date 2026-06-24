@@ -1,22 +1,26 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Users } from 'lucide-react'
 import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
   CHART_GRID_FRACTIONS,
   HISTORICAL_BAR_COLOR,
+  LABEL_ACCENT_COLOR,
   LIVE_HISTORICAL_GHOST_OPACITY,
+  SELECTED_BAR_COLOR,
   axisTicksForWindow,
   buildDynamicHourWindow,
   defaultSelectedHour,
   findDayBusyness,
   formatAxisHour,
   getGymLocalDateTime,
+  historicalSecondaryHint,
   historicalStatusLabel,
   isLiveAlert,
   liveForegroundColor,
+  liveSecondaryHint,
   liveStatusLabel,
   percentageToBarHeight,
   resolveChartTimezone,
@@ -129,6 +133,10 @@ export function PopularTimesChart({
   }
 
   const indicatorLineLeft = barCenter(selectedHour) ?? '50%'
+  const accentColor = isLiveSelection && liveAlert ? '#dc2626' : LABEL_ACCENT_COLOR
+  const secondaryHint = isLiveSelection
+    ? liveSecondaryHint(selectedLive, selectedHistorical)
+    : historicalSecondaryHint(selectedHistorical)
 
   return (
     <div className="select-none">
@@ -177,53 +185,70 @@ export function PopularTimesChart({
         })}
       </div>
 
-      <div className="relative mb-1 min-h-[20px]">
-        {isLiveSelection ? (
+      <div className="relative">
+        <div className="relative mb-1 h-10">
           <div
-            className="absolute top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap text-[13px]"
-            style={{ left: indicatorLineLeft }}
+            className="absolute bottom-0 flex -translate-x-1/2 flex-col items-center transition-[left] duration-200 ease-out"
+            style={{ left: indicatorLineLeft, maxWidth: 'min(220px, 42vw)' }}
           >
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span
-                className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
-                  liveAlert ? 'bg-red-400' : 'bg-blue-400'
-                }`}
-              />
-              <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${
-                  liveAlert ? 'bg-red-500' : 'bg-[#003580]'
-                }`}
-              />
-            </span>
-            <span>
-              <span
-                className={`font-semibold ${
-                  liveAlert ? 'text-red-600' : 'text-[#003580]'
-                }`}
-              >
-                Live:
-              </span>{' '}
-              <span className="text-gray-800">
-                {liveStatusLabel(selectedLive, selectedHistorical)}
-              </span>
-            </span>
+            <div className="flex items-center gap-1.5 text-center text-[13px] leading-snug">
+              {isLiveSelection ? (
+                <>
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span
+                      className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
+                        liveAlert ? 'bg-red-400' : 'bg-blue-400'
+                      }`}
+                    />
+                    <span
+                      className={`relative inline-flex h-2 w-2 rounded-full ${
+                        liveAlert ? 'bg-red-500' : 'bg-[#003580]'
+                      }`}
+                    />
+                  </span>
+                  <span className="whitespace-nowrap">
+                    <span className="font-semibold" style={{ color: accentColor }}>
+                      Live:
+                    </span>{' '}
+                    <span className="font-normal text-gray-700">
+                      {liveStatusLabel(selectedLive, selectedHistorical)}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Users
+                    className="h-3.5 w-3.5 shrink-0"
+                    style={{ color: LABEL_ACCENT_COLOR }}
+                    aria-hidden
+                  />
+                  <span className="whitespace-nowrap">
+                    <span className="font-semibold" style={{ color: LABEL_ACCENT_COLOR }}>
+                      {formatAxisHour(selectedHour)}:
+                    </span>{' '}
+                    <span className="font-normal text-gray-600">
+                      {historicalStatusLabel(selectedHistorical)}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+            {secondaryHint && (
+              <p className="mt-0.5 text-center text-[11px] italic text-gray-500">
+                {secondaryHint}
+              </p>
+            )}
           </div>
-        ) : (
-          <p className="text-[13px] text-gray-800">
-            {historicalStatusLabel(selectedHistorical)}
-          </p>
-        )}
-      </div>
+        </div>
 
-      <div className="relative pt-1">
         <div
-          className="pointer-events-none absolute top-0 bottom-5 z-20 w-px border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
+          className="pointer-events-none absolute top-10 bottom-5 z-20 w-px border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
           style={{ left: indicatorLineLeft }}
           aria-hidden
         />
 
         <div
-          className="relative border-b border-gray-300"
+          className="relative border-b border-gray-300 pt-1"
           style={{ height: CHART_HEIGHT_PX }}
         >
           {CHART_GRID_FRACTIONS.map((frac) => (
@@ -243,15 +268,18 @@ export function PopularTimesChart({
               const historicalPct = hourMap.get(hour) ?? 0
               const livePct = resolveLivePercentage(hour, historicalPct, liveByHour)
               const isLiveColumn = isToday && hour === liveHour
+              const isSelected = hour === selectedHour
               const histHeightPx = percentageToBarHeight(historicalPct, CHART_HEIGHT_PX)
               const liveHeightPx = percentageToBarHeight(livePct, CHART_HEIGHT_PX)
+              const barColor =
+                isSelected && !isLiveColumn ? SELECTED_BAR_COLOR : HISTORICAL_BAR_COLOR
 
               return (
                 <button
                   key={hour}
                   type="button"
                   onClick={() => handleHourSelect(hour)}
-                  className="group relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end border-0 bg-transparent p-0"
+                  className="relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end border-0 bg-transparent p-0"
                   style={{ height: CHART_HEIGHT_PX }}
                   aria-label={
                     isLiveColumn
@@ -287,13 +315,10 @@ export function PopularTimesChart({
                       style={{
                         width: HISTORICAL_BAR_W_PX,
                         height: histHeightPx,
-                        backgroundColor: HISTORICAL_BAR_COLOR,
+                        backgroundColor: barColor,
                       }}
                     />
                   )}
-                  <span className="pointer-events-none absolute -top-7 left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-0.5 text-[10px] text-white shadow-sm group-hover:block">
-                    {formatAxisHour(hour)} · {isLiveColumn ? livePct : historicalPct}%
-                  </span>
                 </button>
               )
             })}

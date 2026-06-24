@@ -1,6 +1,8 @@
 import { DAYS_OF_WEEK, type DayBusyness, type DayOfWeek, type PopularTimes } from '@/lib/gym/busyness-types'
 
 export const HISTORICAL_BAR_COLOR = '#003580'
+export const SELECTED_BAR_COLOR = '#1a73e8'
+export const LABEL_ACCENT_COLOR = '#1a73e8'
 export const LIVE_HISTORICAL_GHOST_OPACITY = 0.4
 export const LIVE_ALERT_COLOR = '#E87171'
 export const LIVE_NORMAL_COLOR = '#002a66'
@@ -100,6 +102,29 @@ export function historicalStatusLabel(percentage: number): string {
   if (percentage <= 35) return 'Usually not too busy'
   if (percentage <= 65) return 'Usually a little busy'
   return 'Usually as busy as it gets'
+}
+
+/** Google-style secondary hint below the main status line. */
+export function historicalSecondaryHint(percentage: number): string | null {
+  if (percentage <= 35) return 'No wait'
+  if (percentage <= 65) return 'Usually a short wait'
+  return 'Expect a wait at peak times'
+}
+
+/** Secondary hint when viewing the live hour. */
+export function liveSecondaryHint(
+  livePercentage: number,
+  historicalPercentage: number,
+): string | null {
+  if (livePercentage <= 35) return 'Usually no wait'
+  if (livePercentage < historicalPercentage - LIVE_COMPARISON_DELTA) {
+    return 'Quieter than usual'
+  }
+  if (livePercentage > historicalPercentage + LIVE_COMPARISON_DELTA) {
+    return 'Busier than this time usually is'
+  }
+  if (livePercentage <= 65) return 'Usually a short wait'
+  return null
 }
 
 /** Live readout comparing real-time vs historical baseline. */
