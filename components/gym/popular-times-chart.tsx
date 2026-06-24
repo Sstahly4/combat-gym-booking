@@ -76,13 +76,13 @@ export function PopularTimesChart({
 
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
   const [selectedHour, setSelectedHour] = useState<number>(() =>
-    todaySelectedHour(initialDisplay.dataHours, gymNow.hour),
+    todaySelectedHour(initialDisplay.barHours, gymNow.hour),
   )
   const [infoOpen, setInfoOpen] = useState(false)
 
   const dayData = findDayBusyness(data, activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
-  const { minHour, maxHour, dataHours, displayHours, spacerHours, hourMap } = useMemo(
+  const { minHour, maxHour, barHours, displayHours, emptyHours, hourMap } = useMemo(
     () => buildDynamicHourWindow(hours),
     [hours],
   )
@@ -92,7 +92,7 @@ export function PopularTimesChart({
     const todayData = findDayBusyness(data, gymNow.day)
     const todayDisplay = buildDynamicHourWindow(todayData?.hours ?? [])
     setActiveDay(gymNow.day)
-    setSelectedHour(todaySelectedHour(todayDisplay.dataHours, gymNow.hour))
+    setSelectedHour(todaySelectedHour(todayDisplay.barHours, gymNow.hour))
   }, [gymNow.day, gymNow.hour, data])
 
   const handleDayChange = useCallback(
@@ -102,9 +102,9 @@ export function PopularTimesChart({
       const nextDisplay = buildDynamicHourWindow(nextDayData?.hours ?? [])
       setActiveDay(day)
       if (day === gymNow.day) {
-        setSelectedHour(todaySelectedHour(nextDisplay.dataHours, gymNow.hour))
+        setSelectedHour(todaySelectedHour(nextDisplay.barHours, gymNow.hour))
       } else {
-        setSelectedHour(defaultSelectedHour(nextDisplay.dataHours))
+        setSelectedHour(defaultSelectedHour(nextDisplay.barHours))
       }
     },
     [data, gymNow.day, gymNow.hour],
@@ -116,24 +116,24 @@ export function PopularTimesChart({
   }, [])
 
   useEffect(() => {
-    if (dataHours.includes(selectedHour)) return
+    if (barHours.includes(selectedHour)) return
     if (activeDay === gymNow.day) {
-      setSelectedHour(todaySelectedHour(dataHours, gymNow.hour))
+      setSelectedHour(todaySelectedHour(barHours, gymNow.hour))
     } else {
-      setSelectedHour(defaultSelectedHour(dataHours))
+      setSelectedHour(defaultSelectedHour(barHours))
     }
-  }, [dataHours, selectedHour, activeDay, gymNow.day, gymNow.hour])
+  }, [barHours, selectedHour, activeDay, gymNow.day, gymNow.hour])
 
   const isToday = activeDay === gymNow.day
   const liveHour = gymNow.hour
   const selectedHistorical = hourMap.get(selectedHour) ?? 0
   const selectedLive = resolveLivePercentage(selectedHour, selectedHistorical, liveByHour)
-  const isLiveSelection = isToday && selectedHour === liveHour
+  const isLiveSelection = isToday && selectedHour === liveHour && barHours.includes(liveHour)
   const liveAlert = isLiveAlert(selectedLive, selectedHistorical)
   const ticks = axisTicksForWindow(minHour, maxHour)
   const dayPercentages = useMemo(
-    () => dataHours.map((hour) => hourMap.get(hour) ?? 0),
-    [dataHours, hourMap],
+    () => barHours.map((hour) => hourMap.get(hour) ?? 0),
+    [barHours, hourMap],
   )
 
   const measureBarLayout = useCallback(() => {
@@ -145,7 +145,7 @@ export function PopularTimesChart({
     const centersByHour: Record<number, number> = {}
     let selectedPx = plotRect.width / 2
 
-    for (const hour of dataHours) {
+    for (const hour of barHours) {
       const bar = barRefs.current.get(hour)
       if (!bar) continue
       const barRect = bar.getBoundingClientRect()
@@ -155,7 +155,7 @@ export function PopularTimesChart({
     }
 
     setBarLayout({ centersByHour, selectedPx })
-  }, [dataHours, selectedHour])
+  }, [barHours, selectedHour])
 
   useLayoutEffect(() => {
     measureBarLayout()
@@ -316,7 +316,7 @@ export function PopularTimesChart({
             style={{ height: CHART_HEIGHT_PX }}
           >
             {displayHours.map((hour) => {
-              if (spacerHours.has(hour)) {
+              if (emptyHours.has(hour)) {
                 return (
                   <div
                     key={hour}
@@ -327,9 +327,9 @@ export function PopularTimesChart({
                 )
               }
 
-              const historicalPct = hourMap.get(hour) ?? 0
+              const historicalPct = hourMap.get(hour)!
               const livePct = resolveLivePercentage(hour, historicalPct, liveByHour)
-              const isLiveColumn = isToday && hour === liveHour
+              const isLiveColumn = isToday && hour === liveHour && barHours.includes(hour)
               const isSelected = hour === selectedHour
               const histHeightPx = percentageToBarHeight(historicalPct, CHART_HEIGHT_PX)
               const liveHeightPx = percentageToBarHeight(livePct, CHART_HEIGHT_PX)

@@ -43,66 +43,71 @@ export function formatAxisHour(hour: number): string {
 }
 
 export interface HourWindow {
-  /** Axis tick range — matches scraped data window (±1h padding), unchanged by spacers. */
+  /** Axis tick range — active data ±1h padding. */
   minHour: number
   maxHour: number
-  /** Hours that render bars and accept selection. */
-  dataHours: number[]
-  /** dataHours plus one empty spacer column on each end (no bar). */
+  /** Hours with scraped activity (percentage > 0); only these render bars and accept clicks. */
+  barHours: number[]
+  /** Full row: end spacers + padded window (bars or empty slots). */
   displayHours: number[]
-  spacerHours: ReadonlySet<number>
+  /** No bar, not clickable — end spacers and ±1h padding without data. */
+  emptyHours: ReadonlySet<number>
   hourMap: Map<number, number>
 }
 
-function hoursInRange(start: number, end: number): number[] {
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
-}
-
-function withEndSpacers(
-  dataMin: number,
-  dataMax: number,
-): Pick<HourWindow, 'dataHours' | 'displayHours' | 'spacerHours'> {
-  const dataHours = hoursInRange(dataMin, dataMax)
-  const spacerHours = new Set<number>()
+function buildChartLayout(
+  minHour: number,
+  maxHour: number,
+  barHours: number[],
+): Pick<HourWindow, 'barHours' | 'displayHours' | 'emptyHours'> {
+  const barHourSet = new Set(barHours)
+  const emptyHours = new Set<number>()
   const displayHours: number[] = []
 
-  if (dataMin > 0) {
-    spacerHours.add(dataMin - 1)
-    displayHours.push(dataMin - 1)
-  }
-  displayHours.push(...dataHours)
-  if (dataMax < 23) {
-    spacerHours.add(dataMax + 1)
-    displayHours.push(dataMax + 1)
+  if (minHour > 0) {
+    emptyHours.add(minHour - 1)
+    displayHours.push(minHour - 1)
   }
 
-  return { dataHours, displayHours, spacerHours }
+  for (let hour = minHour; hour <= maxHour; hour++) {
+    displayHours.push(hour)
+    if (!barHourSet.has(hour)) emptyHours.add(hour)
+  }
+
+  if (maxHour < 23) {
+    emptyHours.add(maxHour + 1)
+    displayHours.push(maxHour + 1)
+  }
+
+  return { barHours, displayHours, emptyHours }
 }
 
 /**
- * Dynamic X-axis: earliest hour with activity > 0, latest ditto, padded ±1 hour for bars.
- * Adds one extra empty column before/after for label breathing room (no bar).
- * Falls back to 9am–9pm when the day has no activity.
+ * Dynamic X-axis from earliest/latest hour with activity > 0, padded ±1h on the axis.
+ * Bars and selection only on hours with scraped data; padding and end spacers stay empty.
  */
 export function buildDynamicHourWindow(
   hours: { hour: number; percentage: number }[],
 ): HourWindow {
   const hourMap = new Map(hours.map((h) => [h.hour, h.percentage]))
-  const active = hours.filter((h) => h.percentage > 0)
+  const barHours = hours
+    .filter((h) => h.percentage > 0)
+    .map((h) => h.hour)
+    .sort((a, b) => a - b)
 
-  if (active.length === 0) {
+  if (barHours.length === 0) {
     const minHour = 9
     const maxHour = 21
     return {
       minHour,
       maxHour,
       hourMap,
-      ...withEndSpacers(minHour, maxHour),
+      ...buildChartLayout(minHour, maxHour, []),
     }
   }
 
-  const rawMin = Math.min(...active.map((h) => h.hour))
-  const rawMax = Math.max(...active.map((h) => h.hour))
+  const rawMin = barHours[0]
+  const rawMax = barHours[barHours.length - 1]
   const minHour = Math.max(0, rawMin - 1)
   const maxHour = Math.min(23, rawMax + 1)
 
@@ -110,22 +115,22 @@ export function buildDynamicHourWindow(
     minHour,
     maxHour,
     hourMap,
-    ...withEndSpacers(minHour, maxHour),
+    ...buildChartLayout(minHour, maxHour, barHours),
   }
 }
 
 /** Default hour when viewing a day that isn't today. */
-export function defaultSelectedHour(dataHours: number[]): number {
-  if (dataHours.length === 0) return 9
-  if (dataHours.includes(9)) return 9
-  return dataHours[0]
+export function defaultSelectedHour(barHours: number[]): number {
+  if (barHours.length === 0) return 9
+  if (barHours.includes(9)) return 9
+  return barHours[0]
 }
 
-/** Pick the best hour for today: current gym hour if in range, else 9am fallback. */
-export function todaySelectedHour(dataHours: number[], currentHour: number): number {
-  if (dataHours.length === 0) return 9
-  if (dataHours.includes(currentHour)) return currentHour
-  return defaultSelectedHour(dataHours)
+/** Pick the best hour for today: current gym hour if it has data, else sensible fallback. */
+export function todaySelectedHour(barHours: number[], currentHour: number): number {
+  if (barHours.length === 0) return 9
+  if (barHours.includes(currentHour)) return currentHour
+  return defaultSelectedHour(barHours)
 }
 
 /** Mat-capacity band for a single hour within a day (5 tiers). */
