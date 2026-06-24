@@ -1,15 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HelpCircle } from 'lucide-react'
 import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
+  CHART_GRID_FRACTIONS,
   HISTORICAL_BAR_COLOR,
   LIVE_HISTORICAL_GHOST_OPACITY,
   axisTicksForWindow,
   buildDynamicHourWindow,
   defaultSelectedHour,
+  findDayBusyness,
   formatAxisHour,
   getGymLocalDateTime,
   historicalStatusLabel,
@@ -17,6 +19,7 @@ import {
   liveForegroundColor,
   liveStatusLabel,
   percentageToBarHeight,
+  resolveChartTimezone,
   resolveLivePercentage,
   todaySelectedHour,
 } from '@/lib/gym/busyness-utils'
@@ -26,14 +29,26 @@ interface PopularTimesChartProps {
   data: PopularTimes
   source?: BusynessSource
   timezone?: string | null
-  /** Phase 2: hour → live occupancy %. Omit for Phase 1 (uses historical). */
   liveByHour?: Record<number, number> | null
 }
 
-const CHART_HEIGHT_PX = 80
-const HISTORICAL_BAR_MAX_W_PX = 12
-const LIVE_GHOST_MAX_W_PX = 16
-const LIVE_FOREGROUND_MAX_W_PX = 9
+const CHART_HEIGHT_PX = 96
+const HISTORICAL_BAR_W_PX = 11
+const LIVE_GHOST_W_PX = 22
+const LIVE_FOREGROUND_W_PX = 8
+
+function useGymLocalClock(timezone?: string | null) {
+  const tz = resolveChartTimezone(timezone)
+  const [gymNow, setGymNow] = useState(() => getGymLocalDateTime(tz))
+
+  useEffect(() => {
+    setGymNow(getGymLocalDateTime(tz))
+    const id = window.setInterval(() => setGymNow(getGymLocalDateTime(tz)), 60_000)
+    return () => window.clearInterval(id)
+  }, [tz])
+
+  return gymNow
+}
 
 export function PopularTimesChart({
   data,
@@ -41,9 +56,10 @@ export function PopularTimesChart({
   timezone,
   liveByHour,
 }: PopularTimesChartProps) {
-  const gymNow = useMemo(() => getGymLocalDateTime(timezone), [timezone])
+  const gymNow = useGymLocalClock(timezone)
+  const userAdjusted = useRef(false)
 
-  const initialDayData = data.find((d) => d.day === gymNow.day) ?? data[0]
+  const initialDayData = findDayBusyness(data, gymNow.day) ?? data[0]
   const initialDisplay = buildDynamicHourWindow(initialDayData?.hours ?? [])
 
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
@@ -52,16 +68,25 @@ export function PopularTimesChart({
   )
   const [infoOpen, setInfoOpen] = useState(false)
 
-  const dayData = data.find((d) => d.day === activeDay) ?? data[0]
+  const dayData = findDayBusyness(data, activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
   const { minHour, maxHour, displayHours, hourMap } = useMemo(
     () => buildDynamicHourWindow(hours),
     [hours],
   )
 
+  useEffect(() => {
+    if (userAdjusted.current) return
+    const todayData = findDayBusyness(data, gymNow.day)
+    const todayDisplay = buildDynamicHourWindow(todayData?.hours ?? [])
+    setActiveDay(gymNow.day)
+    setSelectedHour(todaySelectedHour(todayDisplay.displayHours, gymNow.hour))
+  }, [gymNow.day, gymNow.hour, data])
+
   const handleDayChange = useCallback(
     (day: DayOfWeek) => {
-      const nextDayData = data.find((d) => d.day === day)
+      userAdjusted.current = true
+      const nextDayData = findDayBusyness(data, day)
       const nextDisplay = buildDynamicHourWindow(nextDayData?.hours ?? [])
       setActiveDay(day)
       if (day === gymNow.day) {
@@ -72,6 +97,11 @@ export function PopularTimesChart({
     },
     [data, gymNow.day, gymNow.hour],
   )
+
+  const handleHourSelect = useCallback((hour: number) => {
+    userAdjusted.current = true
+    setSelectedHour(hour)
+  }, [])
 
   useEffect(() => {
     if (displayHours.includes(selectedHour)) return
@@ -98,7 +128,7 @@ export function PopularTimesChart({
       : '50%'
   }
 
-  const selectedLineLeft = barCenter(selectedHour) ?? '50%'
+  const indicatorLineLeft = barCenter(selectedHour) ?? '50%'
 
   return (
     <div className="select-none">
@@ -125,6 +155,7 @@ export function PopularTimesChart({
       <div className="mb-4 flex justify-between border-b border-gray-100">
         {DAYS_OF_WEEK.map((day, i) => {
           const isActive = day === activeDay
+          const isGymToday = day === gymNow.day
           return (
             <button
               key={day}
@@ -133,7 +164,9 @@ export function PopularTimesChart({
               className={`min-w-0 flex-1 pb-2.5 text-[10px] font-medium tracking-wide transition-colors sm:text-[11px] ${
                 isActive
                   ? 'border-b-2 border-[#1a73e8] text-gray-900'
-                  : 'text-gray-400 hover:text-gray-600'
+                  : isGymToday
+                    ? 'text-gray-600 hover:text-gray-800'
+                    : 'text-gray-400 hover:text-gray-600'
               }`}
               aria-pressed={isActive}
               aria-label={day}
@@ -144,9 +177,12 @@ export function PopularTimesChart({
         })}
       </div>
 
-      <div className="relative mb-2 flex items-center gap-2 text-[13px]">
+      <div className="relative mb-1 min-h-[20px]">
         {isLiveSelection ? (
-          <>
+          <div
+            className="absolute top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap text-[13px]"
+            style={{ left: indicatorLineLeft }}
+          >
             <span className="relative flex h-2 w-2 shrink-0">
               <span
                 className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
@@ -171,18 +207,18 @@ export function PopularTimesChart({
                 {liveStatusLabel(selectedLive, selectedHistorical)}
               </span>
             </span>
-          </>
+          </div>
         ) : (
-          <span className="text-gray-800">
+          <p className="text-[13px] text-gray-800">
             {historicalStatusLabel(selectedHistorical)}
-          </span>
+          </p>
         )}
       </div>
 
-      <div className="relative">
+      <div className="relative pt-1">
         <div
-          className="pointer-events-none absolute -top-1 bottom-5 z-20 w-px border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
-          style={{ left: selectedLineLeft }}
+          className="pointer-events-none absolute top-0 bottom-5 z-20 w-px border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
+          style={{ left: indicatorLineLeft }}
           aria-hidden
         />
 
@@ -190,10 +226,10 @@ export function PopularTimesChart({
           className="relative border-b border-gray-300"
           style={{ height: CHART_HEIGHT_PX }}
         >
-          {[0.25, 0.5, 0.75].map((frac) => (
+          {CHART_GRID_FRACTIONS.map((frac) => (
             <div
               key={frac}
-              className="pointer-events-none absolute left-0 right-0 border-t border-gray-100"
+              className="pointer-events-none absolute left-0 right-0 border-t border-gray-200/90"
               style={{ bottom: `${frac * CHART_HEIGHT_PX}px` }}
               aria-hidden
             />
@@ -214,7 +250,7 @@ export function PopularTimesChart({
                 <button
                   key={hour}
                   type="button"
-                  onClick={() => setSelectedHour(hour)}
+                  onClick={() => handleHourSelect(hour)}
                   className="group relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end border-0 bg-transparent p-0"
                   style={{ height: CHART_HEIGHT_PX }}
                   aria-label={
@@ -229,7 +265,7 @@ export function PopularTimesChart({
                       <div
                         className="absolute bottom-0 rounded-full"
                         style={{
-                          width: LIVE_GHOST_MAX_W_PX,
+                          width: LIVE_GHOST_W_PX,
                           height: histHeightPx,
                           backgroundColor: HISTORICAL_BAR_COLOR,
                           opacity: LIVE_HISTORICAL_GHOST_OPACITY,
@@ -239,7 +275,7 @@ export function PopularTimesChart({
                       <div
                         className="relative z-10 rounded-full transition-all duration-200"
                         style={{
-                          width: LIVE_FOREGROUND_MAX_W_PX,
+                          width: LIVE_FOREGROUND_W_PX,
                           height: liveHeightPx,
                           backgroundColor: liveForegroundColor(livePct, historicalPct),
                         }}
@@ -249,7 +285,7 @@ export function PopularTimesChart({
                     <div
                       className="shrink-0 rounded-full transition-all duration-200"
                       style={{
-                        width: HISTORICAL_BAR_MAX_W_PX,
+                        width: HISTORICAL_BAR_W_PX,
                         height: histHeightPx,
                         backgroundColor: HISTORICAL_BAR_COLOR,
                       }}

@@ -13,6 +13,7 @@ import { GymContextNav } from '@/components/gym/gym-context-nav'
 import { GymFaqSection } from '@/components/gym/gym-faq-section'
 import { GymBusynessMeter } from '@/components/gym/gym-busyness-meter'
 import { getCachedGymBusyness } from '@/lib/gym/gym-busyness'
+import { hasDisplayableBusyness } from '@/lib/gym/busyness-types'
 import { GymCheckoutExitCleanup } from '@/components/gym/gym-checkout-exit-cleanup'
 import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
 import { GymPageClientShell } from '@/components/gym/gym-page-client-shell'
@@ -368,11 +369,13 @@ export default async function GymDetailsPage({
                 <GymMap gym={gym} googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''} />
               </div>
 
-              <Card className="border border-gray-200 shadow-sm">
-                <CardContent className="p-4 md:p-5">
-                  <GymBusynessMeter busyness={busyness} timezone={gym.timezone} />
-                </CardContent>
-              </Card>
+              {hasDisplayableBusyness(busyness) && (
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardContent className="p-4 md:p-5">
+                    <GymBusynessMeter busyness={busyness} timezone={gym.timezone} />
+                  </CardContent>
+                </Card>
+              )}
 
               {gym.things_to_do && gym.things_to_do.length >= 2 && (
                 <div className="md:hidden">

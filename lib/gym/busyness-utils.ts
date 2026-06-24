@@ -1,12 +1,36 @@
-import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/gym/busyness-types'
+import { DAYS_OF_WEEK, type DayBusyness, type DayOfWeek, type PopularTimes } from '@/lib/gym/busyness-types'
 
 export const HISTORICAL_BAR_COLOR = '#003580'
-export const LIVE_HISTORICAL_GHOST_OPACITY = 0.35
+export const LIVE_HISTORICAL_GHOST_OPACITY = 0.4
 export const LIVE_ALERT_COLOR = '#E87171'
 export const LIVE_NORMAL_COLOR = '#002a66'
 
+/** 100% occupancy reaches ~70% of plot height (Google leaves headroom above tallest bar). */
+export const BAR_AREA_MAX_RATIO = 0.7
+
 /** Minimum live vs historical gap before we call it "busier/less busy than usual". */
 export const LIVE_COMPARISON_DELTA = 10
+
+export function resolveChartTimezone(gymTimezone?: string | null): string {
+  const trimmed = gymTimezone?.trim()
+  if (trimmed) return trimmed
+  if (typeof Intl !== 'undefined') {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  }
+  return 'UTC'
+}
+
+export function normalizeDayKey(day: string): DayOfWeek | null {
+  const lower = day.trim().toLowerCase()
+  return DAYS_OF_WEEK.find((d) => d.toLowerCase() === lower) ?? null
+}
+
+export function findDayBusyness(
+  data: PopularTimes,
+  day: DayOfWeek,
+): DayBusyness | undefined {
+  return data.find((d) => normalizeDayKey(String(d.day)) === day || d.day === day)
+}
 
 /** Axis / display label: 9 → "9am", 12 → "12pm". */
 export function formatAxisHour(hour: number): string {
@@ -117,17 +141,22 @@ export function axisTicksForWindow(minHour: number, maxHour: number): number[] {
   return ticks
 }
 
-export function percentageToBarHeight(percentage: number, chartHeightPx: number): number {
+export function percentageToBarHeight(percentage: number, plotHeightPx: number): number {
+  const maxBarPx = plotHeightPx * BAR_AREA_MAX_RATIO
   if (percentage <= 0) return 2
-  return Math.max(4, Math.round((percentage / 100) * chartHeightPx))
+  return Math.max(3, Math.round((percentage / 100) * maxBarPx))
 }
+
+/** Horizontal grid line positions as fraction of plot height from bottom (Google-style). */
+export const CHART_GRID_FRACTIONS = [0.25, 0.5, 0.75] as const
 
 export function getGymLocalDateTime(timezone?: string | null): {
   day: DayOfWeek
   hour: number
 } {
+  const tz = resolveChartTimezone(timezone)
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone?.trim() || 'UTC',
+    timeZone: tz,
     weekday: 'long',
     hour: 'numeric',
     hour12: false,
