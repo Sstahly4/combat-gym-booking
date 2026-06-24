@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/public-server'
+import { PUBLIC_GYM_VERIFICATION_STATUSES } from '@/lib/seo/gym-public-status'
 import {
   filterLiveDestinations,
   getLiveDestinationsCached,
@@ -29,7 +30,7 @@ async function suggestFallbackIlike(supabase: ReturnType<typeof createPublicClie
   const { data, error } = await supabase
     .from('gyms')
     .select('id, name, city, country')
-    .eq('verification_status', 'verified')
+    .in('verification_status', [...PUBLIC_GYM_VERIFICATION_STATUSES])
     .eq('status', 'approved')
     .ilike('name', pattern)
     .order('name', { ascending: true })

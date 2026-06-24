@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-server'
+import { PUBLIC_GYM_VERIFICATION_STATUSES } from '@/lib/seo/gym-public-status'
 
 export type DestinationVisual = 'island' | 'metro' | 'coast' | 'beachTown' | 'mountain'
 
@@ -14,8 +15,6 @@ export type LiveDestination = {
 }
 
 type GymCityRow = { city: string | null; country: string | null }
-
-const LIVE_VERIFICATION = ['verified', 'trusted'] as const
 
 const COUNTRY_FLAGS: Record<string, string> = {
   Thailand: '🇹🇭',
@@ -235,9 +234,8 @@ async function fetchLiveDestinationRows(): Promise<GymCityRow[]> {
   const { data, error } = await supabase
     .from('gyms')
     .select('city, country')
-    .in('verification_status', [...LIVE_VERIFICATION])
+    .in('verification_status', [...PUBLIC_GYM_VERIFICATION_STATUSES])
     .eq('status', 'approved')
-    .eq('is_live', true)
     .not('city', 'is', null)
 
   if (error) {
@@ -254,6 +252,6 @@ export async function fetchLiveDestinations(): Promise<LiveDestination[]> {
 
 export const getLiveDestinationsCached = unstable_cache(
   fetchLiveDestinations,
-  ['live-destinations-v1'],
+  ['live-destinations-v2'],
   { revalidate: 300 },
 )

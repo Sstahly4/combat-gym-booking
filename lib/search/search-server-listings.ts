@@ -78,7 +78,6 @@ function applyCatalogFilters(
     .select(SEARCH_GYM_SELECT)
     .in('verification_status', [...PUBLIC_GYM_VERIFICATION_STATUSES])
     .eq('status', 'approved')
-    .eq('is_live', true)
     .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
     .limit(1, { foreignTable: 'gym_images' })
 
@@ -240,7 +239,7 @@ const getCachedSearchPayload = unstable_cache(
       ...result,
     } satisfies SearchServerPayload
   },
-  ['search-ssr-payload-v1'],
+  ['search-ssr-payload-v2'],
   { revalidate: 300, tags: ['gyms'] },
 )
 

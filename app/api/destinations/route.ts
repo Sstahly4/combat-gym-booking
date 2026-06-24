@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/destinations
- * Live cities/countries with at least one verified, live gym — sorted by popularity (gym count).
+ * Live cities/countries with at least one public-listing gym — sorted by popularity (gym count).
  */
 export async function GET() {
   const destinations = await getLiveDestinationsCached()

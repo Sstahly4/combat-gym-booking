@@ -490,7 +490,6 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
       let query = baseQuery
         .in('verification_status', ['verified', 'trusted'])
         .eq('status', 'approved')
-        .eq('is_live', true)
         .order('order', { ascending: true, nullsFirst: false, foreignTable: 'gym_images' })
         .limit(1, { foreignTable: 'gym_images' })
 
