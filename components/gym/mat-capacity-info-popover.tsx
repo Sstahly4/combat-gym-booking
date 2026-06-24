@@ -47,8 +47,9 @@ export function MatCapacityInfoPopover({
     >
       <p className="font-medium text-gray-900">Mat Capacity</p>
       <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
-        {SOURCE_DESCRIPTIONS[source]} Tap a bar to see busyness for that hour.
-        Live uses the gym&apos;s local time.
+        {SOURCE_DESCRIPTIONS[source]} Tap a bar to explore hourly patterns. On the
+        current hour, a wide ghost bar shows the usual baseline and a thinner bar
+        shows live occupancy.
       </p>
     </div>
   )

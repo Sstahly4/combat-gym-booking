@@ -6,9 +6,11 @@ import { BusynessFallbackBanner } from '@/components/gym/busyness-fallback-banne
 interface GymBusynessMeterProps {
   busyness: GymBusynessRecord | null
   timezone?: string | null
+  /** Phase 2: hour → live occupancy % for the current day overlay. */
+  liveByHour?: Record<number, number> | null
 }
 
-export function GymBusynessMeter({ busyness, timezone }: GymBusynessMeterProps) {
+export function GymBusynessMeter({ busyness, timezone, liveByHour }: GymBusynessMeterProps) {
   if (!hasDisplayableBusyness(busyness)) {
     return <BusynessFallbackBanner />
   }
@@ -18,6 +20,7 @@ export function GymBusynessMeter({ busyness, timezone }: GymBusynessMeterProps) 
       data={busyness!.popular_times}
       source={busyness!.source}
       timezone={timezone}
+      liveByHour={liveByHour}
     />
   )
 }

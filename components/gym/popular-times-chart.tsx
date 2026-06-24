@@ -5,13 +5,19 @@ import { HelpCircle } from 'lucide-react'
 import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
-  barFillColor,
-  busynessStatusLabel,
+  HISTORICAL_BAR_COLOR,
+  LIVE_HISTORICAL_GHOST_OPACITY,
+  axisTicksForWindow,
+  buildDynamicHourWindow,
   defaultSelectedHour,
   formatAxisHour,
   getGymLocalDateTime,
-  googleAxisTicks,
-  isLiveBarHighlighted,
+  historicalStatusLabel,
+  isLiveAlert,
+  liveForegroundColor,
+  liveStatusLabel,
+  percentageToBarHeight,
+  resolveLivePercentage,
   todaySelectedHour,
 } from '@/lib/gym/busyness-utils'
 import { MatCapacityInfoPopover } from '@/components/gym/mat-capacity-info-popover'
@@ -20,39 +26,25 @@ interface PopularTimesChartProps {
   data: PopularTimes
   source?: BusynessSource
   timezone?: string | null
+  /** Phase 2: hour → live occupancy %. Omit for Phase 1 (uses historical). */
+  liveByHour?: Record<number, number> | null
 }
 
 const CHART_HEIGHT_PX = 80
-
-function buildDisplayHours(hours: { hour: number; percentage: number }[]) {
-  if (hours.length === 0) {
-    return {
-      minHour: 9,
-      maxHour: 21,
-      displayHours: Array.from({ length: 13 }, (_, i) => i + 9),
-      hourMap: new Map<number, number>(),
-    }
-  }
-  const min = Math.min(...hours.map((h) => h.hour))
-  const max = Math.max(...hours.map((h) => h.hour))
-  return {
-    minHour: min,
-    maxHour: max,
-    displayHours: Array.from({ length: max - min + 1 }, (_, i) => min + i),
-    hourMap: new Map(hours.map((h) => [h.hour, h.percentage])),
-  }
-}
+const HISTORICAL_BAR_MAX_W_PX = 12
+const LIVE_GHOST_MAX_W_PX = 16
+const LIVE_FOREGROUND_MAX_W_PX = 9
 
 export function PopularTimesChart({
   data,
   source = 'unknown',
   timezone,
+  liveByHour,
 }: PopularTimesChartProps) {
   const gymNow = useMemo(() => getGymLocalDateTime(timezone), [timezone])
 
   const initialDayData = data.find((d) => d.day === gymNow.day) ?? data[0]
-  const initialHours = initialDayData?.hours ?? []
-  const initialDisplay = buildDisplayHours(initialHours)
+  const initialDisplay = buildDynamicHourWindow(initialDayData?.hours ?? [])
 
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
   const [selectedHour, setSelectedHour] = useState<number>(() =>
@@ -63,14 +55,14 @@ export function PopularTimesChart({
   const dayData = data.find((d) => d.day === activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
   const { minHour, maxHour, displayHours, hourMap } = useMemo(
-    () => buildDisplayHours(hours),
+    () => buildDynamicHourWindow(hours),
     [hours],
   )
 
   const handleDayChange = useCallback(
     (day: DayOfWeek) => {
       const nextDayData = data.find((d) => d.day === day)
-      const nextDisplay = buildDisplayHours(nextDayData?.hours ?? [])
+      const nextDisplay = buildDynamicHourWindow(nextDayData?.hours ?? [])
       setActiveDay(day)
       if (day === gymNow.day) {
         setSelectedHour(todaySelectedHour(nextDisplay.displayHours, gymNow.hour))
@@ -92,10 +84,11 @@ export function PopularTimesChart({
 
   const isToday = activeDay === gymNow.day
   const liveHour = gymNow.hour
-  const selectedPercentage = hourMap.get(selectedHour) ?? 0
+  const selectedHistorical = hourMap.get(selectedHour) ?? 0
+  const selectedLive = resolveLivePercentage(selectedHour, selectedHistorical, liveByHour)
   const isLiveSelection = isToday && selectedHour === liveHour
-  const liveHighlighted = isLiveBarHighlighted(selectedPercentage)
-  const ticks = googleAxisTicks(minHour, maxHour)
+  const liveAlert = isLiveAlert(selectedLive, selectedHistorical)
+  const ticks = axisTicksForWindow(minHour, maxHour)
 
   const barCenter = (hour: number) => {
     const idx = displayHours.indexOf(hour)
@@ -157,33 +150,31 @@ export function PopularTimesChart({
             <span className="relative flex h-2 w-2 shrink-0">
               <span
                 className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
-                  liveHighlighted ? 'bg-red-400' : 'bg-blue-400'
+                  liveAlert ? 'bg-red-400' : 'bg-blue-400'
                 }`}
               />
               <span
                 className={`relative inline-flex h-2 w-2 rounded-full ${
-                  liveHighlighted ? 'bg-red-500' : 'bg-[#8ab4f8]'
+                  liveAlert ? 'bg-red-500' : 'bg-[#003580]'
                 }`}
               />
             </span>
             <span>
               <span
                 className={`font-semibold ${
-                  liveHighlighted ? 'text-red-600' : 'text-[#1a73e8]'
+                  liveAlert ? 'text-red-600' : 'text-[#003580]'
                 }`}
               >
                 Live:
               </span>{' '}
               <span className="text-gray-800">
-                {busynessStatusLabel(selectedPercentage)}
+                {liveStatusLabel(selectedLive, selectedHistorical)}
               </span>
             </span>
           </>
         ) : (
           <span className="text-gray-800">
-            <span className="font-medium">{formatAxisHour(selectedHour)}</span>
-            {' · '}
-            {busynessStatusLabel(selectedPercentage)}
+            {historicalStatusLabel(selectedHistorical)}
           </span>
         )}
       </div>
@@ -213,10 +204,11 @@ export function PopularTimesChart({
             style={{ height: CHART_HEIGHT_PX }}
           >
             {displayHours.map((hour) => {
-              const percentage = hourMap.get(hour) ?? 0
-              const barHeightPx = Math.max(4, Math.round((percentage / 100) * CHART_HEIGHT_PX))
-              const isLiveHour = isToday && hour === liveHour
-              const isSelected = hour === selectedHour
+              const historicalPct = hourMap.get(hour) ?? 0
+              const livePct = resolveLivePercentage(hour, historicalPct, liveByHour)
+              const isLiveColumn = isToday && hour === liveHour
+              const histHeightPx = percentageToBarHeight(historicalPct, CHART_HEIGHT_PX)
+              const liveHeightPx = percentageToBarHeight(livePct, CHART_HEIGHT_PX)
 
               return (
                 <button
@@ -225,20 +217,46 @@ export function PopularTimesChart({
                   onClick={() => setSelectedHour(hour)}
                   className="group relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-end border-0 bg-transparent p-0"
                   style={{ height: CHART_HEIGHT_PX }}
-                  aria-label={`${formatAxisHour(hour)}: ${busynessStatusLabel(percentage)}`}
-                  aria-pressed={isSelected}
+                  aria-label={
+                    isLiveColumn
+                      ? `Live ${formatAxisHour(hour)}: ${liveStatusLabel(livePct, historicalPct)}`
+                      : `${formatAxisHour(hour)}: ${historicalStatusLabel(historicalPct)}`
+                  }
+                  aria-pressed={hour === selectedHour}
                 >
-                  <div
-                    className={`w-full max-w-[12px] shrink-0 rounded-full transition-all duration-200 sm:max-w-[14px] ${
-                      isSelected ? 'ring-2 ring-gray-400/60 ring-offset-1' : ''
-                    }`}
-                    style={{
-                      height: barHeightPx,
-                      backgroundColor: barFillColor(percentage, isLiveHour),
-                    }}
-                  />
+                  {isLiveColumn ? (
+                    <div className="relative flex h-full w-full items-end justify-center">
+                      <div
+                        className="absolute bottom-0 rounded-full"
+                        style={{
+                          width: LIVE_GHOST_MAX_W_PX,
+                          height: histHeightPx,
+                          backgroundColor: HISTORICAL_BAR_COLOR,
+                          opacity: LIVE_HISTORICAL_GHOST_OPACITY,
+                        }}
+                        aria-hidden
+                      />
+                      <div
+                        className="relative z-10 rounded-full transition-all duration-200"
+                        style={{
+                          width: LIVE_FOREGROUND_MAX_W_PX,
+                          height: liveHeightPx,
+                          backgroundColor: liveForegroundColor(livePct, historicalPct),
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="shrink-0 rounded-full transition-all duration-200"
+                      style={{
+                        width: HISTORICAL_BAR_MAX_W_PX,
+                        height: histHeightPx,
+                        backgroundColor: HISTORICAL_BAR_COLOR,
+                      }}
+                    />
+                  )}
                   <span className="pointer-events-none absolute -top-7 left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-0.5 text-[10px] text-white shadow-sm group-hover:block">
-                    {formatAxisHour(hour)} · {percentage}%
+                    {formatAxisHour(hour)} · {isLiveColumn ? livePct : historicalPct}%
                   </span>
                 </button>
               )

@@ -1,11 +1,60 @@
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/gym/busyness-types'
 
+export const HISTORICAL_BAR_COLOR = '#003580'
+export const LIVE_HISTORICAL_GHOST_OPACITY = 0.35
+export const LIVE_ALERT_COLOR = '#E87171'
+export const LIVE_NORMAL_COLOR = '#002a66'
+
+/** Minimum live vs historical gap before we call it "busier/less busy than usual". */
+export const LIVE_COMPARISON_DELTA = 10
+
 /** Axis / display label: 9 → "9am", 12 → "12pm". */
 export function formatAxisHour(hour: number): string {
   if (hour === 0) return '12am'
   if (hour < 12) return `${hour}am`
   if (hour === 12) return '12pm'
   return `${hour - 12}pm`
+}
+
+export interface HourWindow {
+  minHour: number
+  maxHour: number
+  displayHours: number[]
+  hourMap: Map<number, number>
+}
+
+/**
+ * Dynamic X-axis: earliest hour with activity > 0, latest ditto, padded ±1 hour.
+ * Falls back to 9am–9pm when the day has no activity.
+ */
+export function buildDynamicHourWindow(
+  hours: { hour: number; percentage: number }[],
+): HourWindow {
+  const hourMap = new Map(hours.map((h) => [h.hour, h.percentage]))
+  const active = hours.filter((h) => h.percentage > 0)
+
+  if (active.length === 0) {
+    const minHour = 9
+    const maxHour = 21
+    return {
+      minHour,
+      maxHour,
+      displayHours: Array.from({ length: maxHour - minHour + 1 }, (_, i) => minHour + i),
+      hourMap,
+    }
+  }
+
+  const rawMin = Math.min(...active.map((h) => h.hour))
+  const rawMax = Math.max(...active.map((h) => h.hour))
+  const minHour = Math.max(0, rawMin - 1)
+  const maxHour = Math.min(23, rawMax + 1)
+
+  return {
+    minHour,
+    maxHour,
+    displayHours: Array.from({ length: maxHour - minHour + 1 }, (_, i) => minHour + i),
+    hourMap,
+  }
 }
 
 /** Default hour when viewing a day that isn't today. */
@@ -22,40 +71,55 @@ export function todaySelectedHour(displayHours: number[], currentHour: number): 
   return defaultSelectedHour(displayHours)
 }
 
-/** Google Popular Times status copy for a busyness percentage. */
-export function busynessStatusLabel(percentage: number): string {
-  if (percentage < 25) return 'Not busy'
-  if (percentage < 45) return 'A little busy'
-  if (percentage < 65) return 'Usually busy'
-  if (percentage < 85) return 'Very busy'
+/** Historical expectation when user selects a non-live hour. */
+export function historicalStatusLabel(percentage: number): string {
+  if (percentage <= 35) return 'Usually not too busy'
+  if (percentage <= 65) return 'Usually a little busy'
+  return 'Usually as busy as it gets'
+}
+
+/** Live readout comparing real-time vs historical baseline. */
+export function liveStatusLabel(livePercentage: number, historicalPercentage: number): string {
+  if (livePercentage >= 85 && historicalPercentage >= 85) {
+    return 'As busy as it gets'
+  }
+  if (livePercentage > historicalPercentage + LIVE_COMPARISON_DELTA) {
+    return 'Busier than usual'
+  }
+  if (livePercentage < historicalPercentage - LIVE_COMPARISON_DELTA) {
+    return 'Less busy than usual'
+  }
+  if (livePercentage <= 35) return 'Not too busy'
+  if (livePercentage <= 65) return 'A little busy'
   return 'As busy as it gets'
 }
 
-/** Live bar turns red at this threshold (matches Google-style emphasis). */
-export const LIVE_BAR_BUSY_THRESHOLD = 55
-
-export function isLiveBarHighlighted(percentage: number): boolean {
-  return percentage >= LIVE_BAR_BUSY_THRESHOLD
+export function isLiveAlert(livePercentage: number, historicalPercentage: number): boolean {
+  return livePercentage > historicalPercentage
 }
 
-export function barFillColor(percentage: number, isLiveHour: boolean): string {
-  const BAR_COLOR = '#8ab4f8'
-  const LIVE_BAR_COLOR = '#e87171'
-  if (isLiveHour && isLiveBarHighlighted(percentage)) return LIVE_BAR_COLOR
-  return BAR_COLOR
+/** Foreground live bar: alert red only when live exceeds historical baseline. */
+export function liveForegroundColor(
+  livePercentage: number,
+  historicalPercentage: number,
+): string {
+  if (isLiveAlert(livePercentage, historicalPercentage)) return LIVE_ALERT_COLOR
+  return LIVE_NORMAL_COLOR
 }
 
-/** Standard Google Popular Times x-axis labels. */
-export const GOOGLE_AXIS_HOURS = [9, 12, 15, 18, 21] as const
-
-export function googleAxisTicks(minHour: number, maxHour: number): number[] {
-  return GOOGLE_AXIS_HOURS.filter((h) => h >= minHour && h <= maxHour)
+/** X-axis ticks every 3 hours within the visible window. */
+export function axisTicksForWindow(minHour: number, maxHour: number): number[] {
+  const ticks: number[] = []
+  let h = Math.ceil(minHour / 3) * 3
+  if (h < minHour) h += 3
+  for (; h <= maxHour; h += 3) ticks.push(h)
+  if (ticks.length === 0) ticks.push(minHour)
+  return ticks
 }
 
-/** Position a tick label along the chart (0–100%). */
-export function hourChartPosition(hour: number, minHour: number, maxHour: number): number {
-  if (maxHour <= minHour) return 50
-  return ((hour - minHour) / (maxHour - minHour)) * 100
+export function percentageToBarHeight(percentage: number, chartHeightPx: number): number {
+  if (percentage <= 0) return 2
+  return Math.max(4, Math.round((percentage / 100) * chartHeightPx))
 }
 
 export function getGymLocalDateTime(timezone?: string | null): {
@@ -78,4 +142,14 @@ export function getGymLocalDateTime(timezone?: string | null): {
     : 'Monday'
 
   return { day, hour }
+}
+
+/** Phase 2: pass real-time % per hour; Phase 1 falls back to historical. */
+export function resolveLivePercentage(
+  hour: number,
+  historicalPercentage: number,
+  liveByHour?: Record<number, number> | null,
+): number {
+  const live = liveByHour?.[hour]
+  return live !== undefined && live !== null ? live : historicalPercentage
 }
