@@ -41,5 +41,11 @@ export function isPopularTimesEmpty(data: PopularTimes | null | undefined): bool
 
 export function hasDisplayableBusyness(record: GymBusynessRecord | null): boolean {
   if (!record) return false
-  return !isPopularTimesEmpty(record.popular_times)
+  return hasMeaningfulBusynessData(record.popular_times)
+}
+
+/** At least one day with an hour above 0% (excludes empty JSON and all-zero curves). */
+export function hasMeaningfulBusynessData(data: PopularTimes | null | undefined): boolean {
+  if (!data || data.length === 0) return false
+  return data.some((day) => day.hours.some((h) => h.percentage > 0))
 }
