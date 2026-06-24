@@ -97,50 +97,123 @@ export function todaySelectedHour(displayHours: number[], currentHour: number): 
   return defaultSelectedHour(displayHours)
 }
 
+/** Google-style busyness band for a single hour within a day. */
+export type BusynessTier = 'quiet' | 'moderate' | 'busy' | 'peak'
+
+const PEAK_NEAR_MAX_ABS = 5
+const PEAK_NEAR_MAX_RATIO = 0.08
+/** When the day is nearly flat, use absolute % bands instead of relative rank. */
+const MIN_DAY_SPAN_FOR_RELATIVE = 12
+
+function absoluteBusynessTier(percentage: number): BusynessTier {
+  if (percentage <= 25) return 'quiet'
+  if (percentage <= 50) return 'moderate'
+  if (percentage <= 75) return 'busy'
+  return 'peak'
+}
+
+/**
+ * Tier for one hour vs the rest of that day (Google ranks within the day's curve).
+ * Peak is reserved for hours at or near the day's busiest slot.
+ */
+export function busynessTierForHour(
+  percentage: number,
+  dayPercentages: number[],
+): BusynessTier {
+  const values = dayPercentages.filter((p) => p > 0)
+  if (values.length === 0) return absoluteBusynessTier(percentage)
+
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const peakFloor = max - Math.max(PEAK_NEAR_MAX_ABS, max * PEAK_NEAR_MAX_RATIO)
+
+  if (max > 0 && percentage >= peakFloor) return 'peak'
+
+  const span = max - min
+  if (span < MIN_DAY_SPAN_FOR_RELATIVE) return absoluteBusynessTier(percentage)
+
+  const position = (percentage - min) / span
+  if (position < 0.33) return 'quiet'
+  if (position < 0.66) return 'moderate'
+  return 'busy'
+}
+
+const HISTORICAL_TIER_LABEL: Record<BusynessTier, string> = {
+  quiet: 'Usually not too busy',
+  moderate: 'Usually a little busy',
+  busy: 'Usually busy',
+  peak: 'Usually as busy as it gets',
+}
+
+const LIVE_TIER_LABEL: Record<BusynessTier, string> = {
+  quiet: 'Not too busy',
+  moderate: 'A little busy',
+  busy: 'Busy',
+  peak: 'As busy as it gets',
+}
+
 /** Historical expectation when user selects a non-live hour. */
-export function historicalStatusLabel(percentage: number): string {
-  if (percentage <= 35) return 'Usually not too busy'
-  if (percentage <= 65) return 'Usually a little busy'
-  return 'Usually as busy as it gets'
+export function historicalStatusLabel(
+  percentage: number,
+  dayPercentages: number[],
+): string {
+  return HISTORICAL_TIER_LABEL[busynessTierForHour(percentage, dayPercentages)]
 }
 
 /** Google-style secondary hint below the main status line. */
-export function historicalSecondaryHint(percentage: number): string | null {
-  if (percentage <= 35) return 'No wait'
-  if (percentage <= 65) return 'Usually a short wait'
-  return 'Expect a wait at peak times'
+export function historicalSecondaryHint(
+  percentage: number,
+  dayPercentages: number[],
+): string | null {
+  switch (busynessTierForHour(percentage, dayPercentages)) {
+    case 'quiet':
+      return 'No wait'
+    case 'moderate':
+      return 'Usually a short wait'
+    case 'busy':
+      return 'May be a wait'
+    case 'peak':
+      return 'Expect a wait at peak times'
+  }
 }
 
 /** Secondary hint when viewing the live hour. */
 export function liveSecondaryHint(
   livePercentage: number,
   historicalPercentage: number,
+  dayPercentages: number[],
 ): string | null {
-  if (livePercentage <= 35) return 'Usually no wait'
   if (livePercentage < historicalPercentage - LIVE_COMPARISON_DELTA) {
     return 'Quieter than usual'
   }
   if (livePercentage > historicalPercentage + LIVE_COMPARISON_DELTA) {
     return 'Busier than this time usually is'
   }
-  if (livePercentage <= 65) return 'Usually a short wait'
-  return null
+  switch (busynessTierForHour(livePercentage, dayPercentages)) {
+    case 'quiet':
+      return 'Usually no wait'
+    case 'moderate':
+      return 'Usually a short wait'
+    case 'busy':
+      return 'May be a wait'
+    case 'peak':
+      return null
+  }
 }
 
 /** Live readout comparing real-time vs historical baseline. */
-export function liveStatusLabel(livePercentage: number, historicalPercentage: number): string {
-  if (livePercentage >= 85 && historicalPercentage >= 85) {
-    return 'As busy as it gets'
-  }
+export function liveStatusLabel(
+  livePercentage: number,
+  historicalPercentage: number,
+  dayPercentages: number[],
+): string {
   if (livePercentage > historicalPercentage + LIVE_COMPARISON_DELTA) {
     return 'Busier than usual'
   }
   if (livePercentage < historicalPercentage - LIVE_COMPARISON_DELTA) {
     return 'Less busy than usual'
   }
-  if (livePercentage <= 35) return 'Not too busy'
-  if (livePercentage <= 65) return 'A little busy'
-  return 'As busy as it gets'
+  return LIVE_TIER_LABEL[busynessTierForHour(livePercentage, dayPercentages)]
 }
 
 export function isLiveAlert(livePercentage: number, historicalPercentage: number): boolean {
@@ -206,4 +279,28 @@ export function resolveLivePercentage(
 ): number {
   const live = liveByHour?.[hour]
   return live !== undefined && live !== null ? live : historicalPercentage
+}
+
+/** Bar center within the plot as 0–100 (evenly spaced columns). */
+export function barCenterPercent(hourIndex: number, totalBars: number): number {
+  if (totalBars <= 1) return 50
+  return ((hourIndex + 0.5) / totalBars) * 100
+}
+
+/**
+ * Smart floating label position — stays inside the plot at edges (Google-style).
+ * Dotted line uses the raw center; label shifts alignment instead of clipping.
+ */
+export function floatingLabelPosition(centerPercent: number): {
+  left: string
+  transform: string
+} {
+  const edgeThreshold = 18
+  if (centerPercent <= edgeThreshold) {
+    return { left: '0%', transform: 'translateX(0)' }
+  }
+  if (centerPercent >= 100 - edgeThreshold) {
+    return { left: '100%', transform: 'translateX(-100%)' }
+  }
+  return { left: `${centerPercent}%`, transform: 'translateX(-50%)' }
 }

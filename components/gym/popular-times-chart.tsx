@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HelpCircle, Users } from 'lucide-react'
-import type { BusynessSource, DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
+import type { DayOfWeek, PopularTimes } from '@/lib/gym/busyness-types'
 import { DAY_ABBREVIATIONS, DAYS_OF_WEEK } from '@/lib/gym/busyness-types'
 import {
   CHART_GRID_FRACTIONS,
@@ -25,13 +25,14 @@ import {
   percentageToBarHeight,
   resolveChartTimezone,
   resolveLivePercentage,
+  barCenterPercent,
+  floatingLabelPosition,
   todaySelectedHour,
 } from '@/lib/gym/busyness-utils'
 import { MatCapacityInfoPopover } from '@/components/gym/mat-capacity-info-popover'
 
 interface PopularTimesChartProps {
   data: PopularTimes
-  source?: BusynessSource
   timezone?: string | null
   liveByHour?: Record<number, number> | null
 }
@@ -40,6 +41,8 @@ const CHART_HEIGHT_PX = 96
 const HISTORICAL_BAR_W_PX = 11
 const LIVE_GHOST_W_PX = 22
 const LIVE_FOREGROUND_W_PX = 8
+/** Horizontal inset so first/last bars and labels have breathing room (matches Google). */
+const CHART_INSET_X = 'px-4 sm:px-5'
 
 function useGymLocalClock(timezone?: string | null) {
   const tz = resolveChartTimezone(timezone)
@@ -56,7 +59,6 @@ function useGymLocalClock(timezone?: string | null) {
 
 export function PopularTimesChart({
   data,
-  source = 'unknown',
   timezone,
   liveByHour,
 }: PopularTimesChartProps) {
@@ -123,20 +125,29 @@ export function PopularTimesChart({
   const isLiveSelection = isToday && selectedHour === liveHour
   const liveAlert = isLiveAlert(selectedLive, selectedHistorical)
   const ticks = axisTicksForWindow(minHour, maxHour)
+  const dayPercentages = useMemo(
+    () => displayHours.map((hour) => hourMap.get(hour) ?? 0),
+    [displayHours, hourMap],
+  )
 
-  const barCenter = (hour: number) => {
+  const barCenter = (hour: number): number | null => {
     const idx = displayHours.indexOf(hour)
     if (idx < 0) return null
-    return displayHours.length > 1
-      ? `${((idx + 0.5) / displayHours.length) * 100}%`
-      : '50%'
+    return barCenterPercent(idx, displayHours.length)
   }
 
-  const indicatorLineLeft = barCenter(selectedHour) ?? '50%'
+  const selectedCenter = barCenter(selectedHour) ?? 50
+  const labelPosition = floatingLabelPosition(selectedCenter)
+  const labelAlign =
+    selectedCenter <= 18
+      ? 'items-start text-left'
+      : selectedCenter >= 82
+        ? 'items-end text-right'
+        : 'items-center text-center'
   const accentColor = isLiveSelection && liveAlert ? '#dc2626' : LABEL_ACCENT_COLOR
   const secondaryHint = isLiveSelection
-    ? liveSecondaryHint(selectedLive, selectedHistorical)
-    : historicalSecondaryHint(selectedHistorical)
+    ? liveSecondaryHint(selectedLive, selectedHistorical, dayPercentages)
+    : historicalSecondaryHint(selectedHistorical, dayPercentages)
 
   return (
     <div className="select-none">
@@ -153,14 +164,10 @@ export function PopularTimesChart({
         >
           <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
         </button>
-        <MatCapacityInfoPopover
-          open={infoOpen}
-          onClose={() => setInfoOpen(false)}
-          source={source}
-        />
+        <MatCapacityInfoPopover open={infoOpen} onClose={() => setInfoOpen(false)} />
       </div>
 
-      <div className="mb-4 flex justify-between border-b border-gray-100">
+      <div className={`mb-4 flex justify-between border-b border-gray-100 ${CHART_INSET_X}`}>
         {DAYS_OF_WEEK.map((day, i) => {
           const isActive = day === activeDay
           const isGymToday = day === gymNow.day
@@ -185,13 +192,17 @@ export function PopularTimesChart({
         })}
       </div>
 
-      <div className="relative">
-        <div className="relative mb-1 h-10">
+      <div className={`relative ${CHART_INSET_X}`}>
+        <div className="relative mb-1 min-h-10">
           <div
-            className="absolute bottom-0 flex -translate-x-1/2 flex-col items-center transition-[left] duration-200 ease-out"
-            style={{ left: indicatorLineLeft, maxWidth: 'min(220px, 42vw)' }}
+            className={`absolute bottom-0 flex flex-col transition-[left,transform] duration-200 ease-out ${labelAlign}`}
+            style={{
+              left: labelPosition.left,
+              transform: labelPosition.transform,
+              maxWidth: 'min(240px, 78vw)',
+            }}
           >
-            <div className="flex items-center gap-1.5 text-center text-[13px] leading-snug">
+            <div className="flex items-center gap-1.5 text-[13px] leading-snug">
               {isLiveSelection ? (
                 <>
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -211,7 +222,7 @@ export function PopularTimesChart({
                       Live:
                     </span>{' '}
                     <span className="font-normal text-gray-700">
-                      {liveStatusLabel(selectedLive, selectedHistorical)}
+                      {liveStatusLabel(selectedLive, selectedHistorical, dayPercentages)}
                     </span>
                   </span>
                 </>
@@ -227,14 +238,14 @@ export function PopularTimesChart({
                       {formatAxisHour(selectedHour)}:
                     </span>{' '}
                     <span className="font-normal text-gray-600">
-                      {historicalStatusLabel(selectedHistorical)}
+                      {historicalStatusLabel(selectedHistorical, dayPercentages)}
                     </span>
                   </span>
                 </>
               )}
             </div>
             {secondaryHint && (
-              <p className="mt-0.5 text-center text-[11px] italic text-gray-500">
+              <p className="mt-0.5 text-[11px] italic text-gray-500">
                 {secondaryHint}
               </p>
             )}
@@ -242,8 +253,8 @@ export function PopularTimesChart({
         </div>
 
         <div
-          className="pointer-events-none absolute top-10 bottom-5 z-20 w-px border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
-          style={{ left: indicatorLineLeft }}
+          className="pointer-events-none absolute top-10 bottom-5 z-20 w-px -translate-x-1/2 border-l border-dotted border-gray-400 transition-[left] duration-200 ease-out"
+          style={{ left: `${selectedCenter}%` }}
           aria-hidden
         />
 
@@ -283,8 +294,8 @@ export function PopularTimesChart({
                   style={{ height: CHART_HEIGHT_PX }}
                   aria-label={
                     isLiveColumn
-                      ? `Live ${formatAxisHour(hour)}: ${liveStatusLabel(livePct, historicalPct)}`
-                      : `${formatAxisHour(hour)}: ${historicalStatusLabel(historicalPct)}`
+                      ? `Live ${formatAxisHour(hour)}: ${liveStatusLabel(livePct, historicalPct, dayPercentages)}`
+                      : `${formatAxisHour(hour)}: ${historicalStatusLabel(historicalPct, dayPercentages)}`
                   }
                   aria-pressed={hour === selectedHour}
                 >
@@ -327,13 +338,13 @@ export function PopularTimesChart({
 
         <div className="relative mt-2 h-5">
           {ticks.map((tick) => {
-            const left = barCenter(tick)
-            if (!left) return null
+            const center = barCenter(tick)
+            if (center == null) return null
             return (
               <span
                 key={tick}
                 className="absolute -translate-x-1/2 text-[11px] text-gray-500"
-                style={{ left }}
+                style={{ left: `${center}%` }}
               >
                 {formatAxisHour(tick)}
               </span>
