@@ -99,7 +99,7 @@ function formatFooterLanguage(code: string): string {
 }
 
 const footerLinkClass =
-  'text-sm text-gray-900 underline-offset-2 transition-colors hover:underline'
+  'text-sm text-gray-600 underline-offset-2 transition-colors hover:text-gray-900 hover:underline'
 
 export function Footer() {
   const { selectedCurrency, selectedLanguage } = useCurrency()
@@ -117,18 +117,18 @@ export function Footer() {
   }
 
   return (
-    <footer className="mt-auto border-t bg-[#f7f7f7] md:bg-gray-50">
+    <footer className="mt-auto bg-[#f7f7f7] md:border-t md:bg-gray-50">
       {/* ── Mobile: Airbnb-style stacked sections ── */}
-      <div className="px-6 pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))] pt-8 md:hidden">
+      <div className="px-6 pb-[max(5rem,calc(env(safe-area-inset-bottom)+4rem))] pt-6 md:hidden">
         {FOOTER_SECTIONS.map((section, index) => (
           <div
             key={section.title}
-            className={index > 0 ? 'mt-8 border-t border-[#dddddd] pt-8' : undefined}
+            className={index > 0 ? 'mt-5' : undefined}
           >
-            <h3 className="mb-4 text-base font-semibold tracking-tight text-gray-900">
+            <h3 className="mb-2.5 text-[15px] font-semibold tracking-tight text-gray-800">
               {section.title}
             </h3>
-            <ul className="space-y-4">
+            <ul className="space-y-2.5">
               {section.links.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className={footerLinkClass}>
@@ -140,12 +140,12 @@ export function Footer() {
           </div>
         ))}
 
-        <div className="mt-8 space-y-4 border-t border-[#dddddd] pt-8">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="mt-6 space-y-3 border-t border-gray-200/70 pt-5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
             <button
               type="button"
               onClick={openLanguageModal}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 underline-offset-2 hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 underline-offset-2 hover:text-gray-900 hover:underline"
             >
               <Globe className="h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
               {formatFooterLanguage(selectedLanguage)}
@@ -153,14 +153,14 @@ export function Footer() {
             <button
               type="button"
               onClick={openCurrencyModal}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 underline-offset-2 hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 underline-offset-2 hover:text-gray-900 hover:underline"
             >
               <DollarSign className="h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
               {selectedCurrency}
             </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3.5">
             {SOCIAL_LINKS.map((social) => (
               <a
                 key={social.label}
@@ -168,23 +168,23 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={social.label}
-                className="text-gray-900 transition-opacity hover:opacity-70"
+                className="text-gray-600 transition-opacity hover:text-gray-900 hover:opacity-80"
               >
                 {social.icon}
               </a>
             ))}
           </div>
 
-          <p className="text-sm text-gray-900">© 2026 CombatStay, Inc.</p>
+          <p className="text-sm text-gray-600">© 2026 CombatStay, Inc.</p>
 
-          <p className="text-sm text-gray-900">
-            <Link href="/privacy" className="underline-offset-2 hover:underline">
+          <p className="text-sm text-gray-600">
+            <Link href="/privacy" className="underline-offset-2 hover:text-gray-900 hover:underline">
               Privacy
             </Link>
             <span className="mx-1.5" aria-hidden>
               ·
             </span>
-            <Link href="/terms" className="underline-offset-2 hover:underline">
+            <Link href="/terms" className="underline-offset-2 hover:text-gray-900 hover:underline">
               Terms
             </Link>
           </p>
