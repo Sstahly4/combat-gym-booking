@@ -5,14 +5,19 @@ import { BusynessFallbackBanner } from '@/components/gym/busyness-fallback-banne
 
 interface GymBusynessMeterProps {
   busyness: GymBusynessRecord | null
+  timezone?: string | null
 }
 
-export function GymBusynessMeter({ busyness }: GymBusynessMeterProps) {
+export function GymBusynessMeter({ busyness, timezone }: GymBusynessMeterProps) {
   if (!hasDisplayableBusyness(busyness)) {
     return <BusynessFallbackBanner />
   }
 
   return (
-    <PopularTimesChart data={busyness!.popular_times} source={busyness!.source} />
+    <PopularTimesChart
+      data={busyness!.popular_times}
+      source={busyness!.source}
+      timezone={timezone}
+    />
   )
 }

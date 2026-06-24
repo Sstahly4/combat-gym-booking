@@ -370,10 +370,7 @@ export default async function GymDetailsPage({
 
               <Card className="border border-gray-200 shadow-sm">
                 <CardContent className="p-4 md:p-5">
-                  <h3 className="font-bold text-sm md:text-lg mb-3 md:mb-4 text-gray-900">
-                    Mat Capacity
-                  </h3>
-                  <GymBusynessMeter busyness={busyness} />
+                  <GymBusynessMeter busyness={busyness} timezone={gym.timezone} />
                 </CardContent>
               </Card>
 

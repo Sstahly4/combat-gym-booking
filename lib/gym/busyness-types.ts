@@ -10,6 +10,8 @@ export const DAYS_OF_WEEK = [
 
 export type DayOfWeek = (typeof DAYS_OF_WEEK)[number]
 
+export const DAY_ABBREVIATIONS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
+
 export interface HourlyBusyness {
   hour: number
   percentage: number
