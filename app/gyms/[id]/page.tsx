@@ -9,7 +9,6 @@ import { PackagesList } from '@/components/packages-list'
 import { GymGallery } from '@/components/gym-gallery'
 import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper'
 import { GymMap } from '@/components/gym-map'
-import { GymContextNav } from '@/components/gym/gym-context-nav'
 import { GymFaqSection } from '@/components/gym/gym-faq-section'
 import { GymBusynessMeter } from '@/components/gym/gym-busyness-meter'
 import { getCachedGymBusyness } from '@/lib/gym/gym-busyness'
@@ -485,7 +484,6 @@ export default async function GymDetailsPage({
           </div>
 
           <GymFaqSection items={faqItems} />
-          <GymContextNav gym={gym} />
         </div>
       </div>
     </GymPageClientShell>
