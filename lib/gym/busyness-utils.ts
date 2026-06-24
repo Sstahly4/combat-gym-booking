@@ -43,14 +43,45 @@ export function formatAxisHour(hour: number): string {
 }
 
 export interface HourWindow {
+  /** Axis tick range — matches scraped data window (±1h padding), unchanged by spacers. */
   minHour: number
   maxHour: number
+  /** Hours that render bars and accept selection. */
+  dataHours: number[]
+  /** dataHours plus one empty spacer column on each end (no bar). */
   displayHours: number[]
+  spacerHours: ReadonlySet<number>
   hourMap: Map<number, number>
 }
 
+function hoursInRange(start: number, end: number): number[] {
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+}
+
+function withEndSpacers(
+  dataMin: number,
+  dataMax: number,
+): Pick<HourWindow, 'dataHours' | 'displayHours' | 'spacerHours'> {
+  const dataHours = hoursInRange(dataMin, dataMax)
+  const spacerHours = new Set<number>()
+  const displayHours: number[] = []
+
+  if (dataMin > 0) {
+    spacerHours.add(dataMin - 1)
+    displayHours.push(dataMin - 1)
+  }
+  displayHours.push(...dataHours)
+  if (dataMax < 23) {
+    spacerHours.add(dataMax + 1)
+    displayHours.push(dataMax + 1)
+  }
+
+  return { dataHours, displayHours, spacerHours }
+}
+
 /**
- * Dynamic X-axis: earliest hour with activity > 0, latest ditto, padded ±1 hour.
+ * Dynamic X-axis: earliest hour with activity > 0, latest ditto, padded ±1 hour for bars.
+ * Adds one extra empty column before/after for label breathing room (no bar).
  * Falls back to 9am–9pm when the day has no activity.
  */
 export function buildDynamicHourWindow(
@@ -65,8 +96,8 @@ export function buildDynamicHourWindow(
     return {
       minHour,
       maxHour,
-      displayHours: Array.from({ length: maxHour - minHour + 1 }, (_, i) => minHour + i),
       hourMap,
+      ...withEndSpacers(minHour, maxHour),
     }
   }
 
@@ -78,27 +109,27 @@ export function buildDynamicHourWindow(
   return {
     minHour,
     maxHour,
-    displayHours: Array.from({ length: maxHour - minHour + 1 }, (_, i) => minHour + i),
     hourMap,
+    ...withEndSpacers(minHour, maxHour),
   }
 }
 
 /** Default hour when viewing a day that isn't today. */
-export function defaultSelectedHour(displayHours: number[]): number {
-  if (displayHours.length === 0) return 9
-  if (displayHours.includes(9)) return 9
-  return displayHours[0]
+export function defaultSelectedHour(dataHours: number[]): number {
+  if (dataHours.length === 0) return 9
+  if (dataHours.includes(9)) return 9
+  return dataHours[0]
 }
 
 /** Pick the best hour for today: current gym hour if in range, else 9am fallback. */
-export function todaySelectedHour(displayHours: number[], currentHour: number): number {
-  if (displayHours.length === 0) return 9
-  if (displayHours.includes(currentHour)) return currentHour
-  return defaultSelectedHour(displayHours)
+export function todaySelectedHour(dataHours: number[], currentHour: number): number {
+  if (dataHours.length === 0) return 9
+  if (dataHours.includes(currentHour)) return currentHour
+  return defaultSelectedHour(dataHours)
 }
 
-/** Google-style busyness band for a single hour within a day. */
-export type BusynessTier = 'quiet' | 'moderate' | 'busy' | 'peak'
+/** Mat-capacity band for a single hour within a day (5 tiers). */
+export type BusynessTier = 'quiet' | 'light' | 'moderate' | 'busy' | 'peak'
 
 const PEAK_NEAR_MAX_ABS = 5
 const PEAK_NEAR_MAX_RATIO = 0.08
@@ -106,14 +137,15 @@ const PEAK_NEAR_MAX_RATIO = 0.08
 const MIN_DAY_SPAN_FOR_RELATIVE = 12
 
 function absoluteBusynessTier(percentage: number): BusynessTier {
-  if (percentage <= 25) return 'quiet'
-  if (percentage <= 50) return 'moderate'
-  if (percentage <= 75) return 'busy'
+  if (percentage <= 20) return 'quiet'
+  if (percentage <= 40) return 'light'
+  if (percentage <= 60) return 'moderate'
+  if (percentage <= 80) return 'busy'
   return 'peak'
 }
 
 /**
- * Tier for one hour vs the rest of that day (Google ranks within the day's curve).
+ * Tier for one hour vs the rest of that day (ranks within the day's curve).
  * Peak is reserved for hours at or near the day's busiest slot.
  */
 export function busynessTierForHour(
@@ -133,13 +165,15 @@ export function busynessTierForHour(
   if (span < MIN_DAY_SPAN_FOR_RELATIVE) return absoluteBusynessTier(percentage)
 
   const position = (percentage - min) / span
-  if (position < 0.33) return 'quiet'
-  if (position < 0.66) return 'moderate'
+  if (position < 0.25) return 'quiet'
+  if (position < 0.5) return 'light'
+  if (position < 0.75) return 'moderate'
   return 'busy'
 }
 
 const HISTORICAL_TIER_LABEL: Record<BusynessTier, string> = {
   quiet: 'Usually not too busy',
+  light: 'Usually fairly quiet',
   moderate: 'Usually a little busy',
   busy: 'Usually busy',
   peak: 'Usually as busy as it gets',
@@ -147,6 +181,7 @@ const HISTORICAL_TIER_LABEL: Record<BusynessTier, string> = {
 
 const LIVE_TIER_LABEL: Record<BusynessTier, string> = {
   quiet: 'Not too busy',
+  light: 'Fairly quiet',
   moderate: 'A little busy',
   busy: 'Busy',
   peak: 'As busy as it gets',
@@ -168,10 +203,12 @@ export function historicalSecondaryHint(
   switch (busynessTierForHour(percentage, dayPercentages)) {
     case 'quiet':
       return 'Plenty of room to train'
+    case 'light':
+      return 'Easy to find space on the mats'
     case 'moderate':
       return 'Good availability on the mats'
     case 'busy':
-      return 'One of the busiest times of the day'
+      return 'One of the busier times of the day'
     case 'peak':
       return 'Typically reaches maximum mat capacity'
   }
@@ -192,10 +229,12 @@ export function liveSecondaryHint(
   switch (busynessTierForHour(livePercentage, dayPercentages)) {
     case 'quiet':
       return 'Plenty of room to train'
+    case 'light':
+      return 'Easy to find space on the mats'
     case 'moderate':
       return 'Good availability on the mats'
     case 'busy':
-      return 'One of the busiest times of the day'
+      return 'One of the busier times of the day'
     case 'peak':
       return 'Typically reaches maximum mat capacity'
   }

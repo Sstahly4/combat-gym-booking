@@ -76,13 +76,13 @@ export function PopularTimesChart({
 
   const [activeDay, setActiveDay] = useState<DayOfWeek>(gymNow.day)
   const [selectedHour, setSelectedHour] = useState<number>(() =>
-    todaySelectedHour(initialDisplay.displayHours, gymNow.hour),
+    todaySelectedHour(initialDisplay.dataHours, gymNow.hour),
   )
   const [infoOpen, setInfoOpen] = useState(false)
 
   const dayData = findDayBusyness(data, activeDay) ?? data[0]
   const hours = dayData?.hours ?? []
-  const { minHour, maxHour, displayHours, hourMap } = useMemo(
+  const { minHour, maxHour, dataHours, displayHours, spacerHours, hourMap } = useMemo(
     () => buildDynamicHourWindow(hours),
     [hours],
   )
@@ -92,7 +92,7 @@ export function PopularTimesChart({
     const todayData = findDayBusyness(data, gymNow.day)
     const todayDisplay = buildDynamicHourWindow(todayData?.hours ?? [])
     setActiveDay(gymNow.day)
-    setSelectedHour(todaySelectedHour(todayDisplay.displayHours, gymNow.hour))
+    setSelectedHour(todaySelectedHour(todayDisplay.dataHours, gymNow.hour))
   }, [gymNow.day, gymNow.hour, data])
 
   const handleDayChange = useCallback(
@@ -102,9 +102,9 @@ export function PopularTimesChart({
       const nextDisplay = buildDynamicHourWindow(nextDayData?.hours ?? [])
       setActiveDay(day)
       if (day === gymNow.day) {
-        setSelectedHour(todaySelectedHour(nextDisplay.displayHours, gymNow.hour))
+        setSelectedHour(todaySelectedHour(nextDisplay.dataHours, gymNow.hour))
       } else {
-        setSelectedHour(defaultSelectedHour(nextDisplay.displayHours))
+        setSelectedHour(defaultSelectedHour(nextDisplay.dataHours))
       }
     },
     [data, gymNow.day, gymNow.hour],
@@ -116,13 +116,13 @@ export function PopularTimesChart({
   }, [])
 
   useEffect(() => {
-    if (displayHours.includes(selectedHour)) return
+    if (dataHours.includes(selectedHour)) return
     if (activeDay === gymNow.day) {
-      setSelectedHour(todaySelectedHour(displayHours, gymNow.hour))
+      setSelectedHour(todaySelectedHour(dataHours, gymNow.hour))
     } else {
-      setSelectedHour(defaultSelectedHour(displayHours))
+      setSelectedHour(defaultSelectedHour(dataHours))
     }
-  }, [displayHours, selectedHour, activeDay, gymNow.day, gymNow.hour])
+  }, [dataHours, selectedHour, activeDay, gymNow.day, gymNow.hour])
 
   const isToday = activeDay === gymNow.day
   const liveHour = gymNow.hour
@@ -132,8 +132,8 @@ export function PopularTimesChart({
   const liveAlert = isLiveAlert(selectedLive, selectedHistorical)
   const ticks = axisTicksForWindow(minHour, maxHour)
   const dayPercentages = useMemo(
-    () => displayHours.map((hour) => hourMap.get(hour) ?? 0),
-    [displayHours, hourMap],
+    () => dataHours.map((hour) => hourMap.get(hour) ?? 0),
+    [dataHours, hourMap],
   )
 
   const measureBarLayout = useCallback(() => {
@@ -145,7 +145,7 @@ export function PopularTimesChart({
     const centersByHour: Record<number, number> = {}
     let selectedPx = plotRect.width / 2
 
-    for (const hour of displayHours) {
+    for (const hour of dataHours) {
       const bar = barRefs.current.get(hour)
       if (!bar) continue
       const barRect = bar.getBoundingClientRect()
@@ -155,7 +155,7 @@ export function PopularTimesChart({
     }
 
     setBarLayout({ centersByHour, selectedPx })
-  }, [displayHours, selectedHour])
+  }, [dataHours, selectedHour])
 
   useLayoutEffect(() => {
     measureBarLayout()
@@ -316,6 +316,17 @@ export function PopularTimesChart({
             style={{ height: CHART_HEIGHT_PX }}
           >
             {displayHours.map((hour) => {
+              if (spacerHours.has(hour)) {
+                return (
+                  <div
+                    key={hour}
+                    className="min-w-0 flex-1"
+                    style={{ height: CHART_HEIGHT_PX }}
+                    aria-hidden
+                  />
+                )
+              }
+
               const historicalPct = hourMap.get(hour) ?? 0
               const livePct = resolveLivePercentage(hour, historicalPct, liveByHour)
               const isLiveColumn = isToday && hour === liveHour
