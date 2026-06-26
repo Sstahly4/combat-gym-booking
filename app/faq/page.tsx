@@ -333,9 +333,13 @@ const faqs: FAQItem[] = [
     answer: (
       <p className="text-sm leading-relaxed text-gray-700">
         TLS in transit, restricted access in storage. We only pass the gym what they need for your stay (for example
-        name, dates, level). We do not sell personal data. For access or deletion requests, use{' '}
-        <Link href="/contact" className={faqInlineLink}>
-          Customer service
+        name, dates, level). We do not sell personal data. For access or deletion requests, see our{' '}
+        <Link href="/data-deletion" className={faqInlineLink}>
+          data deletion instructions
+        </Link>{' '}
+        or{' '}
+        <Link href="/contact?intent=data-deletion" className={faqInlineLink}>
+          submit a deletion request
         </Link>
         . Full detail:{' '}
         <Link href="/privacy" className={faqInlineLink}>

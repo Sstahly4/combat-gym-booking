@@ -28,6 +28,7 @@ const FOOTER_SECTIONS = [
     title: 'Legal',
     links: [
       { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/data-deletion', label: 'Delete your data' },
       { href: '/terms', label: 'Terms & Conditions' },
       { href: '/accessibility', label: 'Accessibility' },
     ],

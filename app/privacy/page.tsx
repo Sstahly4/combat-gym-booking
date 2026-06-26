@@ -89,7 +89,12 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-1">
               <li>Access your personal information</li>
               <li>Correct inaccurate information</li>
-              <li>Request deletion of your information</li>
+              <li>
+                Request deletion of your information — see our{' '}
+                <a href="/data-deletion" className="text-[#003580] hover:underline">
+                  data deletion instructions
+                </a>
+              </li>
               <li>Object to processing of your information</li>
               <li>Request data portability</li>
               <li>Withdraw consent where processing is based on consent</li>

@@ -9,11 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   CREATOR_PROGRAM_MESSAGE_PROMPT,
   CREATOR_PROGRAM_SUBJECT,
+  DATA_DELETION_SUBJECT,
   validateContactMessage,
 } from '@/lib/contact-form'
 
+const DATA_DELETION_MESSAGE_PROMPT =
+  'Please confirm the email address on your CombatStay account. Include your booking reference if you have an active booking so we can verify your identity.'
+
 export default function ContactPage() {
   const [isCreatorProgram, setIsCreatorProgram] = useState(false)
+  const [isDataDeletion, setIsDataDeletion] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,13 +36,24 @@ export default function ContactPage() {
     const subject = params.get('subject')
     const creatorProgram =
       intent === 'creator-program' || subject === CREATOR_PROGRAM_SUBJECT
+    const dataDeletion =
+      intent === 'data-deletion' || subject === DATA_DELETION_SUBJECT
 
     setIsCreatorProgram(creatorProgram)
-    if (!creatorProgram && !subject) return
+    setIsDataDeletion(dataDeletion && !creatorProgram)
+    if (!creatorProgram && !dataDeletion && !subject) return
 
     setFormData(prev => ({
       ...prev,
-      subject: creatorProgram ? CREATOR_PROGRAM_SUBJECT : subject || prev.subject,
+      subject: creatorProgram
+        ? CREATOR_PROGRAM_SUBJECT
+        : dataDeletion
+          ? DATA_DELETION_SUBJECT
+          : subject || prev.subject,
+      message:
+        dataDeletion && !prev.message
+          ? DATA_DELETION_MESSAGE_PROMPT
+          : prev.message,
     }))
   }, [])
 
@@ -99,12 +115,18 @@ export default function ContactPage() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isCreatorProgram ? 'Apply to the Creator Program' : 'Customer service'}
+            {isCreatorProgram
+              ? 'Apply to the Creator Program'
+              : isDataDeletion
+                ? 'Request data deletion'
+                : 'Customer service'}
           </h1>
           <p className="text-base text-gray-600">
             {isCreatorProgram
               ? 'Tell us about your audience and channels. We review every application personally and aim to reply within one business day.'
-              : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
+              : isDataDeletion
+                ? 'Submit this form to delete your CombatStay account and personal data. We verify ownership of the account email before processing. See our data deletion page for full details.'
+                : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
           </p>
         </div>
 
@@ -201,7 +223,7 @@ export default function ContactPage() {
                       name="subject"
                       type="text"
                       required
-                      readOnly={isCreatorProgram}
+                      readOnly={isCreatorProgram || isDataDeletion}
                       value={formData.subject}
                       onChange={handleChange}
                       className="h-11 border-gray-300 focus:border-[#003580] focus:ring-[#003580] read-only:bg-gray-50 read-only:text-gray-600"
@@ -224,7 +246,9 @@ export default function ContactPage() {
                       placeholder={
                         isCreatorProgram
                           ? CREATOR_PROGRAM_MESSAGE_PROMPT
-                          : 'Please provide as much detail as possible so we can assist you better...'
+                          : isDataDeletion
+                            ? DATA_DELETION_MESSAGE_PROMPT
+                            : 'Please provide as much detail as possible so we can assist you better...'
                       }
                     />
                     {isCreatorProgram ? (
