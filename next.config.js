@@ -76,7 +76,10 @@ const nextConfig = {
       has: [{ type: 'host', value: host }],
       destination: `${base}/:path*`,
       permanent: true,
-    }))
+    })).concat([
+      { source: '/privacy-policy', destination: '/privacy', permanent: true },
+      { source: '/terms-of-service', destination: '/terms', permanent: true },
+    ])
   },
   async headers() {
     // 'unsafe-eval' is intentionally absent — Next.js production builds don't

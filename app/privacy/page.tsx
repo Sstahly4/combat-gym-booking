@@ -41,6 +41,18 @@ export default function PrivacyPage() {
               <li>Booking details and preferences</li>
               <li>Account credentials if you create an account</li>
             </ul>
+            <h3 className="text-lg font-medium text-gray-900 mb-2 mt-4">Sign-in providers (Google and Facebook)</h3>
+            <p>
+              If you choose to sign in with Google or Facebook, we receive basic profile information from
+              that provider, typically your name and email address. We use this only to create and
+              manage your CombatStay account. We do not receive your Google or Facebook password. You can
+              revoke our access at any time through your Google or Facebook account settings, and you can
+              request deletion of your CombatStay data on our{' '}
+              <a href="/data-deletion" className="text-[#003580] hover:underline">
+                data deletion page
+              </a>
+              .
+            </p>
             <h3 className="text-lg font-medium text-gray-900 mb-2 mt-4">Automatically Collected Information</h3>
             <p>We automatically collect certain information when you visit our platform:</p>
             <ul className="list-disc pl-6 space-y-1">
@@ -137,7 +149,7 @@ export default function PrivacyPage() {
           </section>
 
           <div className="text-sm text-gray-500 mt-8 pt-6 border-t">
-            <p>Last Updated: January 2026</p>
+            <p>Last Updated: June 2026</p>
           </div>
         </div>
       </div>
