@@ -36,6 +36,7 @@ interface OrphanGymRow {
   placeholder_email: string | null
   claim_password_set: boolean
   is_pre_listed: boolean
+  first_opened_at: string | null
   latest_token: {
     expires_at: string
     claimed_at: string | null
@@ -106,6 +107,32 @@ export async function GET() {
   }
   const placeholderById = new Map((placeholders ?? []).map((p) => [p.id, p]))
 
+  const firstOpenedByGym = new Map<string, string>()
+  if (allGymIds.length > 0) {
+    const { data: redeemEvents } = await admin
+      .from('owner_telemetry_events')
+      .select('gym_id, created_at')
+      .in('gym_id', allGymIds)
+      .eq('event_type', 'gym_claim_link_redeemed')
+      .order('created_at', { ascending: true })
+    const redeemsByGym = new Map<string, string[]>()
+    for (const row of redeemEvents ?? []) {
+      const gymId = row.gym_id as string | null
+      if (!gymId) continue
+      const list = redeemsByGym.get(gymId) ?? []
+      list.push(row.created_at as string)
+      redeemsByGym.set(gymId, list)
+    }
+    for (const gymId of allGymIds) {
+      const tok = latestByGym.get(gymId)
+      if (!tok?.created_at) continue
+      const tokenCreated = new Date(tok.created_at).getTime()
+      const redeems = redeemsByGym.get(gymId) ?? []
+      const firstAfter = redeems.find((at) => new Date(at).getTime() >= tokenCreated)
+      if (firstAfter) firstOpenedByGym.set(gymId, firstAfter)
+    }
+  }
+
   const now = Date.now()
   const buildRow = (g: any, state: OrphanState): OrphanGymRow => {
     const tok = latestByGym.get(g.id)
@@ -126,6 +153,7 @@ export async function GET() {
       placeholder_email: prof?.placeholder_email ?? null,
       claim_password_set: prof?.claim_password_set ?? false,
       is_pre_listed: Boolean(g.is_pre_listed),
+      first_opened_at: firstOpenedByGym.get(g.id) ?? null,
       latest_token: tok
         ? {
             expires_at: tok.expires_at,

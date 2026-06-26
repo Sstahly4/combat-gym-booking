@@ -1,4 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  fetchClaimLinkAnalytics,
+  type ClaimLinkAnalyticsPayload,
+} from '@/lib/admin/fetch-claim-link-analytics'
 
 export type AnalyticsRange = '7d' | '28d' | '90d'
 
@@ -60,6 +64,7 @@ export type AdminAnalyticsPayload = {
     clicks: number
   }
   catalog: CatalogRow[]
+  claimLinks: ClaimLinkAnalyticsPayload
 }
 
 function isMissingTableError(error: unknown, table: string): boolean {
@@ -317,6 +322,23 @@ export async function fetchAdminAnalytics(
     return { count: count ?? 0, missing: false }
   }
 
+  async function countTelemetryEvent(
+    eventType: string,
+    sinceIso: string,
+  ): Promise<{ count: number | null; missing: boolean }> {
+    const { count, error } = await supabase
+      .from('owner_telemetry_events')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', sinceIso)
+      .eq('event_type', eventType)
+    if (error) {
+      if (isMissingTableError(error, 'owner_telemetry_events')) return { count: null, missing: true }
+      console.warn(`[admin/analytics] count owner_telemetry_events ${eventType}`, error)
+      return { count: 0, missing: false }
+    }
+    return { count: count ?? 0, missing: false }
+  }
+
   const [
     dateEvents7d,
     snapshots7d,
@@ -324,6 +346,10 @@ export async function fetchAdminAnalytics(
     searchEvents7d,
     searchClicks7d,
     telemetry7d,
+    claimGenerated7d,
+    claimRedeemed7d,
+    claimCompleted7d,
+    claimLinks,
   ] = await Promise.all([
     safeCount(supabase, 'search_date_events', sevenDaysAgo),
     safeCount(supabase, 'booking_price_snapshots', sevenDaysAgo),
@@ -331,6 +357,10 @@ export async function fetchAdminAnalytics(
     safeCount(supabase, 'search_events', sevenDaysAgo),
     safeCountWhere('search_events', sevenDaysAgo, 'clicked_gym_id', true),
     safeCount(supabase, 'owner_telemetry_events', sevenDaysAgo),
+    countTelemetryEvent('gym_claim_link_generated', sevenDaysAgo),
+    countTelemetryEvent('gym_claim_link_redeemed', sevenDaysAgo),
+    countTelemetryEvent('gym_claim_password_set', sevenDaysAgo),
+    fetchClaimLinkAnalytics(supabase, range),
   ])
 
   if (dateEvents7d.missing) health.searchDateEvents = false
@@ -397,6 +427,33 @@ export async function fetchAdminAnalytics(
       count7d: telemetry7d.count,
       status: catalogStatus(telemetry7d.count, !telemetry7d.missing),
     },
+    {
+      id: 'claim_link_generated',
+      event: 'Claim link issued',
+      table: 'owner_telemetry_events',
+      whenFired: 'Admin generates a gym claim link',
+      keyFields: 'gym_id, expires_in_days',
+      count7d: claimGenerated7d.count,
+      status: catalogStatus(claimGenerated7d.count, !claimGenerated7d.missing),
+    },
+    {
+      id: 'claim_link_redeemed',
+      event: 'Claim link opened',
+      table: 'owner_telemetry_events',
+      whenFired: 'Owner clicks /claim/<token> and signs in',
+      keyFields: 'gym_id, credentials_pending',
+      count7d: claimRedeemed7d.count,
+      status: catalogStatus(claimRedeemed7d.count, !claimGenerated7d.missing),
+    },
+    {
+      id: 'claim_password_set',
+      event: 'Claim completed',
+      table: 'owner_telemetry_events',
+      whenFired: 'Owner sets password via complete-claim',
+      keyFields: 'gym_id, claim_token_burned',
+      count7d: claimCompleted7d.count,
+      status: catalogStatus(claimCompleted7d.count, !claimGenerated7d.missing),
+    },
   ]
 
   return {
@@ -433,5 +490,6 @@ export async function fetchAdminAnalytics(
       clicks: clicksCurrent,
     },
     catalog,
+    claimLinks,
   }
 }

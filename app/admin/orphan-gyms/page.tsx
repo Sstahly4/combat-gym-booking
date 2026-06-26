@@ -39,6 +39,7 @@ interface OrphanGym {
   placeholder_email: string | null
   claim_password_set: boolean
   is_pre_listed: boolean
+  first_opened_at: string | null
   latest_token: {
     expires_at: string
     claimed_at: string | null
@@ -367,12 +368,15 @@ function OrphanCard({
   const isPreListed = gym.state === 'pre_listed'
 
   const isActivated = gym.claim_password_set || Boolean(t?.claimed_at)
+  const wasOpened = Boolean(gym.first_opened_at) && !isActivated
 
   const status = isPreListed && !t
     ? 'Awaiting first link'
     : isActivated
       ? 'Activated'
-      : t?.active
+      : wasOpened
+        ? 'Opened'
+        : t?.active
         ? 'Active link'
         : t?.revoked_at
           ? 'Revoked'
@@ -385,7 +389,9 @@ function OrphanCard({
       ? 'bg-stone-200 text-stone-800'
       : isActivated
         ? 'bg-blue-100 text-blue-800'
-        : t?.active
+        : wasOpened
+          ? 'bg-sky-100 text-sky-800'
+          : t?.active
           ? 'bg-emerald-100 text-emerald-800'
           : t?.expired
             ? 'bg-amber-100 text-amber-800'
@@ -425,6 +431,9 @@ function OrphanCard({
             Last link issued {new Date(t.created_at).toLocaleString()},
             {' '}expires {new Date(t.expires_at).toLocaleString()}
             {t.claimed_at ? ` · activated ${new Date(t.claimed_at).toLocaleString()}` : ''}
+            {gym.first_opened_at && !t?.claimed_at
+              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}`
+              : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
           </p>
         )}

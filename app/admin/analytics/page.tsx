@@ -8,10 +8,11 @@ import {
   AnalyticsPeriodChart,
   AnalyticsRankedTable,
 } from '@/components/admin/analytics-charts'
+import { AnalyticsClaimLinks } from '@/components/admin/analytics-claim-links'
 import type { AdminAnalyticsPayload, AnalyticsRange } from '@/lib/admin/fetch-admin-analytics'
 import { cn } from '@/lib/utils'
 
-type TabId = 'discovery' | 'catalog'
+type TabId = 'discovery' | 'claims' | 'catalog'
 
 const RANGE_OPTIONS: { id: AnalyticsRange; label: string }[] = [
   { id: '7d', label: '7 days' },
@@ -102,7 +103,8 @@ export default function AdminAnalyticsPage() {
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Admin</p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">Insights</h1>
           <p className="mt-1 max-w-xl text-sm text-stone-600">
-            Search intent, supply gaps, and a live catalog of what we log in Postgres.
+            Search intent, claim link conversion, supply gaps, and a live catalog of what we log in
+            Postgres.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -196,6 +198,7 @@ export default function AdminAnalyticsPage() {
           {(
             [
               { id: 'discovery' as const, label: 'Discovery' },
+              { id: 'claims' as const, label: 'Claim links' },
               { id: 'catalog' as const, label: 'Data catalog' },
             ] as const
           ).map((item) => (
@@ -279,6 +282,8 @@ export default function AdminAnalyticsPage() {
             />
           ) : null}
         </div>
+      ) : tab === 'claims' ? (
+        <AnalyticsClaimLinks data={data?.claimLinks} loading={loading} />
       ) : (
         <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
           <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
