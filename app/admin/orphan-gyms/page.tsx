@@ -369,6 +369,12 @@ function OrphanCard({
 
   const isActivated = gym.claim_password_set || Boolean(t?.claimed_at)
   const wasOpened = Boolean(gym.first_opened_at) && !isActivated
+  const likelyAdminTest =
+    wasOpened &&
+    gym.first_opened_at &&
+    t?.created_at &&
+    (new Date(gym.first_opened_at).getTime() - new Date(t.created_at).getTime()) / 1000 <=
+      300
 
   const status = isPreListed && !t
     ? 'Awaiting first link'
@@ -432,7 +438,7 @@ function OrphanCard({
             {' '}expires {new Date(t.expires_at).toLocaleString()}
             {t.claimed_at ? ` · activated ${new Date(t.claimed_at).toLocaleString()}` : ''}
             {gym.first_opened_at && !t?.claimed_at
-              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}`
+              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}${likelyAdminTest ? ' (likely admin test)' : ''}`
               : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
           </p>

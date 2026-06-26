@@ -173,6 +173,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     token_hash: tokenHash,
     expires_at: expiresAt,
     created_by: auth.user.id,
+    target_email: targetEmail,
   })
   if (insErr) {
     return NextResponse.json(

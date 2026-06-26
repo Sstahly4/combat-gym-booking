@@ -2,13 +2,18 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, ExternalLink } from 'lucide-react'
-import type { ClaimLinkAnalyticsPayload, ClaimLinkActivityStatus } from '@/lib/admin/fetch-claim-link-analytics'
+import { ArrowRight, ExternalLink, Info } from 'lucide-react'
+import {
+  CLAIM_LINK_ADMIN_PREVIEW_SECONDS,
+  type ClaimLinkAnalyticsPayload,
+  type ClaimLinkActivityStatus,
+  type ClaimLinkFunnelRow,
+} from '@/lib/admin/fetch-claim-link-analytics'
 import { AnalyticsKpiCard } from '@/components/admin/analytics-charts'
 import { cn } from '@/lib/utils'
 
 const BRAND = '#003580'
-const CLICK_COLOR = '#0d9488'
+const OPEN_COLOR = '#0d9488'
 const CLAIM_COLOR = '#7c3aed'
 const GRID = '#eef2f7'
 
@@ -22,15 +27,12 @@ const innerW = VB_W - PAD_L - PAD_R
 const innerH = VB_H - PAD_T - PAD_B
 const BASELINE_Y = PAD_T + innerH
 
-type SeriesKey = 'issued' | 'clicked' | 'claimed'
+type SeriesKey = 'issued' | 'opened' | 'claimed'
 
-const SERIES: Record<
-  SeriesKey,
-  { label: string; color: string; description: string }
-> = {
-  issued: { label: 'Issued', color: BRAND, description: 'Claim links generated' },
-  clicked: { label: 'Opened', color: CLICK_COLOR, description: 'Owner clicked the link' },
-  claimed: { label: 'Completed', color: CLAIM_COLOR, description: 'Password set, claim finished' },
+const SERIES: Record<SeriesKey, { label: string; color: string }> = {
+  issued: { label: 'Issued', color: BRAND },
+  opened: { label: 'Opened', color: OPEN_COLOR },
+  claimed: { label: 'Completed', color: CLAIM_COLOR },
 }
 
 function pctDelta(current: number, previous: number): number | null {
@@ -96,23 +98,22 @@ function statusClass(status: ClaimLinkActivityStatus): string {
 
 function ClaimFunnelBar({
   issued,
-  clicked,
+  opened,
+  openedExclPreview,
   claimed,
   loading,
 }: {
   issued: number
-  clicked: number
+  opened: number
+  openedExclPreview: number
   claimed: number
   loading?: boolean
 }) {
-  const [hovered, setHovered] = useState<'issued' | 'clicked' | 'claimed' | null>(null)
-
   const stages = [
-    { key: 'issued' as const, label: 'Links issued', value: issued, color: BRAND },
-    { key: 'clicked' as const, label: 'Opened', value: clicked, color: CLICK_COLOR },
-    { key: 'claimed' as const, label: 'Completed', value: claimed, color: CLAIM_COLOR },
+    { key: 'issued', label: 'Links issued', value: issued, color: BRAND },
+    { key: 'opened', label: 'Opened (all)', value: opened, color: OPEN_COLOR },
+    { key: 'claimed', label: 'Completed', value: claimed, color: CLAIM_COLOR },
   ]
-
   const max = Math.max(issued, 1)
 
   return (
@@ -121,7 +122,7 @@ function ClaimFunnelBar({
         <div>
           <h3 className="text-sm font-semibold text-stone-900">Claim funnel</h3>
           <p className="mt-0.5 text-xs text-stone-500">
-            Links issued in this period — opened vs completed
+            Per link issued this period — one row per token, not per gym
           </p>
         </div>
         <Link
@@ -136,19 +137,7 @@ function ClaimFunnelBar({
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
         {stages.map((stage, i) => (
           <div key={stage.key} className="contents">
-            <button
-              type="button"
-              className={cn(
-                'rounded-xl border p-4 text-left transition-all',
-                hovered === stage.key
-                  ? 'border-stone-300 bg-stone-50 shadow-sm'
-                  : 'border-stone-100 bg-stone-50/50 hover:border-stone-200',
-              )}
-              onMouseEnter={() => setHovered(stage.key)}
-              onMouseLeave={() => setHovered(null)}
-              onFocus={() => setHovered(stage.key)}
-              onBlur={() => setHovered(null)}
-            >
+            <div className="rounded-xl border border-stone-100 bg-stone-50/50 p-4">
               <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500">
                 {stage.label}
               </p>
@@ -164,7 +153,7 @@ function ClaimFunnelBar({
                   }}
                 />
               </div>
-            </button>
+            </div>
             {i < stages.length - 1 ? (
               <div className="hidden justify-center sm:flex">
                 <ArrowRight className="h-4 w-4 text-stone-300" aria-hidden />
@@ -176,9 +165,9 @@ function ClaimFunnelBar({
 
       {!loading && issued > 0 ? (
         <p className="mt-4 text-xs text-stone-500">
-          {clicked.toLocaleString()} of {issued.toLocaleString()} issued links were opened (
-          {((clicked / issued) * 100).toFixed(1)}%). {claimed.toLocaleString()} completed (
-          {((claimed / issued) * 100).toFixed(1)}% of issued).
+          {openedExclPreview.toLocaleString()} owner-scale opens (excl. opens within{' '}
+          {CLAIM_LINK_ADMIN_PREVIEW_SECONDS / 60} min of issue). {claimed.toLocaleString()}{' '}
+          completed ({((claimed / issued) * 100).toFixed(1)}% claim rate).
         </p>
       ) : null}
     </div>
@@ -195,12 +184,12 @@ function ClaimMultiSeriesChart({
   loading?: boolean
 }) {
   const [active, setActive] = useState<Set<SeriesKey>>(
-    () => new Set(['issued', 'clicked', 'claimed']),
+    () => new Set(['issued', 'opened', 'claimed']),
   )
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
   const geom = useMemo(() => {
-    const keys = (['issued', 'clicked', 'claimed'] as SeriesKey[]).filter((k) => active.has(k))
+    const keys = (['issued', 'opened', 'claimed'] as SeriesKey[]).filter((k) => active.has(k))
     const allValues = keys.flatMap((k) => series[k])
     const max = Math.max(0, ...allValues)
     const yMax = niceMax(max)
@@ -221,7 +210,7 @@ function ClaimMultiSeriesChart({
     const tickIndices =
       n <= 7 ? labels.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1]
 
-    return { yMax, xAt, yAt, lines, tickIndices, n, step }
+    return { xAt, yAt, lines, tickIndices, n, step }
   }, [labels, series, active])
 
   function toggleSeries(key: SeriesKey) {
@@ -241,10 +230,10 @@ function ClaimMultiSeriesChart({
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-stone-900">Daily trend</h3>
-          <p className="mt-0.5 text-xs text-stone-500">Toggle series to compare stages</p>
+          <p className="mt-0.5 text-xs text-stone-500">Unique links per stage, by day</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(['issued', 'clicked', 'claimed'] as SeriesKey[]).map((key) => (
+          {(['issued', 'opened', 'claimed'] as SeriesKey[]).map((key) => (
             <button
               key={key}
               type="button"
@@ -325,29 +314,6 @@ function ClaimMultiSeriesChart({
                 <span key={labels[i] ?? i}>{formatShortDate(labels[i] ?? '')}</span>
               ))}
             </div>
-            {hoverIndex !== null ? (
-              <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-lg border border-stone-200 bg-white/95 px-3 py-2 text-xs shadow-md backdrop-blur-sm">
-                <p className="font-medium text-stone-800">{formatShortDate(labels[hoverIndex] ?? '')}</p>
-                <ul className="mt-1 space-y-0.5">
-                  {(['issued', 'clicked', 'claimed'] as SeriesKey[])
-                    .filter((k) => active.has(k))
-                    .map((key) => (
-                      <li key={key} className="flex items-center justify-between gap-4 tabular-nums">
-                        <span className="flex items-center gap-1.5 text-stone-600">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: SERIES[key].color }}
-                          />
-                          {SERIES[key].label}
-                        </span>
-                        <span className="font-medium text-stone-900">
-                          {(series[key][hoverIndex] ?? 0).toLocaleString()}
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            ) : null}
           </>
         )}
       </div>
@@ -356,45 +322,48 @@ function ClaimMultiSeriesChart({
 }
 
 function RateComparison({
-  clickRate,
+  ownerOpenRate,
+  openRate,
   claimRate,
-  completionFromClick,
+  completionFromOpen,
+  likelyAdminPreviews,
   loading,
 }: {
-  clickRate: { current: number; previous: number }
+  ownerOpenRate: { current: number; previous: number }
+  openRate: { current: number; previous: number }
   claimRate: { current: number; previous: number }
-  completionFromClick: { current: number; previous: number }
+  completionFromOpen: { current: number; previous: number }
+  likelyAdminPreviews: number
   loading?: boolean
 }) {
   return (
     <div className="rounded-xl border border-stone-200 bg-gradient-to-br from-white to-stone-50 p-4 sm:p-5">
-      <h3 className="text-sm font-semibold text-stone-900">Click rate vs claim rate</h3>
+      <h3 className="text-sm font-semibold text-stone-900">Open rate vs claim rate</h3>
       <p className="mt-0.5 text-xs text-stone-500">
-        Of links issued this period — opened, then completed setup
+        Industry-style funnel: issued → first open → password completed. Opens are recorded per
+        token when <code className="text-[10px]">/claim/&lt;token&gt;</code> succeeds.
       </p>
 
       <div className="mt-5 grid gap-6 sm:grid-cols-2">
         <div>
           <div className="flex items-end justify-between gap-2">
             <p className="text-[11px] font-medium uppercase tracking-wider text-teal-700">
-              Click rate
+              Owner open rate
             </p>
-            <p className="text-xs text-stone-500">opened ÷ issued</p>
+            <p className="text-xs text-stone-500">excl. quick tests</p>
           </div>
           <p className="mt-2 text-4xl font-semibold tabular-nums text-stone-900">
-            {loading ? '—' : `${clickRate.current.toFixed(1)}%`}
+            {loading ? '—' : `${ownerOpenRate.current.toFixed(1)}%`}
           </p>
           {!loading ? (
             <p className="mt-1 text-xs text-stone-500">
-              {pctDelta(clickRate.current, clickRate.previous) === 0
-                ? 'Flat vs prior period'
-                : `${(pctDelta(clickRate.current, clickRate.previous) ?? 0) > 0 ? '+' : ''}${(pctDelta(clickRate.current, clickRate.previous) ?? 0).toFixed(0)}% vs prior period`}
+              Raw open rate {openRate.current.toFixed(1)}% (includes all opens)
             </p>
           ) : null}
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
             <div
               className="h-full rounded-full bg-teal-600 transition-all duration-700"
-              style={{ width: `${Math.min(100, clickRate.current)}%` }}
+              style={{ width: `${Math.min(100, ownerOpenRate.current)}%` }}
             />
           </div>
         </div>
@@ -409,11 +378,9 @@ function RateComparison({
           <p className="mt-2 text-4xl font-semibold tabular-nums text-stone-900">
             {loading ? '—' : `${claimRate.current.toFixed(1)}%`}
           </p>
-          {!loading ? (
+          {!loading && ownerOpenRate.current > 0 ? (
             <p className="mt-1 text-xs text-stone-500">
-              {pctDelta(claimRate.current, claimRate.previous) === 0
-                ? 'Flat vs prior period'
-                : `${(pctDelta(claimRate.current, claimRate.previous) ?? 0) > 0 ? '+' : ''}${(pctDelta(claimRate.current, claimRate.previous) ?? 0).toFixed(0)}% vs prior period`}
+              {completionFromOpen.current.toFixed(1)}% of owner-scale opens completed
             </p>
           ) : null}
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
@@ -425,15 +392,115 @@ function RateComparison({
         </div>
       </div>
 
-      {!loading && clickRate.current > 0 ? (
-        <p className="mt-4 rounded-lg bg-white/80 px-3 py-2 text-xs text-stone-600 ring-1 ring-stone-100">
-          Of owners who opened a link,{' '}
-          <span className="font-semibold text-stone-900">
-            {completionFromClick.current.toFixed(1)}%
-          </span>{' '}
-          finished claiming ({completionFromClick.current.toFixed(1)}% completion from click).
+      {!loading && likelyAdminPreviews > 0 ? (
+        <p className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {likelyAdminPreviews} open{likelyAdminPreviews === 1 ? '' : 's'} happened within{' '}
+            {CLAIM_LINK_ADMIN_PREVIEW_SECONDS / 60} minutes of issuing — often an admin smoke-test
+            right after generating the link. Those are excluded from owner open rate.
+          </span>
         </p>
       ) : null}
+    </div>
+  )
+}
+
+function FunnelRosterTable({
+  rows,
+  loading,
+}: {
+  rows: ClaimLinkFunnelRow[]
+  loading?: boolean
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+      <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
+        <h3 className="text-sm font-semibold text-stone-900">Link-by-link roster</h3>
+        <p className="mt-0.5 text-xs text-stone-500">
+          Every link issued in this period — who it was for, when it was opened, and completion
+          status
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        {loading ? (
+          <p className="px-5 py-10 text-center text-sm text-stone-500">Loading roster…</p>
+        ) : rows.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-stone-500">
+            No claim links issued in this period.
+          </p>
+        ) : (
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-stone-100 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 font-semibold sm:px-5">Gym</th>
+                <th className="px-4 py-3 font-semibold">Sent to</th>
+                <th className="px-4 py-3 font-semibold">Issued</th>
+                <th className="px-4 py-3 font-semibold">Opened</th>
+                <th className="px-4 py-3 font-semibold">Completed</th>
+                <th className="px-4 py-3 font-semibold sm:px-5">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.token_id} className="border-b border-stone-50 last:border-0">
+                  <td className="px-4 py-3 sm:px-5">
+                    <Link
+                      href={`/admin/orphan-gyms?gym_id=${encodeURIComponent(row.gym_id)}`}
+                      className="font-medium text-stone-900 hover:text-[#003580] hover:underline"
+                    >
+                      {row.gym_name}
+                    </Link>
+                    <p className="text-[11px] text-stone-400">
+                      {[row.city, row.country].filter(Boolean).join(', ') || '—'}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-stone-600">
+                    {row.sent_to ? (
+                      <code className="rounded bg-stone-100 px-1 py-0.5">{row.sent_to}</code>
+                    ) : (
+                      <span className="text-stone-400">Not recorded</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-stone-600">
+                    {formatDateTime(row.issued_at)}
+                    {row.issued_by_name ? (
+                      <p className="mt-0.5 text-[10px] text-stone-400">by {row.issued_by_name}</p>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-stone-600">
+                    {row.opened_at ? (
+                      <>
+                        {formatDateTime(row.opened_at)}
+                        {row.likely_admin_preview ? (
+                          <p className="mt-0.5 text-[10px] font-medium text-amber-700">
+                            Likely admin test
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-stone-600">
+                    {formatDateTime(row.claimed_at)}
+                  </td>
+                  <td className="px-4 py-3 sm:px-5">
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+                        statusClass(row.status),
+                      )}
+                    >
+                      {statusLabel(row.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }
@@ -446,51 +513,40 @@ export function AnalyticsClaimLinks({
   loading?: boolean
 }) {
   const pipeline = data?.pipeline
+  const funnel = data?.funnel
 
   return (
     <div className="space-y-6">
       {!loading && data && !data.health.tokens ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-          Claim token table is missing. Apply migration{' '}
-          <code className="rounded bg-amber-100/80 px-1 text-xs">044_gym_claim_tokens</code> to
-          track claim funnels.
-        </div>
-      ) : null}
-
-      {!loading && data && !data.health.telemetry ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-          Owner telemetry is not available. Apply migration{' '}
-          <code className="rounded bg-amber-100/80 px-1 text-xs">043_owner_portal_hardening</code>{' '}
-          so link opens are recorded.
+          Claim token table is missing. Apply migrations{' '}
+          <code className="rounded bg-amber-100/80 px-1 text-xs">044_gym_claim_tokens</code> and{' '}
+          <code className="rounded bg-amber-100/80 px-1 text-xs">20260626200000</code>.
         </div>
       ) : null}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AnalyticsKpiCard
           label="Links issued"
-          value={(data?.funnel.issued.current ?? 0).toLocaleString()}
-          deltaPct={
-            data ? pctDelta(data.funnel.issued.current, data.funnel.issued.previous) : null
-          }
+          value={(funnel?.issued.current ?? 0).toLocaleString()}
+          deltaPct={data ? pctDelta(funnel!.issued.current, funnel!.issued.previous) : null}
           sparkline={data?.daily.issued}
           loading={loading}
         />
         <AnalyticsKpiCard
-          label="Click rate"
-          value={(data?.funnel.clickRate.current ?? 0).toFixed(1)}
+          label="Owner open rate"
+          value={(funnel?.ownerOpenRate.current ?? 0).toFixed(1)}
           valueSuffix="%"
           deltaPct={
-            data ? pctDelta(data.funnel.clickRate.current, data.funnel.clickRate.previous) : null
+            data ? pctDelta(funnel!.ownerOpenRate.current, funnel!.ownerOpenRate.previous) : null
           }
           loading={loading}
         />
         <AnalyticsKpiCard
           label="Claim rate"
-          value={(data?.funnel.claimRate.current ?? 0).toFixed(1)}
+          value={(funnel?.claimRate.current ?? 0).toFixed(1)}
           valueSuffix="%"
-          deltaPct={
-            data ? pctDelta(data.funnel.claimRate.current, data.funnel.claimRate.previous) : null
-          }
+          deltaPct={data ? pctDelta(funnel!.claimRate.current, funnel!.claimRate.previous) : null}
           loading={loading}
         />
         <AnalyticsKpiCard
@@ -502,16 +558,21 @@ export function AnalyticsClaimLinks({
       </section>
 
       <RateComparison
-        clickRate={data?.funnel.clickRate ?? { current: 0, previous: 0 }}
-        claimRate={data?.funnel.claimRate ?? { current: 0, previous: 0 }}
-        completionFromClick={data?.funnel.completionFromClick ?? { current: 0, previous: 0 }}
+        ownerOpenRate={funnel?.ownerOpenRate ?? { current: 0, previous: 0 }}
+        openRate={funnel?.openRate ?? { current: 0, previous: 0 }}
+        claimRate={funnel?.claimRate ?? { current: 0, previous: 0 }}
+        completionFromOpen={funnel?.completionFromOpen ?? { current: 0, previous: 0 }}
+        likelyAdminPreviews={funnel?.likelyAdminPreviews.current ?? 0}
         loading={loading}
       />
 
+      <FunnelRosterTable rows={data?.roster ?? []} loading={loading} />
+
       <ClaimFunnelBar
-        issued={data?.funnel.issued.current ?? 0}
-        clicked={data?.funnel.clicked.current ?? 0}
-        claimed={data?.funnel.claimed.current ?? 0}
+        issued={funnel?.issued.current ?? 0}
+        opened={funnel?.opened.current ?? 0}
+        openedExclPreview={funnel?.openedExclPreview.current ?? 0}
+        claimed={funnel?.claimed.current ?? 0}
         loading={loading}
       />
 
@@ -519,7 +580,7 @@ export function AnalyticsClaimLinks({
         labels={data?.daily.labels ?? []}
         series={{
           issued: data?.daily.issued ?? [],
-          clicked: data?.daily.clicked ?? [],
+          opened: data?.daily.opened ?? [],
           claimed: data?.daily.claimed ?? [],
         }}
         loading={loading}
@@ -528,7 +589,7 @@ export function AnalyticsClaimLinks({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
           <h3 className="text-sm font-semibold text-stone-900">Live pipeline</h3>
-          <p className="mt-0.5 text-xs text-stone-500">Current state of outstanding claim links</p>
+          <p className="mt-0.5 text-xs text-stone-500">All outstanding claim links right now</p>
           <ul className="mt-4 grid grid-cols-2 gap-3">
             {[
               { label: 'Active, not opened', value: pipeline?.active ?? 0, tone: 'text-emerald-700' },
@@ -556,9 +617,7 @@ export function AnalyticsClaimLinks({
         <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
           <div className="border-b border-stone-100 px-4 py-3 sm:px-5">
             <h3 className="text-sm font-semibold text-stone-900">In-progress gyms</h3>
-            <p className="mt-0.5 text-xs text-stone-500">
-              Issued, opened, and expiry dates for outstanding claims
-            </p>
+            <p className="mt-0.5 text-xs text-stone-500">Outstanding claims with open timestamps</p>
           </div>
           <div className="max-h-[280px] overflow-y-auto">
             {loading ? (
@@ -587,15 +646,21 @@ export function AnalyticsClaimLinks({
                         >
                           {row.gym_name}
                         </Link>
-                        <p className="text-[11px] text-stone-400">
-                          {[row.city, row.country].filter(Boolean).join(', ') || '—'}
-                        </p>
                       </td>
                       <td className="hidden px-4 py-3 text-xs text-stone-600 sm:table-cell">
                         {formatDateTime(row.token_created_at)}
                       </td>
                       <td className="hidden px-4 py-3 text-xs text-stone-600 md:table-cell">
-                        {formatDateTime(row.first_clicked_at)}
+                        {row.first_clicked_at ? (
+                          <>
+                            {formatDateTime(row.first_clicked_at)}
+                            {row.likely_admin_preview ? (
+                              <span className="ml-1 text-[10px] text-amber-700">(test?)</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="px-4 py-3 sm:px-5">
                         <span

@@ -1,12 +1,31 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AnalyticsRange, DailySeries } from '@/lib/admin/fetch-admin-analytics'
 
+/** Opens within this many seconds of issuance are flagged as likely admin smoke-tests. */
+export const CLAIM_LINK_ADMIN_PREVIEW_SECONDS = 300
+
 export type ClaimLinkActivityStatus =
   | 'awaiting_click'
   | 'opened'
   | 'claimed'
   | 'expired'
   | 'revoked'
+
+export type ClaimLinkFunnelRow = {
+  token_id: string
+  gym_id: string
+  gym_name: string
+  city: string | null
+  country: string | null
+  sent_to: string | null
+  issued_at: string
+  opened_at: string | null
+  claimed_at: string | null
+  expires_at: string
+  status: ClaimLinkActivityStatus
+  likely_admin_preview: boolean
+  issued_by_name: string | null
+}
 
 export type ClaimLinkActivityRow = {
   gym_id: string
@@ -18,21 +37,25 @@ export type ClaimLinkActivityRow = {
   claimed_at: string | null
   expires_at: string
   status: ClaimLinkActivityStatus
+  likely_admin_preview: boolean
 }
 
 export type ClaimLinkAnalyticsPayload = {
   health: { tokens: boolean; telemetry: boolean }
   funnel: {
     issued: { current: number; previous: number }
-    clicked: { current: number; previous: number }
+    opened: { current: number; previous: number }
+    openedExclPreview: { current: number; previous: number }
     claimed: { current: number; previous: number }
-    clickRate: { current: number; previous: number }
+    openRate: { current: number; previous: number }
+    ownerOpenRate: { current: number; previous: number }
     claimRate: { current: number; previous: number }
-    completionFromClick: { current: number; previous: number }
+    completionFromOpen: { current: number; previous: number }
+    likelyAdminPreviews: { current: number; previous: number }
   }
   daily: DailySeries & {
     issued: number[]
-    clicked: number[]
+    opened: number[]
     claimed: number[]
   }
   pipeline: {
@@ -41,6 +64,7 @@ export type ClaimLinkAnalyticsPayload = {
     expired: number
     revoked: number
   }
+  roster: ClaimLinkFunnelRow[]
   recent: ClaimLinkActivityRow[]
 }
 
@@ -51,12 +75,16 @@ type TokenRow = {
   expires_at: string
   claimed_at: string | null
   revoked_at: string | null
+  first_opened_at: string | null
+  target_email: string | null
+  created_by: string | null
 }
 
 type TelemetryRow = {
   created_at: string
   event_type: string
   gym_id: string | null
+  metadata?: { token_id?: string; seconds_since_issue?: number } | null
 }
 
 function isMissingTableError(error: unknown, table: string): boolean {
@@ -89,23 +117,11 @@ function buildDailyLabels(end: Date, dayCount: number): string[] {
   return labels
 }
 
-function bucketByDay(rows: Array<{ created_at: string }>, labels: string[]): number[] {
+function bucketByDay(rows: Array<{ at: string }>, labels: string[]): number[] {
   const index = new Map(labels.map((l, i) => [l, i]))
   const values = Array(labels.length).fill(0)
   for (const row of rows) {
-    const key = utcDayKey(new Date(row.created_at))
-    const idx = index.get(key)
-    if (idx !== undefined) values[idx] += 1
-  }
-  return values
-}
-
-function bucketClaimedByDay(tokens: TokenRow[], labels: string[]): number[] {
-  const index = new Map(labels.map((l, i) => [l, i]))
-  const values = Array(labels.length).fill(0)
-  for (const token of tokens) {
-    if (!token.claimed_at) continue
-    const key = utcDayKey(new Date(token.claimed_at))
+    const key = utcDayKey(new Date(row.at))
     const idx = index.get(key)
     if (idx !== undefined) values[idx] += 1
   }
@@ -117,57 +133,86 @@ function pctRate(numerator: number, denominator: number): number {
   return Number(((numerator / denominator) * 100).toFixed(1))
 }
 
-function buildRedeemIndex(redeems: TelemetryRow[]): Map<string, string[]> {
-  const map = new Map<string, string[]>()
-  for (const row of redeems) {
-    if (row.event_type !== 'gym_claim_link_redeemed' || !row.gym_id) continue
-    const list = map.get(row.gym_id) ?? []
-    list.push(row.created_at)
-    map.set(row.gym_id, list)
-  }
-  for (const [gymId, list] of map) {
-    list.sort()
-    map.set(gymId, list)
-  }
-  return map
+function secondsBetween(earlier: string, later: string): number {
+  return Math.max(0, (new Date(later).getTime() - new Date(earlier).getTime()) / 1000)
 }
 
-function firstClickAfterToken(token: TokenRow, redeemIndex: Map<string, string[]>): string | null {
-  const redeems = redeemIndex.get(token.gym_id) ?? []
+function isLikelyAdminPreview(token: TokenRow, openedAt: string | null): boolean {
+  if (!openedAt) return false
+  return secondsBetween(token.created_at, openedAt) <= CLAIM_LINK_ADMIN_PREVIEW_SECONDS
+}
+
+function buildTelemetryFallback(
+  redeems: TelemetryRow[],
+): { byTokenId: Map<string, string>; byGymAfter: Map<string, string[]> } {
+  const byTokenId = new Map<string, string>()
+  const byGymAfter = new Map<string, string[]>()
+  for (const row of redeems) {
+    if (row.event_type !== 'gym_claim_link_redeemed' || !row.gym_id) continue
+    const tokenId = row.metadata?.token_id
+    if (typeof tokenId === 'string' && tokenId && !byTokenId.has(tokenId)) {
+      byTokenId.set(tokenId, row.created_at)
+    }
+    const list = byGymAfter.get(row.gym_id) ?? []
+    list.push(row.created_at)
+    byGymAfter.set(row.gym_id, list)
+  }
+  for (const [gymId, list] of byGymAfter) {
+    list.sort()
+    byGymAfter.set(gymId, list)
+  }
+  return { byTokenId, byGymAfter }
+}
+
+function resolveOpenedAt(
+  token: TokenRow,
+  fallback: { byTokenId: Map<string, string>; byGymAfter: Map<string, string[]> },
+): string | null {
+  if (token.first_opened_at) return token.first_opened_at
+  const byId = fallback.byTokenId.get(token.id)
+  if (byId) return byId
   const tokenCreated = new Date(token.created_at).getTime()
+  const redeems = fallback.byGymAfter.get(token.gym_id) ?? []
   for (const at of redeems) {
     if (new Date(at).getTime() >= tokenCreated) return at
   }
   return null
 }
 
-function tokenWasClicked(token: TokenRow, redeemIndex: Map<string, string[]>): boolean {
-  return firstClickAfterToken(token, redeemIndex) !== null
-}
-
-function funnelCounts(
-  tokens: TokenRow[],
-  redeemIndex: Map<string, string[]>,
-): { issued: number; clicked: number; claimed: number } {
-  let clicked = 0
-  let claimed = 0
-  for (const token of tokens) {
-    if (tokenWasClicked(token, redeemIndex)) clicked += 1
-    if (token.claimed_at) claimed += 1
-  }
-  return { issued: tokens.length, clicked, claimed }
-}
-
 function tokenStatus(
   token: TokenRow,
-  redeemIndex: Map<string, string[]>,
+  openedAt: string | null,
   now: number,
 ): ClaimLinkActivityStatus {
   if (token.claimed_at) return 'claimed'
   if (token.revoked_at) return 'revoked'
   if (new Date(token.expires_at).getTime() <= now) return 'expired'
-  if (tokenWasClicked(token, redeemIndex)) return 'opened'
+  if (openedAt) return 'opened'
   return 'awaiting_click'
+}
+
+function funnelCounts(tokens: TokenRow[], openedAtFor: (t: TokenRow) => string | null) {
+  let opened = 0
+  let openedExclPreview = 0
+  let claimed = 0
+  let likelyAdminPreviews = 0
+  for (const token of tokens) {
+    const openedAt = openedAtFor(token)
+    if (openedAt) {
+      opened += 1
+      const preview = isLikelyAdminPreview(token, openedAt)
+      if (preview) likelyAdminPreviews += 1
+      else openedExclPreview += 1
+    }
+    if (token.claimed_at) claimed += 1
+  }
+  return {
+    issued: tokens.length,
+    opened,
+    openedExclPreview,
+    claimed,
+    likelyAdminPreviews,
+  }
 }
 
 const RANGE_DAYS: Record<AnalyticsRange, number> = {
@@ -183,23 +228,20 @@ export async function fetchClaimLinkAnalytics(
   const dayCount = RANGE_DAYS[range]
   const now = new Date()
   const nowMs = now.getTime()
-  const periodEnd = now
   const periodStart = addUtcDays(startOfUtcDay(now), -(dayCount - 1))
-  const compareEnd = addUtcDays(periodStart, -1)
-  const compareStart = addUtcDays(startOfUtcDay(compareEnd), -(dayCount - 1))
+  const compareStart = addUtcDays(periodStart, -dayCount)
 
   const periodStartIso = periodStart.toISOString()
   const compareStartIso = compareStart.toISOString()
-  const labels = buildDailyLabels(periodEnd, dayCount)
+  const labels = buildDailyLabels(now, dayCount)
 
   const health = { tokens: true, telemetry: true }
 
-  const telemetrySince = compareStartIso
   const telemetryRes = await supabase
     .from('owner_telemetry_events')
-    .select('created_at, event_type, gym_id')
-    .gte('created_at', telemetrySince)
-    .in('event_type', ['gym_claim_link_redeemed', 'gym_claim_link_generated'])
+    .select('created_at, event_type, gym_id, metadata')
+    .gte('created_at', compareStartIso)
+    .eq('event_type', 'gym_claim_link_redeemed')
 
   if (telemetryRes.error) {
     if (isMissingTableError(telemetryRes.error, 'owner_telemetry_events')) {
@@ -209,14 +251,14 @@ export async function fetchClaimLinkAnalytics(
     }
   }
 
-  const redeems = (telemetryRes.data ?? []).filter(
-    (r) => (r as TelemetryRow).event_type === 'gym_claim_link_redeemed',
-  ) as TelemetryRow[]
-  const redeemIndex = buildRedeemIndex(redeems)
+  const telemetryFallback = buildTelemetryFallback((telemetryRes.data ?? []) as TelemetryRow[])
+  const openedAtFor = (token: TokenRow) => resolveOpenedAt(token, telemetryFallback)
 
   const tokensRes = await supabase
     .from('gym_claim_tokens')
-    .select('id, gym_id, created_at, expires_at, claimed_at, revoked_at')
+    .select(
+      'id, gym_id, created_at, expires_at, claimed_at, revoked_at, first_opened_at, target_email, created_by',
+    )
     .gte('created_at', compareStartIso)
     .order('created_at', { ascending: false })
 
@@ -228,16 +270,30 @@ export async function fetchClaimLinkAnalytics(
     }
   }
 
-  const allTokens = (tokensRes.data ?? []) as TokenRow[]
-  const currentTokens = allTokens.filter((t) => t.created_at >= periodStartIso)
-  const previousTokens = allTokens.filter(
+  const cohortTokens = (tokensRes.data ?? []) as TokenRow[]
+  const currentTokens = cohortTokens.filter((t) => t.created_at >= periodStartIso)
+  const previousTokens = cohortTokens.filter(
     (t) => t.created_at >= compareStartIso && t.created_at < periodStartIso,
   )
 
-  const currentFunnel = funnelCounts(currentTokens, redeemIndex)
-  const previousFunnel = funnelCounts(previousTokens, redeemIndex)
+  const currentFunnel = funnelCounts(currentTokens, openedAtFor)
+  const previousFunnel = funnelCounts(previousTokens, openedAtFor)
 
-  const clickedEventsCurrent = redeems.filter((r) => r.created_at >= periodStartIso)
+  const pipelineTokensRes = await supabase
+    .from('gym_claim_tokens')
+    .select(
+      'id, gym_id, created_at, expires_at, claimed_at, revoked_at, first_opened_at, target_email, created_by',
+    )
+    .is('claimed_at', null)
+    .order('created_at', { ascending: false })
+
+  const pipelineTokens = (pipelineTokensRes.error ? [] : pipelineTokensRes.data ?? []) as TokenRow[]
+  const latestOutstandingByGym = new Map<string, TokenRow>()
+  for (const token of pipelineTokens) {
+    if (!latestOutstandingByGym.has(token.gym_id)) {
+      latestOutstandingByGym.set(token.gym_id, token)
+    }
+  }
 
   const pipeline = {
     active: 0,
@@ -246,27 +302,24 @@ export async function fetchClaimLinkAnalytics(
     revoked: 0,
   }
 
-  const latestTokenByGym = new Map<string, TokenRow>()
-  for (const token of allTokens) {
-    if (!latestTokenByGym.has(token.gym_id)) {
-      latestTokenByGym.set(token.gym_id, token)
-    }
-  }
-
-  for (const token of latestTokenByGym.values()) {
-    const status = tokenStatus(token, redeemIndex, nowMs)
+  for (const token of latestOutstandingByGym.values()) {
+    const openedAt = openedAtFor(token)
+    const status = tokenStatus(token, openedAt, nowMs)
     if (status === 'awaiting_click') pipeline.active += 1
     else if (status === 'opened') pipeline.openedAwaitingClaim += 1
     else if (status === 'expired') pipeline.expired += 1
     else if (status === 'revoked') pipeline.revoked += 1
   }
 
-  const recentTokenCandidates = [...latestTokenByGym.values()]
-    .filter((t) => !t.claimed_at)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 12)
+  const rosterTokens = [...currentTokens].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
 
-  const gymIds = [...new Set(recentTokenCandidates.map((t) => t.gym_id))]
+  const gymIds = [...new Set(rosterTokens.map((t) => t.gym_id))]
+  const adminIds = [
+    ...new Set(rosterTokens.map((t) => t.created_by).filter(Boolean)),
+  ] as string[]
+
   const gymMeta = new Map<string, { name: string; city: string | null; country: string | null }>()
   if (gymIds.length > 0) {
     const { data: gyms } = await supabase
@@ -282,51 +335,125 @@ export async function fetchClaimLinkAnalytics(
     }
   }
 
-  const recent: ClaimLinkActivityRow[] = recentTokenCandidates.map((token) => {
+  const adminMeta = new Map<string, string>()
+  if (adminIds.length > 0) {
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', adminIds)
+    for (const p of admins ?? []) {
+      adminMeta.set(p.id as string, (p.full_name as string | null)?.trim() || 'Admin')
+    }
+  }
+
+  const roster: ClaimLinkFunnelRow[] = rosterTokens.map((token) => {
     const meta = gymMeta.get(token.gym_id)
+    const openedAt = openedAtFor(token)
+    return {
+      token_id: token.id,
+      gym_id: token.gym_id,
+      gym_name: meta?.name ?? 'Untitled gym',
+      city: meta?.city ?? null,
+      country: meta?.country ?? null,
+      sent_to: token.target_email,
+      issued_at: token.created_at,
+      opened_at: openedAt,
+      claimed_at: token.claimed_at,
+      expires_at: token.expires_at,
+      status: tokenStatus(token, openedAt, nowMs),
+      likely_admin_preview: isLikelyAdminPreview(token, openedAt),
+      issued_by_name: token.created_by ? adminMeta.get(token.created_by) ?? null : null,
+    }
+  })
+
+  const recentCandidates = [...latestOutstandingByGym.values()]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 12)
+
+  const recentGymIds = [...new Set(recentCandidates.map((t) => t.gym_id))]
+  if (recentGymIds.some((id) => !gymMeta.has(id))) {
+    const { data: gyms } = await supabase
+      .from('gyms')
+      .select('id, name, city, country')
+      .in('id', recentGymIds)
+    for (const g of gyms ?? []) {
+      gymMeta.set(g.id as string, {
+        name: (g.name as string) || 'Untitled gym',
+        city: (g.city as string | null) ?? null,
+        country: (g.country as string | null) ?? null,
+      })
+    }
+  }
+
+  const recent: ClaimLinkActivityRow[] = recentCandidates.map((token) => {
+    const meta = gymMeta.get(token.gym_id)
+    const openedAt = openedAtFor(token)
     return {
       gym_id: token.gym_id,
       gym_name: meta?.name ?? 'Untitled gym',
       city: meta?.city ?? null,
       country: meta?.country ?? null,
       token_created_at: token.created_at,
-      first_clicked_at: firstClickAfterToken(token, redeemIndex),
+      first_clicked_at: openedAt,
       claimed_at: token.claimed_at,
       expires_at: token.expires_at,
-      status: tokenStatus(token, redeemIndex, nowMs),
+      status: tokenStatus(token, openedAt, nowMs),
+      likely_admin_preview: isLikelyAdminPreview(token, openedAt),
     }
   })
+
+  const dailyOpened = currentTokens
+    .map((token) => {
+      const at = openedAtFor(token)
+      return at ? { at } : null
+    })
+    .filter(Boolean) as Array<{ at: string }>
 
   return {
     health,
     funnel: {
       issued: { current: currentFunnel.issued, previous: previousFunnel.issued },
-      clicked: { current: currentFunnel.clicked, previous: previousFunnel.clicked },
+      opened: { current: currentFunnel.opened, previous: previousFunnel.opened },
+      openedExclPreview: {
+        current: currentFunnel.openedExclPreview,
+        previous: previousFunnel.openedExclPreview,
+      },
       claimed: { current: currentFunnel.claimed, previous: previousFunnel.claimed },
-      clickRate: {
-        current: pctRate(currentFunnel.clicked, currentFunnel.issued),
-        previous: pctRate(previousFunnel.clicked, previousFunnel.issued),
+      openRate: {
+        current: pctRate(currentFunnel.opened, currentFunnel.issued),
+        previous: pctRate(previousFunnel.opened, previousFunnel.issued),
+      },
+      ownerOpenRate: {
+        current: pctRate(currentFunnel.openedExclPreview, currentFunnel.issued),
+        previous: pctRate(previousFunnel.openedExclPreview, previousFunnel.issued),
       },
       claimRate: {
         current: pctRate(currentFunnel.claimed, currentFunnel.issued),
         previous: pctRate(previousFunnel.claimed, previousFunnel.issued),
       },
-      completionFromClick: {
-        current: pctRate(currentFunnel.claimed, currentFunnel.clicked),
-        previous: pctRate(previousFunnel.claimed, previousFunnel.clicked),
+      completionFromOpen: {
+        current: pctRate(currentFunnel.claimed, currentFunnel.openedExclPreview),
+        previous: pctRate(previousFunnel.claimed, previousFunnel.openedExclPreview),
+      },
+      likelyAdminPreviews: {
+        current: currentFunnel.likelyAdminPreviews,
+        previous: previousFunnel.likelyAdminPreviews,
       },
     },
     daily: {
       labels,
-      values: bucketByDay(currentTokens, labels),
-      issued: bucketByDay(currentTokens, labels),
-      clicked: bucketByDay(clickedEventsCurrent, labels),
-      claimed: bucketClaimedByDay(
-        allTokens.filter((t) => t.claimed_at && t.claimed_at >= periodStartIso),
+      values: bucketByDay(currentTokens.map((t) => ({ at: t.created_at })), labels),
+      issued: bucketByDay(currentTokens.map((t) => ({ at: t.created_at })), labels),
+      opened: bucketByDay(dailyOpened, labels),
+      claimed: bucketByDay(
+        currentTokens
+          .filter((t) => t.claimed_at)
+          .map((t) => ({ at: t.claimed_at as string })),
         labels,
       ),
     },
     pipeline,
+    roster,
     recent,
   }
 }

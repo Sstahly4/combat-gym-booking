@@ -97,7 +97,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const { data: token, error: tokenErr } = await admin
     .from('gym_claim_tokens')
-    .select('id, gym_id, expires_at, claimed_at, revoked_at')
+    .select('id, gym_id, created_at, expires_at, claimed_at, revoked_at')
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
@@ -200,12 +200,29 @@ export async function GET(request: NextRequest, { params }: Params) {
     })
   }
 
+  const nowIso = new Date().toISOString()
+  const secondsSinceIssue = Math.max(
+    0,
+    Math.round((Date.now() - new Date(token.created_at).getTime()) / 1000),
+  )
+
   await recordOwnerEvent(admin as never, {
     event_type: 'gym_claim_link_redeemed',
     user_id: gym.owner_id,
     gym_id: gym.id,
-    metadata: { gym_name: gym.name, credentials_pending: true },
+    metadata: {
+      gym_name: gym.name,
+      credentials_pending: true,
+      token_id: token.id,
+      seconds_since_issue: secondsSinceIssue,
+    },
   })
+
+  await admin
+    .from('gym_claim_tokens')
+    .update({ first_opened_at: nowIso })
+    .eq('id', token.id)
+    .is('first_opened_at', null)
 
   return redirectResponse
 }

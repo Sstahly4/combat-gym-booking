@@ -96,7 +96,7 @@ export async function GET() {
   const { data: tokens } = allGymIds.length
     ? await admin
         .from('gym_claim_tokens')
-        .select('gym_id, expires_at, claimed_at, revoked_at, created_at')
+        .select('gym_id, expires_at, claimed_at, revoked_at, created_at, first_opened_at')
         .in('gym_id', allGymIds)
         .order('created_at', { ascending: false })
     : { data: [] as any[] }
@@ -106,32 +106,6 @@ export async function GET() {
     if (!latestByGym.has(t.gym_id)) latestByGym.set(t.gym_id, t)
   }
   const placeholderById = new Map((placeholders ?? []).map((p) => [p.id, p]))
-
-  const firstOpenedByGym = new Map<string, string>()
-  if (allGymIds.length > 0) {
-    const { data: redeemEvents } = await admin
-      .from('owner_telemetry_events')
-      .select('gym_id, created_at')
-      .in('gym_id', allGymIds)
-      .eq('event_type', 'gym_claim_link_redeemed')
-      .order('created_at', { ascending: true })
-    const redeemsByGym = new Map<string, string[]>()
-    for (const row of redeemEvents ?? []) {
-      const gymId = row.gym_id as string | null
-      if (!gymId) continue
-      const list = redeemsByGym.get(gymId) ?? []
-      list.push(row.created_at as string)
-      redeemsByGym.set(gymId, list)
-    }
-    for (const gymId of allGymIds) {
-      const tok = latestByGym.get(gymId)
-      if (!tok?.created_at) continue
-      const tokenCreated = new Date(tok.created_at).getTime()
-      const redeems = redeemsByGym.get(gymId) ?? []
-      const firstAfter = redeems.find((at) => new Date(at).getTime() >= tokenCreated)
-      if (firstAfter) firstOpenedByGym.set(gymId, firstAfter)
-    }
-  }
 
   const now = Date.now()
   const buildRow = (g: any, state: OrphanState): OrphanGymRow => {
@@ -153,7 +127,7 @@ export async function GET() {
       placeholder_email: prof?.placeholder_email ?? null,
       claim_password_set: prof?.claim_password_set ?? false,
       is_pre_listed: Boolean(g.is_pre_listed),
-      first_opened_at: firstOpenedByGym.get(g.id) ?? null,
+      first_opened_at: (tok?.first_opened_at as string | null) ?? null,
       latest_token: tok
         ? {
             expires_at: tok.expires_at,
