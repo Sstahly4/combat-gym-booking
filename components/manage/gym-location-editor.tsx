@@ -65,6 +65,17 @@ export function GymLocationEditor({
           <GymLocationAddressSearch disabled={saving} onApply={onApplySearch} />
         </section>
 
+        <div className="lg:hidden">
+          <GymLocationMapPreview
+            address={address}
+            city={city}
+            country={country}
+            latitude={latitude}
+            longitude={longitude}
+            googleMapsLink={googleMapsLink}
+          />
+        </div>
+
         <section className="space-y-5 border-t border-gray-100 pt-8">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Address</h2>
@@ -192,7 +203,7 @@ export function GymLocationEditor({
         </details>
       </div>
 
-      <div className="lg:sticky lg:top-6 lg:self-start">
+      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
         <GymLocationMapPreview
           address={address}
           city={city}

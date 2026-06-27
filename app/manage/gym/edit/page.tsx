@@ -330,7 +330,9 @@ function EditGymForm() {
   })
   const [trainers, setTrainers] = useState<TrainerFormRow[]>([])
   const [trainerPhotoUploadIds, setTrainerPhotoUploadIds] = useState<Record<string, string>>({})
-  const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([])
+  const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([
+    { question: '', answer: '' },
+  ])
 
   // Get cache key for this gym
   const getCacheKey = () => gymId ? `gym_edit_${gymId}` : null
@@ -448,7 +450,9 @@ function EditGymForm() {
           ),
         )
       }
-      if (formState.faq) setFaq(formState.faq)
+      if (formState.faq && Array.isArray(formState.faq) && formState.faq.length > 0) {
+        setFaq(formState.faq)
+      }
 
       const loc = formState as Record<string, unknown>
       const hasLocationCache =
@@ -786,7 +790,7 @@ function EditGymForm() {
         if (data.trainers && Array.isArray(data.trainers)) {
           setTrainers(data.trainers.map((t: unknown) => normalizeTrainerRow(t)))
         }
-        if (data.faq && Array.isArray(data.faq)) {
+        if (data.faq && Array.isArray(data.faq) && data.faq.length > 0) {
           setFaq(data.faq)
         }
       }
@@ -1062,6 +1066,10 @@ function EditGymForm() {
   }
 
   const removeFaq = (index: number) => {
+    if (faq.length <= 1) {
+      setFaq([{ question: '', answer: '' }])
+      return
+    }
     setFaq(faq.filter((_, i) => i !== index))
   }
 
@@ -1422,7 +1430,7 @@ function EditGymForm() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="facebook_link">Facebook link (optional)</Label>
+                    <Label htmlFor="facebook_link">Facebook link</Label>
                     <Input
                       id="facebook_link"
                       name="facebook_link"
@@ -1467,53 +1475,55 @@ function EditGymForm() {
                 <div className="space-y-4 border-t border-gray-100 pt-8">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <Label>Guest FAQs</Label>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Optional questions and answers shown on your public listing.
+                      <Label className="text-base font-semibold text-gray-900">Guest FAQs</Label>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Questions and answers shown on your public listing.
                       </p>
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={addFaq}>
                       Add question
                     </Button>
                   </div>
-                  {faq.length === 0 ? (
-                    <p className="text-sm text-gray-500">
-                      Answer common questions about parking, gear, skill level, or what to bring.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {faq.map((item, index) => (
-                        <div
-                          key={index}
-                          className="space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4"
-                        >
-                          <Input
-                            placeholder="Question"
-                            value={item.question}
-                            onChange={(e) => updateFaq(index, 'question', e.target.value)}
-                          />
-                          <div className="flex gap-2">
-                            <Textarea
-                              placeholder="Answer"
-                              value={item.answer}
-                              onChange={(e) => updateFaq(index, 'answer', e.target.value)}
-                              rows={2}
-                              className="flex-1"
-                            />
-                            <Button
+
+                  <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/[0.03]">
+                    {faq.map((item, index) => (
+                      <div key={index} className="space-y-3 p-4 sm:p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor={`faq-question-${index}`} className="text-sm font-medium text-gray-900">
+                            Question
+                          </Label>
+                          {faq.length > 1 ? (
+                            <button
                               type="button"
-                              variant="outline"
-                              size="sm"
                               onClick={() => removeFaq(index)}
-                              className="self-start"
+                              className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
                             >
                               Remove
-                            </Button>
-                          </div>
+                            </button>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <Input
+                          id={`faq-question-${index}`}
+                          placeholder="e.g. Do I need my own gloves and shin guards?"
+                          value={item.question}
+                          onChange={(e) => updateFaq(index, 'question', e.target.value)}
+                        />
+                        <div className="space-y-2">
+                          <Label htmlFor={`faq-answer-${index}`} className="text-sm font-medium text-gray-900">
+                            Answer
+                          </Label>
+                          <Textarea
+                            id={`faq-answer-${index}`}
+                            placeholder="e.g. We lend gloves for your first week. Shin guards are required for sparring — bring your own or buy at the front desk."
+                            value={item.answer}
+                            onChange={(e) => updateFaq(index, 'answer', e.target.value)}
+                            rows={3}
+                            className="min-h-[5.5rem] resize-y"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
