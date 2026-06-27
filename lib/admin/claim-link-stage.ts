@@ -42,6 +42,41 @@ export function claimLinkStageLabel(stage: ClaimLinkStage): string {
   }
 }
 
+export function claimLinkStageShortLabel(stage: ClaimLinkStage): string {
+  switch (stage) {
+    case 'link_sent':
+      return 'Not clicked'
+    case 'clicked_not_complete':
+      return 'Incomplete'
+    case 'password_added':
+      return 'Password set'
+    case 'onboarded':
+      return 'Onboarded'
+    case 'expired':
+      return 'Expired'
+    case 'revoked':
+      return 'Revoked'
+  }
+}
+
+/** Compact table chip — not pill-shaped. */
+export function claimLinkStageTableClass(stage: ClaimLinkStage): string {
+  switch (stage) {
+    case 'link_sent':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-900'
+    case 'clicked_not_complete':
+      return 'border-sky-200 bg-sky-50 text-sky-900'
+    case 'password_added':
+      return 'border-indigo-200 bg-indigo-50 text-indigo-900'
+    case 'onboarded':
+      return 'border-violet-200 bg-violet-50 text-violet-900'
+    case 'expired':
+      return 'border-amber-200 bg-amber-50 text-amber-950'
+    case 'revoked':
+      return 'border-stone-200 bg-stone-50 text-stone-700'
+  }
+}
+
 export function claimLinkStageBadgeClass(stage: ClaimLinkStage): string {
   switch (stage) {
     case 'link_sent':

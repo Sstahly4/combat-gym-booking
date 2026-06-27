@@ -34,16 +34,19 @@ export type ClaimLinkAnalyticsPayload = {
   health: { tokens: boolean }
   summary: {
     total: number
-    linkSent: number
+    /** Active links not opened yet (excludes expired/revoked). */
+    notClicked: number
     clickedNotComplete: number
     passwordAdded: number
     onboarded: number
     expired: number
     revoked: number
-    adminOpens: number
-    ownerOpens: number
-    ownerOpenRate: number
-    onboardedRate: number
+    ownerClicks: number
+    adminClicks: number
+    /** Owner (or unknown) opens ÷ links issued — excludes admin smoke-tests. */
+    clickRate: number
+    /** Fully onboarded (password + Stripe) ÷ links issued. */
+    claimRate: number
   }
   roster: ClaimLinkRosterRow[]
 }
@@ -143,16 +146,16 @@ function resolveOpenedAt(
 
 const EMPTY_SUMMARY: ClaimLinkAnalyticsPayload['summary'] = {
   total: 0,
-  linkSent: 0,
+  notClicked: 0,
   clickedNotComplete: 0,
   passwordAdded: 0,
   onboarded: 0,
   expired: 0,
   revoked: 0,
-  adminOpens: 0,
-  ownerOpens: 0,
-  ownerOpenRate: 0,
-  onboardedRate: 0,
+  ownerClicks: 0,
+  adminClicks: 0,
+  clickRate: 0,
+  claimRate: 0,
 }
 
 /** Full claim-link history for Insights — not filtered by date range (range is ignored). */
@@ -266,7 +269,7 @@ export async function fetchClaimLinkAnalytics(
   for (const row of roster) {
     switch (row.stage) {
       case 'link_sent':
-        summary.linkSent += 1
+        summary.notClicked += 1
         break
       case 'clicked_not_complete':
         summary.clickedNotComplete += 1
@@ -284,12 +287,14 @@ export async function fetchClaimLinkAnalytics(
         summary.revoked += 1
         break
     }
-    if (row.opened_by === 'admin') summary.adminOpens += 1
-    if (row.opened_by === 'owner') summary.ownerOpens += 1
+    if (row.opened_at) {
+      if (row.opened_by === 'admin') summary.adminClicks += 1
+      else summary.ownerClicks += 1
+    }
   }
 
-  summary.ownerOpenRate = pctRate(summary.ownerOpens, summary.total)
-  summary.onboardedRate = pctRate(summary.onboarded, summary.total)
+  summary.clickRate = pctRate(summary.ownerClicks, summary.total)
+  summary.claimRate = pctRate(summary.onboarded, summary.total)
 
   return { health, summary, roster }
 }

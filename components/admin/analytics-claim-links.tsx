@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import type { ClaimLinkAnalyticsPayload } from '@/lib/admin/fetch-claim-link-analytics'
-import { claimLinkStageBadgeClass } from '@/lib/admin/claim-link-stage'
+import {
+  claimLinkStageShortLabel,
+  claimLinkStageTableClass,
+  type ClaimLinkStage,
+} from '@/lib/admin/claim-link-stage'
 import { cn } from '@/lib/utils'
 
 function formatDateTime(iso: string | null): string {
@@ -26,13 +30,43 @@ function openedByLabel(openedBy: 'admin' | 'owner' | null): string {
   return 'Unknown'
 }
 
-function SummaryStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function HeroStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string
+  value: string
+  hint?: string
+}) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white px-4 py-3">
+    <div className="rounded-xl border border-stone-200 bg-white px-5 py-4">
       <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-stone-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-stone-500">{hint}</p> : null}
+      <p className="mt-1 text-3xl font-semibold tabular-nums text-stone-900">{value}</p>
+      {hint ? <p className="mt-1.5 text-xs leading-snug text-stone-500">{hint}</p> : null}
     </div>
+  )
+}
+
+function FunnelStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-stone-100 bg-stone-50/80 px-3 py-2">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-800">{value}</p>
+    </div>
+  )
+}
+
+function StatusBadge({ stage }: { stage: ClaimLinkStage }) {
+  return (
+    <span
+      className={cn(
+        'inline-block whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium leading-none',
+        claimLinkStageTableClass(stage),
+      )}
+    >
+      {claimLinkStageShortLabel(stage)}
+    </span>
   )
 }
 
@@ -45,6 +79,13 @@ export function AnalyticsClaimLinks({
 }) {
   const summary = data?.summary
   const roster = data?.roster ?? []
+
+  const clickRate = summary?.clickRate ?? 0
+  const claimRate = summary?.claimRate ?? 0
+  const ownerClicks = summary?.ownerClicks ?? 0
+  const onboarded = summary?.onboarded ?? 0
+  const total = summary?.total ?? 0
+  const adminClicks = summary?.adminClicks ?? 0
 
   return (
     <div className="space-y-5">
@@ -59,8 +100,11 @@ export function AnalyticsClaimLinks({
         <div>
           <h2 className="text-sm font-semibold text-stone-900">Claim link roster</h2>
           <p className="mt-0.5 max-w-2xl text-xs text-stone-500">
-            Onboarding funnel per link: sent → clicked → password → Stripe connected. Status uses
-            live owner password and gym Stripe state, not token burn alone.
+            <strong className="font-medium text-stone-600">Links issued</strong> is every claim link
+            ever created. <strong className="font-medium text-stone-600">Click rate</strong> is owner
+            opens (admin test clicks excluded).{' '}
+            <strong className="font-medium text-stone-600">Claim rate</strong> is fully onboarded
+            (password + Stripe).
           </p>
         </div>
         <Link
@@ -72,28 +116,46 @@ export function AnalyticsClaimLinks({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        <SummaryStat label="Links issued" value={loading ? '—' : String(summary?.total ?? 0)} />
-        <SummaryStat label="Link sent" value={loading ? '—' : String(summary?.linkSent ?? 0)} />
-        <SummaryStat
-          label="Clicked, not complete"
-          value={loading ? '—' : String(summary?.clickedNotComplete ?? 0)}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <HeroStat
+          label="Links issued"
+          value={loading ? '—' : String(total)}
+          hint="Total claim links generated"
         />
-        <SummaryStat
-          label="Password added"
-          value={loading ? '—' : String(summary?.passwordAdded ?? 0)}
+        <HeroStat
+          label="Click rate"
+          value={loading ? '—' : `${clickRate.toFixed(1)}%`}
+          hint={
+            loading
+              ? undefined
+              : `${ownerClicks} of ${total} opened by owner${adminClicks ? ` · ${adminClicks} admin` : ''}`
+          }
         />
-        <SummaryStat label="Onboarded" value={loading ? '—' : String(summary?.onboarded ?? 0)} />
-        <SummaryStat label="Expired" value={loading ? '—' : String(summary?.expired ?? 0)} />
-        <SummaryStat
-          label="Owner open rate"
-          value={loading ? '—' : `${(summary?.ownerOpenRate ?? 0).toFixed(1)}%`}
+        <HeroStat
+          label="Claim rate"
+          value={loading ? '—' : `${claimRate.toFixed(1)}%`}
+          hint={loading ? undefined : `${onboarded} of ${total} fully onboarded`}
         />
-        <SummaryStat
-          label="Onboarded rate"
-          value={loading ? '—' : `${(summary?.onboardedRate ?? 0).toFixed(1)}%`}
-          hint={loading ? undefined : 'Password + Stripe connected'}
-        />
+      </div>
+
+      <div>
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-stone-400">
+          Funnel breakdown
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <FunnelStat label="Not clicked" value={loading ? '—' : String(summary?.notClicked ?? 0)} />
+          <FunnelStat
+            label="Incomplete"
+            value={loading ? '—' : String(summary?.clickedNotComplete ?? 0)}
+          />
+          <FunnelStat
+            label="Password set"
+            value={loading ? '—' : String(summary?.passwordAdded ?? 0)}
+          />
+          <FunnelStat label="Onboarded" value={loading ? '—' : String(onboarded)} />
+          <FunnelStat label="Expired" value={loading ? '—' : String(summary?.expired ?? 0)} />
+          <FunnelStat label="Revoked" value={loading ? '—' : String(summary?.revoked ?? 0)} />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
@@ -105,7 +167,7 @@ export function AnalyticsClaimLinks({
               No claim links issued yet.
             </p>
           ) : (
-            <table className="w-full min-w-[960px] text-left text-sm">
+            <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="sticky top-0 z-10 bg-white text-[11px] font-semibold uppercase tracking-wider text-stone-500 shadow-[0_1px_0_0_rgb(245_245_244)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold sm:px-5">Gym</th>
@@ -115,7 +177,7 @@ export function AnalyticsClaimLinks({
                   <th className="px-4 py-3 font-semibold">Opened by</th>
                   <th className="px-4 py-3 font-semibold">Password</th>
                   <th className="px-4 py-3 font-semibold">Stripe</th>
-                  <th className="px-4 py-3 font-semibold sm:px-5">Status</th>
+                  <th className="w-[7.5rem] px-4 py-3 font-semibold sm:px-5">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -161,14 +223,7 @@ export function AnalyticsClaimLinks({
                       {yesNo(row.stripe_connected)}
                     </td>
                     <td className="px-4 py-3 sm:px-5">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
-                          claimLinkStageBadgeClass(row.stage),
-                        )}
-                      >
-                        {row.stage_label}
-                      </span>
+                      <StatusBadge stage={row.stage} />
                     </td>
                   </tr>
                 ))}

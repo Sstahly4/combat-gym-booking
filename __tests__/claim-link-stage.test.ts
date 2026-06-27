@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimLinkStageLabel, resolveClaimLinkStage } from '@/lib/admin/claim-link-stage'
+import { claimLinkStageLabel, claimLinkStageShortLabel, resolveClaimLinkStage } from '@/lib/admin/claim-link-stage'
 
 describe('resolveClaimLinkStage', () => {
   const future = new Date(Date.now() + 86400000).toISOString()
@@ -58,5 +58,6 @@ describe('resolveClaimLinkStage', () => {
       }),
     ).not.toBe('onboarded')
     expect(claimLinkStageLabel('clicked_not_complete')).toBe('Clicked, not complete')
+    expect(claimLinkStageShortLabel('clicked_not_complete')).toBe('Incomplete')
   })
 })
