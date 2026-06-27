@@ -22,8 +22,7 @@ import { GymEditPanel } from '@/components/manage/gym-edit-section'
 import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
-import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
+import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import {
@@ -37,7 +36,7 @@ import {
   mergeGymAmenitiesFromDb,
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
-import { GymLocationAddressSearch } from '@/components/manage/gym-location-address-search'
+import { GymLocationEditor } from '@/components/manage/gym-location-editor'
 import { TrainingScheduleImportPanel } from '@/components/manage/training-schedule-import-panel'
 import { TRAINING_SCHEDULE_DAYS } from '@/lib/manage/training-schedule'
 import {
@@ -293,8 +292,6 @@ function EditGymForm() {
     saturday: false,
     sunday: false,
   })
-  const [countrySearch, setCountrySearch] = useState('')
-  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState<string>('')
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>('USD')
   const currencyTouchedRef = useRef(false)
@@ -1351,7 +1348,11 @@ function EditGymForm() {
         ) : undefined
       }
       sections={sectionStatus}
-      contentWidth={activeSection === 'basic' || activeSection === 'images' ? 'full' : 'default'}
+      contentWidth={
+        activeSection === 'basic' || activeSection === 'images' || activeSection === 'location'
+          ? 'full'
+          : 'default'
+      }
       saving={saving}
       saveError={saveError}
       onSave={() => void handleSave()}
@@ -1528,212 +1529,37 @@ function EditGymForm() {
           ) : null}
 
           {activeSection === 'location' ? (
-          <GymEditPanel>
-              <div className="space-y-2">
-                <GymLocationAddressSearch
-                  disabled={saving}
-                  onApply={({ address, city, latitude, longitude, country }) => {
-                    setLocationAddress(address)
-                    setLocationCity(city)
-                    setCityNonLatinWarning(hasNonLatinChars(city))
-                    setLocationLat(latitude)
-                    setLocationLng(longitude)
-                    if (country) setSelectedCountry(country)
-                  }}
-                />
-
-                <Label htmlFor="address">Full Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={locationAddress}
-                  onChange={(e) => setLocationAddress(e.target.value)}
-                  placeholder="e.g., 123 Soi Bang Tao, Bangtao Beach, Phuket 83110, Thailand"
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  Include street number, street name, and postcode. Use search above to normalize spelling, or paste
-                  from Google Maps.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={locationCity}
-                    onChange={(e) => {
-                      setLocationCity(e.target.value)
-                      if (cityNonLatinWarning) {
-                        setCityNonLatinWarning(hasNonLatinChars(e.target.value))
-                      }
-                    }}
-                    onBlur={(e) => setCityNonLatinWarning(hasNonLatinChars(e.target.value))}
-                    required
-                    title="Prefilled from map search; edit if you prefer a different area name for guests"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Prefilled from map search. You can change it if the map label is too local for how you list this
-                    gym.
-                  </p>
-                  {cityNonLatinWarning && (
-                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-                      ⚠️ Your city name may not appear in search results for international guests. Please use the
-                      English or Latin spelling — e.g. &quot;Koh Phangan&quot;, &quot;Tokyo&quot;,
-                      &quot;Bangkok&quot;.
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <div className="relative">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        id="country"
-                        type="text"
-                        value={countryDropdownOpen ? countrySearch : selectedCountry}
-                        onChange={(e) => {
-                          setCountrySearch(e.target.value)
-                          setCountryDropdownOpen(true)
-                        }}
-                        onFocus={() => {
-                          setCountryDropdownOpen(true)
-                          if (selectedCountry) {
-                            setCountrySearch(selectedCountry)
-                          }
-                        }}
-                        placeholder={selectedCountry ? "" : "Search for a country..."}
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      {selectedCountry && !countryDropdownOpen && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCountry('')
-                            setCountrySearch('')
-                          }}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                      {countryDropdownOpen && countrySearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCountrySearch('')
-                          }}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {countryDropdownOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-10" 
-                          onClick={() => setCountryDropdownOpen(false)}
-                        />
-                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden">
-                          <div className="overflow-y-auto max-h-60">
-                            {ALL_GYM_COUNTRIES
-                              .filter(country =>
-                                country.toLowerCase().includes(countrySearch.toLowerCase())
-                              )
-                              .map(country => (
-                                <button
-                                  key={country}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedCountry(country)
-                                    setCountrySearch('')
-                                    setCountryDropdownOpen(false)
-                                  }}
-                                  className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 transition-colors ${
-                                    selectedCountry === country ? 'bg-blue-50 text-[#003580] font-medium' : 'text-gray-700'
-                                  }`}
-                                >
-                                  {country}
-                                </button>
-                              ))}
-                            {ALL_GYM_COUNTRIES.filter(country =>
-                              country.toLowerCase().includes(countrySearch.toLowerCase())
-                            ).length === 0 && (
-                              <div className="px-4 py-2 text-sm text-gray-500">
-                                No countries found
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <input type="hidden" name="country" value={selectedCountry} required />
-                </div>
-              </div>
-
-              {profile?.role !== 'admin' ? (
-                <div className="flex items-start gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 p-3.5 max-w-2xl">
-                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium mb-1">Google Maps verification</p>
-                    <p className="text-blue-700">
-                      Your Google Maps link must match the address above and be publicly accessible for gym
-                      verification.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="space-y-2 max-w-2xl">
-                <Label htmlFor="google_maps_link">Google Maps listing link</Label>
-                <Input
-                  id="google_maps_link"
-                  name="google_maps_link"
-                  type="url"
-                  value={googleMapsLink}
-                  onChange={(e) => setGoogleMapsLink(e.target.value)}
-                  placeholder="https://maps.google.com/..."
-                  required={profile?.role !== 'admin'}
-                />
-                <p className="text-xs text-gray-500">
-                  Link to your gym&apos;s Google Maps listing. This must match your address above.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude (optional)</Label>
-                  <Input
-                    id="latitude"
-                    name="latitude"
-                    type="number"
-                    step="any"
-                    value={locationLat}
-                    onChange={(e) => setLocationLat(e.target.value)}
-                    placeholder="e.g., 7.8804"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude (optional)</Label>
-                  <Input
-                    id="longitude"
-                    name="longitude"
-                    type="number"
-                    step="any"
-                    value={locationLng}
-                    onChange={(e) => setLocationLng(e.target.value)}
-                    placeholder="e.g., 98.3923"
-                  />
-                </div>
-              </div>
-          </GymEditPanel>
+            <GymLocationEditor
+              saving={saving}
+              showVerificationHints={profile?.role !== 'admin'}
+              address={locationAddress}
+              city={locationCity}
+              country={selectedCountry}
+              latitude={locationLat}
+              longitude={locationLng}
+              googleMapsLink={googleMapsLink}
+              cityNonLatinWarning={cityNonLatinWarning}
+              onAddressChange={setLocationAddress}
+              onCityChange={(value) => {
+                setLocationCity(value)
+                if (cityNonLatinWarning) {
+                  setCityNonLatinWarning(hasNonLatinChars(value))
+                }
+              }}
+              onCityBlur={(value) => setCityNonLatinWarning(hasNonLatinChars(value))}
+              onCountryChange={setSelectedCountry}
+              onLatitudeChange={setLocationLat}
+              onLongitudeChange={setLocationLng}
+              onGoogleMapsLinkChange={setGoogleMapsLink}
+              onApplySearch={({ address, city, latitude, longitude, country }) => {
+                setLocationAddress(address)
+                setLocationCity(city)
+                setCityNonLatinWarning(hasNonLatinChars(city))
+                setLocationLat(latitude)
+                setLocationLng(longitude)
+                if (country) setSelectedCountry(country)
+              }}
+            />
           ) : null}
 
           {activeSection === 'amenities' ? (

@@ -53,7 +53,8 @@ export const GYM_EDIT_SECTIONS: SidebarItem[] = [
   {
     id: 'location',
     label: 'Location',
-    description: 'Address, map pin, and links that help guests find you and complete listing verification.',
+    description:
+      'Where your gym is — street address, city, map pin, and your Google Maps listing for guests and verification.',
     icon: MapPin,
     required: true,
   },

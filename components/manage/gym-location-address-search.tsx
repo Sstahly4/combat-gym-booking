@@ -131,7 +131,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
 
   return (
     <div ref={wrapRef} className="space-y-2 relative">
-      <Label htmlFor="gym-address-search">Find address on map</Label>
+      <Label htmlFor="gym-address-search">Search address</Label>
       <div className="relative">
         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         <Input
@@ -153,8 +153,8 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
         )}
       </div>
       <p className="text-xs text-gray-500">
-        Pick a result to fill the full address and city. You can edit both after: map data may use a local place name
-        (e.g. Ko Lanta) while you may prefer a wider area (e.g. Krabi) for guests and search.
+        Pick a result to fill your address, city, and map pin. You can edit any field after — map labels may differ from
+        how guests search (e.g. Ko Lanta vs Krabi).
       </p>
       {searchError && <p className="text-xs text-red-600">{searchError}</p>}
       {cityGuidance && (
