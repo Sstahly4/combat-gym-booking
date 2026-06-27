@@ -31,6 +31,13 @@ function wrapBold(text: string): string {
   return `**${trimmed}**`
 }
 
+function wrapItalic(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('_') && trimmed.endsWith('_')) return trimmed
+  return `_${trimmed}_`
+}
+
 /** Regex fallback for unit tests and non-DOM environments. */
 export function htmlToStructuredPlainTextRegex(html: string): string {
   let text = html
@@ -39,6 +46,8 @@ export function htmlToStructuredPlainTextRegex(html: string): string {
     .replace(/<\/h[1-6]>/gi, '**\n\n')
     .replace(/<(strong|b)[^>]*>/gi, '**')
     .replace(/<\/(strong|b)>/gi, '**')
+    .replace(/<(em|i)[^>]*>/gi, '_')
+    .replace(/<\/(em|i)>/gi, '_')
     .replace(/<li[^>]*>/gi, '\n- ')
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/(p|div|section|article|blockquote)>/gi, '\n\n')
@@ -80,7 +89,7 @@ function serializeNode(node: Node): string {
 
   if (tag === 'em' || tag === 'i') {
     const inner = children.trim()
-    return inner ? `*${inner}*` : children
+    return inner ? wrapItalic(inner) : children
   }
 
   if (tag === 'li') {

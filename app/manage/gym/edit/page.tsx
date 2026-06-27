@@ -1328,7 +1328,6 @@ function EditGymForm() {
     amenities: { completed: countEnabledAmenities(amenities) > 0, required: false },
     schedule: { completed: false, required: false },
     trainers: { completed: trainers.length > 0, required: false },
-    faq: { completed: faq.length > 0, required: false },
     packages: { completed: usesPackageSearchPrice || packageCount > 0, required: true },
   }
 
@@ -1462,6 +1461,58 @@ function EditGymForm() {
                       </label>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-4 border-t border-gray-100 pt-8">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Label>Guest FAQs</Label>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Optional questions and answers shown on your public listing.
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addFaq}>
+                      Add question
+                    </Button>
+                  </div>
+                  {faq.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      Answer common questions about parking, gear, skill level, or what to bring.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {faq.map((item, index) => (
+                        <div
+                          key={index}
+                          className="space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4"
+                        >
+                          <Input
+                            placeholder="Question"
+                            value={item.question}
+                            onChange={(e) => updateFaq(index, 'question', e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Textarea
+                              placeholder="Answer"
+                              value={item.answer}
+                              onChange={(e) => updateFaq(index, 'answer', e.target.value)}
+                              rows={2}
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeFaq(index)}
+                              className="self-start"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2001,44 +2052,6 @@ function EditGymForm() {
                   </div>
                 </div>
               )})}
-          </GymEditPanel>
-          ) : null}
-
-          {activeSection === 'faq' ? (
-          <GymEditPanel>
-              <div className="flex items-center justify-between">
-                <Label>Frequently Asked Questions (optional)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addFaq}>
-                  + Add Question
-                </Button>
-              </div>
-                {faq.map((item, index) => (
-                  <div key={index} className="max-w-4xl space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4">
-                    <Input
-                      placeholder="Question"
-                      value={item.question}
-                      onChange={(e) => updateFaq(index, 'question', e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Answer"
-                        value={item.answer}
-                        onChange={(e) => updateFaq(index, 'answer', e.target.value)}
-                        rows={2}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeFaq(index)}
-                        className="self-start"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
           </GymEditPanel>
           ) : null}
         </form>

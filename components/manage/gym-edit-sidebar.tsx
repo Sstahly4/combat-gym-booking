@@ -10,7 +10,6 @@ import {
   Sparkles,
   Clock,
   Users,
-  HelpCircle,
   Package,
   BedDouble,
   Tag,
@@ -43,14 +42,53 @@ interface SidebarItem {
 }
 
 export const GYM_EDIT_SECTIONS: SidebarItem[] = [
-  { id: 'basic', label: 'Basic', description: 'Name, tagline, disciplines, and listing copy', icon: Info, required: true },
-  { id: 'location', label: 'Location', description: 'Address and verification links', icon: MapPin, required: true },
-  { id: 'images', label: 'Photos', description: 'Cover image and gallery', icon: Image, required: true },
-  { id: 'amenities', label: 'Amenities', description: 'Facilities, equipment, and services', icon: Sparkles },
-  { id: 'schedule', label: 'Schedule', description: 'Hours and class timetable', icon: Clock },
-  { id: 'trainers', label: 'Trainers', description: 'Coaches and staff profiles', icon: Users },
-  { id: 'faq', label: 'FAQ', description: 'Common guest questions', icon: HelpCircle },
-  { id: 'packages', label: 'Packages', description: 'Training offers and pricing', icon: Package, required: true },
+  {
+    id: 'basic',
+    label: 'Listing details',
+    description:
+      'Your gym name, tagline, training styles, listing description, and guest FAQs — what travelers see on search and your public page.',
+    icon: Info,
+    required: true,
+  },
+  {
+    id: 'location',
+    label: 'Location',
+    description: 'Address, map pin, and links that help guests find you and complete listing verification.',
+    icon: MapPin,
+    required: true,
+  },
+  {
+    id: 'images',
+    label: 'Photos',
+    description: 'Cover image and gallery for your listing.',
+    icon: Image,
+    required: true,
+  },
+  {
+    id: 'amenities',
+    label: 'Amenities',
+    description: 'Equipment, facilities, and services guests can expect.',
+    icon: Sparkles,
+  },
+  {
+    id: 'schedule',
+    label: 'Schedule',
+    description: 'Opening hours and class timetable.',
+    icon: Clock,
+  },
+  {
+    id: 'trainers',
+    label: 'Trainers',
+    description: 'Coach profiles shown on your listing.',
+    icon: Users,
+  },
+  {
+    id: 'packages',
+    label: 'Packages',
+    description: 'Training offers, rates, and what guests can book.',
+    icon: Package,
+    required: true,
+  },
 ]
 
 /** Linked listing pages outside the section editor (same sidebar chrome). */
@@ -69,7 +107,7 @@ export const GYM_EDIT_SECTION_IDS = new Set(GYM_EDIT_SECTIONS.map((s) => s.id))
 export const DEFAULT_GYM_EDIT_SECTION = 'basic'
 
 export function resolveGymEditSection(section: string | null | undefined): string {
-  if (section === 'disciplines') return 'basic'
+  if (section === 'disciplines' || section === 'faq') return 'basic'
   if (section && GYM_EDIT_SECTION_IDS.has(section)) return section
   return DEFAULT_GYM_EDIT_SECTION
 }
@@ -274,28 +312,29 @@ export function GymEditSectionNav({
               {!collapsed ? <span className="min-w-0 flex-1 truncate">View listing</span> : null}
             </Link>
           </li>
-          <li className={cn(collapsed ? 'w-full' : undefined, 'mt-1')}>
-            <button
-              type="button"
-              onClick={() => onCollapsedChange(!collapsed)}
-              className={cn(
-                'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
-                collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-3 px-3 py-2.5',
-              )}
-              aria-expanded={!collapsed}
-              aria-label={collapsed ? 'Expand listing sidebar' : 'Collapse listing sidebar'}
-            >
-              {collapsed ? (
-                <PanelLeftOpen className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-              ) : (
-                <>
-                  <PanelLeftClose className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
-                  <span className="text-[15px] font-medium">Collapse</span>
-                </>
-              )}
-            </button>
-          </li>
         </ul>
+      </div>
+
+      <div className={cn('shrink-0 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'px-2 py-2')}>
+        <button
+          type="button"
+          onClick={() => onCollapsedChange(!collapsed)}
+          className={cn(
+            'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
+            collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-3 px-3 py-2.5',
+          )}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand listing sidebar' : 'Collapse listing sidebar'}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+          ) : (
+            <>
+              <PanelLeftClose className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+              <span className="text-[15px] font-medium">Collapse</span>
+            </>
+          )}
+        </button>
       </div>
     </nav>
   )

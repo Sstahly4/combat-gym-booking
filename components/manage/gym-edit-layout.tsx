@@ -48,6 +48,7 @@ export function GymEditLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useGymEditSidebarCollapsed()
   const sectionMeta = gymEditSectionMeta(activeSection)
   const pageTitle = title ?? sectionMeta.label
+  const pageSubtitle = subtitle ?? sectionMeta.description
 
   const contentMaxWidthClass =
     contentWidth === 'full'
@@ -102,9 +103,9 @@ export function GymEditLayout({
                     <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-[1.75rem]">
                       {pageTitle}
                     </h1>
-                    {subtitle ? (
+                    {pageSubtitle ? (
                       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-[15px]">
-                        {subtitle}
+                        {pageSubtitle}
                       </p>
                     ) : null}
                   </div>

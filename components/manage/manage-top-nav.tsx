@@ -4,20 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { ManageGymRow } from '@/components/manage/active-gym-context'
-import { ChevronDown, CircleUser, LayoutDashboard, Luggage, Menu, X } from 'lucide-react'
+import { CircleUser, LayoutDashboard, Luggage, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
 import { CurrencyModal } from '@/components/currency-modal'
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
 import { PartnerHubDropdownPortal } from '@/components/manage/partner-hub-dropdown-portal'
 import {
   buildPartnerNav,
-  isPartnerMenuRouteActive,
   PARTNER_HUB_HEADER_HEIGHT_CLASS,
   withManageGymId,
-  type PartnerMenuItem,
   type PartnerNavTab,
 } from '@/lib/manage/manage-partner-nav'
 
@@ -60,113 +57,6 @@ function TabLink({
   )
 }
 
-function MenuLink({
-  item,
-  pathname,
-  onNavigate,
-}: {
-  item: PartnerMenuItem
-  pathname: string
-  onNavigate?: () => void
-}) {
-  const router = useRouter()
-  const Icon = item.icon
-  const active = item.isActive(pathname)
-  return (
-    <Link
-      href={item.href}
-      data-claim-tour={item.tourAnchor}
-      onClick={(e) => {
-        e.preventDefault()
-        onNavigate?.()
-        router.push(item.href)
-      }}
-      className={cn(
-        'flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50',
-        active ? 'bg-gray-50 font-medium text-gray-900' : 'text-gray-700',
-      )}
-      aria-current={active ? 'page' : undefined}
-    >
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
-      <span className="min-w-0">
-        <span className="block">{item.label}</span>
-        {item.description ? (
-          <span className="mt-0.5 block text-xs font-normal text-gray-500">{item.description}</span>
-        ) : null}
-      </span>
-    </Link>
-  )
-}
-
-function CenterMenuDropdown({
-  menu,
-  settings,
-  pathname,
-  narrow,
-  menuOpen,
-  onToggle,
-  onClose,
-  menuRef,
-  menuPanelRef,
-}: {
-  menu: PartnerMenuItem[]
-  settings: PartnerMenuItem
-  pathname: string
-  narrow: boolean
-  menuOpen: boolean
-  onToggle: () => void
-  onClose: () => void
-  menuRef: React.RefObject<HTMLDivElement>
-  menuPanelRef: React.RefObject<HTMLDivElement>
-}) {
-  const menuActive = isPartnerMenuRouteActive(pathname)
-
-  return (
-    <div ref={menuRef} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={cn(tabLinkClass(menuOpen || menuActive))}
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-      >
-        <span className="flex flex-col items-center">
-          <span className="inline-flex items-center gap-0.5">
-            <span>Menu</span>
-            <ChevronDown
-              className={cn(
-                'h-3.5 w-3.5 shrink-0 transition-transform md:h-4 md:w-4',
-                menuOpen && 'rotate-180',
-              )}
-              aria-hidden
-            />
-          </span>
-          {menuOpen || menuActive ? (
-            <span className="mt-1.5 h-0.5 w-5 rounded-full bg-gray-900" aria-hidden />
-          ) : null}
-        </span>
-      </button>
-
-      <PartnerHubDropdownPortal
-        open={menuOpen}
-        anchorRef={menuRef}
-        panelRef={menuPanelRef}
-        align={narrow ? 'right' : 'center'}
-        className="w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
-      >
-        <div className="max-h-[min(70vh,24rem)] overflow-y-auto px-1">
-          {menu.map((item) => (
-            <MenuLink key={item.href} item={item} pathname={pathname} onNavigate={onClose} />
-          ))}
-        </div>
-        <div className="mt-1 border-t border-gray-100 px-1 pt-1">
-          <MenuLink item={settings} pathname={pathname} onNavigate={onClose} />
-        </div>
-      </PartnerHubDropdownPortal>
-    </div>
-  )
-}
-
 export function ManageTopNav({
   editGymHref,
   firstGymId,
@@ -186,28 +76,21 @@ export function ManageTopNav({
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile, signOut } = useAuth()
-  const narrow = useIsNarrowForManageSidebar()
 
-  const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [hubMenuOpen, setHubMenuOpen] = useState(false)
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
 
-  const menuRef = useRef<HTMLDivElement>(null)
-  const menuPanelRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
   const accountPanelRef = useRef<HTMLDivElement>(null)
   const hubMenuRef = useRef<HTMLDivElement>(null)
   const hubMenuPanelRef = useRef<HTMLDivElement>(null)
 
   const activeGym = activeGymId ? gyms.find((g) => g.id === activeGymId) : gyms[0]
-  const verificationDone =
-    activeGym?.verification_status === 'verified' || activeGym?.verification_status === 'trusted'
 
-  const { tabs, menu, settings } = buildPartnerNav({
+  const { tabs, settings } = buildPartnerNav({
     editGymHref,
     firstGymId,
-    verificationDone: Boolean(verificationDone),
   })
 
   const displayName =
@@ -217,31 +100,27 @@ export function ManageTopNav({
     'Account'
 
   useEffect(() => {
-    setMenuOpen(false)
     setAccountOpen(false)
     setHubMenuOpen(false)
   }, [pathname])
 
   useEffect(() => {
-    if (!menuOpen && !accountOpen && !hubMenuOpen) return
+    if (!accountOpen && !hubMenuOpen) return
 
     function onPointerDown(e: MouseEvent) {
       const target = e.target as Node
-      const inMenu =
-        menuRef.current?.contains(target) || menuPanelRef.current?.contains(target)
       const inAccount =
         accountRef.current?.contains(target) || accountPanelRef.current?.contains(target)
       const inHub =
         hubMenuRef.current?.contains(target) || hubMenuPanelRef.current?.contains(target)
 
-      if (menuOpen && !inMenu) setMenuOpen(false)
       if (accountOpen && !inAccount) setAccountOpen(false)
       if (hubMenuOpen && !inHub) setHubMenuOpen(false)
     }
 
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [menuOpen, accountOpen, hubMenuOpen])
+  }, [accountOpen, hubMenuOpen])
 
   const closeHubMenu = () => setHubMenuOpen(false)
 
@@ -495,21 +374,6 @@ export function ManageTopNav({
       {tabs.map((tab) => (
         <TabLink key={tab.id} tab={tab} pathname={pathname} />
       ))}
-      <CenterMenuDropdown
-        menu={menu}
-        settings={settings}
-        pathname={pathname}
-        narrow={narrow}
-        menuOpen={menuOpen}
-        onToggle={() => {
-          setHubMenuOpen(false)
-          setAccountOpen(false)
-          setMenuOpen((open) => !open)
-        }}
-        onClose={() => setMenuOpen(false)}
-        menuRef={menuRef}
-        menuPanelRef={menuPanelRef}
-      />
     </nav>
   )
 

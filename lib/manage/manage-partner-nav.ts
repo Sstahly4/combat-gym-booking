@@ -1,13 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  BadgeCheck,
   CalendarRange,
   ClipboardList,
-  HelpCircle,
   Home,
   LayoutList,
   Settings,
-  ShieldCheck,
   Wallet,
 } from 'lucide-react'
 
@@ -42,18 +39,14 @@ export function withManageGymId(href: string, gymId: string | null): string {
 export function buildPartnerNav({
   editGymHref,
   firstGymId,
-  verificationDone,
 }: {
   editGymHref: string
   firstGymId: string | null
-  verificationDone: boolean
-}): { tabs: PartnerNavTab[]; menu: PartnerMenuItem[]; settings: PartnerMenuItem } {
+}): { tabs: PartnerNavTab[]; settings: PartnerMenuItem } {
   const homeHref = withManageGymId('/manage', firstGymId)
   const calendarHref = withManageGymId('/manage/calendar', firstGymId)
   const bookingsHref = withManageGymId('/manage/bookings', firstGymId)
   const balancesHref = withManageGymId('/manage/balances', firstGymId)
-  const helpHref = withManageGymId('/manage/help', firstGymId)
-  const verificationHref = withManageGymId('/manage/verification', firstGymId)
   const settingsHref = withManageGymId('/manage/settings', firstGymId)
 
   const listingsActive = isPartnerListingWorkspaceRoute
@@ -98,20 +91,6 @@ export function buildPartnerNav({
         tourAnchor: 'tour-balances',
       },
     ],
-    menu: [
-      {
-        href: verificationHref,
-        label: verificationDone ? 'Verified' : 'Verification',
-        icon: verificationDone ? BadgeCheck : ShieldCheck,
-        isActive: (p) => p === '/manage/verification',
-      },
-      {
-        href: helpHref,
-        label: 'Help center',
-        icon: HelpCircle,
-        isActive: (p) => p === '/manage/help' || p.startsWith('/manage/help/'),
-      },
-    ],
     settings: {
       href: settingsHref,
       label: 'Settings',
@@ -119,16 +98,6 @@ export function buildPartnerNav({
       isActive: (p) => p === '/manage/settings' || p.startsWith('/manage/settings/'),
     },
   }
-}
-
-export function isPartnerMenuRouteActive(pathname: string): boolean {
-  return (
-    pathname === '/manage/help' ||
-    pathname.startsWith('/manage/help/') ||
-    pathname === '/manage/verification' ||
-    pathname === '/manage/settings' ||
-    pathname.startsWith('/manage/settings/')
-  )
 }
 
 /** Gym-scoped listing workspace (editor sections + linked listing pages). */

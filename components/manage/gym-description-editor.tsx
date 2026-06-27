@@ -1,10 +1,13 @@
 'use client'
 
-import { useRef, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useRef, type ClipboardEvent } from 'react'
 import { Bold, Heading2, Italic } from 'lucide-react'
 import { Label } from '@/components/ui/label'
-import { GymDescriptionField } from '@/components/manage/gym-description-field'
-import { wrapTextareaSelection } from '@/lib/text/wrap-textarea-selection'
+import {
+  gymDescriptionElementToMarkdown,
+  gymDescriptionMarkdownToHtml,
+} from '@/lib/text/gym-description-editable'
+import { structuredTextFromClipboard } from '@/lib/text/rich-paste'
 import { cn } from '@/lib/utils'
 
 function ToolbarButton({
@@ -44,21 +47,66 @@ export function GymDescriptionEditor({
   required?: boolean
   className?: string
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const lastSyncedValue = useRef(value)
+  const isInternalChange = useRef(false)
+  const hasInitialized = useRef(false)
 
-  const applyWrap = (wrapper: string) => {
-    const el = textareaRef.current
+  const syncFromEditor = useCallback(() => {
+    const el = editorRef.current
     if (!el) return
-    const { value: next, selectionStart, selectionEnd } = wrapTextareaSelection(el, wrapper)
-    onChange(next)
-    requestAnimationFrame(() => {
-      el.focus()
-      el.setSelectionRange(selectionStart, selectionEnd)
-    })
+    const markdown = gymDescriptionElementToMarkdown(el)
+    isInternalChange.current = true
+    lastSyncedValue.current = markdown
+    onChange(markdown)
+  }, [onChange])
+
+  const syncToEditor = useCallback((markdown: string) => {
+    const el = editorRef.current
+    if (!el) return
+    el.innerHTML = gymDescriptionMarkdownToHtml(markdown)
+    lastSyncedValue.current = markdown
+  }, [])
+
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true
+      syncToEditor(value)
+      return
+    }
+    if (isInternalChange.current) {
+      isInternalChange.current = false
+      return
+    }
+    if (value !== lastSyncedValue.current) {
+      syncToEditor(value)
+    }
+  }, [value, syncToEditor])
+
+  const applyFormat = (command: 'bold' | 'italic') => {
+    const el = editorRef.current
+    if (!el) return
+    el.focus()
+    document.execCommand(command, false)
+    syncFromEditor()
   }
 
-  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(event.target.value)
+  const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const html = event.clipboardData.getData('text/html')
+    const plain = event.clipboardData.getData('text/plain')
+    if (!html.trim() && !plain.trim()) return
+
+    const structured = structuredTextFromClipboard(html, plain)
+    if (!structured) return
+
+    const insertHtml = gymDescriptionMarkdownToHtml(structured)
+    if (insertHtml) {
+      document.execCommand('insertHTML', false, insertHtml)
+    } else {
+      document.execCommand('insertText', false, structured)
+    }
+    syncFromEditor()
   }
 
   return (
@@ -75,13 +123,13 @@ export function GymDescriptionEditor({
 
       <div className="flex min-h-[min(70vh,42rem)] flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/[0.03]">
         <div className="flex items-center gap-0.5 border-b border-gray-100 bg-gray-50/80 px-2 py-1.5">
-          <ToolbarButton label="Bold" onClick={() => applyWrap('**')}>
+          <ToolbarButton label="Bold" onClick={() => applyFormat('bold')}>
             <Bold className="h-4 w-4" strokeWidth={2} aria-hidden />
           </ToolbarButton>
-          <ToolbarButton label="Italic" onClick={() => applyWrap('_')}>
+          <ToolbarButton label="Italic" onClick={() => applyFormat('italic')}>
             <Italic className="h-4 w-4" strokeWidth={2} aria-hidden />
           </ToolbarButton>
-          <ToolbarButton label="Section heading" onClick={() => applyWrap('**')}>
+          <ToolbarButton label="Section heading" onClick={() => applyFormat('bold')}>
             <Heading2 className="h-4 w-4" strokeWidth={2} aria-hidden />
           </ToolbarButton>
           <span className="ml-2 hidden text-xs text-gray-400 sm:inline">
@@ -89,16 +137,25 @@ export function GymDescriptionEditor({
           </span>
         </div>
 
-        <GymDescriptionField
-          ref={textareaRef}
+        <input type="hidden" name={name} value={value} required={required} />
+
+        <div
+          ref={editorRef}
           id={id}
-          name={name}
-          value={value}
-          onChange={handleChange}
-          required={required}
-          rows={16}
-          placeholder="Describe your gym, coaches, facilities, and what makes a stay here worthwhile..."
-          className="min-h-0 flex-1 resize-none rounded-none border-0 bg-white px-4 py-4 text-[15px] leading-relaxed shadow-none focus-visible:ring-0"
+          role="textbox"
+          aria-multiline="true"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={syncFromEditor}
+          onPaste={handlePaste}
+          data-placeholder="Describe your gym, coaches, facilities, and what makes a stay here worthwhile..."
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto px-4 py-4 text-[15px] leading-relaxed text-gray-700 outline-none',
+            'focus-visible:ring-0',
+            '[&_p]:whitespace-pre-wrap [&_p+p]:mt-4',
+            '[&_strong]:font-semibold [&_strong]:text-gray-900',
+            'empty:before:pointer-events-none empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)]',
+          )}
         />
       </div>
     </div>
