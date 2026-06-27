@@ -78,6 +78,13 @@ export function buildPartnerNav({
         isActive: (p) => p === '/manage',
       },
       {
+        id: 'bookings',
+        href: bookingsHref,
+        label: 'Bookings',
+        icon: ClipboardList,
+        isActive: (p) => p === '/manage/bookings' || p.startsWith('/manage/bookings/'),
+      },
+      {
         id: 'calendar',
         href: calendarHref,
         label: 'Calendar',
@@ -92,29 +99,22 @@ export function buildPartnerNav({
         isActive: listingsActive,
         tourAnchor: 'tour-edit-gym',
       },
+      {
+        id: 'balances',
+        href: balancesHref,
+        label: 'Balances',
+        icon: Wallet,
+        isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
+        tourAnchor: 'tour-balances',
+      },
     ],
     menu: [
-      {
-        href: bookingsHref,
-        label: 'Bookings',
-        icon: ClipboardList,
-        isActive: (p) => p === '/manage/bookings' || p.startsWith('/manage/bookings/'),
-        description: 'Confirm, message, and manage guest stays',
-      },
       {
         href: viewListingHref,
         label: 'View listing',
         icon: Eye,
         isActive: (p) => p === '/manage/gym/preview' || p.startsWith('/manage/gym/preview'),
         tourAnchor: 'tour-view-listing',
-      },
-      {
-        href: balancesHref,
-        label: 'Balances',
-        icon: Wallet,
-        isActive: (p) => p === '/manage/balances' || p.startsWith('/manage/balances/'),
-        tourAnchor: 'tour-balances',
-        description: 'Payouts and earnings',
       },
       {
         href: promotionsHref,
@@ -158,10 +158,6 @@ export function buildPartnerNav({
 
 export function isPartnerMenuRouteActive(pathname: string): boolean {
   return (
-    pathname === '/manage/bookings' ||
-    pathname.startsWith('/manage/bookings/') ||
-    pathname === '/manage/balances' ||
-    pathname.startsWith('/manage/balances/') ||
     pathname === '/manage/promotions' ||
     pathname.startsWith('/manage/promotions/') ||
     pathname === '/manage/reviews' ||

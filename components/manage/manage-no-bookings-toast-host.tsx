@@ -388,10 +388,10 @@ export function ManageNoBookingsToastHost() {
         'fixed z-[70]',
         /** Desktop / tablet partner hub */
         !narrowPartnerHub &&
-          'right-4 top-32 w-[min(100vw-2rem,24rem)] max-w-sm md:right-8 md:top-36',
+          'right-4 top-[8.75rem] w-[min(100vw-2rem,24rem)] max-w-sm md:right-8',
         /** Narrow partner hub — bottom snack tray above mobile tab bar */
         narrowPartnerHub &&
-          'inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] top-auto flex w-auto max-w-none justify-center px-0',
+          'inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] top-auto flex w-auto max-w-none justify-center px-0',
         idleNormal ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       aria-live="polite"

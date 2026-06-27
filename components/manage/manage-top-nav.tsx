@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ManageGymRow } from '@/components/manage/active-gym-context'
-import { ChevronDown, Menu, X } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   buildPartnerNav,
@@ -13,6 +13,15 @@ import {
   type PartnerMenuItem,
   type PartnerNavTab,
 } from '@/lib/manage/manage-partner-nav'
+
+function TabLabel({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span className="flex flex-col items-center">
+      <span>{label}</span>
+      {active ? <span className="mt-1.5 h-0.5 w-5 rounded-full bg-gray-900" aria-hidden /> : null}
+    </span>
+  )
+}
 
 function TabLink({
   tab,
@@ -26,7 +35,6 @@ function TabLink({
   onNavigate?: () => void
 }) {
   const active = tab.isActive(pathname)
-  const Icon = tab.icon
 
   if (variant === 'mobile') {
     return (
@@ -35,13 +43,12 @@ function TabLink({
         data-claim-tour={tab.tourAnchor}
         onClick={onNavigate}
         className={cn(
-          'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium leading-tight transition-colors',
+          'inline-flex shrink-0 items-center px-3 py-2 text-[13px] font-medium leading-none transition-colors',
           active ? 'text-gray-900' : 'text-gray-500',
         )}
         aria-current={active ? 'page' : undefined}
       >
-        <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2 : 1.75} aria-hidden />
-        <span className="truncate">{tab.label}</span>
+        <TabLabel label={tab.label} active={active} />
       </Link>
     )
   }
@@ -52,18 +59,12 @@ function TabLink({
       data-claim-tour={tab.tourAnchor}
       onClick={onNavigate}
       className={cn(
-        'relative inline-flex h-12 items-center px-4 text-sm font-medium transition-colors',
+        'inline-flex shrink-0 items-center px-3.5 py-2 text-[15px] font-medium leading-none transition-colors',
         active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800',
       )}
       aria-current={active ? 'page' : undefined}
     >
-      {tab.label}
-      {active ? (
-        <span
-          className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-gray-900"
-          aria-hidden
-        />
-      ) : null}
+      <TabLabel label={tab.label} active={active} />
     </Link>
   )
 }
@@ -166,13 +167,13 @@ export function ManageTopNav({
 
   const gymSwitcher =
     gyms.length > 1 && onSelectGym ? (
-      <div className="min-w-0 max-w-[11rem] sm:max-w-xs">
+      <div className="min-w-0 max-w-[12rem] sm:max-w-xs">
         <label htmlFor="partner-gym-switch" className="sr-only">
           Active gym
         </label>
         <select
           id="partner-gym-switch"
-          className="w-full truncate rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-800 shadow-sm sm:text-sm"
+          className="w-full truncate rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[13px] font-semibold text-gray-900 shadow-sm sm:text-[15px]"
           value={activeGymId ?? ''}
           onChange={(e) => onSelectGym(e.target.value)}
           disabled={gymContextLoading}
@@ -187,23 +188,55 @@ export function ManageTopNav({
     ) : (
       <Link
         href={withManageGymId('/manage', firstGymId)}
-        className="min-w-0 max-w-[10rem] truncate text-sm font-semibold text-gray-900 sm:max-w-xs"
+        className="min-w-0 max-w-[11rem] truncate text-[15px] font-semibold leading-tight text-gray-900 sm:max-w-xs"
         title={headerTitle}
       >
         {headerTitle}
       </Link>
     )
 
+  const menuButton = (
+    variant: 'desktop' | 'mobile',
+    onClick: () => void,
+    expanded: boolean,
+  ) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1.5 rounded-lg border font-medium transition-colors',
+        variant === 'desktop'
+          ? 'h-9 px-3.5 text-[15px]'
+          : 'px-3 py-2 text-[11px]',
+        expanded || menuActive
+          ? 'border-gray-300 bg-gray-50 text-gray-900'
+          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+      )}
+      aria-expanded={expanded}
+      aria-haspopup="menu"
+    >
+      Menu
+      <ChevronDown
+        className={cn(
+          'transition-transform',
+          variant === 'desktop' ? 'h-4 w-4' : 'h-3.5 w-3.5',
+          expanded && 'rotate-180',
+        )}
+        aria-hidden
+      />
+    </button>
+  )
+
   return (
     <>
       {/* Desktop top bar — below site navbar */}
       <header className="fixed left-0 right-0 top-20 z-40 hidden border-b border-gray-200 bg-white md:block">
-        <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-[3.25rem] max-w-7xl items-center gap-3 px-4 sm:px-6">
           <div className="min-w-0 shrink-0">{gymSwitcher}</div>
 
           <nav
             aria-label="Partner hub"
-            className="flex min-w-0 flex-1 items-center justify-center gap-1"
+            className="flex min-w-0 flex-1 items-center justify-center gap-0.5"
           >
             {tabs.map((tab) => (
               <TabLink key={tab.id} tab={tab} pathname={pathname} variant="desktop" />
@@ -211,24 +244,7 @@ export function ManageTopNav({
           </nav>
 
           <div ref={menuRef} className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              className={cn(
-                'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
-                menuOpen || menuActive
-                  ? 'border-gray-300 bg-gray-50 text-gray-900'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
-              )}
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-            >
-              Menu
-              <ChevronDown
-                className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')}
-                aria-hidden
-              />
-            </button>
+            {menuButton('desktop', () => setMenuOpen((open) => !open), menuOpen)}
 
             {menuOpen ? (
               <div
@@ -258,29 +274,22 @@ export function ManageTopNav({
         </div>
       </header>
 
-      {/* Mobile bottom tab bar */}
-      <nav
-        aria-label="Partner hub"
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        {tabs.map((tab) => (
-          <TabLink key={tab.id} tab={tab} pathname={pathname} variant="mobile" />
-        ))}
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className={cn(
-            'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium leading-tight transition-colors',
-            mobileMenuOpen || menuActive ? 'text-gray-900' : 'text-gray-500',
-          )}
-          aria-expanded={mobileMenuOpen}
-          aria-controls="partner-hub-mobile-menu"
-        >
-          <Menu className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
-          <span>Menu</span>
-        </button>
-      </nav>
+      {/* Mobile — scrollable top tabs below site navbar */}
+      <header className="fixed left-0 right-0 top-20 z-40 border-b border-gray-200 bg-white md:hidden">
+        <div className="flex h-[3.25rem] items-center gap-1 pl-3 pr-2">
+          <nav
+            aria-label="Partner hub"
+            className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {tabs.map((tab) => (
+              <TabLink key={tab.id} tab={tab} pathname={pathname} variant="mobile" />
+            ))}
+          </nav>
+          <div className="shrink-0 border-l border-gray-100 pl-2">
+            {menuButton('mobile', () => setMobileMenuOpen(true), mobileMenuOpen)}
+          </div>
+        </div>
+      </header>
 
       {mobileMenuOpen ? (
         <>
@@ -300,8 +309,8 @@ export function ManageTopNav({
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">Menu</p>
-                <p className="truncate text-xs text-gray-500">{headerTitle}</p>
+                <p className="text-[15px] font-semibold text-gray-900">Menu</p>
+                <p className="truncate text-[13px] text-gray-500">{headerTitle}</p>
               </div>
               <button
                 type="button"
@@ -315,7 +324,10 @@ export function ManageTopNav({
 
             {gyms.length > 1 && onSelectGym ? (
               <div className="border-b border-gray-100 px-4 py-3">
-                <label htmlFor="partner-gym-switch-mobile" className="mb-1 block text-xs font-medium text-gray-500">
+                <label
+                  htmlFor="partner-gym-switch-mobile"
+                  className="mb-1 block text-xs font-medium text-gray-500"
+                >
                   Active gym
                 </label>
                 <select

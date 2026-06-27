@@ -45,7 +45,7 @@ export function GymEditLayout({
   const sectionMeta = gymEditSectionMeta(activeSection)
 
   return (
-    <div className="min-h-full bg-white pb-36 md:pb-28">
+    <div className="min-h-full bg-white pb-28 md:pb-28">
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-6">
         <ManageBreadcrumbs items={[hubCrumb, { label: 'Edit listing' }]} />
 
@@ -97,7 +97,7 @@ export function GymEditLayout({
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:bottom-0 md:z-30">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-6">
           {saveError ? (
             <p className="text-sm text-[#c13515] sm:min-w-0 sm:flex-1" role="alert">

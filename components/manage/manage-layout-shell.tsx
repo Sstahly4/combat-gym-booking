@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useClaimRedirectHydration } from '@/lib/hooks/use-claim-redirect-hydration'
 import { ManageTopNav } from '@/components/manage/manage-top-nav'
-import {
-  PARTNER_HUB_MOBILE_BOTTOM_OFFSET_CLASS,
-} from '@/lib/manage/manage-partner-nav'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
@@ -151,10 +148,8 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
         data-manage-main-scroll
         className={cn(
           'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden',
-          'pt-20 md:pt-32',
-          PARTNER_HUB_MOBILE_BOTTOM_OFFSET_CLASS,
-          'md:pb-0',
-          'md:h-[calc(100svh-8rem)] md:max-h-[calc(100svh-8rem)]',
+          'pt-[8.25rem]',
+          'md:h-[calc(100svh-8.25rem)] md:max-h-[calc(100svh-8.25rem)]',
         )}
       >
         {children}
