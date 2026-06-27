@@ -1,71 +1,49 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AnalyticsRange, DailySeries } from '@/lib/admin/fetch-admin-analytics'
+import { isPlaceholderEmail } from '@/lib/admin/gym-claim'
+import type { AnalyticsRange } from '@/lib/admin/fetch-admin-analytics'
 
-/** Opens within this many seconds of issuance are flagged as likely admin smoke-tests. */
-export const CLAIM_LINK_ADMIN_PREVIEW_SECONDS = 300
-
-export type ClaimLinkActivityStatus =
-  | 'awaiting_click'
-  | 'opened'
-  | 'claimed'
+export type ClaimLinkStage =
+  | 'sent_not_clicked'
+  | 'opened_not_claimed'
+  | 'completed'
   | 'expired'
   | 'revoked'
 
-export type ClaimLinkFunnelRow = {
+export type ClaimLinkRosterRow = {
   token_id: string
   gym_id: string
   gym_name: string
   city: string | null
   country: string | null
   sent_to: string | null
+  sent_to_is_placeholder: boolean
   issued_at: string
   opened_at: string | null
+  opened_by: 'admin' | 'owner' | null
   claimed_at: string | null
   expires_at: string
-  status: ClaimLinkActivityStatus
-  likely_admin_preview: boolean
+  stage: ClaimLinkStage
+  stage_label: string
+  password_set: boolean
+  stripe_connected: boolean
   issued_by_name: string | null
 }
 
-export type ClaimLinkActivityRow = {
-  gym_id: string
-  gym_name: string
-  city: string | null
-  country: string | null
-  token_created_at: string
-  first_clicked_at: string | null
-  claimed_at: string | null
-  expires_at: string
-  status: ClaimLinkActivityStatus
-  likely_admin_preview: boolean
-}
-
 export type ClaimLinkAnalyticsPayload = {
-  health: { tokens: boolean; telemetry: boolean }
-  funnel: {
-    issued: { current: number; previous: number }
-    opened: { current: number; previous: number }
-    openedExclPreview: { current: number; previous: number }
-    claimed: { current: number; previous: number }
-    openRate: { current: number; previous: number }
-    ownerOpenRate: { current: number; previous: number }
-    claimRate: { current: number; previous: number }
-    completionFromOpen: { current: number; previous: number }
-    likelyAdminPreviews: { current: number; previous: number }
-  }
-  daily: DailySeries & {
-    issued: number[]
-    opened: number[]
-    claimed: number[]
-  }
-  pipeline: {
-    active: number
-    openedAwaitingClaim: number
+  health: { tokens: boolean }
+  summary: {
+    total: number
+    sentNotClicked: number
+    openedNotClaimed: number
+    completed: number
     expired: number
     revoked: number
+    adminOpens: number
+    ownerOpens: number
+    ownerOpenRate: number
+    claimRate: number
   }
-  roster: ClaimLinkFunnelRow[]
-  recent: ClaimLinkActivityRow[]
+  roster: ClaimLinkRosterRow[]
 }
 
 type TokenRow = {
@@ -76,15 +54,32 @@ type TokenRow = {
   claimed_at: string | null
   revoked_at: string | null
   first_opened_at: string | null
+  first_opened_by: 'admin' | 'owner' | null
   target_email: string | null
   created_by: string | null
 }
 
+type GymRow = {
+  id: string
+  name: string | null
+  city: string | null
+  country: string | null
+  owner_id: string
+  stripe_account_id: string | null
+  stripe_connect_verified: boolean | null
+}
+
+type ProfileRow = {
+  id: string
+  full_name: string | null
+  claim_password_set: boolean | null
+  placeholder_email: string | null
+}
+
 type TelemetryRow = {
   created_at: string
-  event_type: string
   gym_id: string | null
-  metadata?: { token_id?: string; seconds_since_issue?: number } | null
+  metadata?: { token_id?: string } | null
 }
 
 function isMissingTableError(error: unknown, table: string): boolean {
@@ -94,61 +89,28 @@ function isMissingTableError(error: unknown, table: string): boolean {
   return /Could not find the table/i.test(msg) && msg.includes(table)
 }
 
-function utcDayKey(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
-function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-}
-
-function addUtcDays(d: Date, days: number): Date {
-  const out = new Date(d)
-  out.setUTCDate(out.getUTCDate() + days)
-  return out
-}
-
-function buildDailyLabels(end: Date, dayCount: number): string[] {
-  const endDay = startOfUtcDay(end)
-  const labels: string[] = []
-  for (let i = dayCount - 1; i >= 0; i--) {
-    labels.push(utcDayKey(addUtcDays(endDay, -i)))
-  }
-  return labels
-}
-
-function bucketByDay(rows: Array<{ at: string }>, labels: string[]): number[] {
-  const index = new Map(labels.map((l, i) => [l, i]))
-  const values = Array(labels.length).fill(0)
-  for (const row of rows) {
-    const key = utcDayKey(new Date(row.at))
-    const idx = index.get(key)
-    if (idx !== undefined) values[idx] += 1
-  }
-  return values
-}
-
 function pctRate(numerator: number, denominator: number): number {
   if (denominator <= 0) return 0
   return Number(((numerator / denominator) * 100).toFixed(1))
 }
 
-function secondsBetween(earlier: string, later: string): number {
-  return Math.max(0, (new Date(later).getTime() - new Date(earlier).getTime()) / 1000)
+function inferOpenedBy(token: TokenRow, openedAt: string | null): 'admin' | 'owner' | null {
+  if (!openedAt) return null
+  if (token.first_opened_by === 'admin' || token.first_opened_by === 'owner') {
+    return token.first_opened_by
+  }
+  // Legacy rows before session-based detection — unknown, not guessed.
+  return null
 }
 
-function isLikelyAdminPreview(token: TokenRow, openedAt: string | null): boolean {
-  if (!openedAt) return false
-  return secondsBetween(token.created_at, openedAt) <= CLAIM_LINK_ADMIN_PREVIEW_SECONDS
-}
-
-function buildTelemetryFallback(
-  redeems: TelemetryRow[],
-): { byTokenId: Map<string, string>; byGymAfter: Map<string, string[]> } {
+function buildTelemetryFallback(redeems: TelemetryRow[]): {
+  byTokenId: Map<string, string>
+  byGymAfter: Map<string, string[]>
+} {
   const byTokenId = new Map<string, string>()
   const byGymAfter = new Map<string, string[]>()
   for (const row of redeems) {
-    if (row.event_type !== 'gym_claim_link_redeemed' || !row.gym_id) continue
+    if (!row.gym_id) continue
     const tokenId = row.metadata?.token_id
     if (typeof tokenId === 'string' && tokenId && !byTokenId.has(tokenId)) {
       byTokenId.set(tokenId, row.created_at)
@@ -172,95 +134,56 @@ function resolveOpenedAt(
   const byId = fallback.byTokenId.get(token.id)
   if (byId) return byId
   const tokenCreated = new Date(token.created_at).getTime()
-  const redeems = fallback.byGymAfter.get(token.gym_id) ?? []
-  for (const at of redeems) {
+  for (const at of fallback.byGymAfter.get(token.gym_id) ?? []) {
     if (new Date(at).getTime() >= tokenCreated) return at
   }
   return null
 }
 
-function tokenStatus(
+function resolveStage(
   token: TokenRow,
   openedAt: string | null,
-  now: number,
-): ClaimLinkActivityStatus {
-  if (token.claimed_at) return 'claimed'
+  passwordSet: boolean,
+  nowMs: number,
+): ClaimLinkStage {
+  const completed = passwordSet || Boolean(token.claimed_at)
+  if (completed) return 'completed'
   if (token.revoked_at) return 'revoked'
-  if (new Date(token.expires_at).getTime() <= now) return 'expired'
-  if (openedAt) return 'opened'
-  return 'awaiting_click'
+  if (new Date(token.expires_at).getTime() <= nowMs) return 'expired'
+  if (openedAt) return 'opened_not_claimed'
+  return 'sent_not_clicked'
 }
 
-function funnelCounts(tokens: TokenRow[], openedAtFor: (t: TokenRow) => string | null) {
-  let opened = 0
-  let openedExclPreview = 0
-  let claimed = 0
-  let likelyAdminPreviews = 0
-  for (const token of tokens) {
-    const openedAt = openedAtFor(token)
-    if (openedAt) {
-      opened += 1
-      const preview = isLikelyAdminPreview(token, openedAt)
-      if (preview) likelyAdminPreviews += 1
-      else openedExclPreview += 1
-    }
-    if (token.claimed_at) claimed += 1
-  }
-  return {
-    issued: tokens.length,
-    opened,
-    openedExclPreview,
-    claimed,
-    likelyAdminPreviews,
+function stageLabel(stage: ClaimLinkStage): string {
+  switch (stage) {
+    case 'sent_not_clicked':
+      return 'Sent, not clicked'
+    case 'opened_not_claimed':
+      return 'Clicked, not claimed'
+    case 'completed':
+      return 'Claim completed'
+    case 'expired':
+      return 'Expired'
+    case 'revoked':
+      return 'Revoked'
   }
 }
 
-const RANGE_DAYS: Record<AnalyticsRange, number> = {
-  '7d': 7,
-  '28d': 28,
-  '90d': 90,
-}
-
+/** Full claim-link history for Insights — not filtered by date range (range is ignored). */
 export async function fetchClaimLinkAnalytics(
   supabase: SupabaseClient,
-  range: AnalyticsRange,
+  _range?: AnalyticsRange,
 ): Promise<ClaimLinkAnalyticsPayload> {
-  const dayCount = RANGE_DAYS[range]
-  const now = new Date()
-  const nowMs = now.getTime()
-  const periodStart = addUtcDays(startOfUtcDay(now), -(dayCount - 1))
-  const compareStart = addUtcDays(periodStart, -dayCount)
-
-  const periodStartIso = periodStart.toISOString()
-  const compareStartIso = compareStart.toISOString()
-  const labels = buildDailyLabels(now, dayCount)
-
-  const health = { tokens: true, telemetry: true }
-
-  const telemetryRes = await supabase
-    .from('owner_telemetry_events')
-    .select('created_at, event_type, gym_id, metadata')
-    .gte('created_at', compareStartIso)
-    .eq('event_type', 'gym_claim_link_redeemed')
-
-  if (telemetryRes.error) {
-    if (isMissingTableError(telemetryRes.error, 'owner_telemetry_events')) {
-      health.telemetry = false
-    } else {
-      console.warn('[admin/analytics] claim telemetry', telemetryRes.error)
-    }
-  }
-
-  const telemetryFallback = buildTelemetryFallback((telemetryRes.data ?? []) as TelemetryRow[])
-  const openedAtFor = (token: TokenRow) => resolveOpenedAt(token, telemetryFallback)
+  const nowMs = Date.now()
+  const health = { tokens: true }
 
   const tokensRes = await supabase
     .from('gym_claim_tokens')
     .select(
-      'id, gym_id, created_at, expires_at, claimed_at, revoked_at, first_opened_at, target_email, created_by',
+      'id, gym_id, created_at, expires_at, claimed_at, revoked_at, first_opened_at, first_opened_by, target_email, created_by',
     )
-    .gte('created_at', compareStartIso)
     .order('created_at', { ascending: false })
+    .limit(500)
 
   if (tokensRes.error) {
     if (isMissingTableError(tokensRes.error, 'gym_claim_tokens')) {
@@ -268,192 +191,143 @@ export async function fetchClaimLinkAnalytics(
     } else {
       console.warn('[admin/analytics] claim tokens', tokensRes.error)
     }
-  }
-
-  const cohortTokens = (tokensRes.data ?? []) as TokenRow[]
-  const currentTokens = cohortTokens.filter((t) => t.created_at >= periodStartIso)
-  const previousTokens = cohortTokens.filter(
-    (t) => t.created_at >= compareStartIso && t.created_at < periodStartIso,
-  )
-
-  const currentFunnel = funnelCounts(currentTokens, openedAtFor)
-  const previousFunnel = funnelCounts(previousTokens, openedAtFor)
-
-  const pipelineTokensRes = await supabase
-    .from('gym_claim_tokens')
-    .select(
-      'id, gym_id, created_at, expires_at, claimed_at, revoked_at, first_opened_at, target_email, created_by',
-    )
-    .is('claimed_at', null)
-    .order('created_at', { ascending: false })
-
-  const pipelineTokens = (pipelineTokensRes.error ? [] : pipelineTokensRes.data ?? []) as TokenRow[]
-  const latestOutstandingByGym = new Map<string, TokenRow>()
-  for (const token of pipelineTokens) {
-    if (!latestOutstandingByGym.has(token.gym_id)) {
-      latestOutstandingByGym.set(token.gym_id, token)
+    return {
+      health,
+      summary: {
+        total: 0,
+        sentNotClicked: 0,
+        openedNotClaimed: 0,
+        completed: 0,
+        expired: 0,
+        revoked: 0,
+        adminOpens: 0,
+        ownerOpens: 0,
+        ownerOpenRate: 0,
+        claimRate: 0,
+      },
+      roster: [],
     }
   }
 
-  const pipeline = {
-    active: 0,
-    openedAwaitingClaim: 0,
-    expired: 0,
-    revoked: 0,
-  }
+  const tokens = (tokensRes.data ?? []) as TokenRow[]
+  const gymIds = [...new Set(tokens.map((t) => t.gym_id))]
 
-  for (const token of latestOutstandingByGym.values()) {
-    const openedAt = openedAtFor(token)
-    const status = tokenStatus(token, openedAt, nowMs)
-    if (status === 'awaiting_click') pipeline.active += 1
-    else if (status === 'opened') pipeline.openedAwaitingClaim += 1
-    else if (status === 'expired') pipeline.expired += 1
-    else if (status === 'revoked') pipeline.revoked += 1
-  }
+  const telemetryRes = gymIds.length
+    ? await supabase
+        .from('owner_telemetry_events')
+        .select('created_at, gym_id, metadata')
+        .in('gym_id', gymIds)
+        .eq('event_type', 'gym_claim_link_redeemed')
+        .order('created_at', { ascending: true })
+    : { data: [] as TelemetryRow[] }
 
-  const rosterTokens = [...currentTokens].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  )
+  const telemetryFallback = buildTelemetryFallback((telemetryRes.data ?? []) as TelemetryRow[])
+  const openedAtFor = (token: TokenRow) => resolveOpenedAt(token, telemetryFallback)
 
-  const gymIds = [...new Set(rosterTokens.map((t) => t.gym_id))]
-  const adminIds = [
-    ...new Set(rosterTokens.map((t) => t.created_by).filter(Boolean)),
-  ] as string[]
-
-  const gymMeta = new Map<string, { name: string; city: string | null; country: string | null }>()
+  const gymById = new Map<string, GymRow>()
   if (gymIds.length > 0) {
     const { data: gyms } = await supabase
       .from('gyms')
-      .select('id, name, city, country')
+      .select('id, name, city, country, owner_id, stripe_account_id, stripe_connect_verified')
       .in('id', gymIds)
     for (const g of gyms ?? []) {
-      gymMeta.set(g.id as string, {
-        name: (g.name as string) || 'Untitled gym',
-        city: (g.city as string | null) ?? null,
-        country: (g.country as string | null) ?? null,
-      })
+      gymById.set(g.id as string, g as GymRow)
     }
   }
 
-  const adminMeta = new Map<string, string>()
-  if (adminIds.length > 0) {
-    const { data: admins } = await supabase
+  const ownerIds = [...new Set([...gymById.values()].map((g) => g.owner_id))]
+  const adminIds = [...new Set(tokens.map((t) => t.created_by).filter(Boolean))] as string[]
+  const profileIds = [...new Set([...ownerIds, ...adminIds])]
+
+  const profileById = new Map<string, ProfileRow>()
+  if (profileIds.length > 0) {
+    const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name')
-      .in('id', adminIds)
-    for (const p of admins ?? []) {
-      adminMeta.set(p.id as string, (p.full_name as string | null)?.trim() || 'Admin')
+      .select('id, full_name, claim_password_set, placeholder_email')
+      .in('id', profileIds)
+    for (const p of profiles ?? []) {
+      profileById.set(p.id as string, p as ProfileRow)
     }
   }
 
-  const roster: ClaimLinkFunnelRow[] = rosterTokens.map((token) => {
-    const meta = gymMeta.get(token.gym_id)
+  const roster: ClaimLinkRosterRow[] = tokens.map((token) => {
+    const gym = gymById.get(token.gym_id)
+    const owner = gym ? profileById.get(gym.owner_id) : undefined
     const openedAt = openedAtFor(token)
+    const passwordSet = owner?.claim_password_set === true
+    const stage = resolveStage(token, openedAt, passwordSet, nowMs)
+    const sentTo = token.target_email ?? owner?.placeholder_email ?? null
+    const sentToIsPlaceholder = sentTo ? isPlaceholderEmail(sentTo) : false
+
     return {
       token_id: token.id,
       gym_id: token.gym_id,
-      gym_name: meta?.name ?? 'Untitled gym',
-      city: meta?.city ?? null,
-      country: meta?.country ?? null,
-      sent_to: token.target_email,
+      gym_name: gym?.name?.trim() || 'Untitled gym',
+      city: gym?.city ?? null,
+      country: gym?.country ?? null,
+      sent_to: sentTo,
+      sent_to_is_placeholder: sentToIsPlaceholder,
       issued_at: token.created_at,
       opened_at: openedAt,
+      opened_by: inferOpenedBy(token, openedAt),
       claimed_at: token.claimed_at,
       expires_at: token.expires_at,
-      status: tokenStatus(token, openedAt, nowMs),
-      likely_admin_preview: isLikelyAdminPreview(token, openedAt),
-      issued_by_name: token.created_by ? adminMeta.get(token.created_by) ?? null : null,
+      stage,
+      stage_label: stageLabel(stage),
+      password_set: passwordSet,
+      stripe_connected: Boolean(gym?.stripe_account_id && gym?.stripe_connect_verified),
+      issued_by_name: token.created_by
+        ? profileById.get(token.created_by)?.full_name?.trim() || 'Admin'
+        : null,
     }
   })
 
-  const recentCandidates = [...latestOutstandingByGym.values()]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 12)
+  let sentNotClicked = 0
+  let openedNotClaimed = 0
+  let completed = 0
+  let expired = 0
+  let revoked = 0
+  let adminOpens = 0
+  let ownerOpens = 0
 
-  const recentGymIds = [...new Set(recentCandidates.map((t) => t.gym_id))]
-  if (recentGymIds.some((id) => !gymMeta.has(id))) {
-    const { data: gyms } = await supabase
-      .from('gyms')
-      .select('id, name, city, country')
-      .in('id', recentGymIds)
-    for (const g of gyms ?? []) {
-      gymMeta.set(g.id as string, {
-        name: (g.name as string) || 'Untitled gym',
-        city: (g.city as string | null) ?? null,
-        country: (g.country as string | null) ?? null,
-      })
+  for (const row of roster) {
+    switch (row.stage) {
+      case 'sent_not_clicked':
+        sentNotClicked += 1
+        break
+      case 'opened_not_claimed':
+        openedNotClaimed += 1
+        break
+      case 'completed':
+        completed += 1
+        break
+      case 'expired':
+        expired += 1
+        break
+      case 'revoked':
+        revoked += 1
+        break
     }
+    if (row.opened_by === 'admin') adminOpens += 1
+    if (row.opened_by === 'owner') ownerOpens += 1
   }
 
-  const recent: ClaimLinkActivityRow[] = recentCandidates.map((token) => {
-    const meta = gymMeta.get(token.gym_id)
-    const openedAt = openedAtFor(token)
-    return {
-      gym_id: token.gym_id,
-      gym_name: meta?.name ?? 'Untitled gym',
-      city: meta?.city ?? null,
-      country: meta?.country ?? null,
-      token_created_at: token.created_at,
-      first_clicked_at: openedAt,
-      claimed_at: token.claimed_at,
-      expires_at: token.expires_at,
-      status: tokenStatus(token, openedAt, nowMs),
-      likely_admin_preview: isLikelyAdminPreview(token, openedAt),
-    }
-  })
-
-  const dailyOpened = currentTokens
-    .map((token) => {
-      const at = openedAtFor(token)
-      return at ? { at } : null
-    })
-    .filter(Boolean) as Array<{ at: string }>
+  const total = roster.length
 
   return {
     health,
-    funnel: {
-      issued: { current: currentFunnel.issued, previous: previousFunnel.issued },
-      opened: { current: currentFunnel.opened, previous: previousFunnel.opened },
-      openedExclPreview: {
-        current: currentFunnel.openedExclPreview,
-        previous: previousFunnel.openedExclPreview,
-      },
-      claimed: { current: currentFunnel.claimed, previous: previousFunnel.claimed },
-      openRate: {
-        current: pctRate(currentFunnel.opened, currentFunnel.issued),
-        previous: pctRate(previousFunnel.opened, previousFunnel.issued),
-      },
-      ownerOpenRate: {
-        current: pctRate(currentFunnel.openedExclPreview, currentFunnel.issued),
-        previous: pctRate(previousFunnel.openedExclPreview, previousFunnel.issued),
-      },
-      claimRate: {
-        current: pctRate(currentFunnel.claimed, currentFunnel.issued),
-        previous: pctRate(previousFunnel.claimed, previousFunnel.issued),
-      },
-      completionFromOpen: {
-        current: pctRate(currentFunnel.claimed, currentFunnel.openedExclPreview),
-        previous: pctRate(previousFunnel.claimed, previousFunnel.openedExclPreview),
-      },
-      likelyAdminPreviews: {
-        current: currentFunnel.likelyAdminPreviews,
-        previous: previousFunnel.likelyAdminPreviews,
-      },
+    summary: {
+      total,
+      sentNotClicked,
+      openedNotClaimed,
+      completed,
+      expired,
+      revoked,
+      adminOpens,
+      ownerOpens,
+      ownerOpenRate: pctRate(ownerOpens, total),
+      claimRate: pctRate(completed, total),
     },
-    daily: {
-      labels,
-      values: bucketByDay(currentTokens.map((t) => ({ at: t.created_at })), labels),
-      issued: bucketByDay(currentTokens.map((t) => ({ at: t.created_at })), labels),
-      opened: bucketByDay(dailyOpened, labels),
-      claimed: bucketByDay(
-        currentTokens
-          .filter((t) => t.claimed_at)
-          .map((t) => ({ at: t.claimed_at as string })),
-        labels,
-      ),
-    },
-    pipeline,
     roster,
-    recent,
   }
 }

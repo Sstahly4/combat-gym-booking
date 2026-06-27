@@ -108,23 +108,25 @@ export default function AdminAnalyticsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-full border border-stone-200 bg-stone-50 p-0.5">
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setRange(opt.id)}
-                className={cn(
-                  'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                  range === opt.id
-                    ? 'bg-white text-stone-900 shadow-sm'
-                    : 'text-stone-600 hover:text-stone-900',
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          {tab !== 'claims' ? (
+            <div className="inline-flex rounded-full border border-stone-200 bg-stone-50 p-0.5">
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setRange(opt.id)}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    range === opt.id
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -154,7 +156,34 @@ export default function AdminAnalyticsPage() {
         </div>
       ) : null}
 
-      <section className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 border-b border-stone-200">
+        <nav className="-mb-px flex gap-6" aria-label="Insights sections">
+          {(
+            [
+              { id: 'discovery' as const, label: 'Discovery' },
+              { id: 'claims' as const, label: 'Claim links' },
+              { id: 'catalog' as const, label: 'Data catalog' },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={cn(
+                'border-b-2 pb-2.5 text-sm font-medium transition-colors',
+                tab === item.id
+                  ? 'border-[#003580] text-[#003580]'
+                  : 'border-transparent text-stone-500 hover:text-stone-800',
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {tab === 'discovery' ? (
+        <section className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AnalyticsKpiCard
           label="Searches"
           value={(data?.kpis.searches.current ?? 0).toLocaleString()}
@@ -191,33 +220,8 @@ export default function AdminAnalyticsPage() {
           }
           loading={loading}
         />
-      </section>
-
-      <div className="mb-6 border-b border-stone-200">
-        <nav className="-mb-px flex gap-6" aria-label="Insights sections">
-          {(
-            [
-              { id: 'discovery' as const, label: 'Discovery' },
-              { id: 'claims' as const, label: 'Claim links' },
-              { id: 'catalog' as const, label: 'Data catalog' },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={cn(
-                'border-b-2 pb-2.5 text-sm font-medium transition-colors',
-                tab === item.id
-                  ? 'border-[#003580] text-[#003580]'
-                  : 'border-transparent text-stone-500 hover:text-stone-800',
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+        </section>
+      ) : null}
 
       {tab === 'discovery' ? (
         <div className="space-y-6">

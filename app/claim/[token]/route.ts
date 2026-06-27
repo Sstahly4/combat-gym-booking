@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hashClaimToken } from '@/lib/admin/gym-claim'
+import { detectClaimLinkOpenerKind } from '@/lib/admin/detect-claim-link-opener'
 import {
   isClaimProduction,
   isClaimTokenPepperConfigured,
@@ -131,10 +132,14 @@ export async function GET(request: NextRequest, { params }: Params) {
     return fail(request, 'owner_missing', ownerErr?.message ?? 'no email on placeholder user')
   }
   const ownerEmail = ownerLookup.user.email
+
+  const openedBy = await detectClaimLinkOpenerKind(request, admin)
+
   console.info('[claim] redeeming token', {
     gym_id: gym.id,
     owner_id: gym.owner_id,
     owner_email_domain: ownerEmail.split('@')[1] ?? null,
+    opened_by: openedBy,
   })
 
   // Build the redirect response first, then bind the Supabase browser client to it so
@@ -215,12 +220,13 @@ export async function GET(request: NextRequest, { params }: Params) {
       credentials_pending: true,
       token_id: token.id,
       seconds_since_issue: secondsSinceIssue,
+      opened_by: openedBy,
     },
   })
 
   await admin
     .from('gym_claim_tokens')
-    .update({ first_opened_at: nowIso })
+    .update({ first_opened_at: nowIso, first_opened_by: openedBy })
     .eq('id', token.id)
     .is('first_opened_at', null)
 

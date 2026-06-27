@@ -367,43 +367,37 @@ function OrphanCard({
   const t = gym.latest_token
   const isPreListed = gym.state === 'pre_listed'
 
-  const isActivated = gym.claim_password_set || Boolean(t?.claimed_at)
-  const wasOpened = Boolean(gym.first_opened_at) && !isActivated
-  const likelyAdminTest =
-    wasOpened &&
-    gym.first_opened_at &&
-    t?.created_at &&
-    (new Date(gym.first_opened_at).getTime() - new Date(t.created_at).getTime()) / 1000 <=
-      300
+  const isCompleted = gym.claim_password_set
+  const wasOpened = Boolean(gym.first_opened_at) && !isCompleted
 
   const status = isPreListed && !t
     ? 'Awaiting first link'
-    : isActivated
-      ? 'Activated'
+    : isCompleted
+      ? 'Claim completed'
       : wasOpened
-        ? 'Opened'
+        ? 'Clicked, not claimed'
         : t?.active
-        ? 'Active link'
-        : t?.revoked_at
-          ? 'Revoked'
-          : t?.expired
-            ? 'Expired'
-            : 'No link yet'
+          ? 'Sent, not clicked'
+          : t?.revoked_at
+            ? 'Revoked'
+            : t?.expired
+              ? 'Expired'
+              : 'No link yet'
 
   const statusClass =
     isPreListed && !t
       ? 'bg-stone-200 text-stone-800'
-      : isActivated
-        ? 'bg-blue-100 text-blue-800'
+      : isCompleted
+        ? 'bg-violet-100 text-violet-800'
         : wasOpened
           ? 'bg-sky-100 text-sky-800'
           : t?.active
-          ? 'bg-emerald-100 text-emerald-800'
-          : t?.expired
-            ? 'bg-amber-100 text-amber-800'
-            : t?.revoked_at
-              ? 'bg-stone-200 text-stone-700'
-              : 'bg-stone-100 text-stone-600'
+            ? 'bg-emerald-100 text-emerald-800'
+            : t?.expired
+              ? 'bg-amber-100 text-amber-800'
+              : t?.revoked_at
+                ? 'bg-stone-200 text-stone-700'
+                : 'bg-stone-100 text-stone-600'
 
   return (
     <Card className="overflow-hidden">
@@ -423,11 +417,9 @@ function OrphanCard({
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}>
             {status}
           </span>
-          {!isPreListed && (
-            <span className="text-[11px] text-stone-500">
-              {gym.claim_password_set ? 'Password set' : 'Password not set'}
-            </span>
-          )}
+          {!isPreListed && !isCompleted && wasOpened ? (
+            <span className="text-[11px] text-stone-500">Password not set</span>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -436,9 +428,9 @@ function OrphanCard({
           <p className="text-xs text-stone-500">
             Last link issued {new Date(t.created_at).toLocaleString()},
             {' '}expires {new Date(t.expires_at).toLocaleString()}
-            {t.claimed_at ? ` · activated ${new Date(t.claimed_at).toLocaleString()}` : ''}
-            {gym.first_opened_at && !t?.claimed_at
-              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}${likelyAdminTest ? ' (likely admin test)' : ''}`
+            {t.claimed_at ? ` · completed ${new Date(t.claimed_at).toLocaleString()}` : ''}
+            {gym.first_opened_at && !isCompleted
+              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}`
               : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
           </p>
