@@ -12,7 +12,7 @@ const FOOTER_SECTIONS = [
     links: [
       { href: '/bookings', label: 'My Bookings' },
       { href: '/contact', label: 'Customer service' },
-      { href: '/faq', label: 'Help Center' },
+      { href: '/faq', label: 'FAQ & Help Center' },
     ],
   },
   {
@@ -37,6 +37,7 @@ const FOOTER_SECTIONS = [
     title: 'For Gyms',
     links: [
       { href: '/manage', label: 'Partner Hub' },
+      { href: '/owners/help', label: 'Partner FAQ' },
       { href: '/owners', label: 'Register Gym' },
       { href: '/affiliate', label: 'Affiliate Program' },
     ],

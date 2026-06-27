@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,15 +11,20 @@ import {
   CREATOR_PROGRAM_MESSAGE_PROMPT,
   CREATOR_PROGRAM_SUBJECT,
   DATA_DELETION_SUBJECT,
+  PARTNER_SUPPORT_SUBJECT,
   validateContactMessage,
 } from '@/lib/contact-form'
 
 const DATA_DELETION_MESSAGE_PROMPT =
   'Please confirm the email address on your CombatStay account. Include your booking reference if you have an active booking so we can verify your identity.'
 
+const PARTNER_SUPPORT_MESSAGE_PROMPT =
+  'Tell us your gym name and the email on your Partner Hub account. Include your booking reference if this is about a specific guest stay.'
+
 export default function ContactPage() {
   const [isCreatorProgram, setIsCreatorProgram] = useState(false)
   const [isDataDeletion, setIsDataDeletion] = useState(false)
+  const [isPartnerSupport, setIsPartnerSupport] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,10 +44,13 @@ export default function ContactPage() {
       intent === 'creator-program' || subject === CREATOR_PROGRAM_SUBJECT
     const dataDeletion =
       intent === 'data-deletion' || subject === DATA_DELETION_SUBJECT
+    const partnerSupport =
+      intent === 'partner' || subject === PARTNER_SUPPORT_SUBJECT
 
     setIsCreatorProgram(creatorProgram)
-    setIsDataDeletion(dataDeletion && !creatorProgram)
-    if (!creatorProgram && !dataDeletion && !subject) return
+    setIsDataDeletion(dataDeletion && !creatorProgram && !partnerSupport)
+    setIsPartnerSupport(partnerSupport && !creatorProgram)
+    if (!creatorProgram && !dataDeletion && !partnerSupport && !subject) return
 
     setFormData(prev => ({
       ...prev,
@@ -49,11 +58,15 @@ export default function ContactPage() {
         ? CREATOR_PROGRAM_SUBJECT
         : dataDeletion
           ? DATA_DELETION_SUBJECT
-          : subject || prev.subject,
+          : partnerSupport
+            ? PARTNER_SUPPORT_SUBJECT
+            : subject || prev.subject,
       message:
         dataDeletion && !prev.message
           ? DATA_DELETION_MESSAGE_PROMPT
-          : prev.message,
+          : partnerSupport && !prev.message
+            ? PARTNER_SUPPORT_MESSAGE_PROMPT
+            : prev.message,
     }))
   }, [])
 
@@ -119,16 +132,22 @@ export default function ContactPage() {
               ? 'Apply to the Creator Program'
               : isDataDeletion
                 ? 'Request data deletion'
-                : 'Customer service'}
+                : isPartnerSupport
+                  ? 'Partner support'
+                  : 'Customer service'}
           </h1>
           <p className="text-base text-gray-600">
             {isCreatorProgram
               ? 'Tell us about your audience and channels. We review every application personally and aim to reply within one business day.'
               : isDataDeletion
                 ? 'Submit this form to delete your CombatStay account and personal data. We verify ownership of the account email before processing. See our data deletion page for full details.'
-                : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
+                : isPartnerSupport
+                  ? 'Questions about your listing, payouts, or Partner Hub — include your gym name and the email on your account so we can help faster.'
+                  : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
           </p>
         </div>
+
+        <SupportAudienceSwitcher active={isPartnerSupport ? 'partner' : 'traveler'} />
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Main Form */}

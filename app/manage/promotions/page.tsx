@@ -339,7 +339,7 @@ export default function ManagePromotionsPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href="/help/promotions"
+                href="/owners/help/promotions"
                 className="text-xs font-medium hover:underline underline-offset-2"
                 style={{ color: BRAND }}
               >

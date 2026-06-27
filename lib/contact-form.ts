@@ -2,6 +2,8 @@ export const CREATOR_PROGRAM_SUBJECT = 'Creator Program'
 
 export const DATA_DELETION_SUBJECT = 'Data deletion request'
 
+export const PARTNER_SUPPORT_SUBJECT = 'Partner support request'
+
 export const CREATOR_PROGRAM_MESSAGE_PROMPT =
   "Tell us about your audience, channels, and how you'd like to work with CombatStay."
 

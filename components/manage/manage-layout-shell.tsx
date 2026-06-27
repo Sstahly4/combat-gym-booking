@@ -2,9 +2,13 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useClaimRedirectHydration } from '@/lib/hooks/use-claim-redirect-hydration'
-import { ManageSidebar } from '@/components/manage/manage-sidebar'
+import { ManageTopNav } from '@/components/manage/manage-top-nav'
+import {
+  PARTNER_HUB_MOBILE_BOTTOM_OFFSET_CLASS,
+} from '@/lib/manage/manage-partner-nav'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
@@ -71,7 +75,7 @@ function ManageNoSidebarHubTitle() {
   return null
 }
 
-function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
+function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
@@ -80,7 +84,9 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
 
   const active = gyms.find((g) => g.id === activeGymId) ?? gyms[0] ?? null
 
-  const editGymHref = active ? `/manage/gym/edit?id=${active.id}` : '/manage/gym/edit'
+  const editGymHref = active
+    ? `/manage/gym/edit?id=${active.id}&section=basic`
+    : '/manage/gym/edit?section=basic'
   const viewListingHref = active ? `/manage/gym/preview?gym_id=${active.id}` : '/manage/onboarding'
   const gymName = active?.name?.trim() ? active.name.trim() : null
   const firstGymId = active?.id ?? null
@@ -126,12 +132,12 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-white md:block md:min-h-[calc(100svh-5rem)]">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-white md:min-h-[calc(100svh-5rem)]">
       <AccountClaimPrompts />
       <ClaimDashboardTour />
       <ManageNoBookingsToastHost />
       <GymImageUploadToastHost />
-      <ManageSidebar
+      <ManageTopNav
         editGymHref={editGymHref}
         gymName={gymName}
         viewListingHref={viewListingHref}
@@ -143,7 +149,13 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
       />
       <div
         data-manage-main-scroll
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-32 md:ml-56 md:pt-0 md:h-[calc(100svh-5rem)] md:max-h-[calc(100svh-5rem)] md:overflow-y-auto [&>*:first-child]:max-md:-mt-2"
+        className={cn(
+          'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden',
+          'pt-20 md:pt-32',
+          PARTNER_HUB_MOBILE_BOTTOM_OFFSET_CLASS,
+          'md:pb-0',
+          'md:h-[calc(100svh-8rem)] md:max-h-[calc(100svh-8rem)]',
+        )}
       >
         {children}
       </div>
@@ -196,7 +208,7 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <ActiveGymProvider>
       <PendingOwnerGuard />
-      <ManageLayoutSidebarShell>{children}</ManageLayoutSidebarShell>
+      <ManageLayoutTopNavShell>{children}</ManageLayoutTopNavShell>
     </ActiveGymProvider>
   )
 }

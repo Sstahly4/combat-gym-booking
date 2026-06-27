@@ -14,8 +14,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
 import { PackageCreateShell, PackageEditShell } from '@/components/manage/package-edit-shell'
+import { GymAmenitiesEditor } from '@/components/manage/gym-amenities-editor'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
-import { GymEditSection } from '@/components/manage/gym-edit-section'
+import { GymEditPanel } from '@/components/manage/gym-edit-section'
+import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
+import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
 import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
@@ -23,7 +26,6 @@ import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import {
   DEFAULT_GYM_AMENITIES,
   GYM_AMENITY_ORDER,
-  labelGymAmenity,
   mergeGymAmenitiesFromDb,
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
@@ -180,11 +182,9 @@ function EditGymForm() {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState('basic')
   const [packageEditorMode, setPackageEditorMode] = useState<PackageEditorMode>(null)
   const [packagesListRefreshKey, setPackagesListRefreshKey] = useState(0)
-  const scrolledToSectionKey = useRef<string | null>(null)
-  const [amenitiesExpanded, setAmenitiesExpanded] = useState(false)
+  const activeSection = resolveGymEditSection(sectionFromUrl)
 
   // Form State
   const [tagline, setTagline] = useState('')
@@ -545,29 +545,6 @@ function EditGymForm() {
   }, [user, profile, gymId, authLoading])
 
   useEffect(() => {
-    if (!gym || !sectionFromUrl) return
-    const validSectionIds = new Set([
-      'basic',
-      'location',
-      'images',
-      'disciplines',
-      'schedule',
-      'trainers',
-      'faq',
-      'packages',
-    ])
-    if (!validSectionIds.has(sectionFromUrl)) return
-    const key = `${(gym as { id: string }).id}:${sectionFromUrl}`
-    if (scrolledToSectionKey.current === key) return
-    scrolledToSectionKey.current = key
-    setActiveSection(sectionFromUrl)
-    const t = window.setTimeout(() => {
-      document.getElementById(`section-${sectionFromUrl}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 200)
-    return () => window.clearTimeout(t)
-  }, [gym, sectionFromUrl])
-
-  useEffect(() => {
     const mq = window.matchMedia('(pointer: fine)')
     const sync = () => setImageDragEnabled(mq.matches)
     sync()
@@ -823,17 +800,8 @@ function EditGymForm() {
   }
 
   const handleAmenityChange = (key: string, checked: boolean) => {
-    setAmenities(prev => {
-      const updated = { ...prev, [key]: checked }
-      console.log('Amenity changed:', key, checked, 'Total selected:', Object.values(updated).filter(v => v === true).length)
-      return updated
-    })
+    setAmenities(prev => ({ ...prev, [key]: checked }))
   }
-  
-  const orderedAmenityEntries: [string, boolean][] = GYM_AMENITY_ORDER.map((key) => [
-    key,
-    amenities[key] ?? false,
-  ])
 
   const handleNewImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !gym?.id) return
@@ -1130,14 +1098,14 @@ function EditGymForm() {
         name: savedName,
         tagline: savedTagline || null,
         description: savedDescription,
-        address: formData.get('address') as string,
-        city: formData.get('city') as string,
+        address: locationAddress.trim(),
+        city: locationCity.trim(),
         country: selectedCountry,
-        latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
-        longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
+        latitude: locationLat.trim() ? parseFloat(locationLat) : null,
+        longitude: locationLng.trim() ? parseFloat(locationLng) : null,
         price_per_day: parseFloat(savedPricePerDay),
         price_per_week: savedPricePerWeek ? parseFloat(savedPricePerWeek) : null,
-        currency: formData.get('currency') as string,
+        currency: selectedCurrencyCode,
         disciplines: [...disciplines], // Create new array to avoid readonly issues
         amenities: mergeGymAmenitiesFromDb(amenities),
         google_maps_link: savedGoogleMapsLink || null,
@@ -1311,19 +1279,11 @@ function EditGymForm() {
     location: { completed: !!(locationAddress && locationCity && selectedCountry), required: true },
     images: { completed: !!(gym.images && gym.images.length > 0), required: true },
     disciplines: { completed: disciplines.length > 0, required: true },
+    amenities: { completed: countEnabledAmenities(amenities) > 0, required: false },
     schedule: { completed: false, required: false },
     trainers: { completed: trainers.length > 0, required: false },
     faq: { completed: faq.length > 0, required: false },
     packages: { completed: false, required: true },
-  }
-
-  // Scroll to section
-  const scrollToSection = (sectionId: string) => {
-    setActiveSection(sectionId)
-    const element = document.getElementById(`section-${sectionId}`)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
   }
 
   return (
@@ -1331,20 +1291,18 @@ function EditGymForm() {
       hubCrumb={hubCrumb}
       gymName={gymName || gym.name}
       gymId={gym.id}
+      returnTo={returnToRaw}
       activeSection={activeSection}
-      onSectionChange={scrollToSection}
       sections={sectionStatus}
       saving={saving}
       saveError={saveError}
       onSave={() => void handleSave()}
       onCancel={() => router.push(afterEditPath)}
     >
-        <form id="edit-gym-form" onSubmit={handleSave} className="space-y-5">
-          <GymEditSection
-            id="section-basic"
-            title="Title & description"
-            description="Your gym name, tagline, and the story guests see on your listing."
-          >
+        {activeSection !== 'packages' ? (
+        <form id="edit-gym-form" onSubmit={handleSave}>
+          {activeSection === 'basic' ? (
+          <GymEditPanel>
               <div className="space-y-2">
                 <Label htmlFor="name">Gym Name <span className="text-red-500">*</span></Label>
                 <Input 
@@ -1442,13 +1400,11 @@ function EditGymForm() {
                   <input type="hidden" name="currency" value={selectedCurrencyCode} required />
                 </div>
               </div>
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-location"
-            title="Location & verification"
-            description="Help guests find your gym and complete verification."
-          >
+          {activeSection === 'location' ? (
+          <GymEditPanel>
               <div className="space-y-2">
                 <GymLocationAddressSearch
                   disabled={saving}
@@ -1682,17 +1638,17 @@ function EditGymForm() {
                   </div>
                 </div>
               </div>
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-disciplines"
-            title="Disciplines & amenities"
-            description="What you teach and what your facility offers."
-            contentClassName="space-y-6"
-          >
+          {activeSection === 'disciplines' ? (
+          <GymEditPanel>
               <div className="space-y-3">
-                <Label>Disciplines Offered <span className="text-red-500">*</span></Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <Label>Disciplines offered <span className="text-red-500">*</span></Label>
+                <p className="text-sm text-gray-500">
+                  Select every martial art or combat sport guests can train at your gym.
+                </p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {DISCIPLINES.map(d => (
                     <label 
                       key={d} 
@@ -1709,73 +1665,21 @@ function EditGymForm() {
                   ))}
                 </div>
               </div>
+          </GymEditPanel>
+          ) : null}
 
-              <div className="pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Amenities</Label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Training gear, classes, and facility details tailored for combat sports—pick everything that applies.
-                    </p>
-                  </div>
-                  {orderedAmenityEntries.length > 12 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
-                      className="text-xs text-[#003580] hover:text-[#003580]/80"
-                    >
-                      {amenitiesExpanded ? (
-                        <>
-                          <ChevronUp className="w-3 h-3 mr-1 inline" />
-                          Show Less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-3 h-3 mr-1 inline" />
-                          Show More ({orderedAmenityEntries.length - 12} more)
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                  {orderedAmenityEntries
-                    .slice(0, amenitiesExpanded ? orderedAmenityEntries.length : 12)
-                    .map(([key, value]) => (
-                    <label 
-                      key={key} 
-                      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-colors ${
-                        value 
-                          ? 'border-[#003580]/30 bg-[#003580]/[0.04] shadow-sm' 
-                          : 'border-gray-200/90 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={value}
-                        onChange={(e) => handleAmenityChange(key, e.target.checked)}
-                        className="rounded w-4 h-4 text-[#003580] focus:ring-2 focus:ring-[#003580] focus:ring-offset-1 cursor-pointer flex-shrink-0 mt-0.5"
-                      />
-                      <span className="text-sm text-gray-700 leading-tight select-none flex-1">
-                        {labelGymAmenity(key)}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-          </GymEditSection>
+          {activeSection === 'amenities' ? (
+          <GymEditPanel contentClassName="space-y-0">
+            <GymAmenitiesEditor amenities={amenities} onChange={handleAmenityChange} />
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-images"
-            title="Photos"
-            description={
-              imageDragEnabled
-                ? 'Upload up to 30 images. The first is your cover — drag to reorder, then save.'
-                : 'Upload up to 30 images. The first image is your cover photo.'
-            }
-          >
+          {activeSection === 'images' ? (
+          <GymEditPanel>
+              <p className="text-sm text-gray-600">
+                Upload up to 30 photos. The first image is your cover.
+                {imageDragEnabled ? ' Drag to reorder, then save.' : null}
+              </p>
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-gray-600">
@@ -1903,14 +1807,11 @@ function EditGymForm() {
                   Photos upload automatically in the background. You can save and leave — progress shows in the bottom-right toast.
                 </p>
               </div>
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-schedule"
-            title="Schedule & hours"
-            description="Opening hours and class timetable — optional but helps guests plan."
-            contentClassName="space-y-6"
-          >
+          {activeSection === 'schedule' ? (
+          <GymEditPanel contentClassName="space-y-6">
               {/* Opening Hours */}
               <div className="space-y-3">
                 <div>
@@ -2090,13 +1991,11 @@ function EditGymForm() {
                 )}
               </div>
 
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-trainers"
-            title="Trainers"
-            description="Introduce your coaches — optional but builds trust with guests."
-          >
+          {activeSection === 'trainers' ? (
+          <GymEditPanel>
               <div className="flex items-center justify-between">
                 <Label>Trainers (optional)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addTrainer}>
@@ -2203,13 +2102,11 @@ function EditGymForm() {
                   </div>
                 </div>
               )})}
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
 
-          <GymEditSection
-            id="section-faq"
-            title="Frequently asked questions"
-            description="Answer common questions before guests need to message you."
-          >
+          {activeSection === 'faq' ? (
+          <GymEditPanel>
               <div className="flex items-center justify-between">
                 <Label>Frequently Asked Questions (optional)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addFaq}>
@@ -2243,16 +2140,13 @@ function EditGymForm() {
                     </div>
                   </div>
                 ))}
-          </GymEditSection>
+          </GymEditPanel>
+          ) : null}
         </form>
+        ) : null}
 
-        {gym && gym.id ? (
-          <GymEditSection
-            id="section-packages"
-            title="Packages & offers"
-            description="Create training packages and room variants for train-and-stay listings."
-            contentClassName="space-y-0"
-          >
+        {activeSection === 'packages' && gym && gym.id ? (
+          <GymEditPanel contentClassName="space-y-0">
             <PackagesSection
               gymId={gym.id}
               currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
@@ -2261,7 +2155,7 @@ function EditGymForm() {
               onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
               onCreatePackage={() => openPackageEditor({ kind: 'create' })}
             />
-          </GymEditSection>
+          </GymEditPanel>
         ) : null}
 
         {profile?.role === 'admin' && gym?.id && gym.name ? (

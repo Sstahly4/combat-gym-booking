@@ -158,7 +158,7 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
 
         <div className="mt-6 grid gap-6 sm:mt-8 md:grid-cols-[240px,1fr] md:gap-8">
           <aside className="hidden md:block">
-            <nav aria-label="Settings sections" className="sticky top-20">
+            <nav aria-label="Settings sections" className="sticky top-6">
               <ul className="flex flex-col gap-1">
                 {TABS.map((tab) => {
                   const isActive = tab.id === activeTab

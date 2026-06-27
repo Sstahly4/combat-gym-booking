@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react'
 
 /** Below Partner Hub navbar (+ mobile hub bar); matches manage sidebar offsets. */
 export const PACKAGE_EDITOR_CHROME =
-  'fixed inset-x-0 bottom-0 z-40 overflow-y-auto bg-white top-32 md:left-56 md:top-20'
+  'fixed inset-x-0 bottom-0 z-50 overflow-y-auto bg-white top-20 md:top-32'
 
 function PackageEditorHeader({
   onClose,

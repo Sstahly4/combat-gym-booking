@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import { BRAND_NAME } from '@/lib/brand'
+import { FaqJsonLd } from '@/app/faq/faq-json-ld'
 
 const description =
-  'Find answers to common questions about bookings, payments, training camps, and safety on CombatStay.'
+  'CombatStay FAQ: frequently asked questions about bookings, payments, cancellations, gym safety, accounts, and training camps in Thailand and beyond.'
 
-const title = `Help Center | ${BRAND_NAME}`
+const title = `FAQ & Help Center | ${BRAND_NAME}`
 
 export const metadata: Metadata = {
   title,
@@ -26,5 +27,10 @@ export const metadata: Metadata = {
 }
 
 export default function FaqLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <>
+      <FaqJsonLd />
+      {children}
+    </>
+  )
 }

@@ -781,6 +781,13 @@ export default function OwnersLandingPage() {
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Your questions answered</h2>
 
+          <p className="mt-3 text-[15px] text-gray-600">
+            <Link href="/owners/help" className="font-medium text-[#003580] hover:underline">
+              Browse the full Partner FAQ
+            </Link>{' '}
+            for listings, payouts, promotions, and Partner Hub help.
+          </p>
+
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-x-14">
             {FAQ.map(item => (
               <FaqItem key={item.q} q={item.q} a={item.a} />

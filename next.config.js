@@ -79,6 +79,9 @@ const nextConfig = {
     })).concat([
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/terms-of-service', destination: '/terms', permanent: true },
+      { source: '/help', destination: '/faq', permanent: true },
+      { source: '/help-center', destination: '/faq', permanent: true },
+      { source: '/partner-help', destination: '/owners/help', permanent: true },
     ])
   },
   async headers() {
