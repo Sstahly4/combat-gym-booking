@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface OwnerNotificationRow {
   id: string
@@ -57,7 +58,7 @@ const TYPE_DOT: Record<OwnerNotificationRow['type'], string> = {
   password_policy_update: 'bg-rose-500',
 }
 
-export function NotificationBell() {
+export function NotificationBell({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<OwnerNotificationRow[]>([])
   const [unread, setUnread] = useState(0)
@@ -137,12 +138,22 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className={cn(
+          'relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2',
+          theme === 'light'
+            ? 'text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-300'
+            : 'text-white/90 hover:bg-white/10 focus-visible:ring-white/40',
+        )}
         aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
       >
         <Bell className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white tabular-nums shadow-sm ring-2 ring-[#003580]">
+          <span
+            className={cn(
+              'absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white tabular-nums shadow-sm ring-2',
+              theme === 'light' ? 'ring-white' : 'ring-[#003580]',
+            )}
+          >
             {unread > 9 ? '9+' : unread}
           </span>
         )}

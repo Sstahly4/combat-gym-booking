@@ -1197,21 +1197,19 @@ function EditGymForm() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-full bg-white pb-24">
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-6">
-          <div className="mb-6 h-4 w-40 animate-pulse rounded bg-gray-100" />
-          <div className="mb-2 h-8 w-56 animate-pulse rounded bg-gray-100" />
-          <div className="mb-8 h-4 w-72 animate-pulse rounded bg-gray-100" />
-          <div className="grid gap-6 md:grid-cols-[220px,1fr] lg:grid-cols-[240px,1fr]">
-            <div className="hidden space-y-2 md:block">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded-lg bg-gray-100" />
-              ))}
-            </div>
-            <div className="space-y-5">
-              <div className="h-64 animate-pulse rounded-xl border border-gray-200/90 bg-gray-50" />
-              <div className="h-48 animate-pulse rounded-xl border border-gray-200/90 bg-gray-50" />
-            </div>
+      <div className="flex h-full min-h-0 flex-1 bg-white">
+        <div className="hidden w-56 shrink-0 border-r border-gray-200/80 md:block">
+          <div className="space-y-1 p-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100" />
+            ))}
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-5 sm:px-8 sm:py-6">
+          <div className="mx-auto max-w-2xl space-y-5">
+            <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />
+            <div className="h-64 animate-pulse rounded-lg bg-gray-100" />
+            <div className="h-48 animate-pulse rounded-lg bg-gray-100" />
           </div>
         </div>
       </div>

@@ -22,6 +22,7 @@ import { AdminHeaderSearch } from '@/components/admin/admin-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
 import { AdminNotificationBell } from '@/components/admin/admin-notification-bell'
 import { isManageGymOnboardingNavLocked } from '@/lib/manage/manage-onboarding-nav-lock'
+import { partnerHubUsesUnifiedHeader } from '@/lib/manage/manage-partner-nav'
 import { useOwnerOnboardingStatus } from '@/lib/hooks/use-owner-onboarding-status'
 import { getFlagUrl, FLAG_MENU_DISPLAY_PX } from '@/lib/utils/flag-url'
 import { useIsReviewCheckoutChromeHidden } from '@/lib/contexts/review-checkout-chrome-context'
@@ -225,6 +226,10 @@ export function Navbar() {
     /^\/bookings\/[^/]+\/payment/.test(pathname ?? '')
 
   if (isCheckoutStep || reviewChromeHidden) {
+    return null
+  }
+
+  if (partnerHubUsesUnifiedHeader(pathname ?? '')) {
     return null
   }
 

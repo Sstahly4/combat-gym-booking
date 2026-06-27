@@ -13,12 +13,14 @@ import {
   Users,
   HelpCircle,
   Package,
+  BedDouble,
   CheckCircle2,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
+import { withManageGymId } from '@/lib/manage/manage-partner-nav'
 
 const SIDEBAR_COLLAPSED_KEY = 'cs:gym-edit-sidebar-collapsed'
 
@@ -47,6 +49,16 @@ export const GYM_EDIT_SECTIONS: SidebarItem[] = [
   { id: 'trainers', label: 'Trainers', description: 'Coaches and staff profiles', icon: Users },
   { id: 'faq', label: 'FAQ', description: 'Common guest questions', icon: HelpCircle },
   { id: 'packages', label: 'Packages', description: 'Training offers and pricing', icon: Package, required: true },
+]
+
+/** Linked listing pages outside the section editor (same sidebar chrome). */
+export const GYM_EDIT_SIDEBAR_LINKS: {
+  id: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  path: string
+}[] = [
+  { id: 'accommodation', label: 'Accommodation', icon: BedDouble, path: '/manage/accommodation' },
 ]
 
 export const GYM_EDIT_SECTION_IDS = new Set(GYM_EDIT_SECTIONS.map((s) => s.id))
@@ -107,6 +119,15 @@ export function GymEditSectionNav({
   collapsed,
   onCollapsedChange,
 }: GymEditSidebarProps) {
+  const pathname = usePathname() ?? ''
+
+  const linkItemClass = (isActive: boolean) =>
+    cn(
+      'group relative flex items-center rounded-lg text-[15px] font-medium transition-colors',
+      collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
+      isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+    )
+
   return (
     <nav
       aria-label="Listing sections"
@@ -128,13 +149,7 @@ export function GymEditSectionNav({
                 <Link
                   href={href}
                   title={collapsed ? section.label : undefined}
-                  className={cn(
-                    'group relative flex items-center rounded-lg text-[15px] font-medium transition-colors',
-                    collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
-                    isActive
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                  )}
+                  className={linkItemClass(isActive)}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   {isActive ? (
@@ -161,6 +176,44 @@ export function GymEditSectionNav({
                   {!collapsed && sectionData.completed ? (
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
                   ) : null}
+                </Link>
+              </li>
+            )
+          })}
+          {GYM_EDIT_SIDEBAR_LINKS.map((link) => {
+            const Icon = link.icon
+            const href = withManageGymId(link.path, gymId)
+            const isActive = pathname === link.path || pathname.startsWith(`${link.path}/`)
+
+            return (
+              <li key={link.id}>
+                <Link
+                  href={href}
+                  title={collapsed ? link.label : undefined}
+                  className={linkItemClass(isActive)}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {isActive ? (
+                    <span
+                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
+                      aria-hidden
+                    />
+                  ) : null}
+                  <Icon
+                    className={cn(
+                      'h-[1.125rem] w-[1.125rem] shrink-0',
+                      isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700',
+                    )}
+                    aria-hidden
+                  />
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate transition-all duration-200 ease-in-out motion-reduce:transition-none',
+                      collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100',
+                    )}
+                  >
+                    {link.label}
+                  </span>
                 </Link>
               </li>
             )
@@ -205,15 +258,24 @@ export function GymEditSectionSelect({
 }) {
   const pathname = usePathname() ?? '/manage/gym/edit'
   const searchParams = useSearchParams()
+  const externalActive = GYM_EDIT_SIDEBAR_LINKS.find(
+    (link) => pathname === link.path || pathname.startsWith(`${link.path}/`),
+  )
+  const selectValue = externalActive?.id ?? activeSection
 
   return (
     <select
       id="gym-edit-mobile-section"
-      value={activeSection}
+      value={selectValue}
       className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[15px] text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/25"
       aria-label="Choose a listing section"
       onChange={(event) => {
         const next = event.target.value
+        const external = GYM_EDIT_SIDEBAR_LINKS.find((link) => link.id === next)
+        if (external) {
+          window.location.assign(withManageGymId(external.path, gymId))
+          return
+        }
         const params = new URLSearchParams(searchParams?.toString() ?? '')
         params.set('id', gymId)
         params.set('section', next)
@@ -225,6 +287,11 @@ export function GymEditSectionSelect({
       {GYM_EDIT_SECTIONS.map((section) => (
         <option key={section.id} value={section.id}>
           {section.label}
+        </option>
+      ))}
+      {GYM_EDIT_SIDEBAR_LINKS.map((link) => (
+        <option key={link.id} value={link.id}>
+          {link.label}
         </option>
       ))}
     </select>

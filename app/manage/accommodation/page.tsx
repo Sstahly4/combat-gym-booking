@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { AccommodationManager } from '@/components/manage/accommodation-manager'
+import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { createClient } from '@/lib/supabase/client'
 
 type GymCurrencyRow = { currency: string | null }
@@ -47,45 +48,54 @@ export default function ManageAccommodationPage() {
     }
   }, [activeGymId, gymLoading])
 
-  const crumbs = useMemo(
-    () => [
-      { label: 'Home', href: '/manage' },
-      { label: 'Accommodation' },
-    ],
-    []
-  )
+  if (gymLoading || loading) {
+    return (
+      <GymEditLayout
+        gymId={activeGymId ?? ''}
+        activeSection="basic"
+        title="Accommodation"
+        sections={{}}
+        saving={false}
+        hideSaveBar
+      >
+        <div className="space-y-4">
+          <div className="h-4 w-72 animate-pulse rounded bg-gray-100" />
+          <div className="h-40 w-full animate-pulse rounded-lg bg-gray-100" />
+        </div>
+      </GymEditLayout>
+    )
+  }
+
+  if (error || !activeGymId) {
+    return (
+      <GymEditLayout
+        gymId={activeGymId ?? ''}
+        activeSection="basic"
+        title="Accommodation"
+        sections={{}}
+        saving={false}
+        hideSaveBar
+      >
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          {error || 'Missing gym context.'}
+        </div>
+      </GymEditLayout>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
-              Accommodation
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Create room types separately, then link them to packages.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 sm:mt-8">
-          {gymLoading || loading ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="h-4 w-40 animate-pulse rounded bg-gray-100" />
-              <div className="mt-3 h-3 w-72 animate-pulse rounded bg-gray-100" />
-              <div className="mt-6 h-40 w-full animate-pulse rounded bg-gray-50" />
-            </div>
-          ) : error || !activeGymId ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-              {error || 'Missing gym context.'}
-            </div>
-          ) : (
-            <AccommodationManager gymId={activeGymId} currency={currency} hideHeader />
-          )}
-        </div>
-      </div>
-    </div>
+    <GymEditLayout
+      gymId={activeGymId}
+      activeSection="basic"
+      title="Accommodation"
+      sections={{}}
+      saving={false}
+      hideSaveBar
+    >
+      <p className="text-sm text-gray-500">
+        Create room types here, then link them to training + stay or all-inclusive packages.
+      </p>
+      <AccommodationManager gymId={activeGymId} currency={currency} hideHeader />
+    </GymEditLayout>
   )
 }
-

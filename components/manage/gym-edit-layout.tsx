@@ -16,31 +16,35 @@ export function GymEditLayout({
   gymId,
   returnTo,
   activeSection,
+  title,
   sections,
   saving,
   saveError,
   onSave,
   onCancel,
+  hideSaveBar = false,
   children,
 }: {
   gymId: string
   returnTo?: string | null
   activeSection: string
+  title?: string
   sections: GymEditSectionsStatus
   saving: boolean
   saveError?: string | null
-  onSave: () => void
-  onCancel: () => void
+  onSave?: () => void
+  onCancel?: () => void
+  hideSaveBar?: boolean
   children: ReactNode
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useGymEditSidebarCollapsed()
   const sectionMeta = gymEditSectionMeta(activeSection)
+  const pageTitle = title ?? sectionMeta.label
 
   return (
-    <div className="min-h-full bg-neutral-50 pb-24">
-      <div className="flex min-h-[calc(100svh-8.25rem)]">
-        {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-[calc(100svh-8.25rem)] shrink-0 self-start md:block">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
+      <div className="flex min-h-0 flex-1">
+        <aside className="hidden h-full shrink-0 md:block">
           <GymEditSectionNav
             gymId={gymId}
             returnTo={returnTo}
@@ -51,18 +55,23 @@ export function GymEditLayout({
           />
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-gray-200/80 bg-white px-4 py-3 md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="shrink-0 border-b border-gray-200/80 bg-white px-4 py-3 md:hidden">
             <label htmlFor="gym-edit-mobile-section" className="sr-only">
               Section
             </label>
             <GymEditSectionSelect gymId={gymId} returnTo={returnTo} activeSection={activeSection} />
           </div>
 
-          <main className="flex-1 px-4 py-6 sm:px-8 sm:py-10">
+          <main
+            className={cn(
+              'min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-6',
+              hideSaveBar ? 'pb-8' : 'pb-24',
+            )}
+          >
             <div className="mx-auto w-full max-w-2xl">
-              <h1 className="mb-6 text-2xl font-semibold tracking-tight text-gray-900 sm:mb-8 sm:text-[1.75rem]">
-                {sectionMeta.label}
+              <h1 className="mb-5 text-2xl font-semibold tracking-tight text-gray-900 sm:mb-6 sm:text-[1.75rem]">
+                {pageTitle}
               </h1>
               {children}
             </div>
@@ -70,16 +79,17 @@ export function GymEditLayout({
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {hideSaveBar ? null : (
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white">
         <div className="flex">
           <div
             className={cn(
-              'hidden shrink-0 md:block',
+              'hidden shrink-0 bg-white md:block',
               sidebarCollapsed ? 'w-[3.25rem]' : 'w-56',
             )}
             aria-hidden
           />
-          <div className="flex min-w-0 flex-1 px-4 py-3 sm:px-8">
+          <div className="flex min-w-0 flex-1 bg-white px-4 py-3 sm:px-8">
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               {saveError ? (
                 <p className="text-sm text-[#c13515] sm:min-w-0 sm:flex-1" role="alert">
@@ -111,6 +121,7 @@ export function GymEditLayout({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
