@@ -230,5 +230,13 @@ export async function GET(request: NextRequest, { params }: Params) {
     .eq('id', token.id)
     .is('first_opened_at', null)
 
+  if (openedBy === 'owner') {
+    await admin
+      .from('gym_claim_tokens')
+      .update({ owner_first_opened_at: nowIso })
+      .eq('id', token.id)
+      .is('owner_first_opened_at', null)
+  }
+
   return redirectResponse
 }

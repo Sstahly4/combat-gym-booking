@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import type { ClaimLinkAnalyticsPayload } from '@/lib/admin/fetch-claim-link-analytics'
 import {
-  claimLinkStageShortLabel,
-  claimLinkStageTableClass,
-  type ClaimLinkStage,
-} from '@/lib/admin/claim-link-stage'
+  platformStageShortLabel,
+  platformStageTableClass,
+  type PlatformStage,
+} from '@/lib/admin/platform-stage'
 import { cn } from '@/lib/utils'
 
 function formatDateTime(iso: string | null): string {
@@ -22,12 +22,6 @@ function formatDateTime(iso: string | null): string {
 
 function yesNo(value: boolean): string {
   return value ? 'Yes' : 'No'
-}
-
-function openedByLabel(openedBy: 'admin' | 'owner' | null): string {
-  if (openedBy === 'admin') return 'Admin account'
-  if (openedBy === 'owner') return 'Owner / logged out'
-  return 'Unknown'
 }
 
 function HeroStat({
@@ -57,15 +51,15 @@ function FunnelStat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function StatusBadge({ stage }: { stage: ClaimLinkStage }) {
+function StatusBadge({ stage }: { stage: PlatformStage }) {
   return (
     <span
       className={cn(
         'inline-block whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium leading-none',
-        claimLinkStageTableClass(stage),
+        platformStageTableClass(stage),
       )}
     >
-      {claimLinkStageShortLabel(stage)}
+      {platformStageShortLabel(stage)}
     </span>
   )
 }
@@ -82,7 +76,9 @@ export function AnalyticsClaimLinks({
 
   const clickRate = summary?.clickRate ?? 0
   const claimRate = summary?.claimRate ?? 0
+  const onboardedRate = summary?.onboardedRate ?? 0
   const ownerClicks = summary?.ownerClicks ?? 0
+  const claimed = (summary?.claimed ?? 0) + (summary?.onboarded ?? 0)
   const onboarded = summary?.onboarded ?? 0
   const total = summary?.total ?? 0
   const adminClicks = summary?.adminClicks ?? 0
@@ -100,11 +96,11 @@ export function AnalyticsClaimLinks({
         <div>
           <h2 className="text-sm font-semibold text-stone-900">Claim link roster</h2>
           <p className="mt-0.5 max-w-2xl text-xs text-stone-500">
-            <strong className="font-medium text-stone-600">Links issued</strong> is every claim link
-            ever created. <strong className="font-medium text-stone-600">Click rate</strong> is owner
-            opens (admin test clicks excluded).{' '}
-            <strong className="font-medium text-stone-600">Claim rate</strong> is fully onboarded
-            (password + Stripe).
+            Event-driven funnel: owner click uses <strong className="font-medium text-stone-600">owner_first_opened_at</strong>{' '}
+            only (admin smoke-tests excluded).{' '}
+            <strong className="font-medium text-stone-600">Claim rate</strong> = password set.{' '}
+            <strong className="font-medium text-stone-600">Onboarded rate</strong> = Stripe connected.
+            Rates exclude expired/revoked tokens.
           </p>
         </div>
         <Link
@@ -116,11 +112,11 @@ export function AnalyticsClaimLinks({
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <HeroStat
           label="Links issued"
           value={loading ? '—' : String(total)}
-          hint="Total claim links generated"
+          hint="Total claim tokens created"
         />
         <HeroStat
           label="Click rate"
@@ -128,13 +124,18 @@ export function AnalyticsClaimLinks({
           hint={
             loading
               ? undefined
-              : `${ownerClicks} of ${total} opened by owner${adminClicks ? ` · ${adminClicks} admin` : ''}`
+              : `${ownerClicks} owner opens${adminClicks ? ` · ${adminClicks} admin tests` : ''}`
           }
         />
         <HeroStat
           label="Claim rate"
           value={loading ? '—' : `${claimRate.toFixed(1)}%`}
-          hint={loading ? undefined : `${onboarded} of ${total} fully onboarded`}
+          hint={loading ? undefined : `${claimed} passwords set`}
+        />
+        <HeroStat
+          label="Onboarded rate"
+          value={loading ? '—' : `${onboardedRate.toFixed(1)}%`}
+          hint={loading ? undefined : `${onboarded} with Stripe connected`}
         />
       </div>
 
@@ -142,16 +143,11 @@ export function AnalyticsClaimLinks({
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-stone-400">
           Funnel breakdown
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <FunnelStat label="Not clicked" value={loading ? '—' : String(summary?.notClicked ?? 0)} />
-          <FunnelStat
-            label="Incomplete"
-            value={loading ? '—' : String(summary?.clickedNotComplete ?? 0)}
-          />
-          <FunnelStat
-            label="Password set"
-            value={loading ? '—' : String(summary?.passwordAdded ?? 0)}
-          />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+          <FunnelStat label="Link ready" value={loading ? '—' : String(summary?.linkReady ?? 0)} />
+          <FunnelStat label="Link sent" value={loading ? '—' : String(summary?.linkSent ?? 0)} />
+          <FunnelStat label="Incomplete" value={loading ? '—' : String(summary?.clicked ?? 0)} />
+          <FunnelStat label="Claimed" value={loading ? '—' : String(summary?.claimed ?? 0)} />
           <FunnelStat label="Onboarded" value={loading ? '—' : String(onboarded)} />
           <FunnelStat label="Expired" value={loading ? '—' : String(summary?.expired ?? 0)} />
           <FunnelStat label="Revoked" value={loading ? '—' : String(summary?.revoked ?? 0)} />
@@ -167,14 +163,14 @@ export function AnalyticsClaimLinks({
               No claim links issued yet.
             </p>
           ) : (
-            <table className="w-full min-w-[980px] text-left text-sm">
+            <table className="w-full min-w-[1020px] text-left text-sm">
               <thead className="sticky top-0 z-10 bg-white text-[11px] font-semibold uppercase tracking-wider text-stone-500 shadow-[0_1px_0_0_rgb(245_245_244)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold sm:px-5">Gym</th>
                   <th className="px-4 py-3 font-semibold">Sent to</th>
                   <th className="px-4 py-3 font-semibold">Issued</th>
-                  <th className="px-4 py-3 font-semibold">Opened</th>
-                  <th className="px-4 py-3 font-semibold">Opened by</th>
+                  <th className="px-4 py-3 font-semibold">Owner opened</th>
+                  <th className="px-4 py-3 font-semibold">Outreach sent</th>
                   <th className="px-4 py-3 font-semibold">Password</th>
                   <th className="px-4 py-3 font-semibold">Stripe</th>
                   <th className="w-[7.5rem] px-4 py-3 font-semibold sm:px-5">Status</th>
@@ -213,10 +209,13 @@ export function AnalyticsClaimLinks({
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-xs text-stone-600">
-                      {formatDateTime(row.opened_at)}
+                      {formatDateTime(row.owner_opened_at)}
+                      {row.first_opened_at && row.first_opened_by === 'admin' && !row.owner_opened_at ? (
+                        <p className="mt-0.5 text-[10px] text-stone-400">Admin test only</p>
+                      ) : null}
                     </td>
-                    <td className="px-4 py-3 text-xs text-stone-700">
-                      {openedByLabel(row.opened_by)}
+                    <td className="px-4 py-3 text-xs text-stone-600">
+                      {formatDateTime(row.outreach_sent_at)}
                     </td>
                     <td className="px-4 py-3 text-xs text-stone-700">{yesNo(row.password_set)}</td>
                     <td className="px-4 py-3 text-xs text-stone-700">

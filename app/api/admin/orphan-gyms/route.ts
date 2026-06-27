@@ -21,11 +21,11 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
-  claimLinkStageLabel,
+  platformStageLabel,
   isStripeConnected,
-  resolveClaimLinkStage,
-  type ClaimLinkStage,
-} from '@/lib/admin/claim-link-stage'
+  resolvePlatformStage,
+  type PlatformStage,
+} from '@/lib/admin/platform-stage'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -42,7 +42,7 @@ interface OrphanGymRow {
   placeholder_email: string | null
   claim_password_set: boolean
   stripe_connected: boolean
-  onboarding_stage: ClaimLinkStage
+  onboarding_stage: PlatformStage
   onboarding_stage_label: string
   is_pre_listed: boolean
   first_opened_at: string | null
@@ -109,7 +109,7 @@ export async function GET() {
   const { data: tokens } = allGymIds.length
     ? await admin
         .from('gym_claim_tokens')
-        .select('gym_id, expires_at, claimed_at, revoked_at, created_at, first_opened_at')
+        .select('gym_id, expires_at, claimed_at, revoked_at, created_at, first_opened_at, owner_first_opened_at, outreach_sent_at')
         .in('gym_id', allGymIds)
         .order('created_at', { ascending: false })
     : { data: [] as any[] }
@@ -130,15 +130,17 @@ export async function GET() {
     const passwordSet = prof?.claim_password_set ?? false
     const stripeConnected = isStripeConnected(g)
     const onboardingStage = tok
-      ? resolveClaimLinkStage({
-          openedAt: (tok.first_opened_at as string | null) ?? null,
+      ? resolvePlatformStage({
+          hasToken: true,
+          ownerOpenedAt: (tok.owner_first_opened_at as string | null) ?? null,
+          outreachSentAt: (tok.outreach_sent_at as string | null) ?? null,
           passwordSet,
           stripeConnected,
           revokedAt: tok.revoked_at ?? null,
           expiresAt: tok.expires_at ?? null,
           nowMs: now,
         })
-      : 'link_sent'
+      : 'no_link'
 
     return {
       gym_id: g.id,
@@ -154,7 +156,7 @@ export async function GET() {
       claim_password_set: passwordSet,
       stripe_connected: stripeConnected,
       onboarding_stage: onboardingStage,
-      onboarding_stage_label: claimLinkStageLabel(onboardingStage),
+      onboarding_stage_label: platformStageLabel(onboardingStage),
       is_pre_listed: Boolean(g.is_pre_listed),
       first_opened_at: (tok?.first_opened_at as string | null) ?? null,
       latest_token: tok

@@ -421,7 +421,7 @@ function OrphanCard({
               ? ` · password set ${new Date(t.claimed_at).toLocaleString()}`
               : ''}
             {gym.first_opened_at && !gym.claim_password_set
-              ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}`
+              ? ` · admin tested ${new Date(gym.first_opened_at).toLocaleString()}`
               : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}
           </p>
