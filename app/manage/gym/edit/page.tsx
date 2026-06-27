@@ -10,14 +10,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { GymDescriptionField } from '@/components/manage/gym-description-field'
 import { Select } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
 import { PackageCreateShell, PackageEditShell } from '@/components/manage/package-edit-shell'
-import { GymEditSectionTabs } from '@/components/manage/gym-edit-sidebar'
+import { GymEditLayout } from '@/components/manage/gym-edit-layout'
+import { GymEditSection } from '@/components/manage/gym-edit-section'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { ArrowLeft, Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import {
@@ -179,6 +179,7 @@ function EditGymForm() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('basic')
   const [packageEditorMode, setPackageEditorMode] = useState<PackageEditorMode>(null)
   const [packagesListRefreshKey, setPackagesListRefreshKey] = useState(0)
@@ -1077,13 +1078,13 @@ function EditGymForm() {
     const formElement =
       e?.currentTarget || (document.getElementById('edit-gym-form') as HTMLFormElement | null)
     if (!formElement) {
-      setErrorMsg('Form not found')
+      setSaveError('Form not found')
       return
     }
 
     saveInProgressRef.current = true
     setSaving(true)
-    setErrorMsg(null)
+    setSaveError(null)
     const supabase = createClient()
     const formData = new FormData(formElement)
 
@@ -1221,7 +1222,7 @@ function EditGymForm() {
       router.push(afterEditPath)
     } catch (err: any) {
       console.error('Error updating gym:', err)
-      setErrorMsg(`Update failed: ${err.message}`)
+      setSaveError(`Update failed: ${err.message}`)
     } finally {
       saveInProgressRef.current = false
       setSaving(false)
@@ -1230,17 +1231,20 @@ function EditGymForm() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-white py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="h-10 w-48 bg-gray-200 rounded animate-pulse mb-6" />
-          <div className="border border-gray-300 rounded-lg p-8 bg-white space-y-6">
-            <div className="space-y-4">
-              <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-              <div className="h-32 w-full bg-gray-200 rounded animate-pulse" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-                <div className="h-11 w-full bg-gray-200 rounded animate-pulse" />
-              </div>
+      <div className="min-h-full bg-white pb-24">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-6">
+          <div className="mb-6 h-4 w-40 animate-pulse rounded bg-gray-100" />
+          <div className="mb-2 h-8 w-56 animate-pulse rounded bg-gray-100" />
+          <div className="mb-8 h-4 w-72 animate-pulse rounded bg-gray-100" />
+          <div className="grid gap-6 md:grid-cols-[220px,1fr] lg:grid-cols-[240px,1fr]">
+            <div className="hidden space-y-2 md:block">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-gray-100" />
+              ))}
+            </div>
+            <div className="space-y-5">
+              <div className="h-64 animate-pulse rounded-xl border border-gray-200/90 bg-gray-50" />
+              <div className="h-48 animate-pulse rounded-xl border border-gray-200/90 bg-gray-50" />
             </div>
           </div>
         </div>
@@ -1323,41 +1327,24 @@ function EditGymForm() {
   }
 
   return (
-    <div className="min-h-full bg-gray-50">
-      {/* Mobile header */}
-      <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Link href={afterEditPath} className="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            <span className="text-sm font-medium">Back</span>
-          </Link>
-          <h1 className="text-lg font-bold text-gray-900 truncate">Edit gym</h1>
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:py-8 md:pb-10">
-        <div className="hidden md:block mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit gym profile</h1>
-          <p className="text-gray-600 text-sm mt-1">Update your listing — changes sync to your preview and public page.</p>
-        </div>
-
-        {/* Section chips: tablet+ only — mobile is one scroll; avoids crowding + duplicate "steps" UX */}
-        <div className="hidden md:block">
-          <GymEditSectionTabs
-            activeSection={activeSection}
-            onSectionChange={scrollToSection}
-            sections={sectionStatus}
-          />
-        </div>
-
-        <form id="edit-gym-form" onSubmit={handleSave} className="space-y-6">
-          {/* Basic Information */}
-          <Card id="section-basic" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Tell us about your gym</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+    <GymEditLayout
+      hubCrumb={hubCrumb}
+      gymName={gymName || gym.name}
+      gymId={gym.id}
+      activeSection={activeSection}
+      onSectionChange={scrollToSection}
+      sections={sectionStatus}
+      saving={saving}
+      saveError={saveError}
+      onSave={() => void handleSave()}
+      onCancel={() => router.push(afterEditPath)}
+    >
+        <form id="edit-gym-form" onSubmit={handleSave} className="space-y-5">
+          <GymEditSection
+            id="section-basic"
+            title="Title & description"
+            description="Your gym name, tagline, and the story guests see on your listing."
+          >
               <div className="space-y-2">
                 <Label htmlFor="name">Gym Name <span className="text-red-500">*</span></Label>
                 <Input 
@@ -1455,16 +1442,13 @@ function EditGymForm() {
                   <input type="hidden" name="currency" value={selectedCurrencyCode} required />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* Location & Verification */}
-          <Card id="section-location" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Location & Verification</CardTitle>
-              <CardDescription>Help customers find and verify your gym</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <GymEditSection
+            id="section-location"
+            title="Location & verification"
+            description="Help guests find your gym and complete verification."
+          >
               <div className="space-y-2">
                 <GymLocationAddressSearch
                   disabled={saving}
@@ -1643,7 +1627,7 @@ function EditGymForm() {
 
               <div className="pt-4 border-t space-y-4">
                 {profile?.role !== 'admin' && (
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 p-3.5">
                     <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-blue-800">
                       <p className="font-medium mb-1">Verification Links Required</p>
@@ -1698,23 +1682,21 @@ function EditGymForm() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* Disciplines & Amenities */}
-          <Card id="section-disciplines" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Disciplines & Amenities</CardTitle>
-              <CardDescription>What do you offer?</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <GymEditSection
+            id="section-disciplines"
+            title="Disciplines & amenities"
+            description="What you teach and what your facility offers."
+            contentClassName="space-y-6"
+          >
               <div className="space-y-3">
                 <Label>Disciplines Offered <span className="text-red-500">*</span></Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {DISCIPLINES.map(d => (
                     <label 
                       key={d} 
-                      className="flex items-center space-x-2 cursor-pointer p-3 rounded-lg border border-gray-200 hover:border-[#003580] hover:bg-blue-50 transition-colors"
+                      className="flex cursor-pointer items-center space-x-2 rounded-xl border border-gray-200/90 p-3 transition-colors hover:border-[#003580]/40 hover:bg-slate-50"
                     >
                       <input
                         type="checkbox"
@@ -1764,10 +1746,10 @@ function EditGymForm() {
                     .map(([key, value]) => (
                     <label 
                       key={key} 
-                      className={`flex items-start gap-2.5 cursor-pointer p-2.5 rounded-md border transition-colors ${
+                      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-colors ${
                         value 
-                          ? 'border-[#003580] bg-blue-50 shadow-sm' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? 'border-[#003580]/30 bg-[#003580]/[0.04] shadow-sm' 
+                          : 'border-gray-200/90 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <input
@@ -1783,28 +1765,24 @@ function EditGymForm() {
                   ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* Images */}
-          <Card id="section-images" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Images</CardTitle>
-              <CardDescription>
-                Upload up to 30 images. The first image is your cover photo.
-                {imageDragEnabled
-                  ? ' Drag to reorder — order is saved when you save the gym.'
-                  : ' On desktop you can drag to reorder.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <GymEditSection
+            id="section-images"
+            title="Photos"
+            description={
+              imageDragEnabled
+                ? 'Upload up to 30 images. The first is your cover — drag to reorder, then save.'
+                : 'Upload up to 30 images. The first image is your cover photo.'
+            }
+          >
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-gray-600">
                     {galleryOrder.length}/30 photos
                   </p>
                   <label
-                    className={`inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors ${
+                    className={`inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 shadow-sm transition-colors ${
                       galleryOrder.length >= 30
                         ? 'cursor-not-allowed opacity-50'
                         : 'cursor-pointer hover:bg-gray-50'
@@ -1925,16 +1903,14 @@ function EditGymForm() {
                   Photos upload automatically in the background. You can save and leave — progress shows in the bottom-right toast.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* Additional Details - Optional but helpful */}
-          <Card id="section-schedule" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Additional Details (Optional)</CardTitle>
-              <CardDescription>More information helps customers make better decisions</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <GymEditSection
+            id="section-schedule"
+            title="Schedule & hours"
+            description="Opening hours and class timetable — optional but helps guests plan."
+            contentClassName="space-y-6"
+          >
               {/* Opening Hours */}
               <div className="space-y-3">
                 <div>
@@ -2114,16 +2090,13 @@ function EditGymForm() {
                 )}
               </div>
 
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* Trainers */}
-          <Card id="section-trainers" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Trainers</CardTitle>
-              <CardDescription>List your trainers and their expertise (optional)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <GymEditSection
+            id="section-trainers"
+            title="Trainers"
+            description="Introduce your coaches — optional but builds trust with guests."
+          >
               <div className="flex items-center justify-between">
                 <Label>Trainers (optional)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addTrainer}>
@@ -2136,7 +2109,7 @@ function EditGymForm() {
               {trainers.map((trainer) => {
                 const photo = trainerPhotoDisplay(trainer)
                 return (
-                <div key={trainer.clientKey} className="p-4 bg-gray-50 rounded-lg max-w-4xl space-y-3">
+                <div key={trainer.clientKey} className="max-w-4xl space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4">
                   <div className="grid md:grid-cols-3 gap-3">
                     <Input
                       placeholder="Trainer name"
@@ -2230,16 +2203,13 @@ function EditGymForm() {
                   </div>
                 </div>
               )})}
-            </CardContent>
-          </Card>
+          </GymEditSection>
 
-          {/* FAQ */}
-          <Card id="section-faq" className="scroll-mt-24 md:scroll-mt-6">
-            <CardHeader>
-              <CardTitle>Frequently Asked Questions</CardTitle>
-              <CardDescription>Add common questions and answers (optional)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <GymEditSection
+            id="section-faq"
+            title="Frequently asked questions"
+            description="Answer common questions before guests need to message you."
+          >
               <div className="flex items-center justify-between">
                 <Label>Frequently Asked Questions (optional)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addFaq}>
@@ -2247,7 +2217,7 @@ function EditGymForm() {
                 </Button>
               </div>
                 {faq.map((item, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg space-y-3 max-w-4xl">
+                  <div key={index} className="max-w-4xl space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4">
                     <Input
                       placeholder="Question"
                       value={item.question}
@@ -2273,60 +2243,32 @@ function EditGymForm() {
                     </div>
                   </div>
                 ))}
-            </CardContent>
-          </Card>
-            </form>
+          </GymEditSection>
+        </form>
 
-            {/* Packages Section - Uses PackageManager with inline variant management */}
-            {gym && gym.id && (
-              <Card id="section-packages" className="mt-6 scroll-mt-24 md:scroll-mt-6">
-                <CardHeader>
-                  <CardTitle>Packages & Offers</CardTitle>
-                  <CardDescription>
-                    Create and manage your training packages. Add room variants directly to packages for accommodation options.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PackagesSection
-                    gymId={gym.id}
-                    currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
-                    isAdmin={profile?.role === 'admin'}
-                    listRefreshKey={packagesListRefreshKey}
-                    onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
-                    onCreatePackage={() => openPackageEditor({ kind: 'create' })}
-                  />
-                </CardContent>
-              </Card>
-            )}
+        {gym && gym.id ? (
+          <GymEditSection
+            id="section-packages"
+            title="Packages & offers"
+            description="Create training packages and room variants for train-and-stay listings."
+            contentClassName="space-y-0"
+          >
+            <PackagesSection
+              gymId={gym.id}
+              currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
+              isAdmin={profile?.role === 'admin'}
+              listRefreshKey={packagesListRefreshKey}
+              onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
+              onCreatePackage={() => openPackageEditor({ kind: 'create' })}
+            />
+          </GymEditSection>
+        ) : null}
 
-            {/* Action Buttons - Outside form but can trigger form submission */}
-            <div className="mt-6 flex gap-4 border-t pt-6 pb-6 md:pb-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(afterEditPath)}
-                className="flex-1 md:flex-initial"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="button"
-                onClick={async () => {
-                  // Call handleSave directly without event
-                  await handleSave()
-                }}
-                disabled={saving}
-                className="flex-1 md:flex-initial bg-[#003580] hover:bg-[#003580]/90"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
+        {profile?.role === 'admin' && gym?.id && gym.name ? (
+          <AdminDeleteGymSection gymId={gym.id} gymName={gym.name} />
+        ) : null}
 
-            {profile?.role === 'admin' && gym?.id && gym.name ? (
-              <AdminDeleteGymSection gymId={gym.id} gymName={gym.name} />
-            ) : null}
-
-            <Dialog
+        <Dialog
               open={focusModal.open}
               onOpenChange={(open) => {
                 if (!open) {
@@ -2426,8 +2368,7 @@ function EditGymForm() {
                 )}
               </DialogContent>
             </Dialog>
-      </main>
-    </div>
+    </GymEditLayout>
   )
 }
 
