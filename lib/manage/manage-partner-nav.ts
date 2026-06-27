@@ -171,5 +171,5 @@ export function partnerHubUsesUnifiedHeader(pathname: string): boolean {
 
 /** Unified partner header (sticky app chrome). */
 export const PARTNER_HUB_HEADER_HEIGHT_CLASS = 'h-20 shrink-0'
-export const PARTNER_HUB_SHELL_CLASS = 'flex h-svh flex-col overflow-hidden bg-white'
+export const PARTNER_HUB_SHELL_CLASS = 'flex h-svh flex-col bg-white'
 export const PARTNER_HUB_MAIN_CLASS = 'min-h-0 min-w-0 flex-1 overflow-x-hidden bg-white'

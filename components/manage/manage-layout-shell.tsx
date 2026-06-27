@@ -154,6 +154,7 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
         data-manage-main-scroll
         className={cn(
           PARTNER_HUB_MAIN_CLASS,
+          'relative z-0',
           isListingEditor ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
         )}
       >

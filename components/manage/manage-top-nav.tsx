@@ -145,7 +145,7 @@ function CenterMenuDropdown({
         <div
           role="menu"
           className={cn(
-            'absolute z-50 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10',
+            'absolute z-[110] w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10',
             size === 'desktop'
               ? 'left-1/2 top-[calc(100%+0.35rem)] -translate-x-1/2'
               : 'right-0 top-[calc(100%+0.35rem)]',
@@ -226,8 +226,8 @@ export function ManageTopNav({
         setMenuOpen(false)
       }
     }
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [menuOpen])
 
   useEffect(() => {
@@ -237,8 +237,8 @@ export function ManageTopNav({
         setAccountOpen(false)
       }
     }
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [accountOpen])
 
   useEffect(() => {
@@ -248,8 +248,8 @@ export function ManageTopNav({
         setHubMenuOpen(false)
       }
     }
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [hubMenuOpen])
 
   useEffect(() => {
@@ -325,7 +325,7 @@ export function ManageTopNav({
       {accountOpen ? (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(100vw-2rem,16rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-[110] w-[min(100vw-2rem,16rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
           <div className="border-b border-gray-100 px-4 py-2.5">
             <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
@@ -389,12 +389,11 @@ export function ManageTopNav({
       {hubMenuOpen ? (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-[110] w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
           {bookATripRow}
-          <div className="mx-4 my-2 h-px bg-gray-100" aria-hidden />
 
-          <div className="space-y-1 px-3 pb-2">
+          <div className="space-y-1 border-t border-gray-100 px-3 pb-2 pt-2">
             <ManageHeaderSearch />
           </div>
 
@@ -489,7 +488,7 @@ export function ManageTopNav({
     <>
       <header
         className={cn(
-          'sticky top-0 z-50 border-b border-gray-200 bg-white',
+          'sticky top-0 z-[100] border-b border-gray-200 bg-white',
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >
