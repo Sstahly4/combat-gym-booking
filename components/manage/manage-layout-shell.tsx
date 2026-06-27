@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useClaimRedirectHydration } from '@/lib/hooks/use-claim-redirect-hydration'
 import { ManageSidebar } from '@/components/manage/manage-sidebar'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
@@ -74,6 +75,7 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
+  const { blockingAuth } = useClaimRedirectHydration()
   const { gyms, activeGymId, setActiveGymId, loading } = useActiveGym()
 
   const active = gyms.find((g) => g.id === activeGymId) ?? gyms[0] ?? null
@@ -96,14 +98,14 @@ function ManageLayoutSidebarShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!pathname.startsWith('/manage')) return
-    if (authLoading) return
+    if (authLoading || blockingAuth) return
     if (!user) {
       const redirect = encodeURIComponent(pathname)
       router.replace(`/auth/signin?intent=owner&redirect=${redirect}`)
     }
-  }, [authLoading, user, pathname, router])
+  }, [authLoading, blockingAuth, user, pathname, router])
 
-  if (authLoading) {
+  if (authLoading || blockingAuth) {
     return (
       <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
         Loading…
@@ -153,18 +155,19 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
+  const { blockingAuth } = useClaimRedirectHydration()
 
   useEffect(() => {
     if (!pathname.startsWith('/manage')) return
-    if (authLoading) return
+    if (authLoading || blockingAuth) return
     if (!user) {
       const redirect = encodeURIComponent(pathname)
       router.replace(`/auth/signin?intent=owner&redirect=${redirect}`)
     }
-  }, [authLoading, user, pathname, router])
+  }, [authLoading, blockingAuth, user, pathname, router])
 
   if (shouldHideSidebar(pathname)) {
-    if (authLoading) {
+    if (authLoading || blockingAuth) {
       return (
         <div className="flex min-h-[60svh] items-center justify-center text-sm text-stone-500">
           Loading…

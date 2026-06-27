@@ -20,6 +20,8 @@ export type AuthContextValue = {
   loading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  /** Re-read Supabase session + profile from cookies (e.g. right after /claim redirect). */
+  revalidateSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -76,39 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 10000)
 
-    const runInitialSession = () => {
-      if (!mounted) return
-      supabase.auth
-        .getSession()
-        .then(({ data: { session } }) => {
-          if (!mounted) return
-          setUser(session?.user ?? null)
-          if (session?.user) {
-            void fetchProfile(session.user.id)
-          } else {
-            clearTimeout(timeoutId)
-            setLoading(false)
-          }
-        })
-        .catch((err) => {
-          console.error('Error getting session:', err)
-          if (mounted) {
-            clearTimeout(timeoutId)
-            setLoading(false)
-          }
-        })
-    }
-
-    const cancelDeferred =
-      typeof requestIdleCallback !== 'undefined'
-        ? (() => {
-            const id = requestIdleCallback(runInitialSession, { timeout: 1500 })
-            return () => cancelIdleCallback(id)
-          })()
-        : (() => {
-            const id = window.setTimeout(runInitialSession, 1)
-            return () => clearTimeout(id)
-          })()
+    // Read session immediately — deferring via requestIdleCallback caused owners
+    // landing from /claim/<token> to hit /manage before cookies hydrated, then
+    // get bounced to sign-in even though the claim session was valid.
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          void fetchProfile(session.user.id)
+        } else {
+          clearTimeout(timeoutId)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        console.error('Error getting session:', err)
+        if (mounted) {
+          clearTimeout(timeoutId)
+          setLoading(false)
+        }
+      })
 
     const {
       data: { subscription },
@@ -167,7 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false
       clearTimeout(timeoutId)
-      cancelDeferred()
       subscription.unsubscribe()
     }
   }, [])
@@ -191,6 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applySessionSnapshot])
 
+  const revalidateSession = useCallback(async () => {
+    await applySessionSnapshot({ reason: 'revalidate' })
+  }, [applySessionSnapshot])
+
   const refreshProfile = useCallback(async () => {
     const supabase = createClient()
     const {
@@ -212,8 +206,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, profile, loading, signOut, refreshProfile }),
-    [user, profile, loading, signOut, refreshProfile],
+    () => ({ user, profile, loading, signOut, refreshProfile, revalidateSession }),
+    [user, profile, loading, signOut, refreshProfile, revalidateSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase/client'
+import { isClaimSetupPending } from '@/lib/admin/claim-setup-pending'
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,7 +46,7 @@ export function AccountClaimPrompts() {
   const [claimSetupComplete, setClaimSetupComplete] = useState(false)
 
   const claim = profile as unknown as ClaimProfile | null
-  const needsPassword = !claimSetupComplete && (!!claim?.placeholder_account || claim?.claim_password_set === false)
+  const needsPassword = !claimSetupComplete && isClaimSetupPending(claim)
   const needsEmail =
     !claimSetupComplete &&
     !needsPassword &&

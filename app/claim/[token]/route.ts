@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hashClaimToken } from '@/lib/admin/gym-claim'
+import { isClaimSetupPending } from '@/lib/admin/claim-setup-pending'
 import { detectClaimLinkOpenerKind } from '@/lib/admin/detect-claim-link-opener'
 import {
   isClaimProduction,
@@ -126,6 +127,41 @@ export async function GET(request: NextRequest, { params }: Params) {
     return fail(request, 'used')
   }
 
+  const dest = new URL('/manage?claimed=1', request.url)
+
+  // Resume: owner already has a valid placeholder session (e.g. closed the tab
+  // before setting a password). Skip clearing cookies + verifyOtp so reopening
+  // the same claim link always lands back on the password modal.
+  if (isClaimSetupPending(ownerProfile)) {
+    const resumeResponse = NextResponse.redirect(dest)
+    const resumeClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              resumeResponse.cookies.set(name, value, options),
+            )
+          },
+        },
+      },
+    )
+    const {
+      data: { user: sessionUser },
+    } = await resumeClient.auth.getUser()
+    if (sessionUser?.id === gym.owner_id) {
+      console.info('[claim] resume existing placeholder session', {
+        gym_id: gym.id,
+        owner_id: gym.owner_id,
+      })
+      return resumeResponse
+    }
+  }
+
   const { data: ownerLookup, error: ownerErr } =
     await admin.auth.admin.getUserById(gym.owner_id)
   if (ownerErr || !ownerLookup?.user?.email) {
@@ -146,7 +182,6 @@ export async function GET(request: NextRequest, { params }: Params) {
   // `verifyOtp` Set-Cookie headers are applied to this same response. Using
   // `cookies()` from `next/headers` + a bare `NextResponse.redirect()` drops the
   // session cookies in App Router route handlers — users see /claim/invalid?reason=session_failed.
-  const dest = new URL('/manage?claimed=1', request.url)
   const redirectResponse = NextResponse.redirect(dest)
 
   // IMPORTANT: start with NO inbound cookies. If the visitor is already signed

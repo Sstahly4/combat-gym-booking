@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useClaimRedirectHydration } from '@/lib/hooks/use-claim-redirect-hydration'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -187,6 +188,7 @@ function defaultComparisonDayKey(): string {
 export default function ManagePage() {
   const router = useRouter()
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
+  const { blockingAuth } = useClaimRedirectHydration()
   const { selectedCurrency, convertPrice } = useCurrency()
   const { activeGymId } = useActiveGym()
   const [gyms, setGyms] = useState<GymWithImage[]>([])
@@ -302,7 +304,7 @@ export default function ManagePage() {
   }, [])
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || blockingAuth) return
     
     if (!user) {
       router.replace('/auth/signin')
@@ -358,7 +360,7 @@ export default function ManagePage() {
     }
 
     fetchGyms()
-  }, [user, profile, authLoading, router, refreshBookingsAndDerivedStats])
+  }, [user, profile, authLoading, blockingAuth, router, refreshBookingsAndDerivedStats])
 
   useEffect(() => {
     if (authLoading || !user || profile?.role !== 'owner') return
@@ -530,7 +532,7 @@ export default function ManagePage() {
       maximumFractionDigits: 2,
     })
 
-  if (authLoading || profileRecoverFailed || (user && !profile) || loading) {
+  if (authLoading || blockingAuth || profileRecoverFailed || (user && !profile) || loading) {
     return (
       <div className="min-h-screen bg-white">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">

@@ -26,18 +26,28 @@ export default function ClaimInvalidPage({
 }: { searchParams: { reason?: string } }) {
   const reason = searchParams?.reason ?? 'not_found'
   const copy = REASON_COPY[reason] ?? REASON_COPY.not_found
+  const showSignIn = reason === 'used'
 
   return (
     <main className="mx-auto flex min-h-[calc(100svh-5rem)] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
       <h1 className="text-2xl font-semibold text-stone-900">{copy.title}</h1>
       <p className="mt-3 text-stone-600">{copy.body}</p>
+      {!showSignIn && (
+        <p className="mt-4 text-sm text-stone-500">
+          If you were setting up your gym and closed the page early, open the same claim link
+          from your message again — you do not need to sign in with a password until setup is
+          finished.
+        </p>
+      )}
       <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-        <Link
-          href="/auth/signin"
-          className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
-        >
-          Sign in
-        </Link>
+        {showSignIn ? (
+          <Link
+            href="/auth/signin"
+            className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
+          >
+            Sign in
+          </Link>
+        ) : null}
         <Link
           href="mailto:hello@combatstay.com"
           className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-800 hover:bg-stone-50"
