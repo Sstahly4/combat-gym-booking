@@ -20,6 +20,12 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  claimLinkStageLabel,
+  isStripeConnected,
+  resolveClaimLinkStage,
+  type ClaimLinkStage,
+} from '@/lib/admin/claim-link-stage'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -35,6 +41,9 @@ interface OrphanGymRow {
   placeholder_owner_id: string
   placeholder_email: string | null
   claim_password_set: boolean
+  stripe_connected: boolean
+  onboarding_stage: ClaimLinkStage
+  onboarding_stage_label: string
   is_pre_listed: boolean
   first_opened_at: string | null
   latest_token: {
@@ -66,7 +75,9 @@ export async function GET() {
   const { data: placeholderGyms } = placeholderIds.length
     ? await admin
         .from('gyms')
-        .select('id, name, city, country, owner_id, created_at, is_live, status, is_pre_listed')
+        .select(
+          'id, name, city, country, owner_id, created_at, is_live, status, is_pre_listed, stripe_account_id, stripe_connect_verified',
+        )
         .in('owner_id', placeholderIds)
         .order('created_at', { ascending: false })
     : { data: [] as any[] }
@@ -83,7 +94,9 @@ export async function GET() {
   const { data: preListedGyms } = adminIds.length
     ? await admin
         .from('gyms')
-        .select('id, name, city, country, owner_id, created_at, is_live, status, is_pre_listed')
+        .select(
+          'id, name, city, country, owner_id, created_at, is_live, status, is_pre_listed, stripe_account_id, stripe_connect_verified',
+        )
         .in('owner_id', adminIds)
         .order('created_at', { ascending: false })
     : { data: [] as any[] }
@@ -114,6 +127,19 @@ export async function GET() {
     const expiresAt = tok?.expires_at ?? null
     const expired = expiresAt ? new Date(expiresAt).getTime() <= now : false
     const active = Boolean(tok) && !tok.claimed_at && !tok.revoked_at && !expired
+    const passwordSet = prof?.claim_password_set ?? false
+    const stripeConnected = isStripeConnected(g)
+    const onboardingStage = tok
+      ? resolveClaimLinkStage({
+          openedAt: (tok.first_opened_at as string | null) ?? null,
+          passwordSet,
+          stripeConnected,
+          revokedAt: tok.revoked_at ?? null,
+          expiresAt: tok.expires_at ?? null,
+          nowMs: now,
+        })
+      : 'link_sent'
+
     return {
       gym_id: g.id,
       gym_name: g.name,
@@ -125,7 +151,10 @@ export async function GET() {
       state,
       placeholder_owner_id: g.owner_id,
       placeholder_email: prof?.placeholder_email ?? null,
-      claim_password_set: prof?.claim_password_set ?? false,
+      claim_password_set: passwordSet,
+      stripe_connected: stripeConnected,
+      onboarding_stage: onboardingStage,
+      onboarding_stage_label: claimLinkStageLabel(onboardingStage),
       is_pre_listed: Boolean(g.is_pre_listed),
       first_opened_at: (tok?.first_opened_at as string | null) ?? null,
       latest_token: tok

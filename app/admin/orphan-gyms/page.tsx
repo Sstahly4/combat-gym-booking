@@ -23,6 +23,10 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import {
+  claimLinkStageCardClass,
+  type ClaimLinkStage,
+} from '@/lib/admin/claim-link-stage'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -38,6 +42,9 @@ interface OrphanGym {
   placeholder_owner_id: string
   placeholder_email: string | null
   claim_password_set: boolean
+  stripe_connected: boolean
+  onboarding_stage: string
+  onboarding_stage_label: string
   is_pre_listed: boolean
   first_opened_at: string | null
   latest_token: {
@@ -367,37 +374,16 @@ function OrphanCard({
   const t = gym.latest_token
   const isPreListed = gym.state === 'pre_listed'
 
-  const isCompleted = gym.claim_password_set
-  const wasOpened = Boolean(gym.first_opened_at) && !isCompleted
+  const status = isPreListed && !t ? 'Awaiting first link' : gym.onboarding_stage_label
 
-  const status = isPreListed && !t
-    ? 'Awaiting first link'
-    : isCompleted
-      ? 'Claim completed'
-      : wasOpened
-        ? 'Clicked, not claimed'
-        : t?.active
-          ? 'Sent, not clicked'
-          : t?.revoked_at
-            ? 'Revoked'
-            : t?.expired
-              ? 'Expired'
-              : 'No link yet'
+  const stage = (isPreListed && !t ? null : gym.onboarding_stage) as ClaimLinkStage | null
 
   const statusClass =
     isPreListed && !t
       ? 'bg-stone-200 text-stone-800'
-      : isCompleted
-        ? 'bg-violet-100 text-violet-800'
-        : wasOpened
-          ? 'bg-sky-100 text-sky-800'
-          : t?.active
-            ? 'bg-emerald-100 text-emerald-800'
-            : t?.expired
-              ? 'bg-amber-100 text-amber-800'
-              : t?.revoked_at
-                ? 'bg-stone-200 text-stone-700'
-                : 'bg-stone-100 text-stone-600'
+      : stage
+        ? claimLinkStageCardClass(stage)
+        : 'bg-stone-100 text-stone-600'
 
   return (
     <Card className="overflow-hidden">
@@ -417,8 +403,11 @@ function OrphanCard({
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}>
             {status}
           </span>
-          {!isPreListed && !isCompleted && wasOpened ? (
-            <span className="text-[11px] text-stone-500">Password not set</span>
+          {!isPreListed && stage ? (
+            <span className="text-[11px] text-stone-500">
+              Password {gym.claim_password_set ? 'yes' : 'no'} · Stripe{' '}
+              {gym.stripe_connected ? 'yes' : 'no'}
+            </span>
           ) : null}
         </div>
       </CardHeader>
@@ -428,8 +417,10 @@ function OrphanCard({
           <p className="text-xs text-stone-500">
             Last link issued {new Date(t.created_at).toLocaleString()},
             {' '}expires {new Date(t.expires_at).toLocaleString()}
-            {t.claimed_at ? ` · completed ${new Date(t.claimed_at).toLocaleString()}` : ''}
-            {gym.first_opened_at && !isCompleted
+            {t.claimed_at && gym.claim_password_set
+              ? ` · password set ${new Date(t.claimed_at).toLocaleString()}`
+              : ''}
+            {gym.first_opened_at && !gym.claim_password_set
               ? ` · opened ${new Date(gym.first_opened_at).toLocaleString()}`
               : ''}
             {t.revoked_at ? ` · revoked ${new Date(t.revoked_at).toLocaleString()}` : ''}

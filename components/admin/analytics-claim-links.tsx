@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
-import type { ClaimLinkAnalyticsPayload, ClaimLinkStage } from '@/lib/admin/fetch-claim-link-analytics'
+import type { ClaimLinkAnalyticsPayload } from '@/lib/admin/fetch-claim-link-analytics'
+import { claimLinkStageBadgeClass } from '@/lib/admin/claim-link-stage'
 import { cn } from '@/lib/utils'
 
 function formatDateTime(iso: string | null): string {
@@ -17,21 +18,6 @@ function formatDateTime(iso: string | null): string {
 
 function yesNo(value: boolean): string {
   return value ? 'Yes' : 'No'
-}
-
-function stageClass(stage: ClaimLinkStage): string {
-  switch (stage) {
-    case 'sent_not_clicked':
-      return 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-    case 'opened_not_claimed':
-      return 'bg-sky-50 text-sky-800 ring-sky-200'
-    case 'completed':
-      return 'bg-violet-50 text-violet-800 ring-violet-200'
-    case 'expired':
-      return 'bg-amber-50 text-amber-900 ring-amber-200'
-    case 'revoked':
-      return 'bg-stone-100 text-stone-700 ring-stone-200'
-  }
 }
 
 function openedByLabel(openedBy: 'admin' | 'owner' | null): string {
@@ -73,10 +59,8 @@ export function AnalyticsClaimLinks({
         <div>
           <h2 className="text-sm font-semibold text-stone-900">Claim link roster</h2>
           <p className="mt-0.5 max-w-2xl text-xs text-stone-500">
-            Every link we have issued — one row per token. The Claim links page lists gyms; this
-            table lists each link. &quot;Opened by&quot; uses the account signed in when the link
-            was clicked (admin hub session vs logged-out / owner). Owner open rate excludes admin
-            opens.
+            Onboarding funnel per link: sent → clicked → password → Stripe connected. Status uses
+            live owner password and gym Stripe state, not token burn alone.
           </p>
         </div>
         <Link
@@ -88,36 +72,27 @@ export function AnalyticsClaimLinks({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        <SummaryStat label="Links issued" value={loading ? '—' : String(summary?.total ?? 0)} />
+        <SummaryStat label="Link sent" value={loading ? '—' : String(summary?.linkSent ?? 0)} />
         <SummaryStat
-          label="Links issued"
-          value={loading ? '—' : String(summary?.total ?? 0)}
+          label="Clicked, not complete"
+          value={loading ? '—' : String(summary?.clickedNotComplete ?? 0)}
         />
         <SummaryStat
-          label="Sent, not clicked"
-          value={loading ? '—' : String(summary?.sentNotClicked ?? 0)}
+          label="Password added"
+          value={loading ? '—' : String(summary?.passwordAdded ?? 0)}
         />
-        <SummaryStat
-          label="Clicked, not claimed"
-          value={loading ? '—' : String(summary?.openedNotClaimed ?? 0)}
-        />
-        <SummaryStat
-          label="Completed"
-          value={loading ? '—' : String(summary?.completed ?? 0)}
-        />
+        <SummaryStat label="Onboarded" value={loading ? '—' : String(summary?.onboarded ?? 0)} />
+        <SummaryStat label="Expired" value={loading ? '—' : String(summary?.expired ?? 0)} />
         <SummaryStat
           label="Owner open rate"
           value={loading ? '—' : `${(summary?.ownerOpenRate ?? 0).toFixed(1)}%`}
-          hint={
-            loading
-              ? undefined
-              : `${summary?.ownerOpens ?? 0} owner · ${summary?.adminOpens ?? 0} admin`
-          }
         />
         <SummaryStat
-          label="Claim rate"
-          value={loading ? '—' : `${(summary?.claimRate ?? 0).toFixed(1)}%`}
-          hint={loading ? undefined : 'Completed ÷ all links issued'}
+          label="Onboarded rate"
+          value={loading ? '—' : `${(summary?.onboardedRate ?? 0).toFixed(1)}%`}
+          hint={loading ? undefined : 'Password + Stripe connected'}
         />
       </div>
 
@@ -189,7 +164,7 @@ export function AnalyticsClaimLinks({
                       <span
                         className={cn(
                           'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
-                          stageClass(row.stage),
+                          claimLinkStageBadgeClass(row.stage),
                         )}
                       >
                         {row.stage_label}

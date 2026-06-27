@@ -1,13 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPlaceholderEmail } from '@/lib/admin/gym-claim'
+import {
+  claimLinkStageLabel,
+  isStripeConnected,
+  resolveClaimLinkStage,
+  type ClaimLinkStage,
+} from '@/lib/admin/claim-link-stage'
 import type { AnalyticsRange } from '@/lib/admin/fetch-admin-analytics'
 
-export type ClaimLinkStage =
-  | 'sent_not_clicked'
-  | 'opened_not_claimed'
-  | 'completed'
-  | 'expired'
-  | 'revoked'
+export type { ClaimLinkStage } from '@/lib/admin/claim-link-stage'
 
 export type ClaimLinkRosterRow = {
   token_id: string
@@ -33,15 +34,16 @@ export type ClaimLinkAnalyticsPayload = {
   health: { tokens: boolean }
   summary: {
     total: number
-    sentNotClicked: number
-    openedNotClaimed: number
-    completed: number
+    linkSent: number
+    clickedNotComplete: number
+    passwordAdded: number
+    onboarded: number
     expired: number
     revoked: number
     adminOpens: number
     ownerOpens: number
     ownerOpenRate: number
-    claimRate: number
+    onboardedRate: number
   }
   roster: ClaimLinkRosterRow[]
 }
@@ -99,7 +101,6 @@ function inferOpenedBy(token: TokenRow, openedAt: string | null): 'admin' | 'own
   if (token.first_opened_by === 'admin' || token.first_opened_by === 'owner') {
     return token.first_opened_by
   }
-  // Legacy rows before session-based detection — unknown, not guessed.
   return null
 }
 
@@ -140,33 +141,18 @@ function resolveOpenedAt(
   return null
 }
 
-function resolveStage(
-  token: TokenRow,
-  openedAt: string | null,
-  passwordSet: boolean,
-  nowMs: number,
-): ClaimLinkStage {
-  const completed = passwordSet || Boolean(token.claimed_at)
-  if (completed) return 'completed'
-  if (token.revoked_at) return 'revoked'
-  if (new Date(token.expires_at).getTime() <= nowMs) return 'expired'
-  if (openedAt) return 'opened_not_claimed'
-  return 'sent_not_clicked'
-}
-
-function stageLabel(stage: ClaimLinkStage): string {
-  switch (stage) {
-    case 'sent_not_clicked':
-      return 'Sent, not clicked'
-    case 'opened_not_claimed':
-      return 'Clicked, not claimed'
-    case 'completed':
-      return 'Claim completed'
-    case 'expired':
-      return 'Expired'
-    case 'revoked':
-      return 'Revoked'
-  }
+const EMPTY_SUMMARY: ClaimLinkAnalyticsPayload['summary'] = {
+  total: 0,
+  linkSent: 0,
+  clickedNotComplete: 0,
+  passwordAdded: 0,
+  onboarded: 0,
+  expired: 0,
+  revoked: 0,
+  adminOpens: 0,
+  ownerOpens: 0,
+  ownerOpenRate: 0,
+  onboardedRate: 0,
 }
 
 /** Full claim-link history for Insights — not filtered by date range (range is ignored). */
@@ -191,22 +177,7 @@ export async function fetchClaimLinkAnalytics(
     } else {
       console.warn('[admin/analytics] claim tokens', tokensRes.error)
     }
-    return {
-      health,
-      summary: {
-        total: 0,
-        sentNotClicked: 0,
-        openedNotClaimed: 0,
-        completed: 0,
-        expired: 0,
-        revoked: 0,
-        adminOpens: 0,
-        ownerOpens: 0,
-        ownerOpenRate: 0,
-        claimRate: 0,
-      },
-      roster: [],
-    }
+    return { health, summary: EMPTY_SUMMARY, roster: [] }
   }
 
   const tokens = (tokensRes.data ?? []) as TokenRow[]
@@ -255,7 +226,15 @@ export async function fetchClaimLinkAnalytics(
     const owner = gym ? profileById.get(gym.owner_id) : undefined
     const openedAt = openedAtFor(token)
     const passwordSet = owner?.claim_password_set === true
-    const stage = resolveStage(token, openedAt, passwordSet, nowMs)
+    const stripeConnected = gym ? isStripeConnected(gym) : false
+    const stage = resolveClaimLinkStage({
+      openedAt,
+      passwordSet,
+      stripeConnected,
+      revokedAt: token.revoked_at,
+      expiresAt: token.expires_at,
+      nowMs,
+    })
     const sentTo = token.target_email ?? owner?.placeholder_email ?? null
     const sentToIsPlaceholder = sentTo ? isPlaceholderEmail(sentTo) : false
 
@@ -273,61 +252,44 @@ export async function fetchClaimLinkAnalytics(
       claimed_at: token.claimed_at,
       expires_at: token.expires_at,
       stage,
-      stage_label: stageLabel(stage),
+      stage_label: claimLinkStageLabel(stage),
       password_set: passwordSet,
-      stripe_connected: Boolean(gym?.stripe_account_id && gym?.stripe_connect_verified),
+      stripe_connected: stripeConnected,
       issued_by_name: token.created_by
         ? profileById.get(token.created_by)?.full_name?.trim() || 'Admin'
         : null,
     }
   })
 
-  let sentNotClicked = 0
-  let openedNotClaimed = 0
-  let completed = 0
-  let expired = 0
-  let revoked = 0
-  let adminOpens = 0
-  let ownerOpens = 0
+  const summary = { ...EMPTY_SUMMARY, total: roster.length }
 
   for (const row of roster) {
     switch (row.stage) {
-      case 'sent_not_clicked':
-        sentNotClicked += 1
+      case 'link_sent':
+        summary.linkSent += 1
         break
-      case 'opened_not_claimed':
-        openedNotClaimed += 1
+      case 'clicked_not_complete':
+        summary.clickedNotComplete += 1
         break
-      case 'completed':
-        completed += 1
+      case 'password_added':
+        summary.passwordAdded += 1
+        break
+      case 'onboarded':
+        summary.onboarded += 1
         break
       case 'expired':
-        expired += 1
+        summary.expired += 1
         break
       case 'revoked':
-        revoked += 1
+        summary.revoked += 1
         break
     }
-    if (row.opened_by === 'admin') adminOpens += 1
-    if (row.opened_by === 'owner') ownerOpens += 1
+    if (row.opened_by === 'admin') summary.adminOpens += 1
+    if (row.opened_by === 'owner') summary.ownerOpens += 1
   }
 
-  const total = roster.length
+  summary.ownerOpenRate = pctRate(summary.ownerOpens, summary.total)
+  summary.onboardedRate = pctRate(summary.onboarded, summary.total)
 
-  return {
-    health,
-    summary: {
-      total,
-      sentNotClicked,
-      openedNotClaimed,
-      completed,
-      expired,
-      revoked,
-      adminOpens,
-      ownerOpens,
-      ownerOpenRate: pctRate(ownerOpens, total),
-      claimRate: pctRate(completed, total),
-    },
-    roster,
-  }
+  return { health, summary, roster }
 }
