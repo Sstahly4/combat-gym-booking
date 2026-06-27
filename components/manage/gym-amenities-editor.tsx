@@ -13,6 +13,7 @@ import {
   searchGymAmenityKeys,
   type GymAmenityCategoryId,
 } from '@/lib/constants/gym-amenities'
+import { GymAmenitiesPreview } from '@/components/manage/gym-amenities-preview'
 import { cn } from '@/lib/utils'
 
 const SELECTED_PREVIEW_LIMIT = 6
@@ -46,15 +47,9 @@ export function GymAmenitiesEditor({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-1">
-        <p className="text-sm text-gray-600">
-          Add everything your gym offers. Guests can filter search by amenities, so a complete list
-          helps you get found.
-        </p>
-      </div>
-
-      <div className="relative max-w-xl">
+    <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
+      <div className="flex flex-col gap-6">
+        <div className="relative max-w-xl">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
           aria-hidden
@@ -199,6 +194,15 @@ export function GymAmenitiesEditor({
             )
           })
         )}
+      </div>
+      </div>
+
+      <div className="lg:hidden">
+        <GymAmenitiesPreview amenities={amenities} />
+      </div>
+
+      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
+        <GymAmenitiesPreview amenities={amenities} />
       </div>
     </div>
   )

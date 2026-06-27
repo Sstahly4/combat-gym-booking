@@ -1,15 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type TransitionEvent } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { cn } from '@/lib/utils'
 import type { GymPhotoTourDisplayItem } from '@/components/manage/gym-photo-tour-types'
 
-const SLIDE_MS = 320
-const SLIDE_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
-const SWIPE_COMMIT_PX = 56
+const SLIDE_MS = 460
+const SLIDE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+const COMMIT_THRESHOLD = 0.18
 const CLICK_MOVE_TOLERANCE_PX = 8
+/** Full swipe distance ≈ 1.05× card width — slow, playable scrubbing. */
+const DRAG_DISTANCE_RATIO = 1.05
 
 function slideImage(
   item: GymPhotoTourDisplayItem,
@@ -68,32 +70,116 @@ const CARD_SIZE_CLASS =
 
 type StackSlot = 'prev' | 'active' | 'next'
 
-function baseOffset(slot: StackSlot, cardWidth: number): number {
-  if (cardWidth <= 0) return 0
-  if (slot === 'prev') return -cardWidth / 2
-  if (slot === 'next') return cardWidth / 2
-  return 0
+type CardVisual = {
+  x: number
+  y: number
+  scale: number
+  opacity: number
+  z: number
 }
 
-function stackZIndex(slot: StackSlot, slideDir: 0 | 1 | -1): number {
-  if (slideDir === 1 && slot === 'next') return 30
-  if (slideDir === -1 && slot === 'prev') return 30
-  if (slot === 'active') return 20
-  return 10
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
 }
 
-function cardTransform(
-  slot: StackSlot,
-  cardWidth: number,
-  slideDir: 0 | 1 | -1,
-  dragPx: number,
-): string {
-  const slideShift = slideDir === 0 ? 0 : slideDir * -(cardWidth / 2)
-  const x = baseOffset(slot, cardWidth) + slideShift + dragPx
-  return `translate(calc(-50% + ${x}px), -50%)`
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }
 
-/** Stacked deck preview — three equal cards, center in front, sides half visible (Airbnb photo tour style). */
+/**
+ * Flat cover-flow peek at rest (no rotate/skew).
+ * progress −1…1 scrubs: outgoing lifts up + fades, incoming rises from the peek.
+ */
+function getCardVisual(slot: StackSlot, progress: number, cardW: number, cardH: number): CardVisual {
+  const peekL: CardVisual = { x: -cardW / 2, y: 0, scale: 1, opacity: 1, z: 10 }
+  const peekR: CardVisual = { x: cardW / 2, y: 0, scale: 1, opacity: 1, z: 10 }
+  const center: CardVisual = { x: 0, y: 0, scale: 1, opacity: 1, z: 30 }
+  const riseFrom = cardH * 0.09
+
+  if (Math.abs(progress) < 0.0001) {
+    if (slot === 'prev') return peekL
+    if (slot === 'active') return center
+    return peekR
+  }
+
+  const towardNext = progress < 0
+  const t = clamp(Math.abs(progress), 0, 1)
+  const fingerX = progress * cardW * 0.38
+
+  if (towardNext) {
+    if (slot === 'active') {
+      return {
+        x: fingerX,
+        y: -cardH * 0.5 * t,
+        scale: lerp(1, 0.96, t),
+        opacity: lerp(1, 0, t),
+        z: 40,
+      }
+    }
+    if (slot === 'next') {
+      return {
+        x: lerp(peekR.x, 0, t),
+        y: lerp(riseFrom, 0, t),
+        scale: lerp(0.99, 1, t),
+        opacity: lerp(0.9, 1, t),
+        z: Math.round(lerp(12, 28, t)),
+      }
+    }
+    return {
+      x: lerp(peekL.x, peekL.x - cardW * 0.1, t),
+      y: 0,
+      scale: 1,
+      opacity: lerp(1, 0.3, t),
+      z: 8,
+    }
+  }
+
+  if (slot === 'active') {
+    return {
+      x: fingerX,
+      y: -cardH * 0.5 * t,
+      scale: lerp(1, 0.96, t),
+      opacity: lerp(1, 0, t),
+      z: 40,
+    }
+  }
+  if (slot === 'prev') {
+    return {
+      x: lerp(peekL.x, 0, t),
+      y: lerp(riseFrom, 0, t),
+      scale: lerp(0.99, 1, t),
+      opacity: lerp(0.9, 1, t),
+      z: Math.round(lerp(12, 28, t)),
+    }
+  }
+  return {
+    x: lerp(peekR.x, peekR.x + cardW * 0.1, t),
+    y: 0,
+    scale: 1,
+    opacity: lerp(1, 0.3, t),
+    z: 8,
+  }
+}
+
+function cardStyleFromVisual(
+  visual: CardVisual,
+  animate: boolean,
+  reducedMotion: boolean,
+): CSSProperties {
+  return {
+    zIndex: visual.z,
+    opacity: visual.opacity,
+    transform: `translate3d(calc(-50% + ${visual.x}px), calc(-50% + ${visual.y}px), 0) scale(${visual.scale})`,
+    transformStyle: 'flat',
+    transition:
+      animate && !reducedMotion
+        ? `transform ${SLIDE_MS}ms ${SLIDE_EASE}, opacity ${SLIDE_MS}ms ${SLIDE_EASE}`
+        : 'none',
+    willChange: animate ? 'transform, opacity' : undefined,
+  }
+}
+
+/** Stacked deck preview — flat cover-flow peek + Airbnb-style lift transitions. */
 export function GymPhotoTourCarousel({
   items,
   pendingPreviewUrls,
@@ -102,18 +188,22 @@ export function GymPhotoTourCarousel({
   pendingPreviewUrls: Record<string, string>
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [slideDir, setSlideDir] = useState<0 | 1 | -1>(0)
-  const [dragPx, setDragPx] = useState(0)
+  const [progress, setProgress] = useState(0)
+  const [animating, setAnimating] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [cardWidthPx, setCardWidthPx] = useState(0)
+  const [cardHeightPx, setCardHeightPx] = useState(0)
 
   const stackRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const cardWidthRef = useRef(0)
+  const cardHeightRef = useRef(0)
   const pointerStartX = useRef<number | null>(null)
   const pointerStartY = useRef<number | null>(null)
+  const dragStartProgress = useRef(0)
   const dragActive = useRef(false)
-  const slidingRef = useRef(false)
+  const commitTarget = useRef<-1 | 0 | 1>(0)
+  const finishingRef = useRef(false)
 
   const count = items.length
 
@@ -129,58 +219,73 @@ export function GymPhotoTourCarousel({
     setActiveIndex((index) => Math.min(index, Math.max(0, count - 1)))
   }, [count, items.map((item) => item.key).join('|')])
 
-  const measureCardWidth = useCallback(() => {
+  const measureCards = useCallback(() => {
     const probe = stackRef.current?.querySelector('[data-card-probe]') as HTMLElement | null
-    const width = probe?.getBoundingClientRect().width ?? 0
+    if (!probe) return { width: 0, height: 0 }
+    const { width, height } = probe.getBoundingClientRect()
     if (width > 0) {
       cardWidthRef.current = width
       setCardWidthPx(width)
     }
-    return width
+    if (height > 0) {
+      cardHeightRef.current = height
+      setCardHeightPx(height)
+    }
+    return { width, height }
   }, [])
 
   useEffect(() => {
-    measureCardWidth()
+    measureCards()
     const node = stackRef.current
     if (!node || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => measureCardWidth())
+    const observer = new ResizeObserver(() => measureCards())
     observer.observe(node)
     return () => observer.disconnect()
-  }, [measureCardWidth, count])
+  }, [measureCards, count])
 
-  const completeSlide = useCallback(
-    (direction: 1 | -1) => {
-      setSlideDir(0)
-      setDragPx(0)
-      slidingRef.current = false
-      setActiveIndex((index) => (((index + direction) % count) + count) % count)
+  const finishCommit = useCallback(
+    (direction: -1 | 1) => {
+      if (finishingRef.current) return
+      finishingRef.current = true
+      commitTarget.current = 0
+      setAnimating(false)
+      setProgress(0)
+      setActiveIndex((index) => (((index - direction) % count) + count) % count)
+      finishingRef.current = false
     },
     [count],
   )
 
-  const startSlide = useCallback(
-    (direction: 1 | -1) => {
-      if (count <= 1 || slidingRef.current) return
+  const animateTo = useCallback(
+    (target: -1 | 0 | 1) => {
+      if (count <= 1) return
 
-      if (reducedMotion) {
-        completeSlide(direction)
+      if (reducedMotion && target !== 0) {
+        finishCommit(target)
         return
       }
 
-      slidingRef.current = true
-      setDragPx(0)
-      setSlideDir(direction)
+      commitTarget.current = target
+      setAnimating(true)
+      setProgress(target)
     },
-    [completeSlide, count, reducedMotion],
+    [count, finishCommit, reducedMotion],
   )
 
-  const goPrev = useCallback(() => startSlide(-1), [startSlide])
-  const goNext = useCallback(() => startSlide(1), [startSlide])
+  const goPrev = useCallback(() => animateTo(1), [animateTo])
+  const goNext = useCallback(() => animateTo(-1), [animateTo])
 
   const onSlideTransitionEnd = useCallback(() => {
-    if (slideDir === 0 || !slidingRef.current) return
-    completeSlide(slideDir)
-  }, [completeSlide, slideDir])
+    const target = commitTarget.current
+    if (!animating) return
+    if (target === -1 || target === 1) {
+      finishCommit(target)
+      return
+    }
+    if (target === 0) {
+      setAnimating(false)
+    }
+  }, [animating, finishCommit])
 
   useEffect(() => {
     const node = containerRef.current
@@ -200,20 +305,17 @@ export function GymPhotoTourCarousel({
     dragActive.current = false
   }
 
-  const snapBack = useCallback(() => {
-    setDragPx(0)
-  }, [])
-
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (count <= 1 || slidingRef.current) return
+    if (count <= 1 || animating) return
     pointerStartX.current = event.clientX
     pointerStartY.current = event.clientY
+    dragStartProgress.current = progress
     dragActive.current = false
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (count <= 1 || pointerStartX.current === null || slidingRef.current) return
+    if (count <= 1 || pointerStartX.current === null || animating) return
 
     const deltaX = event.clientX - pointerStartX.current
     const deltaY =
@@ -228,9 +330,20 @@ export function GymPhotoTourCarousel({
       dragActive.current = true
     }
 
-    const cardWidth = cardWidthRef.current || cardWidthPx
-    const maxDrag = cardWidth * 0.55
-    setDragPx(deltaX > 0 ? Math.min(deltaX, maxDrag) : Math.max(deltaX, -maxDrag))
+    const cardWidth = cardWidthRef.current || cardWidthPx || 1
+    const dragProgress = -deltaX / (cardWidth * DRAG_DISTANCE_RATIO)
+    setProgress(clamp(dragStartProgress.current + dragProgress, -1, 1))
+  }
+
+  const snapBack = () => {
+    commitTarget.current = 0
+    if (reducedMotion) {
+      setProgress(0)
+      setAnimating(false)
+      return
+    }
+    setAnimating(true)
+    setProgress(0)
   }
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
@@ -244,19 +357,18 @@ export function GymPhotoTourCarousel({
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
+    const releaseProgress = progress
     resetPointer()
 
-    if (slidingRef.current) return
+    if (animating) return
 
     if (wasDragging) {
-      if (deltaX <= -SWIPE_COMMIT_PX) {
-        setDragPx(0)
-        goNext()
+      if (releaseProgress <= -COMMIT_THRESHOLD) {
+        animateTo(-1)
         return
       }
-      if (deltaX >= SWIPE_COMMIT_PX) {
-        setDragPx(0)
-        goPrev()
+      if (releaseProgress >= COMMIT_THRESHOLD) {
+        animateTo(1)
         return
       }
       snapBack()
@@ -274,7 +386,7 @@ export function GymPhotoTourCarousel({
 
   const onPointerCancel = () => {
     resetPointer()
-    if (!slidingRef.current) snapBack()
+    if (!animating) snapBack()
   }
 
   if (count === 0) return null
@@ -282,26 +394,23 @@ export function GymPhotoTourCarousel({
   const prevIndex = count > 1 ? (activeIndex - 1 + count) % count : null
   const nextIndex = count > 1 ? (activeIndex + 1) % count : null
   const activeItem = items[activeIndex]!
-  const isSliding = slideDir !== 0
-  const cardWidth = cardWidthPx || cardWidthRef.current
+  const cardW = cardWidthPx || cardWidthRef.current
+  const cardH = cardHeightPx || cardHeightRef.current || cardW
 
-  const cardStyle = (slot: StackSlot): CSSProperties => ({
-    zIndex: stackZIndex(slot, slideDir),
-    transform: cardTransform(slot, cardWidth, slideDir, dragPx),
-    transition:
-      isSliding && !reducedMotion
-        ? `transform ${SLIDE_MS}ms ${SLIDE_EASE}`
-        : dragPx !== 0
-          ? 'none'
-          : undefined,
-  })
+  const styleFor = (slot: StackSlot): CSSProperties =>
+    cardStyleFromVisual(getCardVisual(slot, progress, cardW, cardH), animating, reducedMotion)
+
+  const handleCardTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.propertyName !== 'transform') return
+    onSlideTransitionEnd()
+  }
 
   return (
     <section aria-label="Photo order preview" className="px-1 py-2 sm:px-2 sm:py-4">
       <div className="mb-5 text-center sm:mb-6">
         <p className="text-sm font-medium text-gray-900">Preview guest order</p>
         <p className="mt-1 text-sm text-gray-500">
-          Reorder photos below, then swipe or tap the side previews to browse your gallery order.
+          Drag the center photo to browse — it lifts away as the next one slides in.
         </p>
       </div>
 
@@ -314,16 +423,16 @@ export function GymPhotoTourCarousel({
           <div
             ref={stackRef}
             className={cn(
-              'relative mx-auto touch-none select-none cursor-grab active:cursor-grabbing',
+              'relative isolate mx-auto touch-none select-none cursor-grab active:cursor-grabbing',
               'h-[min(58vw,15rem)] w-[min(116vw,30rem)] sm:h-64 sm:w-[32rem] md:h-72 md:w-[36rem]',
             )}
+            style={{ perspective: 'none' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
             aria-roledescription="carousel"
           >
-            {/* Size probe — matches visible card dimensions */}
             <div
               data-card-probe
               className={cn('pointer-events-none invisible absolute', CARD_SIZE_CLASS)}
@@ -332,7 +441,7 @@ export function GymPhotoTourCarousel({
 
             <div
               className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={cardStyle('prev')}
+              style={styleFor('prev')}
               aria-hidden
             >
               {prevIndex !== null ? (
@@ -347,11 +456,23 @@ export function GymPhotoTourCarousel({
 
             <div
               className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={cardStyle('active')}
-              onTransitionEnd={(event) => {
-                if (event.propertyName !== 'transform') return
-                onSlideTransitionEnd()
-              }}
+              style={styleFor('next')}
+              aria-hidden
+            >
+              {nextIndex !== null ? (
+                <CarouselSlide
+                  item={items[nextIndex]!}
+                  pendingPreviewUrls={pendingPreviewUrls}
+                  sizes="30vw"
+                  className="pointer-events-none h-full w-full"
+                />
+              ) : null}
+            </div>
+
+            <div
+              className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
+              style={styleFor('active')}
+              onTransitionEnd={handleCardTransitionEnd}
             >
               <CarouselSlide
                 item={activeItem}
@@ -370,21 +491,6 @@ export function GymPhotoTourCarousel({
                   </span>
                 ) : null}
               </div>
-            </div>
-
-            <div
-              className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={cardStyle('next')}
-              aria-hidden
-            >
-              {nextIndex !== null ? (
-                <CarouselSlide
-                  item={items[nextIndex]!}
-                  pendingPreviewUrls={pendingPreviewUrls}
-                  sizes="30vw"
-                  className="pointer-events-none h-full w-full"
-                />
-              ) : null}
             </div>
           </div>
         ) : (
@@ -414,7 +520,8 @@ export function GymPhotoTourCarousel({
             <button
               type="button"
               onClick={goPrev}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              disabled={animating}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
               aria-label="Previous photo"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -425,7 +532,8 @@ export function GymPhotoTourCarousel({
             <button
               type="button"
               onClick={goNext}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              disabled={animating}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
               aria-label="Next photo"
             >
               <ChevronRight className="h-5 w-5" aria-hidden />

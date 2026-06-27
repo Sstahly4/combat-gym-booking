@@ -17,6 +17,7 @@ import type { Gym, GymImage, Package } from '@/lib/types/database'
 import { PackagesSection } from '@/components/manage/packages-section'
 import { PackageCreateShell, PackageEditShell } from '@/components/manage/package-edit-shell'
 import { GymAmenitiesEditor } from '@/components/manage/gym-amenities-editor'
+import { GymScheduleEditor } from '@/components/manage/gym-schedule-editor'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { GymEditPanel } from '@/components/manage/gym-edit-section'
 import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
@@ -37,7 +38,6 @@ import {
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationEditor } from '@/components/manage/gym-location-editor'
-import { TrainingScheduleImportPanel } from '@/components/manage/training-schedule-import-panel'
 import { TRAINING_SCHEDULE_DAYS } from '@/lib/manage/training-schedule'
 import {
   serializeManagedImageRef,
@@ -1357,7 +1357,11 @@ function EditGymForm() {
       }
       sections={sectionStatus}
       contentWidth={
-        activeSection === 'basic' || activeSection === 'images' || activeSection === 'location'
+        activeSection === 'basic' ||
+        activeSection === 'images' ||
+        activeSection === 'location' ||
+        activeSection === 'amenities' ||
+        activeSection === 'schedule'
           ? 'full'
           : 'default'
       }
@@ -1573,9 +1577,7 @@ function EditGymForm() {
           ) : null}
 
           {activeSection === 'amenities' ? (
-          <GymEditPanel contentClassName="space-y-0">
             <GymAmenitiesEditor amenities={amenities} onChange={handleAmenityChange} />
-          </GymEditPanel>
           ) : null}
 
           {activeSection === 'images' ? (
@@ -1601,188 +1603,19 @@ function EditGymForm() {
             />
           ) : null}
 
-          {activeSection === 'schedule' ? (
-          <GymEditPanel contentClassName="space-y-6">
-              {/* Opening Hours */}
-              <div className="space-y-3">
-                <div>
-                  <Label>Gym Opening Hours (optional)</Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    When is your gym facility open to the public?
-                  </p>
-                </div>
-                <div className="grid md:grid-cols-2 gap-3 max-w-2xl">
-                  {DAYS_OF_WEEK.map(day => (
-                    <div key={day} className="flex items-center gap-3">
-                      <Label htmlFor={`hours-${day}`} className="w-24 capitalize text-sm font-medium text-gray-700">
-                        {day}:
-                      </Label>
-                      <Input
-                        id={`hours-${day}`}
-                        value={openingHours[day] || ''}
-                        onChange={(e) => setOpeningHours({ ...openingHours, [day]: e.target.value })}
-                        placeholder="e.g., 07:00-20:00 or closed"
-                        className="w-48"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Training Schedule */}
-              <div className="pt-4 border-t space-y-4">
-                {gym?.id ? (
-                  <TrainingScheduleImportPanel
-                    gymId={gym.id}
-                    currentSchedule={trainingSchedule}
-                    isAdmin={profile?.role === 'admin'}
-                    onApply={(schedule) => {
-                      setTrainingSchedule(schedule)
-                      setTrainingScheduleExpanded(true)
-                      setExpandedDays((prev) => {
-                        const next = { ...prev }
-                        for (const day of TRAINING_SCHEDULE_DAYS) {
-                          if (schedule[day]?.some((s) => s.time.trim())) {
-                            next[day] = true
-                          }
-                        }
-                        return next
-                      })
-                    }}
-                  />
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={() => setTrainingScheduleExpanded(!trainingScheduleExpanded)}
-                  className="w-full flex items-center justify-between p-2 -m-2 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div className="text-left">
-                    <Label className="text-base font-medium cursor-pointer">Enter sessions by day</Label>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Review and edit class times below, or enter them manually.
-                    </p>
-                  </div>
-                  {trainingScheduleExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0 ml-4" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0 ml-4" />
-                  )}
-                </button>
-                
-                {trainingScheduleExpanded && (
-                  <div className="mt-4 space-y-3 max-w-3xl">
-                    {DAYS_OF_WEEK.map(day => {
-                      const sessions = trainingSchedule[day] || []
-                      const isDayExpanded = expandedDays[day]
-                      const sessionCount = sessions.filter(s => s.time.trim() !== '').length
-                      
-                      return (
-                        <div key={day} className="border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedDays({ ...expandedDays, [day]: !isDayExpanded })}
-                            className="w-full flex items-center justify-between p-4 hover:bg-gray-100 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              {isDayExpanded ? (
-                                <ChevronUp className="w-4 h-4 text-gray-500" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-gray-500" />
-                              )}
-                              <Label className="capitalize text-sm font-semibold text-gray-900 cursor-pointer">
-                                {day.charAt(0).toUpperCase() + day.slice(1)}
-                              </Label>
-                              {sessionCount > 0 && (
-                                <span className="text-xs text-gray-500">
-                                  ({sessionCount} {sessionCount === 1 ? 'session' : 'sessions'})
-                                </span>
-                              )}
-                            </div>
-                            {!isDayExpanded && sessionCount === 0 && (
-                              <span className="text-xs text-gray-400 italic">No sessions</span>
-                            )}
-                          </button>
-                          
-                          {isDayExpanded && (
-                            <div className="p-4 pt-0 space-y-3">
-                              <div className="flex justify-end">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setTrainingSchedule({
-                                      ...trainingSchedule,
-                                      [day]: [...sessions, { time: '', type: '' }]
-                                    })
-                                  }}
-                                  className="text-xs"
-                                >
-                                  + Add Session
-                                </Button>
-                              </div>
-                              
-                              {sessions.length === 0 ? (
-                                <p className="text-xs text-gray-500 italic text-center py-2">No training sessions scheduled</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {sessions.map((session, sessionIndex) => (
-                                    <div key={sessionIndex} className="flex gap-2 items-start bg-white p-3 rounded border border-gray-200">
-                                      <div className="flex-1 grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                          <Label className="text-xs text-gray-600">Time</Label>
-                                          <Input
-                                            value={session.time}
-                                            onChange={(e) => {
-                                              const updated = [...sessions]
-                                              updated[sessionIndex] = { ...session, time: e.target.value }
-                                              setTrainingSchedule({ ...trainingSchedule, [day]: updated })
-                                            }}
-                                            placeholder="e.g., 6:00-8:00"
-                                            className="text-sm"
-                                          />
-                                        </div>
-                                        <div className="space-y-1">
-                                          <Label className="text-xs text-gray-600">Type (optional)</Label>
-                                          <Input
-                                            value={session.type || ''}
-                                            onChange={(e) => {
-                                              const updated = [...sessions]
-                                              updated[sessionIndex] = { ...session, type: e.target.value }
-                                              setTrainingSchedule({ ...trainingSchedule, [day]: updated })
-                                            }}
-                                            placeholder="e.g., Morning, Evening, Sparring"
-                                            className="text-sm"
-                                          />
-                                        </div>
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const updated = sessions.filter((_, i) => i !== sessionIndex)
-                                          setTrainingSchedule({ ...trainingSchedule, [day]: updated })
-                                        }}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 mt-6"
-                                      >
-                                        Remove
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-          </GymEditPanel>
+          {activeSection === 'schedule' && gym?.id ? (
+            <GymScheduleEditor
+              gymId={gym.id}
+              isAdmin={profile?.role === 'admin'}
+              openingHours={openingHours}
+              onOpeningHoursChange={setOpeningHours}
+              trainingSchedule={trainingSchedule}
+              onTrainingScheduleChange={setTrainingSchedule}
+              trainingScheduleExpanded={trainingScheduleExpanded}
+              onTrainingScheduleExpandedChange={setTrainingScheduleExpanded}
+              expandedDays={expandedDays}
+              onExpandedDaysChange={setExpandedDays}
+            />
           ) : null}
 
           {activeSection === 'trainers' ? (
