@@ -287,7 +287,7 @@ export default function AdminAnalyticsPage() {
           ) : null}
         </div>
       ) : tab === 'claims' ? (
-        <AnalyticsClaimLinks data={data?.claimLinks} loading={loading} onRefresh={() => load(true)} />
+        <AnalyticsClaimLinks data={data?.claimLinks} loading={loading} />
       ) : (
         <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
           <div className="border-b border-stone-100 px-4 py-3 sm:px-5">

@@ -37,6 +37,7 @@ import {
   isClaimTokenPepperConfigured,
   CLAIM_TOKEN_PEPPER_HELP,
 } from '@/lib/admin/gym-claim-env'
+import { notifyOutreachSheetClaimLink } from '@/lib/integrations/outreach-sheet-webhook'
 
 interface Params { params: { id: string } }
 
@@ -201,6 +202,14 @@ export async function POST(request: NextRequest, { params }: Params) {
     },
   })
 
+  const sheetWebhook = await notifyOutreachSheetClaimLink({
+    gym_name: gym.name?.trim() || 'Untitled gym',
+    gym_id: gym.id,
+    claim_url: url,
+    token_id: insertedToken.id,
+    expires_at: expiresAt,
+  })
+
   return NextResponse.json({
     success: true,
     url,
@@ -210,6 +219,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     placeholder_email: placeholderEmail,
     placeholder_email_is_synthetic: isPlaceholderEmail(placeholderEmail),
     regenerated: !needsPlaceholder,
+    sheet_webhook: sheetWebhook,
   })
 }
 

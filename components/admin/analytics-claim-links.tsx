@@ -1,19 +1,13 @@
 'use client'
 
-import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
-import type { ClaimLinkAnalyticsPayload, ClaimLinkRosterRow } from '@/lib/admin/fetch-claim-link-analytics'
-import {
-  getCachedClaimLinkUrl,
-  saveClaimLinkToBrowserCache,
-} from '@/lib/admin/claim-link-browser-cache'
+import type { ClaimLinkAnalyticsPayload } from '@/lib/admin/fetch-claim-link-analytics'
 import {
   platformStageFunnelLabel,
   platformStageTableClass,
   type PlatformStage,
 } from '@/lib/admin/platform-stage'
-import { CopyClipboardButton } from '@/components/admin/copy-clipboard-button'
 import { cn } from '@/lib/utils'
 
 function formatDateTime(iso: string | null): string {
@@ -70,97 +64,13 @@ function StatusBadge({ stage, label }: { stage: PlatformStage; label: string }) 
   )
 }
 
-function RosterActions({
-  row,
-  onLinkCached,
-  onRefresh,
-}: {
-  row: ClaimLinkRosterRow
-  onLinkCached: () => void
-  onRefresh?: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const cachedUrl = getCachedClaimLinkUrl(row.gym_id, row.token_id)
-
-  const issueAndCopy = useCallback(async () => {
-    setError(null)
-    if (
-      row.claim_url_active &&
-      !cachedUrl &&
-      !confirm(
-        'Issue a new claim link? This revokes the current URL — only do this if the owner never received the old one.',
-      )
-    ) {
-      return
-    }
-
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/admin/gyms/${row.gym_id}/claim-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expires_in_days: 14 }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data?.url) {
-        throw new Error(data?.error || 'Failed to get claim link')
-      }
-      if (data.token_id) {
-        saveClaimLinkToBrowserCache({
-          gymId: row.gym_id,
-          tokenId: data.token_id,
-          url: data.url,
-          savedAt: new Date().toISOString(),
-        })
-      }
-      await navigator.clipboard.writeText(data.url)
-      onLinkCached()
-      onRefresh?.()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to get link')
-    } finally {
-      setBusy(false)
-    }
-  }, [cachedUrl, onLinkCached, onRefresh, row.claim_url_active, row.gym_id])
-
-  return (
-    <div className="flex flex-col items-start gap-1.5">
-      <div className="flex flex-wrap gap-1">
-        <CopyClipboardButton value={row.gym_id} label="Gym ID" size="xs" />
-        {cachedUrl ? (
-          <CopyClipboardButton value={cachedUrl} label="Claim link" size="xs" />
-        ) : row.claim_url_active ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={issueAndCopy}
-            className="inline-flex items-center gap-1 rounded-md border border-[#003580]/30 bg-[#003580]/5 px-2 py-1 text-[10px] font-medium text-[#003580] hover:bg-[#003580]/10 disabled:opacity-50"
-          >
-            {busy ? 'Working…' : 'Get link'}
-          </button>
-        ) : null}
-      </div>
-      {!cachedUrl && row.claim_url_active ? (
-        <p className="max-w-[11rem] text-[10px] leading-snug text-stone-400">
-          Link not in this browser — get link once, then copy anytime.
-        </p>
-      ) : null}
-      {error ? <p className="max-w-[11rem] text-[10px] text-rose-600">{error}</p> : null}
-    </div>
-  )
-}
-
 export function AnalyticsClaimLinks({
   data,
   loading,
-  onRefresh,
 }: {
   data: ClaimLinkAnalyticsPayload | null | undefined
   loading?: boolean
-  onRefresh?: () => void
 }) {
-  const [cacheVersion, setCacheVersion] = useState(0)
   const summary = data?.summary
   const roster = data?.roster ?? []
 
@@ -172,9 +82,6 @@ export function AnalyticsClaimLinks({
   const onboarded = summary?.onboarded ?? 0
   const total = summary?.total ?? 0
   const adminClicks = summary?.adminClicks ?? 0
-
-  const bumpCache = useCallback(() => setCacheVersion((v) => v + 1), [])
-  void cacheVersion
 
   return (
     <div className="space-y-5">
@@ -189,16 +96,16 @@ export function AnalyticsClaimLinks({
         <div>
           <h2 className="text-sm font-semibold text-stone-900">Claim link roster</h2>
           <p className="mt-0.5 max-w-2xl text-xs text-stone-500">
-            Status labels match the outreach sheet. Copy <strong className="font-medium text-stone-600">Gym ID</strong> into
-            column K; copy <strong className="font-medium text-stone-600">Claim link</strong> into column L after
-            generating (links are cached in this browser only).
+            Live funnel synced with the outreach sheet. New links are pushed to the spreadsheet
+            automatically when you generate them on Orphan gyms. Older rows may show Expired — that
+            reflects tokens past their 14-day window, not the current automated cohort.
           </p>
         </div>
         <Link
           href="/admin/orphan-gyms"
           className="inline-flex items-center gap-1 text-xs font-medium text-[#003580] hover:underline"
         >
-          Manage links
+          Generate links
           <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
@@ -207,7 +114,7 @@ export function AnalyticsClaimLinks({
         <HeroStat
           label="Links issued"
           value={loading ? '—' : String(total)}
-          hint="Total claim tokens created"
+          hint="All-time tokens (includes legacy)"
         />
         <HeroStat
           label="Click rate"
@@ -266,11 +173,10 @@ export function AnalyticsClaimLinks({
               No claim links issued yet.
             </p>
           ) : (
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="sticky top-0 z-10 bg-white text-[11px] font-semibold uppercase tracking-wider text-stone-500 shadow-[0_1px_0_0_rgb(245_245_244)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold sm:px-5">Gym</th>
-                  <th className="px-4 py-3 font-semibold">Copy for sheet</th>
                   <th className="px-4 py-3 font-semibold">Issued</th>
                   <th className="px-4 py-3 font-semibold">Owner opened</th>
                   <th className="px-4 py-3 font-semibold">Outreach sent</th>
@@ -298,9 +204,6 @@ export function AnalyticsClaimLinks({
                           <code className="rounded bg-stone-100 px-0.5">{row.sent_to}</code>
                         </p>
                       ) : null}
-                    </td>
-                    <td className="px-4 py-3">
-                      <RosterActions row={row} onLinkCached={bumpCache} onRefresh={onRefresh} />
                     </td>
                     <td className="px-4 py-3 text-xs text-stone-600">
                       {formatDateTime(row.issued_at)}

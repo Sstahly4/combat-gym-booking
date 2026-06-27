@@ -28,8 +28,6 @@ import {
   platformStageSheetStatus,
   type ClaimLinkStage,
 } from '@/lib/admin/claim-link-stage'
-import { CopyClipboardButton } from '@/components/admin/copy-clipboard-button'
-import { saveClaimLinkToBrowserCache } from '@/lib/admin/claim-link-browser-cache'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -73,6 +71,7 @@ export default function OrphanGymsPage() {
     expiresAt: string | null
     placeholderEmail: string | null
     regenerated: boolean
+    sheetSynced: boolean
   } | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -105,14 +104,6 @@ export default function OrphanGymsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Failed to generate (HTTP ${res.status})`)
       if (!data?.url) throw new Error('Server did not return a claim link URL')
-      if (data.token_id) {
-        saveClaimLinkToBrowserCache({
-          gymId,
-          tokenId: data.token_id,
-          url: data.url,
-          savedAt: new Date().toISOString(),
-        })
-      }
       setFreshLinks((prev) => ({ ...prev, [gymId]: data.url }))
       setLinkModal({
         gymName: gymBefore?.gym_name || 'Untitled gym',
@@ -120,6 +111,7 @@ export default function OrphanGymsPage() {
         expiresAt: data.expires_at ?? null,
         placeholderEmail: data.placeholder_email ?? null,
         regenerated: Boolean(data.regenerated),
+        sheetSynced: Boolean(data.sheet_webhook?.sent),
       })
       setCopied(false)
       await load()
@@ -283,7 +275,9 @@ export default function OrphanGymsPage() {
             <DialogDescription>
               Send this invitation URL to the owner of{' '}
               <span className="font-medium text-stone-900">{linkModal?.gymName}</span>.
-              We won&apos;t show it again — copy it now.
+              {linkModal?.sheetSynced
+                ? ' The outreach sheet was updated automatically.'
+                : ' Copy the link below if you need it — the sheet webhook may not be configured yet.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -458,10 +452,6 @@ function OrphanCard({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <CopyClipboardButton value={gym.gym_id} label="Gym ID" size="xs" />
-          {freshLink ? (
-            <CopyClipboardButton value={freshLink} label="Claim link" size="xs" />
-          ) : null}
           <Button
             onClick={onGenerate}
             disabled={busy}
