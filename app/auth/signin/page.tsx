@@ -362,14 +362,13 @@ function SignInPageContent() {
                     }}
                     className="h-14 rounded-xl border-gray-400 px-4 text-base shadow-none focus-visible:ring-[#003580]"
                     required
-                    minLength={mode === 'signup' ? 10 : undefined}
+                    minLength={mode === 'signup' ? 8 : undefined}
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     autoFocus
                   />
-                  {mode === 'signup' && (password.length > 0 || passwordErrors.length > 0) && (
+                  {mode === 'signup' && password.length > 0 && (
                     <PasswordStandardsHint
                       password={password}
-                      errors={passwordErrors}
                       className="mt-3"
                     />
                   )}

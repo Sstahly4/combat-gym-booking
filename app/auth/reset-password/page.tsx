@@ -146,10 +146,10 @@ function ResetPasswordInner() {
                     }}
                     className="h-11"
                     required
-                    minLength={10}
+                    minLength={8}
                     placeholder="Choose a strong password"
                   />
-                  <PasswordStandardsHint errors={passwordErrors} className="mt-2" />
+                  <PasswordStandardsHint password={password} className="mt-2" />
                 </div>
 
                 <div className="space-y-1.5">

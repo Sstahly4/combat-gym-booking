@@ -126,13 +126,12 @@ function FinishSetupForm() {
                 }}
                 className="h-11"
                 required
-                minLength={10}
+                minLength={8}
                 autoComplete="new-password"
               />
-              {(password.length > 0 || passwordErrors.length > 0) && (
+              {password.length > 0 && (
                 <PasswordStandardsHint
                   password={password}
-                  errors={passwordErrors}
                   className="mt-3"
                 />
               )}
@@ -149,7 +148,7 @@ function FinishSetupForm() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="h-11"
                 required
-                minLength={10}
+                minLength={8}
                 autoComplete="new-password"
               />
             </div>

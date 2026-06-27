@@ -351,14 +351,13 @@ function SignUpForm() {
                 }}
                 className="h-11"
                 required
-                minLength={10}
+                minLength={8}
                 autoComplete="new-password"
               />
               {/* Live rule indicators — always shown once the user starts typing */}
-              {(password.length > 0 || passwordErrors.length > 0) && (
+              {password.length > 0 && (
                 <PasswordStandardsHint
                   password={password}
-                  errors={passwordErrors}
                   className="mt-3"
                 />
               )}

@@ -23,8 +23,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
-import { validatePasswordRules } from '@/lib/auth/password-rules'
+import { validatePasswordRules, assessPasswordStrength } from '@/lib/auth/password-rules'
 import { PasswordStandardsHint } from '@/components/auth/password-standards-hint'
+import { PasswordEasilyGuessedNotice } from '@/components/auth/password-easily-guessed-notice'
 const SOFT_PROMPT_DISMISS_KEY = 'cs:claim-email-soft-prompt-dismissed'
 
 function isPlaceholderEmail(email: string | null | undefined): boolean {
@@ -124,31 +125,43 @@ function HardClaimModal({
     () => password.length > 0 && password === confirm,
     [password, confirm],
   )
-  const passwordValidation = useMemo(() => validatePasswordRules(password), [password])
+  const passwordStrength = useMemo(() => assessPasswordStrength(password), [password])
   const trimmedEmail = email.trim()
   const trimmedName = fullName.trim()
   const emailLooksValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmedEmail)
   const nameLooksValid = trimmedName.length >= 2
 
-  // Surface exactly why the submit button is disabled so owners aren't left
-  // staring at a greyed-out button (the password rules are strict — esp. the
-  // "no common fragments" rule which rejects things like "Welcome123!").
   const blockingReasons = useMemo(() => {
     const reasons: string[] = []
-    if (!passwordValidation.valid) reasons.push(...passwordValidation.errors)
+    if (password.length > 0 && !passwordStrength.meetsRequirements) {
+      reasons.push(...passwordStrength.requirementErrors)
+    }
     if (password.length > 0 && !passwordsMatch) reasons.push('Passwords do not match')
     if (!emailLooksValid) reasons.push('Enter a valid email address')
     if (!nameLooksValid) reasons.push('Enter your name')
     return reasons
-  }, [passwordValidation, passwordsMatch, password.length, emailLooksValid, nameLooksValid])
+  }, [
+    passwordStrength,
+    passwordsMatch,
+    password.length,
+    emailLooksValid,
+    nameLooksValid,
+  ])
 
-  const canSubmit = blockingReasons.length === 0
+  const canSubmit =
+    password.length > 0 &&
+    passwordStrength.meetsRequirements &&
+    !passwordStrength.easilyGuessed &&
+    passwordsMatch &&
+    emailLooksValid &&
+    nameLooksValid
 
   async function submit() {
     setError(null); setDetails(null)
-    if (!passwordValidation.valid) {
-      setError('Password does not meet security requirements')
-      setDetails(passwordValidation.errors)
+    const validation = validatePasswordRules(password)
+    if (!validation.valid) {
+      setError('Choose a password that is harder to guess')
+      setDetails(validation.errors)
       return
     }
     if (!passwordsMatch) {
@@ -305,13 +318,13 @@ function HardClaimModal({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-stone-100 bg-stone-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-h-[1.25rem] text-xs text-stone-500 sm:max-w-[60%]">
+        <div className="border-t border-stone-100 bg-stone-50 px-6 pt-4">
+          <PasswordEasilyGuessedNotice password={password} className="mb-4" />
+          <div className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-h-[1.25rem] text-xs sm:max-w-[60%]">
             {!canSubmit && blockingReasons.length > 0 && (
-              <span>
-                <span className="font-medium text-stone-700">Before continuing:</span>{' '}
-                {blockingReasons[0]}
-                {blockingReasons.length > 1 ? ` (+${blockingReasons.length - 1} more)` : ''}
+              <span className="text-stone-600">
+                {blockingReasons.join(' · ')}
               </span>
             )}
           </div>
@@ -322,6 +335,7 @@ function HardClaimModal({
           >
             {submitting ? 'Saving…' : 'Save and continue'}
           </Button>
+          </div>
         </div>
       </div>
     </div>
