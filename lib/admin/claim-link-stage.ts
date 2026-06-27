@@ -13,5 +13,6 @@ export {
   claimLinkStageBadgeClass,
   claimLinkStageCardClass,
   platformStageSheetStatus,
+  platformStageFunnelLabel,
   isStripeConnected,
 } from '@/lib/admin/platform-stage'

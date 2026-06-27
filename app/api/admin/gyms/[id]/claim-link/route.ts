@@ -168,16 +168,20 @@ export async function POST(request: NextRequest, { params }: Params) {
   const tokenHash = hashClaimToken(plain)
   const expiresAt = expiryDaysFromNowIso(expiresInDays)
 
-  const { error: insErr } = await admin.from('gym_claim_tokens').insert({
-    gym_id: gym.id,
-    token_hash: tokenHash,
-    expires_at: expiresAt,
-    created_by: auth.user.id,
-    target_email: targetEmail,
-  })
-  if (insErr) {
+  const { data: insertedToken, error: insErr } = await admin
+    .from('gym_claim_tokens')
+    .insert({
+      gym_id: gym.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+      created_by: auth.user.id,
+      target_email: targetEmail,
+    })
+    .select('id')
+    .single()
+  if (insErr || !insertedToken?.id) {
     return NextResponse.json(
-      { error: `Failed to create claim token: ${insErr.message}` },
+      { error: `Failed to create claim token: ${insErr?.message ?? 'no id returned'}` },
       { status: 500 },
     )
   }
@@ -200,6 +204,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   return NextResponse.json({
     success: true,
     url,
+    token_id: insertedToken.id,
     expires_at: expiresAt,
     placeholder_user_id: placeholderUserId,
     placeholder_email: placeholderEmail,

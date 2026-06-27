@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPlaceholderEmail } from '@/lib/admin/gym-claim'
 import {
-  platformStageLabel,
-  platformStageShortLabel,
+  platformStageSheetStatus,
   isStripeConnected,
   resolvePlatformStage,
   type PlatformStage,
@@ -29,6 +28,8 @@ export type ClaimLinkRosterRow = {
   expires_at: string
   stage: PlatformStage
   stage_label: string
+  /** Active token: not claimed, not revoked, not expired. */
+  claim_url_active: boolean
   password_set: boolean
   stripe_connected: boolean
   issued_by_name: string | null
@@ -186,6 +187,9 @@ export async function fetchClaimLinkAnalytics(
       expiresAt: token.expires_at,
       nowMs,
     })
+    const expired = new Date(token.expires_at).getTime() <= nowMs
+    const claimUrlActive =
+      !token.claimed_at && !token.revoked_at && !expired
     const sentTo = token.target_email ?? owner?.placeholder_email ?? null
     const sentToIsPlaceholder = sentTo ? isPlaceholderEmail(sentTo) : false
 
@@ -205,7 +209,8 @@ export async function fetchClaimLinkAnalytics(
       claimed_at: token.claimed_at,
       expires_at: token.expires_at,
       stage,
-      stage_label: platformStageLabel(stage),
+      stage_label: platformStageSheetStatus(stage),
+      claim_url_active: claimUrlActive,
       password_set: passwordSet,
       stripe_connected: stripeConnected,
       issued_by_name: token.created_by

@@ -3,6 +3,7 @@ import {
   platformStageLabel,
   platformStageSheetStatus,
   platformStageShortLabel,
+  platformStageFunnelLabel,
   resolvePlatformStage,
 } from '@/lib/admin/platform-stage'
 
@@ -90,5 +91,6 @@ describe('resolvePlatformStage', () => {
     expect(platformStageSheetStatus('clicked')).toBe('Clicked — incomplete')
     expect(platformStageShortLabel('claimed')).toBe('Claimed')
     expect(platformStageLabel('link_ready')).toBe('Link ready')
+    expect(platformStageFunnelLabel('link_sent')).toBe('Not clicked')
   })
 })

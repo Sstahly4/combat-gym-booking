@@ -111,6 +111,28 @@ export function platformStageShortLabel(stage: PlatformStage): string {
   }
 }
 
+/** Funnel / Insights breakdown labels (aligned with outreach sheet). */
+export function platformStageFunnelLabel(stage: PlatformStage): string {
+  switch (stage) {
+    case 'link_ready':
+      return 'Link ready'
+    case 'link_sent':
+      return 'Not clicked'
+    case 'clicked':
+      return 'Incomplete'
+    case 'claimed':
+      return 'Claimed'
+    case 'onboarded':
+      return 'Onboarded'
+    case 'expired':
+      return 'Expired'
+    case 'revoked':
+      return 'Revoked'
+    default:
+      return platformStageSheetStatus(stage)
+  }
+}
+
 export function claimLinkStageShortLabel(stage: PlatformStage): string {
   return platformStageShortLabel(stage)
 }

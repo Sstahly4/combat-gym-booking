@@ -25,8 +25,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import {
   claimLinkStageCardClass,
+  platformStageSheetStatus,
   type ClaimLinkStage,
 } from '@/lib/admin/claim-link-stage'
+import { CopyClipboardButton } from '@/components/admin/copy-clipboard-button'
+import { saveClaimLinkToBrowserCache } from '@/lib/admin/claim-link-browser-cache'
 
 type OrphanState = 'placeholder' | 'pre_listed'
 
@@ -102,6 +105,14 @@ export default function OrphanGymsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Failed to generate (HTTP ${res.status})`)
       if (!data?.url) throw new Error('Server did not return a claim link URL')
+      if (data.token_id) {
+        saveClaimLinkToBrowserCache({
+          gymId,
+          tokenId: data.token_id,
+          url: data.url,
+          savedAt: new Date().toISOString(),
+        })
+      }
       setFreshLinks((prev) => ({ ...prev, [gymId]: data.url }))
       setLinkModal({
         gymName: gymBefore?.gym_name || 'Untitled gym',
@@ -374,7 +385,7 @@ function OrphanCard({
   const t = gym.latest_token
   const isPreListed = gym.state === 'pre_listed'
 
-  const status = isPreListed && !t ? 'Awaiting first link' : gym.onboarding_stage_label
+  const status = isPreListed && !t ? 'Awaiting first link' : platformStageSheetStatus(gym.onboarding_stage as ClaimLinkStage)
 
   const stage = (isPreListed && !t ? null : gym.onboarding_stage) as ClaimLinkStage | null
 
@@ -447,6 +458,10 @@ function OrphanCard({
         )}
 
         <div className="flex flex-wrap gap-2">
+          <CopyClipboardButton value={gym.gym_id} label="Gym ID" size="xs" />
+          {freshLink ? (
+            <CopyClipboardButton value={freshLink} label="Claim link" size="xs" />
+          ) : null}
           <Button
             onClick={onGenerate}
             disabled={busy}
