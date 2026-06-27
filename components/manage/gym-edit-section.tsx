@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Content panel for a single listing editor page (section title lives in the layout header). */
+/** Content area for a listing editor section — open layout on neutral page background. */
 export function GymEditPanel({
   children,
   className,
@@ -14,14 +14,7 @@ export function GymEditPanel({
   contentClassName?: string
 }) {
   return (
-    <div
-      className={cn(
-        'rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm shadow-gray-900/[0.03] sm:p-6',
-        className,
-      )}
-    >
-      <div className={cn('space-y-5', contentClassName)}>{children}</div>
-    </div>
+    <div className={cn('space-y-6', contentClassName, className)}>{children}</div>
   )
 }
 

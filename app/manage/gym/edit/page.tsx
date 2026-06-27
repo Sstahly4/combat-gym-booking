@@ -38,7 +38,6 @@ import {
 } from '@/lib/images/gym-image-variants'
 import { hasNonLatinChars } from '@/lib/geo/nominatim-address'
 import {
-  manageGymEditHubBreadcrumb,
   resolvePostGymEditReturnPath,
 } from '@/lib/navigation/manage-gym-edit-return'
 import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
@@ -176,7 +175,6 @@ function EditGymForm() {
     if (!returnToRaw && profile?.role === 'admin') return '/admin/gyms'
     return resolvePostGymEditReturnPath(returnToRaw)
   }, [returnToRaw, profile?.role])
-  const hubCrumb = useMemo(() => manageGymEditHubBreadcrumb(afterEditPath), [afterEditPath])
   const [gym, setGym] = useState<GymWithImages | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -1288,8 +1286,6 @@ function EditGymForm() {
 
   return (
     <GymEditLayout
-      hubCrumb={hubCrumb}
-      gymName={gymName || gym.name}
       gymId={gym.id}
       returnTo={returnToRaw}
       activeSection={activeSection}
