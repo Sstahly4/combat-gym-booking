@@ -7,6 +7,7 @@ import type { ManageGymRow } from '@/components/manage/active-gym-context'
 import { ChevronDown, CircleUser, Luggage, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
 import { CurrencyModal } from '@/components/currency-modal'
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
@@ -29,22 +30,20 @@ function TabLabel({ label, active }: { label: string; active: boolean }) {
   )
 }
 
-const tabLinkClass = (active: boolean, size: 'desktop' | 'mobile') =>
+const tabLinkClass = (active: boolean) =>
   cn(
     'inline-flex shrink-0 items-center font-medium leading-none transition-colors',
-    size === 'mobile' ? 'px-3 py-2 text-[13px]' : 'px-3.5 py-2 text-[15px]',
+    'px-3 py-2 text-[13px] md:px-3.5 md:py-2 md:text-[15px]',
     active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800',
   )
 
 function TabLink({
   tab,
   pathname,
-  size,
   onNavigate,
 }: {
   tab: PartnerNavTab
   pathname: string
-  size: 'desktop' | 'mobile'
   onNavigate?: () => void
 }) {
   const active = tab.isActive(pathname)
@@ -53,7 +52,7 @@ function TabLink({
       href={tab.href}
       data-claim-tour={tab.tourAnchor}
       onClick={onNavigate}
-      className={tabLinkClass(active, size)}
+      className={tabLinkClass(active)}
       aria-current={active ? 'page' : undefined}
     >
       <TabLabel label={tab.label} active={active} />
@@ -103,7 +102,7 @@ function CenterMenuDropdown({
   menu,
   settings,
   pathname,
-  size,
+  narrow,
   menuOpen,
   onToggle,
   onClose,
@@ -113,7 +112,7 @@ function CenterMenuDropdown({
   menu: PartnerMenuItem[]
   settings: PartnerMenuItem
   pathname: string
-  size: 'desktop' | 'mobile'
+  narrow: boolean
   menuOpen: boolean
   onToggle: () => void
   onClose: () => void
@@ -127,7 +126,7 @@ function CenterMenuDropdown({
       <button
         type="button"
         onClick={onToggle}
-        className={cn(tabLinkClass(menuOpen || menuActive, size))}
+        className={cn(tabLinkClass(menuOpen || menuActive))}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
       >
@@ -136,8 +135,7 @@ function CenterMenuDropdown({
             <span>Menu</span>
             <ChevronDown
               className={cn(
-                'shrink-0 transition-transform',
-                size === 'desktop' ? 'h-4 w-4' : 'h-3.5 w-3.5',
+                'h-3.5 w-3.5 shrink-0 transition-transform md:h-4 md:w-4',
                 menuOpen && 'rotate-180',
               )}
               aria-hidden
@@ -153,7 +151,7 @@ function CenterMenuDropdown({
         open={menuOpen}
         anchorRef={menuRef}
         panelRef={menuPanelRef}
-        align={size === 'desktop' ? 'center' : 'right'}
+        align={narrow ? 'right' : 'center'}
         className="w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
       >
         <div className="max-h-[min(70vh,24rem)] overflow-y-auto px-1">
@@ -171,7 +169,6 @@ function CenterMenuDropdown({
 
 export function ManageTopNav({
   editGymHref,
-  viewListingHref,
   firstGymId,
   gyms = [],
   activeGymId = null,
@@ -180,7 +177,6 @@ export function ManageTopNav({
 }: {
   editGymHref: string
   gymName: string | null
-  viewListingHref: string
   firstGymId: string | null
   gyms?: ManageGymRow[]
   activeGymId?: string | null
@@ -190,6 +186,7 @@ export function ManageTopNav({
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile, signOut } = useAuth()
+  const narrow = useIsNarrowForManageSidebar()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -209,7 +206,6 @@ export function ManageTopNav({
 
   const { tabs, menu, settings } = buildPartnerNav({
     editGymHref,
-    viewListingHref,
     firstGymId,
     verificationDone: Boolean(verificationDone),
   })
@@ -468,24 +464,19 @@ export function ManageTopNav({
     </div>
   )
 
-  const centerNav = (size: 'desktop' | 'mobile') => (
+  const centerNav = (
     <nav
       aria-label="Partner hub"
-      className={cn(
-        'flex min-w-0 items-center gap-0.5',
-        size === 'mobile' &&
-          'flex-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        size === 'desktop' && 'justify-center',
-      )}
+      className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] md:justify-center md:overflow-visible [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((tab) => (
-        <TabLink key={tab.id} tab={tab} pathname={pathname} size={size} />
+        <TabLink key={tab.id} tab={tab} pathname={pathname} />
       ))}
       <CenterMenuDropdown
         menu={menu}
         settings={settings}
         pathname={pathname}
-        size={size}
+        narrow={narrow}
         menuOpen={menuOpen}
         onToggle={() => {
           setHubMenuOpen(false)
@@ -507,22 +498,12 @@ export function ManageTopNav({
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >
-        {/* Desktop */}
-        <div className="mx-auto hidden h-full max-w-7xl items-center gap-4 px-4 sm:px-6 md:flex">
-          <div className="w-[11.5rem] shrink-0 lg:w-[13rem]">{brandLink}</div>
-          <div className="flex min-w-0 flex-1 justify-center">{centerNav('desktop')}</div>
-          <div className="flex w-[11.5rem] shrink-0 items-center justify-end gap-1 lg:w-[13rem]">
-            <NotificationBell theme="light" />
-            {accountControl}
-            {hubMenuButton}
+        <div className="mx-auto flex h-full max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
+          <div className="min-w-0 max-w-[34%] shrink-0 md:max-w-none md:w-[11.5rem] lg:w-[13rem]">
+            {brandLink}
           </div>
-        </div>
-
-        {/* Mobile — single row, scrollable center tabs */}
-        <div className="flex h-full items-center gap-2 px-3 md:hidden">
-          <div className="min-w-0 max-w-[34%] shrink-0">{brandLink}</div>
-          <div className="min-w-0 flex-1">{centerNav('mobile')}</div>
-          <div className="flex shrink-0 items-center gap-1">
+          {centerNav}
+          <div className="flex shrink-0 items-center gap-1 md:w-[11.5rem] md:justify-end lg:w-[13rem]">
             <NotificationBell theme="light" />
             {accountControl}
             {hubMenuButton}

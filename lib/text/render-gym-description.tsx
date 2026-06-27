@@ -25,7 +25,7 @@ export function renderGymDescriptionText(text: string): ReactNode[] {
 }
 
 function renderInlineEmphasis(text: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  const parts = text.split(/(\*\*[^*]+\*\*|_[^_]+_)/g)
   return parts
     .filter((part) => part.length > 0)
     .map((part, index) => {
@@ -35,6 +35,9 @@ function renderInlineEmphasis(text: string): ReactNode[] {
             {part.slice(2, -2)}
           </strong>
         )
+      }
+      if (part.startsWith('_') && part.endsWith('_') && part.length > 2) {
+        return <em key={index}>{part.slice(1, -1)}</em>
       }
       return part
     })

@@ -3,7 +3,6 @@ import {
   BadgeCheck,
   CalendarRange,
   ClipboardList,
-  Eye,
   HelpCircle,
   Home,
   LayoutList,
@@ -42,12 +41,10 @@ export function withManageGymId(href: string, gymId: string | null): string {
 
 export function buildPartnerNav({
   editGymHref,
-  viewListingHref,
   firstGymId,
   verificationDone,
 }: {
   editGymHref: string
-  viewListingHref: string
   firstGymId: string | null
   verificationDone: boolean
 }): { tabs: PartnerNavTab[]; menu: PartnerMenuItem[]; settings: PartnerMenuItem } {
@@ -103,13 +100,6 @@ export function buildPartnerNav({
     ],
     menu: [
       {
-        href: viewListingHref,
-        label: 'View listing',
-        icon: Eye,
-        isActive: (p) => p === '/manage/gym/preview' || p.startsWith('/manage/gym/preview'),
-        tourAnchor: 'tour-view-listing',
-      },
-      {
         href: verificationHref,
         label: verificationDone ? 'Verified' : 'Verification',
         icon: verificationDone ? BadgeCheck : ShieldCheck,
@@ -133,8 +123,6 @@ export function buildPartnerNav({
 
 export function isPartnerMenuRouteActive(pathname: string): boolean {
   return (
-    pathname === '/manage/gym/preview' ||
-    pathname.startsWith('/manage/gym/preview') ||
     pathname === '/manage/help' ||
     pathname.startsWith('/manage/help/') ||
     pathname === '/manage/verification' ||

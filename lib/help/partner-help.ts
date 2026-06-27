@@ -47,7 +47,7 @@ export const PARTNER_HELP_FAQS: PartnerHelpFaq[] = [
     category: 'listings',
     question: 'How do I edit my public gym page?',
     answer:
-      'Use Edit gym for details and photos, and View listing to preview how travelers see your gym before it is public.',
+      'Open Listings to edit details and photos. Use View listing at the bottom of the listing sidebar to preview how travelers see your gym before it is public.',
   },
   {
     id: 'partner-listing-fees',

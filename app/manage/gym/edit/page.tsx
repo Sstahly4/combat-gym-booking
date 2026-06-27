@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { GymDescriptionField } from '@/components/manage/gym-description-field'
+import { GymDescriptionEditor } from '@/components/manage/gym-description-editor'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
@@ -24,6 +24,7 @@ import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
 import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
+import { cn } from '@/lib/utils'
 import {
   formatGymListingPrice,
   lowestSearchPricePerDay,
@@ -1319,13 +1320,13 @@ function EditGymForm() {
       completed: !!(
         gymName.trim() &&
         description.trim() &&
+        disciplines.length > 0 &&
         (usesPackageSearchPrice || pricePerDay.trim())
       ),
       required: true,
     },
     location: { completed: !!(locationAddress && locationCity && selectedCountry), required: true },
     images: { completed: !!(gym.images && gym.images.length > 0), required: true },
-    disciplines: { completed: disciplines.length > 0, required: true },
     amenities: { completed: countEnabledAmenities(amenities) > 0, required: false },
     schedule: { completed: false, required: false },
     trainers: { completed: trainers.length > 0, required: false },
@@ -1339,6 +1340,7 @@ function EditGymForm() {
       returnTo={returnToRaw}
       activeSection={activeSection}
       sections={sectionStatus}
+      contentWidth={activeSection === 'basic' ? 'wide' : 'default'}
       saving={saving}
       saveError={saveError}
       onSave={() => void handleSave()}
@@ -1347,93 +1349,100 @@ function EditGymForm() {
         {activeSection !== 'packages' ? (
         <form id="edit-gym-form" onSubmit={handleSave}>
           {activeSection === 'basic' ? (
-          <GymEditPanel>
-              <div className="space-y-2">
-                <Label htmlFor="name">Gym Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  value={gymName}
-                  onChange={(e) => setGymName(e.target.value)}
-                  required 
-                  className="max-w-2xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tagline">
-                  Listing tagline
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">(shown on search cards)</span>
-                </Label>
-                <input
-                  id="tagline"
-                  name="tagline"
-                  type="text"
-                  maxLength={80}
-                  value={tagline}
-                  onChange={e => setTagline(e.target.value)}
-                  className="flex h-10 w-full max-w-2xl rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
-                />
-                <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
-                <p className="text-xs text-gray-500">
-                  One line, max 60–80 characters. This is the first thing guests read under your gym name on
-                  mobile search. Write it like a headline: location, vibe, what makes you different.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <GymDescriptionField 
-                  id="description" 
-                  name="description" 
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required 
-                  rows={10}
-                  className="max-w-4xl"
-                  placeholder="Describe your gym, training philosophy, facilities, and what makes it special..."
-                />
-                <p className="text-xs text-gray-500">
-                  Full description shown on your gym profile page. Paste from Word or Google Docs — spacing and
-                  bold headings are preserved. Use a blank line between paragraphs; wrap titles in **double
-                  asterisks** for bold.
-                </p>
-              </div>
-
-              <div className="pt-6 border-t space-y-4">
-                <div>
-                  <Label className="text-base font-semibold">Listing currency</Label>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {usesPackageSearchPrice
-                      ? 'Search and the homepage show your lowest package rate in this currency.'
-                      : 'Set your listing currency here. Add packages to set the price guests see in search.'}
-                  </p>
+          <GymEditPanel contentClassName="space-y-0">
+            <div className="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03] lg:grid lg:grid-cols-[minmax(0,22rem)_1fr] lg:divide-x lg:divide-gray-100">
+              <div className="space-y-6 p-5 sm:p-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Gym name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={gymName}
+                    onChange={(e) => setGymName(e.target.value)}
+                    required
+                  />
                 </div>
 
-                {usesPackageSearchPrice ? (
-                  <div className="max-w-3xl rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
-                    <p className="text-sm font-medium text-gray-900">
-                      Starting from {formatGymListingPrice(packageSearchPrice, listingCurrency)}/day
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Based on your lowest package rate — including once-daily and full-access tracks.{' '}
-                      <Link
-                        href={`/manage/gym/edit?id=${gym.id}&section=packages`}
-                        className="font-medium text-[#003580] hover:underline"
-                      >
-                        Edit in Packages
-                      </Link>
-                    </p>
-                  </div>
-                ) : packageCount > 0 ? (
-                  <div className="max-w-3xl rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-                    You have packages, but none with a daily rate in {listingCurrency}. Add a per-day price
-                    in Packages, or set a starting price below.
-                  </div>
-                ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="tagline">
+                    Tagline
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">(search cards)</span>
+                  </Label>
+                  <input
+                    id="tagline"
+                    name="tagline"
+                    type="text"
+                    maxLength={80}
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
+                  />
+                  <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
+                </div>
 
-                <div className="grid max-w-3xl gap-4 md:grid-cols-3">
+                <div className="space-y-3 border-t border-gray-100 pt-5">
+                  <div>
+                    <Label>Disciplines</Label>
+                    <p className="mt-1 text-xs text-gray-500">
+                      What guests can train here — used for search filters.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DISCIPLINES.map((d) => (
+                      <label
+                        key={d}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
+                          disciplines.includes(d)
+                            ? 'border-[#003580]/30 bg-[#003580]/[0.06] text-gray-900'
+                            : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={disciplines.includes(d)}
+                          onChange={() => handleDisciplineToggle(d)}
+                          className="h-4 w-4 rounded border-gray-300 text-[#003580] focus:ring-[#003580]"
+                        />
+                        <span>{d}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t border-gray-100 pt-5">
+                  <div>
+                    <Label className="text-base font-semibold">Listing currency</Label>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {usesPackageSearchPrice
+                        ? 'Search uses your lowest package rate in this currency.'
+                        : 'Set currency here; add packages to set search pricing.'}
+                    </p>
+                  </div>
+
+                  {usesPackageSearchPrice ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        From {formatGymListingPrice(packageSearchPrice, listingCurrency)}/day
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        <Link
+                          href={`/manage/gym/edit?id=${gym.id}&section=packages`}
+                          className="font-medium text-[#003580] hover:underline"
+                        >
+                          Edit in Packages
+                        </Link>
+                      </p>
+                    </div>
+                  ) : packageCount > 0 ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+                      Add a daily rate in {listingCurrency} under Packages, or set a starting price below.
+                    </p>
+                  ) : null}
+
                   {!usesPackageSearchPrice ? (
-                    <>
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="price_per_day">Starting price (per day)</Label>
                         <Input
@@ -1444,12 +1453,9 @@ function EditGymForm() {
                           value={pricePerDay}
                           onChange={(e) => setPricePerDay(e.target.value)}
                         />
-                        <p className="text-xs text-gray-500">
-                          Shown until you add packages — then we use your lowest package rate.
-                        </p>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="price_per_week">Base price per week (optional)</Label>
+                        <Label htmlFor="price_per_week">Per week (optional)</Label>
                         <Input
                           id="price_per_week"
                           name="price_per_week"
@@ -1459,17 +1465,14 @@ function EditGymForm() {
                           onChange={(e) => setPricePerWeek(e.target.value)}
                         />
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <>
                       <input type="hidden" name="price_per_day" value={pricePerDay} />
-                      <input
-                        type="hidden"
-                        name="price_per_week"
-                        value={pricePerWeek}
-                      />
+                      <input type="hidden" name="price_per_week" value={pricePerWeek} />
                     </>
                   )}
+
                   <GymCurrencyPicker
                     id="currency"
                     value={selectedCurrencyCode}
@@ -1478,11 +1481,23 @@ function EditGymForm() {
                       setSelectedCurrencyCode(code)
                     }}
                     required
-                    helperText="This is your listing’s native currency."
+                    helperText="Native currency for this listing."
                   />
                   <input type="hidden" name="currency" value={selectedCurrencyCode} required />
                 </div>
               </div>
+
+              <div className="bg-gray-50/40 p-5 sm:p-6">
+                <GymDescriptionEditor
+                  id="description"
+                  name="description"
+                  value={description}
+                  onChange={setDescription}
+                  required
+                  className="h-full min-h-[min(70vh,42rem)]"
+                />
+              </div>
+            </div>
           </GymEditPanel>
           ) : null}
 
@@ -1715,33 +1730,6 @@ function EditGymForm() {
                       placeholder="https://facebook.com/yourgym"
                     />
                   </div>
-                </div>
-              </div>
-          </GymEditPanel>
-          ) : null}
-
-          {activeSection === 'disciplines' ? (
-          <GymEditPanel>
-              <div className="space-y-3">
-                <Label>Disciplines offered</Label>
-                <p className="text-sm text-gray-500">
-                  Select every martial art or combat sport guests can train at your gym.
-                </p>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {DISCIPLINES.map(d => (
-                    <label 
-                      key={d} 
-                      className="flex cursor-pointer items-center space-x-2 rounded-xl border border-gray-200/90 p-3 transition-colors hover:border-[#003580]/40 hover:bg-slate-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={disciplines.includes(d)}
-                        onChange={() => handleDisciplineToggle(d)}
-                        className="rounded w-4 h-4 text-[#003580] focus:ring-[#003580]"
-                      />
-                      <span className="text-sm font-medium">{d}</span>
-                    </label>
-                  ))}
                 </div>
               </div>
           </GymEditPanel>

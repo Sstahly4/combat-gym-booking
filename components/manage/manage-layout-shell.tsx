@@ -90,7 +90,6 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
   const editGymHref = active
     ? `/manage/gym/edit?id=${active.id}&section=basic`
     : '/manage/gym/edit?section=basic'
-  const viewListingHref = active ? `/manage/gym/preview?gym_id=${active.id}` : '/manage/onboarding'
   const gymName = active?.name?.trim() ? active.name.trim() : null
   const firstGymId = active?.id ?? null
 
@@ -143,7 +142,6 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
       <ManageTopNav
         editGymHref={editGymHref}
         gymName={gymName}
-        viewListingHref={viewListingHref}
         firstGymId={firstGymId}
         gyms={profile?.role === 'owner' || profile?.role === 'admin' ? gyms : []}
         activeGymId={activeGymId}

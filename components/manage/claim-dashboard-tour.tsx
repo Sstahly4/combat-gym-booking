@@ -87,10 +87,10 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'wrap-up',
-    anchor: 'tour-view-listing',
+    anchor: 'tour-edit-gym',
     title: 'Preview as a guest',
     paragraphs: [
-      'Use View listing to see the public page. Verification builds trust. Help center is in the sidebar if you need it.',
+      'Open Listings, then use View listing at the bottom of the left sidebar to see how guests will see your page. Verification builds trust; Help center is in the menu if you need it.',
     ],
   },
 ]
@@ -147,7 +147,7 @@ const STEPS_MOBILE: TourStep[] = [
     anchor: null,
     title: 'Preview as a guest',
     paragraphs: [
-      'Use View listing in the menu to see the public page. Verification builds trust; Help center is there if you need it.',
+      'Open Listings, then tap View listing at the bottom of the section sidebar to preview your page. Verification builds trust; Help center is in the menu if you need it.',
     ],
   },
 ]

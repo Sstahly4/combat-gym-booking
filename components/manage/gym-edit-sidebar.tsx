@@ -7,7 +7,6 @@ import {
   Info,
   MapPin,
   Image,
-  Dumbbell,
   Sparkles,
   Clock,
   Users,
@@ -19,6 +18,7 @@ import {
   CheckCircle2,
   PanelLeftClose,
   PanelLeftOpen,
+  Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
@@ -43,10 +43,9 @@ interface SidebarItem {
 }
 
 export const GYM_EDIT_SECTIONS: SidebarItem[] = [
-  { id: 'basic', label: 'Title & description', description: 'Name, tagline, and listing copy', icon: Info, required: true },
+  { id: 'basic', label: 'Basic', description: 'Name, tagline, disciplines, and listing copy', icon: Info, required: true },
   { id: 'location', label: 'Location', description: 'Address and verification links', icon: MapPin, required: true },
   { id: 'images', label: 'Photos', description: 'Cover image and gallery', icon: Image, required: true },
-  { id: 'disciplines', label: 'Disciplines', description: 'Sports and martial arts offered', icon: Dumbbell, required: true },
   { id: 'amenities', label: 'Amenities', description: 'Facilities, equipment, and services', icon: Sparkles },
   { id: 'schedule', label: 'Schedule', description: 'Hours and class timetable', icon: Clock },
   { id: 'trainers', label: 'Trainers', description: 'Coaches and staff profiles', icon: Users },
@@ -70,6 +69,7 @@ export const GYM_EDIT_SECTION_IDS = new Set(GYM_EDIT_SECTIONS.map((s) => s.id))
 export const DEFAULT_GYM_EDIT_SECTION = 'basic'
 
 export function resolveGymEditSection(section: string | null | undefined): string {
+  if (section === 'disciplines') return 'basic'
   if (section && GYM_EDIT_SECTION_IDS.has(section)) return section
   return DEFAULT_GYM_EDIT_SECTION
 }
@@ -89,6 +89,10 @@ interface GymEditSidebarProps {
 
 function sectionHref(gymId: string, sectionId: string, returnTo?: string | null) {
   return manageGymEditHref(gymId, { section: sectionId, returnTo })
+}
+
+function viewListingHref(gymId: string) {
+  return `/manage/gym/preview?gym_id=${gymId}`
 }
 
 export function useGymEditSidebarCollapsed(): [boolean, (collapsed: boolean) => void] {
@@ -127,6 +131,15 @@ export function GymEditSectionNav({
   const pathname = usePathname() ?? ''
   const { gyms } = useActiveGym()
   const gymName = gyms.find((g) => g.id === gymId)?.name?.trim() ?? null
+  const onGymEditRoute = pathname === '/manage/gym/edit' || pathname.startsWith('/manage/gym/edit/')
+  const externalActive = GYM_EDIT_SIDEBAR_LINKS.find(
+    (link) => pathname === link.path || pathname.startsWith(`${link.path}/`),
+  )
+  const previewHref = viewListingHref(gymId)
+  const isPreviewActive = pathname.startsWith('/manage/gym/preview')
+
+  const isSectionActive = (sectionId: string) =>
+    onGymEditRoute && !externalActive && activeSection === sectionId
 
   const linkItemClass = (isActive: boolean) =>
     cn(
@@ -170,7 +183,7 @@ export function GymEditSectionNav({
           {GYM_EDIT_SECTIONS.map((section) => {
             const Icon = section.icon
             const sectionData = sections[section.id] || { completed: false, required: false }
-            const isActive = activeSection === section.id
+            const isActive = isSectionActive(section.id)
             const href = sectionHref(gymId, section.id, returnTo)
 
             return (
@@ -240,7 +253,25 @@ export function GymEditSectionNav({
         </ul>
       </div>
 
-      <div className={cn('shrink-0 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'p-2')}>
+      <div className={cn('shrink-0 space-y-1 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'p-2')}>
+        <Link
+          href={previewHref}
+          title={collapsed ? 'View listing' : undefined}
+          data-claim-tour="tour-view-listing"
+          className={cn(
+            'flex items-center rounded-lg text-sm font-medium transition-colors',
+            collapsed
+              ? 'mx-auto h-9 w-9 justify-center'
+              : 'w-full gap-2 px-3 py-2.5',
+            isPreviewActive
+              ? 'bg-gray-100 text-gray-900'
+              : 'border border-[#003580]/15 bg-[#003580]/5 text-[#003580] hover:bg-[#003580]/10',
+          )}
+          aria-current={isPreviewActive ? 'page' : undefined}
+        >
+          <Eye className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+          {!collapsed ? <span>View listing</span> : null}
+        </Link>
         <button
           type="button"
           onClick={() => onCollapsedChange(!collapsed)}

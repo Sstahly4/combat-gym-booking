@@ -16,7 +16,11 @@ function useDropdownPortalPosition(
     if (!open || !anchorRef.current) return
 
     const update = () => {
-      const rect = anchorRef.current!.getBoundingClientRect()
+      const el = anchorRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) return
+
       const gap = 6
       const top = rect.bottom + gap
       const base: CSSProperties = {

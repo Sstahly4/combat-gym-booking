@@ -1,6 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { Eye } from 'lucide-react'
 import {
   GymEditSectionNav,
   GymEditSectionSelect,
@@ -59,10 +61,21 @@ export function GymEditLayout({
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="shrink-0 border-b border-gray-200/80 bg-white px-4 py-3 md:hidden">
-            <label htmlFor="gym-edit-mobile-section" className="sr-only">
-              Section
-            </label>
-            <GymEditSectionSelect gymId={gymId} returnTo={returnTo} activeSection={activeSection} />
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <label htmlFor="gym-edit-mobile-section" className="sr-only">
+                  Section
+                </label>
+                <GymEditSectionSelect gymId={gymId} returnTo={returnTo} activeSection={activeSection} />
+              </div>
+              <Link
+                href={`/manage/gym/preview?gym_id=${gymId}`}
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#003580]/15 bg-[#003580]/5 px-3 text-sm font-medium text-[#003580] hover:bg-[#003580]/10"
+              >
+                <Eye className="h-4 w-4" aria-hidden />
+                <span className="sr-only sm:not-sr-only">View</span>
+              </Link>
+            </div>
           </div>
 
           <main
