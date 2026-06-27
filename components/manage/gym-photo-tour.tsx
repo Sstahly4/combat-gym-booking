@@ -1,21 +1,14 @@
 'use client'
 
-import type { DragEvent, ChangeEvent } from 'react'
+import type { ChangeEvent, DragEvent } from 'react'
 import { ImagePlus, LayoutGrid, Plus, X } from 'lucide-react'
 import type { GymImage } from '@/lib/types/database'
-import type { GymImageUploadEntry } from '@/lib/manage/gym-image-upload-manager'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
+import { GymPhotoTourCarousel } from '@/components/manage/gym-photo-tour-carousel'
+import type { GymPhotoTourDisplayItem } from '@/components/manage/gym-photo-tour-types'
 import { cn } from '@/lib/utils'
 
-export type GymPhotoTourDisplayItem =
-  | { kind: 'saved'; key: string; index: number; image: GymImage }
-  | {
-      kind: 'pending'
-      key: string
-      index: number
-      pending: GymImageUploadEntry
-    }
-  | { kind: 'transition'; key: string; index: number; previewUrl: string }
+export type { GymPhotoTourDisplayItem } from '@/components/manage/gym-photo-tour-types'
 
 type GymPhotoTourProps = {
   items: GymPhotoTourDisplayItem[]
@@ -72,7 +65,7 @@ function PhotoTile({
           <ResponsiveGymImage
             image={item.image}
             alt="Gym photo"
-            sizes="(max-width: 640px) 50vw, 33vw"
+            sizes="(max-width: 640px) 50vw, 25vw"
             context="hero"
             aspect="fill"
             className="object-cover"
@@ -138,9 +131,15 @@ export function GymPhotoTour({
   const addInputId = 'gym-photo-tour-add'
 
   return (
-    <div id="gym-photo-tour" className="space-y-6">
+    <div id="gym-photo-tour" className="space-y-8">
       {items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-5">
+        <>
+          <GymPhotoTourCarousel items={items} pendingPreviewUrls={pendingPreviewUrls} />
+
+          <div
+            id="gym-photo-tour-grid"
+            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"
+          >
           {items.map((item) => (
             <PhotoTile
               key={item.key}
@@ -169,7 +168,8 @@ export function GymPhotoTour({
               <span className="text-sm font-medium">Add photos</span>
             </label>
           ) : null}
-        </div>
+          </div>
+        </>
       ) : (
         <label
           htmlFor={addInputId}
@@ -222,7 +222,7 @@ export function GymPhotoTourHeaderActions({
       <button
         type="button"
         onClick={() => {
-          document.getElementById('gym-photo-tour')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          document.getElementById('gym-photo-tour-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }}
         className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
       >

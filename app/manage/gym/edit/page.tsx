@@ -1408,6 +1408,32 @@ function EditGymForm() {
                   <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
                 </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram_link">Instagram link</Label>
+                    <Input
+                      id="instagram_link"
+                      name="instagram_link"
+                      type="url"
+                      value={instagramLink}
+                      onChange={(e) => setInstagramLink(e.target.value)}
+                      placeholder="https://instagram.com/yourgym"
+                      required={profile?.role !== 'admin'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook_link">Facebook link (optional)</Label>
+                    <Input
+                      id="facebook_link"
+                      name="facebook_link"
+                      type="url"
+                      value={facebookLink}
+                      onChange={(e) => setFacebookLink(e.target.value)}
+                      placeholder="https://facebook.com/yourgym"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <div>
                     <Label>Disciplines</Label>
@@ -1601,6 +1627,35 @@ function EditGymForm() {
                 </div>
               </div>
 
+              {profile?.role !== 'admin' ? (
+                <div className="flex items-start gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 p-3.5 max-w-2xl">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Google Maps verification</p>
+                    <p className="text-blue-700">
+                      Your Google Maps link must match the address above and be publicly accessible for gym
+                      verification.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-2 max-w-2xl">
+                <Label htmlFor="google_maps_link">Google Maps listing link</Label>
+                <Input
+                  id="google_maps_link"
+                  name="google_maps_link"
+                  type="url"
+                  value={googleMapsLink}
+                  onChange={(e) => setGoogleMapsLink(e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  required={profile?.role !== 'admin'}
+                />
+                <p className="text-xs text-gray-500">
+                  Link to your gym&apos;s Google Maps listing. This must match your address above.
+                </p>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <div className="space-y-2">
                   <Label htmlFor="latitude">Latitude (optional)</Label>
@@ -1625,60 +1680,6 @@ function EditGymForm() {
                     onChange={(e) => setLocationLng(e.target.value)}
                     placeholder="e.g., 98.3923"
                   />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t space-y-4">
-                {profile?.role !== 'admin' && (
-                  <div className="flex items-start gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 p-3.5">
-                    <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-800">
-                      <p className="font-medium mb-1">Verification Links Required</p>
-                      <p className="text-blue-700">These links are required for gym verification. Make sure they match your gym's address and are publicly accessible.</p>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="google_maps_link">Google Maps Listing Link</Label>
-                  <Input 
-                    id="google_maps_link" 
-                    name="google_maps_link" 
-                    type="url"
-                    value={googleMapsLink}
-                    onChange={(e) => setGoogleMapsLink(e.target.value)}
-                    placeholder="https://maps.google.com/..."
-                    required={profile?.role !== 'admin'} 
-                  />
-                  <p className="text-xs text-gray-500">
-                    Link to your gym's Google Maps listing. This must match your address above.
-                  </p>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
-                  <div className="space-y-2">
-                    <Label htmlFor="instagram_link">Instagram Link</Label>
-                    <Input 
-                      id="instagram_link" 
-                      name="instagram_link" 
-                      type="url"
-                      value={instagramLink}
-                      onChange={(e) => setInstagramLink(e.target.value)}
-                      placeholder="https://instagram.com/yourgym"
-                      required={profile?.role !== 'admin'} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="facebook_link">Facebook Link (optional)</Label>
-                    <Input 
-                      id="facebook_link" 
-                      name="facebook_link" 
-                      type="url"
-                      value={facebookLink}
-                      onChange={(e) => setFacebookLink(e.target.value)}
-                      placeholder="https://facebook.com/yourgym"
-                    />
-                  </div>
                 </div>
               </div>
           </GymEditPanel>

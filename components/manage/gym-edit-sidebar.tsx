@@ -250,47 +250,52 @@ export function GymEditSectionNav({
               </li>
             )
           })}
+          <li className={collapsed ? 'w-full' : undefined}>
+            <Link
+              href={previewHref}
+              title={collapsed ? 'View listing' : undefined}
+              data-claim-tour="tour-view-listing"
+              className={linkItemClass(isPreviewActive)}
+              aria-current={isPreviewActive ? 'page' : undefined}
+            >
+              {isPreviewActive && !collapsed ? (
+                <span
+                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
+                  aria-hidden
+                />
+              ) : null}
+              <Eye
+                className={cn(
+                  'h-[1.125rem] w-[1.125rem] shrink-0',
+                  isPreviewActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700',
+                )}
+                aria-hidden
+              />
+              {!collapsed ? <span className="min-w-0 flex-1 truncate">View listing</span> : null}
+            </Link>
+          </li>
+          <li className={cn(collapsed ? 'w-full' : undefined, 'mt-1')}>
+            <button
+              type="button"
+              onClick={() => onCollapsedChange(!collapsed)}
+              className={cn(
+                'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
+                collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-3 px-3 py-2.5',
+              )}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expand listing sidebar' : 'Collapse listing sidebar'}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+              ) : (
+                <>
+                  <PanelLeftClose className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+                  <span className="text-[15px] font-medium">Collapse</span>
+                </>
+              )}
+            </button>
+          </li>
         </ul>
-      </div>
-
-      <div className={cn('shrink-0 space-y-1 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'p-2')}>
-        <Link
-          href={previewHref}
-          title={collapsed ? 'View listing' : undefined}
-          data-claim-tour="tour-view-listing"
-          className={cn(
-            'flex items-center rounded-lg text-sm font-medium transition-colors',
-            collapsed
-              ? 'mx-auto h-9 w-9 justify-center'
-              : 'w-full gap-2 px-3 py-2.5',
-            isPreviewActive
-              ? 'bg-gray-100 text-gray-900'
-              : 'border border-[#003580]/15 bg-[#003580]/5 text-[#003580] hover:bg-[#003580]/10',
-          )}
-          aria-current={isPreviewActive ? 'page' : undefined}
-        >
-          <Eye className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
-          {!collapsed ? <span>View listing</span> : null}
-        </Link>
-        <button
-          type="button"
-          onClick={() => onCollapsedChange(!collapsed)}
-          className={cn(
-            'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
-            collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2 px-3 py-2.5',
-          )}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand listing sidebar' : 'Collapse listing sidebar'}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-          ) : (
-            <>
-              <PanelLeftClose className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
-              <span className="text-sm font-medium">Collapse</span>
-            </>
-          )}
-        </button>
       </div>
     </nav>
   )
@@ -308,10 +313,11 @@ export function GymEditSectionSelect({
 }) {
   const pathname = usePathname() ?? '/manage/gym/edit'
   const searchParams = useSearchParams()
+  const isPreviewActive = pathname.startsWith('/manage/gym/preview')
   const externalActive = GYM_EDIT_SIDEBAR_LINKS.find(
     (link) => pathname === link.path || pathname.startsWith(`${link.path}/`),
   )
-  const selectValue = externalActive?.id ?? activeSection
+  const selectValue = isPreviewActive ? 'view-listing' : externalActive?.id ?? activeSection
 
   return (
     <select
@@ -321,6 +327,10 @@ export function GymEditSectionSelect({
       aria-label="Choose a listing section"
       onChange={(event) => {
         const next = event.target.value
+        if (next === 'view-listing') {
+          window.location.assign(`/manage/gym/preview?gym_id=${gymId}`)
+          return
+        }
         const external = GYM_EDIT_SIDEBAR_LINKS.find((link) => link.id === next)
         if (external) {
           window.location.assign(withManageGymId(external.path, gymId))
@@ -344,6 +354,7 @@ export function GymEditSectionSelect({
           {link.label}
         </option>
       ))}
+      <option value="view-listing">View listing</option>
     </select>
   )
 }

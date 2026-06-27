@@ -92,7 +92,7 @@ export function GymEditLayout({
           <main
             className={cn(
               'min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-6',
-              hideSaveBar ? 'pb-8' : 'pb-24',
+              hideSaveBar ? 'pb-8' : 'pb-4',
             )}
           >
             <div className={cn('mx-auto w-full', contentMaxWidthClass)}>
@@ -114,57 +114,46 @@ export function GymEditLayout({
               {children}
             </div>
           </main>
-        </div>
-      </div>
 
-      {hideSaveBar ? null : (
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white">
-        <div className="flex">
-          <div
-            className={cn(
-              'hidden shrink-0 bg-white md:block',
-              sidebarCollapsed ? 'w-14' : 'w-56',
-            )}
-            aria-hidden
-          />
-          <div className="flex min-w-0 flex-1 bg-white px-4 py-3 sm:px-8">
-            <div
-              className={cn(
-                'mx-auto flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3',
-                contentMaxWidthClass,
-              )}
-            >
-              {saveError ? (
-                <p className="text-sm text-[#c13515] sm:min-w-0 sm:flex-1" role="alert">
-                  {saveError}
-                </p>
-              ) : null}
-              <div className="flex w-full items-center gap-3 sm:ml-auto sm:w-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancel}
-                  className="hidden shrink-0 sm:inline-flex"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={onSave}
-                  disabled={saving}
-                  className={cn(
-                    CHECKOUT_PAY_BUTTON_CLASS,
-                    'flex-1 sm:min-w-[10.5rem] sm:flex-initial',
-                  )}
-                >
-                  {saving ? 'Saving…' : 'Save changes'}
-                </Button>
+          {hideSaveBar ? null : (
+            <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-3 sm:px-8">
+              <div
+                className={cn(
+                  'mx-auto flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3',
+                  contentMaxWidthClass,
+                )}
+              >
+                {saveError ? (
+                  <p className="text-sm text-[#c13515] sm:min-w-0 sm:flex-1" role="alert">
+                    {saveError}
+                  </p>
+                ) : null}
+                <div className="flex w-full items-center gap-3 sm:ml-auto sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    className="hidden shrink-0 sm:inline-flex"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onSave}
+                    disabled={saving}
+                    className={cn(
+                      CHECKOUT_PAY_BUTTON_CLASS,
+                      'flex-1 sm:min-w-[10.5rem] sm:flex-initial',
+                    )}
+                  >
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
-      )}
     </div>
   )
 }
