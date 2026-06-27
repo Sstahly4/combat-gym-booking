@@ -23,6 +23,7 @@ export function GymEditLayout({
   onSave,
   onCancel,
   hideSaveBar = false,
+  contentWidth = 'default',
   children,
 }: {
   gymId: string
@@ -35,6 +36,7 @@ export function GymEditLayout({
   onSave?: () => void
   onCancel?: () => void
   hideSaveBar?: boolean
+  contentWidth?: 'default' | 'wide'
   children: ReactNode
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useGymEditSidebarCollapsed()
@@ -69,7 +71,12 @@ export function GymEditLayout({
               hideSaveBar ? 'pb-8' : 'pb-24',
             )}
           >
-            <div className="mx-auto w-full max-w-2xl">
+            <div
+              className={cn(
+                'mx-auto w-full',
+                contentWidth === 'wide' ? 'max-w-5xl' : 'max-w-2xl',
+              )}
+            >
               <h1 className="mb-5 text-2xl font-semibold tracking-tight text-gray-900 sm:mb-6 sm:text-[1.75rem]">
                 {pageTitle}
               </h1>
@@ -90,7 +97,12 @@ export function GymEditLayout({
             aria-hidden
           />
           <div className="flex min-w-0 flex-1 bg-white px-4 py-3 sm:px-8">
-            <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div
+              className={cn(
+                'mx-auto flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3',
+                contentWidth === 'wide' ? 'max-w-5xl' : 'max-w-2xl',
+              )}
+            >
               {saveError ? (
                 <p className="text-sm text-[#c13515] sm:min-w-0 sm:flex-1" role="alert">
                   {saveError}

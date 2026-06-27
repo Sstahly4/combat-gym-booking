@@ -7,8 +7,9 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { useClaimRedirectHydration } from '@/lib/hooks/use-claim-redirect-hydration'
 import { ManageTopNav } from '@/components/manage/manage-top-nav'
 import {
-  PARTNER_HUB_MAIN_HEIGHT_CLASS,
-  PARTNER_HUB_MAIN_OFFSET_CLASS,
+  PARTNER_HUB_MAIN_CLASS,
+  PARTNER_HUB_SHELL_CLASS,
+  isPartnerListingWorkspaceRoute,
 } from '@/lib/manage/manage-partner-nav'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
 import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
@@ -82,8 +83,7 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
   const { user, profile, loading: authLoading } = useAuth()
   const { blockingAuth } = useClaimRedirectHydration()
   const { gyms, activeGymId, setActiveGymId, loading } = useActiveGym()
-  const isListingEditor =
-    pathname.startsWith('/manage/gym/edit') || pathname.startsWith('/manage/accommodation')
+  const isListingEditor = isPartnerListingWorkspaceRoute(pathname)
 
   const active = gyms.find((g) => g.id === activeGymId) ?? gyms[0] ?? null
 
@@ -135,7 +135,7 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <div className="relative flex min-h-[calc(100svh-5rem)] flex-1 flex-col bg-white">
+    <div className={PARTNER_HUB_SHELL_CLASS}>
       <AccountClaimPrompts />
       <ClaimDashboardTour />
       <ManageNoBookingsToastHost />
@@ -153,9 +153,7 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
       <div
         data-manage-main-scroll
         className={cn(
-          'min-h-0 min-w-0 flex-1 overflow-x-hidden bg-white',
-          PARTNER_HUB_MAIN_OFFSET_CLASS,
-          PARTNER_HUB_MAIN_HEIGHT_CLASS,
+          PARTNER_HUB_MAIN_CLASS,
           isListingEditor ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
         )}
       >

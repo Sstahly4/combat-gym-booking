@@ -14,6 +14,8 @@ import {
   HelpCircle,
   Package,
   BedDouble,
+  Tag,
+  Star,
   CheckCircle2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -59,6 +61,8 @@ export const GYM_EDIT_SIDEBAR_LINKS: {
   path: string
 }[] = [
   { id: 'accommodation', label: 'Accommodation', icon: BedDouble, path: '/manage/accommodation' },
+  { id: 'promotions', label: 'Promotions', icon: Tag, path: '/manage/promotions' },
+  { id: 'reviews', label: 'Reviews', icon: Star, path: '/manage/reviews' },
 ]
 
 export const GYM_EDIT_SECTION_IDS = new Set(GYM_EDIT_SECTIONS.map((s) => s.id))

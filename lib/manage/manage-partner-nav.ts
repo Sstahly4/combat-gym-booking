@@ -9,8 +9,6 @@ import {
   LayoutList,
   Settings,
   ShieldCheck,
-  Star,
-  Tag,
   Wallet,
 } from 'lucide-react'
 
@@ -57,16 +55,11 @@ export function buildPartnerNav({
   const calendarHref = withManageGymId('/manage/calendar', firstGymId)
   const bookingsHref = withManageGymId('/manage/bookings', firstGymId)
   const balancesHref = withManageGymId('/manage/balances', firstGymId)
-  const promotionsHref = withManageGymId('/manage/promotions', firstGymId)
-  const reviewsHref = withManageGymId('/manage/reviews', firstGymId)
   const helpHref = withManageGymId('/manage/help', firstGymId)
   const verificationHref = withManageGymId('/manage/verification', firstGymId)
   const settingsHref = withManageGymId('/manage/settings', firstGymId)
 
-  const listingsActive = (p: string) =>
-    p.startsWith('/manage/gym/edit') ||
-    p.startsWith('/manage/gym/preview') ||
-    p.startsWith('/manage/accommodation')
+  const listingsActive = isPartnerListingWorkspaceRoute
 
   return {
     tabs: [
@@ -117,18 +110,6 @@ export function buildPartnerNav({
         tourAnchor: 'tour-view-listing',
       },
       {
-        href: promotionsHref,
-        label: 'Promotions',
-        icon: Tag,
-        isActive: (p) => p === '/manage/promotions' || p.startsWith('/manage/promotions/'),
-      },
-      {
-        href: reviewsHref,
-        label: 'Reviews',
-        icon: Star,
-        isActive: (p) => p === '/manage/reviews' || p.startsWith('/manage/reviews/'),
-      },
-      {
         href: verificationHref,
         label: verificationDone ? 'Verified' : 'Verification',
         icon: verificationDone ? BadgeCheck : ShieldCheck,
@@ -154,15 +135,22 @@ export function isPartnerMenuRouteActive(pathname: string): boolean {
   return (
     pathname === '/manage/gym/preview' ||
     pathname.startsWith('/manage/gym/preview') ||
-    pathname === '/manage/promotions' ||
-    pathname.startsWith('/manage/promotions/') ||
-    pathname === '/manage/reviews' ||
-    pathname.startsWith('/manage/reviews/') ||
     pathname === '/manage/help' ||
     pathname.startsWith('/manage/help/') ||
     pathname === '/manage/verification' ||
     pathname === '/manage/settings' ||
     pathname.startsWith('/manage/settings/')
+  )
+}
+
+/** Gym-scoped listing workspace (editor sections + linked listing pages). */
+export function isPartnerListingWorkspaceRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith('/manage/gym/edit') ||
+    pathname.startsWith('/manage/gym/preview') ||
+    pathname.startsWith('/manage/accommodation') ||
+    pathname.startsWith('/manage/promotions') ||
+    pathname.startsWith('/manage/reviews')
   )
 }
 
@@ -181,7 +169,7 @@ export function partnerHubUsesUnifiedHeader(pathname: string): boolean {
   )
 }
 
-/** Unified partner header (Airbnb-style single bar). */
-export const PARTNER_HUB_HEADER_HEIGHT_CLASS = 'h-20'
-export const PARTNER_HUB_MAIN_OFFSET_CLASS = 'pt-20'
-export const PARTNER_HUB_MAIN_HEIGHT_CLASS = 'h-[calc(100svh-5rem)] max-h-[calc(100svh-5rem)]'
+/** Unified partner header (sticky app chrome). */
+export const PARTNER_HUB_HEADER_HEIGHT_CLASS = 'h-20 shrink-0'
+export const PARTNER_HUB_SHELL_CLASS = 'flex h-svh flex-col overflow-hidden bg-white'
+export const PARTNER_HUB_MAIN_CLASS = 'min-h-0 min-w-0 flex-1 overflow-x-hidden bg-white'

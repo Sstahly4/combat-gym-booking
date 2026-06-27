@@ -272,13 +272,13 @@ export function ManageTopNav({
   const brandLink = (
     <Link
       href={withManageGymId('/manage', firstGymId)}
-      className="min-w-0 shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+      className="min-w-0 shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30"
     >
-      <span className="block truncate text-left text-base font-bold leading-snug tracking-tight text-gray-900 sm:text-lg">
+      <span className="block truncate text-left text-lg font-bold leading-snug tracking-tight text-[#003580] sm:text-xl md:text-2xl">
         CombatStay.com
       </span>
-      <span className="mt-0.5 block text-left text-sm font-normal leading-tight tracking-tight text-gray-500 sm:text-[15px]">
-        Partner hub
+      <span className="mt-0.5 block translate-x-px text-left text-base font-light leading-tight tracking-tight text-[#003580] sm:text-lg md:text-xl">
+        Partner Hub
       </span>
     </Link>
   )
@@ -489,7 +489,7 @@ export function ManageTopNav({
     <>
       <header
         className={cn(
-          'fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white',
+          'sticky top-0 z-50 border-b border-gray-200 bg-white',
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >

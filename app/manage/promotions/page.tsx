@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useActiveGym } from '@/components/manage/active-gym-context'
+import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -101,7 +102,7 @@ function formatDateLabel(iso: string | null): string {
 }
 
 export default function ManagePromotionsPage() {
-  const { activeGymId, gyms, loading: gymLoading } = useActiveGym()
+  const { activeGymId, loading: gymLoading } = useActiveGym()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,11 +147,6 @@ export default function ManagePromotionsPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGymId])
-
-  const gymName = useMemo(() => {
-    if (!activeGymId) return null
-    return gyms.find((g) => g.id === activeGymId)?.name ?? null
-  }, [activeGymId, gyms])
 
   const promos = data?.promotions ?? []
 
@@ -272,15 +268,20 @@ export default function ManagePromotionsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
+    <GymEditLayout
+      gymId={activeGymId ?? ''}
+      activeSection="basic"
+      title="Promotions"
+      sections={{}}
+      saving={false}
+      hideSaveBar
+      contentWidth="wide"
+    >
+      <div className="space-y-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-                Promotions{' '}
-                <span className="font-light tabular-nums text-gray-900">{counts.all}</span>
-              </h1>
+              <span className="text-sm tabular-nums text-gray-500">{counts.all} total</span>
               {counts.active > 0 ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#003580]/10 px-2 py-0.5 text-[11px] font-medium text-[#003580] ring-1 ring-inset ring-[#003580]/20">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#003580]" aria-hidden />
@@ -305,7 +306,6 @@ export default function ManagePromotionsPage() {
             </div>
             <p className="max-w-2xl text-sm font-normal text-gray-500">
               Create deals that fill quiet weeks, reward early bookers, or boost long stays.
-              {gymName ? <span className="text-gray-400"> · {gymName}</span> : null}
             </p>
           </div>
 
@@ -320,7 +320,11 @@ export default function ManagePromotionsPage() {
               New promotion
             </Button>
             <Link
-              href="/manage/gym/edit"
+              href={
+                activeGymId
+                  ? `/manage/gym/edit?id=${encodeURIComponent(activeGymId)}&section=packages`
+                  : '/manage/gym/edit?section=packages'
+              }
               className="inline-flex h-8 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
             >
               Edit packages &amp; pricing
@@ -770,6 +774,6 @@ export default function ManagePromotionsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </GymEditLayout>
   )
 }

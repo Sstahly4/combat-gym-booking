@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useActiveGym } from '@/components/manage/active-gym-context'
+import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -160,6 +162,7 @@ function ReviewRow({
 export default function OwnerReviewsPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
+  const { activeGymId } = useActiveGym()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<OwnerReview[]>([])
@@ -344,12 +347,17 @@ export default function OwnerReviewsPage() {
 
   if (authLoading || (loading && reviews.length === 0)) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
-          <div className="space-y-2">
-            <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />
-            <div className="h-4 w-full max-w-md animate-pulse rounded bg-gray-100/80" />
-          </div>
+      <GymEditLayout
+        gymId={activeGymId ?? ''}
+        activeSection="basic"
+        title="Reviews"
+        sections={{}}
+        saving={false}
+        hideSaveBar
+        contentWidth="wide"
+      >
+        <div className="space-y-4">
+          <div className="h-4 w-full max-w-md animate-pulse rounded bg-gray-100/80" />
           <div className="h-px w-full bg-gray-100" />
           <div className="space-y-0 divide-y divide-gray-100 border-t border-gray-100">
             {[1, 2, 3].map((i) => (
@@ -360,20 +368,25 @@ export default function OwnerReviewsPage() {
             ))}
           </div>
         </div>
-      </div>
+      </GymEditLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
+    <GymEditLayout
+      gymId={activeGymId ?? ''}
+      activeSection="basic"
+      title="Reviews"
+      sections={{}}
+      saving={false}
+      hideSaveBar
+      contentWidth="wide"
+    >
+      <div className="space-y-8">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-                Reviews{' '}
-                <span className="font-light tabular-nums text-gray-900">{stats.total}</span>
-              </h1>
+              <span className="text-sm tabular-nums text-gray-500">{stats.total} total</span>
               {stats.total > 0 ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200/70">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />
@@ -596,6 +609,6 @@ export default function OwnerReviewsPage() {
           </div>
         )}
       </div>
-    </div>
+    </GymEditLayout>
   )
 }
