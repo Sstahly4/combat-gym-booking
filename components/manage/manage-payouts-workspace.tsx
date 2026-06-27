@@ -9,16 +9,18 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { loadConnectAndInitialize } from '@stripe/connect-js'
-import { ConnectComponentsProvider, ConnectAccountManagement, ConnectAccountOnboarding } from '@stripe/react-connect-js'
+import { ConnectComponentsProvider } from '@stripe/react-connect-js'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useBootstrapProfileIfMissing } from '@/lib/hooks/use-bootstrap-profile-if-missing'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { ManagePayoutPreferencesForm } from '@/components/manage/manage-payout-preferences-form'
-import { StripeAuthenticatorCoachPanel } from '@/components/manage/stripe-authenticator-coach-panel'
+import { StripeConnectOnboardingSection } from '@/components/manage/stripe-connect-onboarding-section'
+import { StripeConnectAccountSection } from '@/components/manage/stripe-connect-account-section'
 import { PartnerAgreementSignPanel } from '@/components/manage/partner-agreement-sign-panel'
 import { CURRENT_PARTNER_AGREEMENT_VERSION } from '@/lib/legal/partner-agreement-document'
 import { manageSettingsPayoutsHref } from '@/lib/manage/settings-payouts-href'
+import { consumePayoutsScrollOnboarding } from '@/lib/manage/payouts-scroll-onboarding'
 import type { Gym } from '@/lib/types/database'
 import { isGymPayoutComplete } from '@/lib/manage/gym-payout-complete'
 import { dispatchVerificationMilestone } from '@/lib/manage/verification-milestone-toast'
@@ -40,8 +42,10 @@ export function ManagePayoutsWorkspace() {
   const [connectInstance, setConnectInstance] = useState<ReturnType<typeof loadConnectAndInitialize> | null>(null)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
-  /** Embedded Connect (session fetch) only after owner clicks Start, unless already verified. */
+  /** Embedded Connect loads after account exists and owner starts or is already verified. */
   const [connectUiStarted, setConnectUiStarted] = useState(false)
+  const hasBootstrappedRef = useRef(false)
+  const hasGymLoadedRef = useRef(false)
 
   const profileRecoverFailed = useBootstrapProfileIfMissing({
     authLoading,
@@ -217,7 +221,7 @@ export function ManagePayoutsWorkspace() {
     }
   }, [fromStripe, urlGymId, activeGymId, loadGym, router])
 
-  /** Deep link: #account-management or #stripe-onboarding */
+  /** Deep link hash only — no auto-scroll on reconnect / tab return. */
   useEffect(() => {
     if (typeof window === 'undefined') return
     const h = window.location.hash.slice(1)
@@ -225,10 +229,21 @@ export function ManagePayoutsWorkspace() {
     const el = document.getElementById(h)
     if (!el) return
     const t = window.setTimeout(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)
+      el.scrollIntoView({ behavior: 'auto', block: 'nearest' })
+    }, 150)
     return () => window.clearTimeout(t)
-  }, [connectInstance, connectLoading, gymLoading, gym?.id, gym?.stripe_connect_verified])
+  }, [gym?.stripe_connect_verified, gym?.id])
+
+  /** One-time scroll after owner taps Start / Continue — avoids alt-tab jump. */
+  useEffect(() => {
+    if (!connectInstance || connectLoading) return
+    if (!consumePayoutsScrollOnboarding()) return
+    const el = document.getElementById('stripe-onboarding')
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'auto', block: 'nearest' })
+    })
+  }, [connectInstance, connectLoading])
 
   const headerCrumbs = useMemo(
     () => (
@@ -259,7 +274,25 @@ export function ManagePayoutsWorkspace() {
       profile?.partner_agreement_version === CURRENT_PARTNER_AGREEMENT_VERSION,
   )
 
-  if (authLoading || profileRecoverFailed || (user && !profile)) {
+  useEffect(() => {
+    if (user && profile) hasBootstrappedRef.current = true
+  }, [user, profile])
+
+  useEffect(() => {
+    if (gym) hasGymLoadedRef.current = true
+  }, [gym?.id])
+
+  const showInitialAuthSpinner =
+    (authLoading && !hasBootstrappedRef.current) ||
+    profileRecoverFailed ||
+    (user && !profile && !hasBootstrappedRef.current)
+
+  const showOnboardingSection =
+    connectUiStarted && !gym?.stripe_connect_verified && Boolean(stripeAccountId)
+  const showAccountSection = connectUiStarted && Boolean(gym?.stripe_connect_verified)
+  const preparingConnectAccount = connectUiStarted && !stripeAccountId
+
+  if (showInitialAuthSpinner) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-[#003580]" aria-hidden />
@@ -285,7 +318,7 @@ export function ManagePayoutsWorkspace() {
         <div className={`${dashCard} px-5 py-8 text-center text-sm text-gray-500`}>
           Select a gym from the sidebar to manage payouts.
         </div>
-      ) : gymLoading ? (
+      ) : gymLoading && !hasGymLoadedRef.current ? (
         <div className={`${dashCard} flex items-center justify-center px-5 py-12 text-gray-400`}>
           <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
           <span className="ml-2 text-sm">Loading…</span>
@@ -293,7 +326,7 @@ export function ManagePayoutsWorkspace() {
       ) : gymError || !gym ? (
         <div className={`${dashCard} px-5 py-6 text-sm text-rose-700`}>{gymError || 'Gym not found.'}</div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {!partnerAgreementComplete ? <PartnerAgreementSignPanel gymId={gym.id} /> : null}
           <ManagePayoutPreferencesForm
             gymId={gym.id}
@@ -305,74 +338,49 @@ export function ManagePayoutsWorkspace() {
             onStripeSetupStarted={() => setConnectUiStarted(true)}
           />
 
-          {connectUiStarted ? (
-            <>
-              {connectLoading ? (
-                <div className={`${dashCard} flex items-center justify-center px-5 py-12 text-gray-400`}>
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  <span className="ml-2 text-sm">Loading account tools…</span>
-                </div>
-              ) : connectError ? (
-                <div className={`${dashCard} px-5 py-6`}>
-                  <p className="text-sm font-medium text-rose-700">{connectError}</p>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Use <strong className="font-semibold text-gray-900">Start payout setup</strong> above so we can
-                    create your connected account, then account tools load here.
-                  </p>
-                </div>
-              ) : connectInstance ? (
-                <ConnectComponentsProvider connectInstance={connectInstance as never}>
-                  <div className="space-y-6">
-                    {!gym.stripe_connect_verified ? (
-                      /* P2: 2-col on desktop — Stripe onboarding left, coach panel right */
-                      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-                        <section id="stripe-onboarding" className={`${dashCard} overflow-hidden`}>
-                          <header className="border-b border-gray-100 px-5 py-4">
-                            <h3 className="text-base font-semibold text-gray-900">Finish payout account setup</h3>
-                            <p className="mt-0.5 text-sm text-gray-500">
-                              Complete the steps below. If a secure Stripe window opens, follow the prompts—it closes
-                              when you are done and you return here. We then refresh your listing status.
-                            </p>
-                          </header>
-                          <div className="px-2 py-3 sm:px-4">
-                            <ConnectAccountOnboarding
-                              onExit={() => {
-                                void (async () => {
-                                  try {
-                                    await fetch(`/api/gyms/${encodeURIComponent(gym.id)}/update-stripe-status`, {
-                                      method: 'POST',
-                                    })
-                                  } catch {
-                                    /* best-effort sync */
-                                  }
-                                  await loadGym()
-                                })()
-                              }}
-                            />
-                          </div>
-                        </section>
+          {preparingConnectAccount ? (
+            <div className={`${dashCard} flex items-center gap-3 px-5 py-6 text-sm text-gray-600`}>
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#003580]" aria-hidden />
+              Preparing your payout account…
+            </div>
+          ) : null}
 
-                        <StripeAuthenticatorCoachPanel
-                          preferredLanguage={profile?.preferred_language}
-                        />
-                      </div>
-                    ) : null}
+          {showOnboardingSection || showAccountSection ? (
+            connectLoading && !connectInstance ? (
+              <div className={`${dashCard} flex items-center gap-3 px-5 py-6 text-sm text-gray-600`}>
+                <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#003580]" aria-hidden />
+                Loading account tools…
+              </div>
+            ) : connectError ? (
+              <div className={`${dashCard} px-5 py-5`}>
+                <p className="text-sm font-medium text-rose-700">{connectError}</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  Use <strong className="font-semibold text-gray-900">Continue payout setup</strong> above,
+                  then account tools load here.
+                </p>
+              </div>
+            ) : connectInstance ? (
+              <ConnectComponentsProvider connectInstance={connectInstance as never}>
+                {showOnboardingSection ? (
+                  <StripeConnectOnboardingSection
+                    gym={gym}
+                    preferredLanguage={profile?.preferred_language}
+                    onExit={async () => {
+                      try {
+                        await fetch(`/api/gyms/${encodeURIComponent(gym.id)}/update-stripe-status`, {
+                          method: 'POST',
+                        })
+                      } catch {
+                        /* best-effort sync */
+                      }
+                      await loadGym()
+                    }}
+                  />
+                ) : null}
 
-                    <section id="account-management" className={`${dashCard} overflow-hidden`}>
-                      <header className="border-b border-gray-100 px-5 py-4">
-                        <h3 className="text-base font-semibold text-gray-900">Account &amp; bank details</h3>
-                        <p className="mt-0.5 text-sm text-gray-500">
-                          Update bank account, business profile, and verification when your provider asks for them.
-                        </p>
-                      </header>
-                      <div className="px-2 py-3 sm:px-4">
-                        <ConnectAccountManagement />
-                      </div>
-                    </section>
-                  </div>
-                </ConnectComponentsProvider>
-              ) : null}
-            </>
+                {showAccountSection ? <StripeConnectAccountSection /> : null}
+              </ConnectComponentsProvider>
+            ) : null
           ) : null}
         </div>
       )}

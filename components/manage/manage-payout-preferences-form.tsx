@@ -12,6 +12,7 @@ import {
   PLAY_STORE_URL,
   getPayoutGateCopy,
 } from '@/lib/manage/stripe-payout-onboarding-copy'
+import { markPayoutsScrollOnboarding } from '@/lib/manage/payouts-scroll-onboarding'
 import { StripePayoutRecoveryCard } from '@/components/manage/stripe-payout-recovery-card'
 
 const dashCard =
@@ -103,7 +104,6 @@ export function ManagePayoutPreferencesForm({
   }, [primaryCtaLabel])
 
   const openStripeConnectFlow = async () => {
-    onStripeSetupStarted?.()
     setSavingRail(true)
     setError(null)
     try {
@@ -125,11 +125,10 @@ export function ManagePayoutPreferencesForm({
       const caData = await caRes.json().catch(() => ({}))
       if (!caRes.ok) throw new Error(caData.error || 'Could not prepare your payout account')
       await onGymRefresh()
+      onStripeSetupStarted?.()
+      markPayoutsScrollOnboarding()
       if (typeof window !== 'undefined') {
         window.location.hash = 'stripe-onboarding'
-        window.requestAnimationFrame(() => {
-          document.getElementById('stripe-onboarding')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        })
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
