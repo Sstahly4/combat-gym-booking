@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { CurrencyModal } from '@/components/currency-modal'
 import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
+import { PartnerHubDropdownPortal } from '@/components/manage/partner-hub-dropdown-portal'
 import {
   buildPartnerNav,
   isPartnerMenuRouteActive,
@@ -69,13 +70,18 @@ function MenuLink({
   pathname: string
   onNavigate?: () => void
 }) {
+  const router = useRouter()
   const Icon = item.icon
   const active = item.isActive(pathname)
   return (
     <Link
       href={item.href}
       data-claim-tour={item.tourAnchor}
-      onClick={onNavigate}
+      onClick={(e) => {
+        e.preventDefault()
+        onNavigate?.()
+        router.push(item.href)
+      }}
       className={cn(
         'flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50',
         active ? 'bg-gray-50 font-medium text-gray-900' : 'text-gray-700',
@@ -102,6 +108,7 @@ function CenterMenuDropdown({
   onToggle,
   onClose,
   menuRef,
+  menuPanelRef,
 }: {
   menu: PartnerMenuItem[]
   settings: PartnerMenuItem
@@ -111,6 +118,7 @@ function CenterMenuDropdown({
   onToggle: () => void
   onClose: () => void
   menuRef: React.RefObject<HTMLDivElement>
+  menuPanelRef: React.RefObject<HTMLDivElement>
 }) {
   const menuActive = isPartnerMenuRouteActive(pathname)
 
@@ -141,26 +149,22 @@ function CenterMenuDropdown({
         </span>
       </button>
 
-      {menuOpen ? (
-        <div
-          role="menu"
-          className={cn(
-            'absolute z-[110] w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10',
-            size === 'desktop'
-              ? 'left-1/2 top-[calc(100%+0.35rem)] -translate-x-1/2'
-              : 'right-0 top-[calc(100%+0.35rem)]',
-          )}
-        >
-          <div className="max-h-[min(70vh,24rem)] overflow-y-auto px-1">
-            {menu.map((item) => (
-              <MenuLink key={item.href} item={item} pathname={pathname} onNavigate={onClose} />
-            ))}
-          </div>
-          <div className="mt-1 border-t border-gray-100 px-1 pt-1">
-            <MenuLink item={settings} pathname={pathname} onNavigate={onClose} />
-          </div>
+      <PartnerHubDropdownPortal
+        open={menuOpen}
+        anchorRef={menuRef}
+        panelRef={menuPanelRef}
+        align={size === 'desktop' ? 'center' : 'right'}
+        className="w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
+      >
+        <div className="max-h-[min(70vh,24rem)] overflow-y-auto px-1">
+          {menu.map((item) => (
+            <MenuLink key={item.href} item={item} pathname={pathname} onNavigate={onClose} />
+          ))}
         </div>
-      ) : null}
+        <div className="mt-1 border-t border-gray-100 px-1 pt-1">
+          <MenuLink item={settings} pathname={pathname} onNavigate={onClose} />
+        </div>
+      </PartnerHubDropdownPortal>
     </div>
   )
 }
@@ -193,8 +197,11 @@ export function ManageTopNav({
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false)
 
   const menuRef = useRef<HTMLDivElement>(null)
+  const menuPanelRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
+  const accountPanelRef = useRef<HTMLDivElement>(null)
   const hubMenuRef = useRef<HTMLDivElement>(null)
+  const hubMenuPanelRef = useRef<HTMLDivElement>(null)
 
   const activeGym = activeGymId ? gyms.find((g) => g.id === activeGymId) : gyms[0]
   const verificationDone =
@@ -220,46 +227,32 @@ export function ManageTopNav({
   }, [pathname])
 
   useEffect(() => {
-    if (!menuOpen) return
+    if (!menuOpen && !accountOpen && !hubMenuOpen) return
+
     function onPointerDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
+      const target = e.target as Node
+      const inMenu =
+        menuRef.current?.contains(target) || menuPanelRef.current?.contains(target)
+      const inAccount =
+        accountRef.current?.contains(target) || accountPanelRef.current?.contains(target)
+      const inHub =
+        hubMenuRef.current?.contains(target) || hubMenuPanelRef.current?.contains(target)
+
+      if (menuOpen && !inMenu) setMenuOpen(false)
+      if (accountOpen && !inAccount) setAccountOpen(false)
+      if (hubMenuOpen && !inHub) setHubMenuOpen(false)
     }
+
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [menuOpen])
+  }, [menuOpen, accountOpen, hubMenuOpen])
 
-  useEffect(() => {
-    if (!accountOpen) return
-    function onPointerDown(e: MouseEvent) {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
-        setAccountOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [accountOpen])
+  const closeHubMenu = () => setHubMenuOpen(false)
 
-  useEffect(() => {
-    if (!hubMenuOpen) return
-    function onPointerDown(e: MouseEvent) {
-      if (hubMenuRef.current && !hubMenuRef.current.contains(e.target as Node)) {
-        setHubMenuOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [hubMenuOpen])
-
-  useEffect(() => {
-    if (!hubMenuOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [hubMenuOpen])
+  const navigateFromMenu = (href: string, close: () => void) => {
+    close()
+    router.push(href)
+  }
 
   const handleSignOut = async () => {
     setAccountOpen(false)
@@ -286,7 +279,10 @@ export function ManageTopNav({
   const bookATripRow = (
     <Link
       href="/"
-      onClick={() => setHubMenuOpen(false)}
+      onClick={(e) => {
+        e.preventDefault()
+        navigateFromMenu('/', closeHubMenu)
+      }}
       className="mx-2 flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-gray-50"
     >
       <div className="min-w-0">
@@ -323,9 +319,12 @@ export function ManageTopNav({
       </button>
 
       {accountOpen ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-[110] w-[min(100vw-2rem,16rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
+        <PartnerHubDropdownPortal
+          open={accountOpen}
+          anchorRef={accountRef}
+          panelRef={accountPanelRef}
+          align="right"
+          className="w-[min(100vw-2rem,16rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
           <div className="border-b border-gray-100 px-4 py-2.5">
             <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
@@ -336,14 +335,20 @@ export function ManageTopNav({
           <div className="px-2 py-1">
             <Link
               href={settings.href}
-              onClick={() => setAccountOpen(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                navigateFromMenu(settings.href, () => setAccountOpen(false))
+              }}
               className="block rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               Settings
             </Link>
             <Link
               href="/saved"
-              onClick={() => setAccountOpen(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                navigateFromMenu('/saved', () => setAccountOpen(false))
+              }}
               className="block rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               My favorites
@@ -356,7 +361,7 @@ export function ManageTopNav({
               Sign out
             </button>
           </div>
-        </div>
+        </PartnerHubDropdownPortal>
       ) : null}
     </div>
   )
@@ -387,14 +392,17 @@ export function ManageTopNav({
       </button>
 
       {hubMenuOpen ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-[110] w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
+        <PartnerHubDropdownPortal
+          open={hubMenuOpen}
+          anchorRef={hubMenuRef}
+          panelRef={hubMenuPanelRef}
+          align="right"
+          className="w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
           {bookATripRow}
 
           <div className="space-y-1 border-t border-gray-100 px-3 pb-2 pt-2">
-            <ManageHeaderSearch />
+            <ManageHeaderSearch theme="light" className="w-full" />
           </div>
 
           {gyms.length > 1 && onSelectGym ? (
@@ -427,7 +435,7 @@ export function ManageTopNav({
             <button
               type="button"
               onClick={() => {
-                setHubMenuOpen(false)
+                closeHubMenu()
                 setCurrencyModalOpen(true)
               }}
               className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"
@@ -436,20 +444,26 @@ export function ManageTopNav({
             </button>
             <Link
               href="/faq"
-              onClick={() => setHubMenuOpen(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                navigateFromMenu('/faq', closeHubMenu)
+              }}
               className="block rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               Help centre
             </Link>
             <Link
               href="/contact"
-              onClick={() => setHubMenuOpen(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                navigateFromMenu('/contact', closeHubMenu)
+              }}
               className="block rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               Customer service
             </Link>
           </div>
-        </div>
+        </PartnerHubDropdownPortal>
       ) : null}
     </div>
   )
@@ -480,6 +494,7 @@ export function ManageTopNav({
         }}
         onClose={() => setMenuOpen(false)}
         menuRef={menuRef}
+        menuPanelRef={menuPanelRef}
       />
     </nav>
   )
@@ -488,7 +503,7 @@ export function ManageTopNav({
     <>
       <header
         className={cn(
-          'sticky top-0 z-[100] border-b border-gray-200 bg-white',
+          'sticky top-0 z-[100] overflow-visible border-b border-gray-200 bg-white',
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >

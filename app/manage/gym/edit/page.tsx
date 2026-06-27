@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, Suspense, useRef, useMemo } from 'react'
+import { useEffect, useState, Suspense, useRef, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,12 @@ import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
 import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
+import {
+  formatGymListingPrice,
+  lowestSearchPricePerDay,
+  type PackageSearchPriceRow,
+} from '@/lib/manage/gym-search-listing-price'
+import { syncGymSearchPrice } from '@/lib/manage/sync-gym-search-price'
 import {
   DEFAULT_GYM_AMENITIES,
   GYM_AMENITY_ORDER,
@@ -182,6 +189,8 @@ function EditGymForm() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [packageEditorMode, setPackageEditorMode] = useState<PackageEditorMode>(null)
   const [packagesListRefreshKey, setPackagesListRefreshKey] = useState(0)
+  const [packageSearchPrice, setPackageSearchPrice] = useState<number | null>(null)
+  const [packageCount, setPackageCount] = useState(0)
   const activeSection = resolveGymEditSection(sectionFromUrl)
 
   // Form State
@@ -789,6 +798,35 @@ function EditGymForm() {
     setLoading(false)
   }
 
+  const refreshPackageSearchPrice = useCallback(async () => {
+    if (!gym?.id) {
+      setPackageSearchPrice(null)
+      setPackageCount(0)
+      return
+    }
+
+    const supabase = createClient()
+    const listingCurrency = normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')
+    const { data } = await supabase
+      .from('packages')
+      .select(
+        'price_per_day, once_daily_price_per_day, currency, pricing_config, variants:package_variants(price_per_day, once_daily_price_per_day)',
+      )
+      .eq('gym_id', gym.id)
+
+    const rows = (data ?? []) as PackageSearchPriceRow[]
+    setPackageCount(rows.length)
+    const lowest = lowestSearchPricePerDay(rows, listingCurrency)
+    setPackageSearchPrice(lowest)
+    if (lowest !== null) {
+      setPricePerDay(String(lowest))
+    }
+  }, [gym?.id, gym?.currency, selectedCurrencyCode])
+
+  useEffect(() => {
+    void refreshPackageSearchPrice()
+  }, [refreshPackageSearchPrice, packagesListRefreshKey])
+
   const handleDisciplineToggle = (discipline: string) => {
     setDisciplines(prev => 
       prev.includes(discipline)
@@ -1088,6 +1126,9 @@ function EditGymForm() {
       const savedTagline = formFieldValue(formData, 'tagline', tagline).trim()
       const savedPricePerDay = formFieldValue(formData, 'price_per_day', pricePerDay)
       const savedPricePerWeek = formFieldValue(formData, 'price_per_week', pricePerWeek)
+      const listingCurrency = normalizeGymCurrency(selectedCurrencyCode, 'USD')
+      const pricePerDayToSave =
+        packageSearchPrice !== null ? packageSearchPrice : parseFloat(savedPricePerDay)
       const savedGoogleMapsLink = formFieldValue(formData, 'google_maps_link', googleMapsLink).trim()
       const savedInstagramLink = formFieldValue(formData, 'instagram_link', instagramLink).trim()
       const savedFacebookLink = formFieldValue(formData, 'facebook_link', facebookLink).trim()
@@ -1101,7 +1142,7 @@ function EditGymForm() {
         country: selectedCountry,
         latitude: locationLat.trim() ? parseFloat(locationLat) : null,
         longitude: locationLng.trim() ? parseFloat(locationLng) : null,
-        price_per_day: parseFloat(savedPricePerDay),
+        price_per_day: pricePerDayToSave,
         price_per_week: savedPricePerWeek ? parseFloat(savedPricePerWeek) : null,
         currency: selectedCurrencyCode,
         disciplines: [...disciplines], // Create new array to avoid readonly issues
@@ -1144,7 +1185,7 @@ function EditGymForm() {
       setGymName(savedName)
       setDescription(savedDescription)
       setTagline(savedTagline)
-      setPricePerDay(savedPricePerDay)
+      setPricePerDay(String(pricePerDayToSave))
       setPricePerWeek(savedPricePerWeek)
       setGoogleMapsLink(savedGoogleMapsLink)
       setInstagramLink(savedInstagramLink)
@@ -1269,9 +1310,19 @@ function EditGymForm() {
     )
   }
 
+  const listingCurrency = normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')
+  const usesPackageSearchPrice = packageSearchPrice !== null
+
   // Calculate section completion status
   const sectionStatus = {
-    basic: { completed: !!(gymName.trim() && description.trim() && pricePerDay.trim()), required: true },
+    basic: {
+      completed: !!(
+        gymName.trim() &&
+        description.trim() &&
+        (usesPackageSearchPrice || pricePerDay.trim())
+      ),
+      required: true,
+    },
     location: { completed: !!(locationAddress && locationCity && selectedCountry), required: true },
     images: { completed: !!(gym.images && gym.images.length > 0), required: true },
     disciplines: { completed: disciplines.length > 0, required: true },
@@ -1279,7 +1330,7 @@ function EditGymForm() {
     schedule: { completed: false, required: false },
     trainers: { completed: trainers.length > 0, required: false },
     faq: { completed: faq.length > 0, required: false },
-    packages: { completed: false, required: true },
+    packages: { completed: usesPackageSearchPrice || packageCount > 0, required: true },
   }
 
   return (
@@ -1298,7 +1349,7 @@ function EditGymForm() {
           {activeSection === 'basic' ? (
           <GymEditPanel>
               <div className="space-y-2">
-                <Label htmlFor="name">Gym Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="name">Gym Name</Label>
                 <Input 
                   id="name" 
                   name="name" 
@@ -1330,7 +1381,7 @@ function EditGymForm() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+                <Label htmlFor="description">Description</Label>
                 <GymDescriptionField 
                   id="description" 
                   name="description" 
@@ -1348,39 +1399,77 @@ function EditGymForm() {
                 </p>
               </div>
 
-              {/* Base Pricing - Moved here from separate section */}
               <div className="pt-6 border-t space-y-4">
                 <div>
-                  <Label className="text-base font-semibold">Search listing price</Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    This is the price visitors see in search results and the homepage. Set it to match your lowest package price — it updates automatically when you save packages.
+                  <Label className="text-base font-semibold">Listing currency</Label>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {usesPackageSearchPrice
+                      ? 'Search and the homepage show your lowest package rate in this currency.'
+                      : 'Set your listing currency here. Add packages to set the price guests see in search.'}
                   </p>
                 </div>
-                <div className="grid md:grid-cols-3 gap-4 max-w-3xl">
-                  <div className="space-y-2">
-                    <Label htmlFor="price_per_day">Search listing price (per day) <span className="text-red-500">*</span></Label>
-                    <Input 
-                      id="price_per_day" 
-                      name="price_per_day" 
-                      type="number" 
-                      step="0.01" 
-                      value={pricePerDay}
-                      onChange={(e) => setPricePerDay(e.target.value)}
-                      required 
-                    />
-                    <p className="text-xs text-gray-500">Shown in search results and "Starting from" price displays</p>
+
+                {usesPackageSearchPrice ? (
+                  <div className="max-w-3xl rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
+                    <p className="text-sm font-medium text-gray-900">
+                      Starting from {formatGymListingPrice(packageSearchPrice, listingCurrency)}/day
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Based on your lowest package rate — including once-daily and full-access tracks.{' '}
+                      <Link
+                        href={`/manage/gym/edit?id=${gym.id}&section=packages`}
+                        className="font-medium text-[#003580] hover:underline"
+                      >
+                        Edit in Packages
+                      </Link>
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price_per_week">Base Price per Week (optional)</Label>
-                    <Input 
-                      id="price_per_week" 
-                      name="price_per_week" 
-                      type="number" 
-                      step="0.01" 
-                      value={pricePerWeek}
-                      onChange={(e) => setPricePerWeek(e.target.value)}
-                    />
+                ) : packageCount > 0 ? (
+                  <div className="max-w-3xl rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                    You have packages, but none with a daily rate in {listingCurrency}. Add a per-day price
+                    in Packages, or set a starting price below.
                   </div>
+                ) : null}
+
+                <div className="grid max-w-3xl gap-4 md:grid-cols-3">
+                  {!usesPackageSearchPrice ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="price_per_day">Starting price (per day)</Label>
+                        <Input
+                          id="price_per_day"
+                          name="price_per_day"
+                          type="number"
+                          step="0.01"
+                          value={pricePerDay}
+                          onChange={(e) => setPricePerDay(e.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Shown until you add packages — then we use your lowest package rate.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="price_per_week">Base price per week (optional)</Label>
+                        <Input
+                          id="price_per_week"
+                          name="price_per_week"
+                          type="number"
+                          step="0.01"
+                          value={pricePerWeek}
+                          onChange={(e) => setPricePerWeek(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input type="hidden" name="price_per_day" value={pricePerDay} />
+                      <input
+                        type="hidden"
+                        name="price_per_week"
+                        value={pricePerWeek}
+                      />
+                    </>
+                  )}
                   <GymCurrencyPicker
                     id="currency"
                     value={selectedCurrencyCode}
@@ -1412,7 +1501,7 @@ function EditGymForm() {
                   }}
                 />
 
-                <Label htmlFor="address">Full Address <span className="text-red-500">*</span></Label>
+                <Label htmlFor="address">Full Address</Label>
                 <Input
                   id="address"
                   name="address"
@@ -1429,7 +1518,7 @@ function EditGymForm() {
 
               <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
                     name="city"
@@ -1457,7 +1546,7 @@ function EditGymForm() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="country">Country</Label>
                   <div className="relative">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1587,9 +1676,7 @@ function EditGymForm() {
                 )}
                 
                 <div className="space-y-2">
-                  <Label htmlFor="google_maps_link">
-                    Google Maps Listing Link {profile?.role !== 'admin' && <span className="text-red-500">*</span>}
-                  </Label>
+                  <Label htmlFor="google_maps_link">Google Maps Listing Link</Label>
                   <Input 
                     id="google_maps_link" 
                     name="google_maps_link" 
@@ -1606,9 +1693,7 @@ function EditGymForm() {
                 
                 <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                   <div className="space-y-2">
-                    <Label htmlFor="instagram_link">
-                      Instagram Link {profile?.role !== 'admin' && <span className="text-red-500">*</span>}
-                    </Label>
+                    <Label htmlFor="instagram_link">Instagram Link</Label>
                     <Input 
                       id="instagram_link" 
                       name="instagram_link" 
@@ -1638,7 +1723,7 @@ function EditGymForm() {
           {activeSection === 'disciplines' ? (
           <GymEditPanel>
               <div className="space-y-3">
-                <Label>Disciplines offered <span className="text-red-500">*</span></Label>
+                <Label>Disciplines offered</Label>
                 <p className="text-sm text-gray-500">
                   Select every martial art or combat sport guests can train at your gym.
                 </p>
@@ -1934,7 +2019,7 @@ function EditGymForm() {
                                     <div key={sessionIndex} className="flex gap-2 items-start bg-white p-3 rounded border border-gray-200">
                                       <div className="flex-1 grid grid-cols-2 gap-2">
                                         <div className="space-y-1">
-                                          <Label className="text-xs text-gray-600">Time <span className="text-red-500">*</span></Label>
+                                          <Label className="text-xs text-gray-600">Time</Label>
                                           <Input
                                             value={session.time}
                                             onChange={(e) => {

@@ -92,7 +92,7 @@ export function GymEditLayout({
           <div
             className={cn(
               'hidden shrink-0 bg-white md:block',
-              sidebarCollapsed ? 'w-[3.25rem]' : 'w-56',
+              sidebarCollapsed ? 'w-14' : 'w-56',
             )}
             aria-hidden
           />

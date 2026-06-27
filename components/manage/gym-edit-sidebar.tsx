@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import { withManageGymId } from '@/lib/manage/manage-partner-nav'
+import { useActiveGym } from '@/components/manage/active-gym-context'
 
 const SIDEBAR_COLLAPSED_KEY = 'cs:gym-edit-sidebar-collapsed'
 
@@ -124,11 +125,15 @@ export function GymEditSectionNav({
   onCollapsedChange,
 }: GymEditSidebarProps) {
   const pathname = usePathname() ?? ''
+  const { gyms } = useActiveGym()
+  const gymName = gyms.find((g) => g.id === gymId)?.name?.trim() ?? null
 
   const linkItemClass = (isActive: boolean) =>
     cn(
       'group relative flex items-center rounded-lg text-[15px] font-medium transition-colors',
-      collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
+      collapsed
+        ? 'mx-auto h-9 w-9 justify-center'
+        : 'w-full gap-3 px-3 py-2.5',
       isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
     )
 
@@ -137,11 +142,31 @@ export function GymEditSectionNav({
       aria-label="Listing sections"
       className={cn(
         'flex h-full min-h-0 flex-col border-r border-gray-200/80 bg-white transition-[width] duration-200 ease-in-out motion-reduce:transition-none',
-        collapsed ? 'w-[3.25rem]' : 'w-56',
+        collapsed ? 'w-14' : 'w-56',
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden py-3">
-        <ul className="flex flex-col gap-0.5 px-2">
+      <div
+        className={cn(
+          'shrink-0 border-b border-gray-100',
+          collapsed ? 'flex justify-center px-2 pb-3 pt-4' : 'px-4 pb-3 pt-5',
+        )}
+      >
+        {collapsed ? (
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-sm font-semibold text-gray-700"
+            title={gymName ?? 'Listing'}
+          >
+            {gymName ? gymName.charAt(0).toUpperCase() : 'G'}
+          </span>
+        ) : (
+          <p className="truncate text-sm font-semibold leading-snug text-gray-900" title={gymName ?? undefined}>
+            {gymName ?? 'Your listing'}
+          </p>
+        )}
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden py-2">
+        <ul className={cn('flex flex-col gap-0.5', collapsed ? 'items-center px-1.5' : 'px-2')}>
           {GYM_EDIT_SECTIONS.map((section) => {
             const Icon = section.icon
             const sectionData = sections[section.id] || { completed: false, required: false }
@@ -149,14 +174,14 @@ export function GymEditSectionNav({
             const href = sectionHref(gymId, section.id, returnTo)
 
             return (
-              <li key={section.id}>
+              <li key={section.id} className={collapsed ? 'w-full' : undefined}>
                 <Link
                   href={href}
                   title={collapsed ? section.label : undefined}
                   className={linkItemClass(isActive)}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive ? (
+                  {isActive && !collapsed ? (
                     <span
                       className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
                       aria-hidden
@@ -169,16 +194,13 @@ export function GymEditSectionNav({
                     )}
                     aria-hidden
                   />
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate transition-all duration-200 ease-in-out motion-reduce:transition-none',
-                      collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100',
-                    )}
-                  >
-                    {section.label}
-                  </span>
-                  {!collapsed && sectionData.completed ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+                  {!collapsed ? (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">{section.label}</span>
+                      {sectionData.completed ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+                      ) : null}
+                    </>
                   ) : null}
                 </Link>
               </li>
@@ -190,14 +212,14 @@ export function GymEditSectionNav({
             const isActive = pathname === link.path || pathname.startsWith(`${link.path}/`)
 
             return (
-              <li key={link.id}>
+              <li key={link.id} className={collapsed ? 'w-full' : undefined}>
                 <Link
                   href={href}
                   title={collapsed ? link.label : undefined}
                   className={linkItemClass(isActive)}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive ? (
+                  {isActive && !collapsed ? (
                     <span
                       className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
                       aria-hidden
@@ -210,14 +232,7 @@ export function GymEditSectionNav({
                     )}
                     aria-hidden
                   />
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate transition-all duration-200 ease-in-out motion-reduce:transition-none',
-                      collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100',
-                    )}
-                  >
-                    {link.label}
-                  </span>
+                  {!collapsed ? <span className="min-w-0 flex-1 truncate">{link.label}</span> : null}
                 </Link>
               </li>
             )
@@ -225,13 +240,13 @@ export function GymEditSectionNav({
         </ul>
       </div>
 
-      <div className="shrink-0 border-t border-gray-100 p-2">
+      <div className={cn('shrink-0 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'p-2')}>
         <button
           type="button"
           onClick={() => onCollapsedChange(!collapsed)}
           className={cn(
-            'flex w-full items-center rounded-lg py-2.5 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
-            collapsed ? 'justify-center px-0' : 'gap-2 px-3',
+            'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
+            collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2 px-3 py-2.5',
           )}
           aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expand listing sidebar' : 'Collapse listing sidebar'}

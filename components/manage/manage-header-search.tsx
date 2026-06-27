@@ -24,7 +24,13 @@ type BookingRow = {
   gym: { name: string } | null
 }
 
-export function ManageHeaderSearch() {
+export function ManageHeaderSearch({
+  theme = 'dark',
+  className,
+}: {
+  theme?: 'dark' | 'light'
+  className?: string
+}) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const { user, profile } = useAuth()
@@ -201,18 +207,27 @@ export function ManageHeaderSearch() {
   }
 
   const listId = 'manage-dashboard-search-results'
+  const isLight = theme === 'light'
 
   return (
-    <div ref={rootRef} className="relative w-[11.25rem] shrink-0 sm:w-[12.75rem]">
+    <div ref={rootRef} className={cn('relative shrink-0 sm:w-[12.75rem]', className ?? 'w-[11.25rem]')}>
       <div
         className={cn(
           'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors',
-          open
-            ? 'border-white/40 bg-white/15 ring-2 ring-white/25'
-            : 'border-white/20 bg-white/10 hover:border-white/30 hover:bg-white/[0.12]'
+          isLight
+            ? open
+              ? 'border-gray-300 bg-white ring-2 ring-[#003580]/15'
+              : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
+            : open
+              ? 'border-white/40 bg-white/15 ring-2 ring-white/25'
+              : 'border-white/20 bg-white/10 hover:border-white/30 hover:bg-white/[0.12]',
         )}
       >
-        <Search className="h-4 w-4 shrink-0 text-white/70" strokeWidth={2} aria-hidden />
+        <Search
+          className={cn('h-4 w-4 shrink-0', isLight ? 'text-gray-400' : 'text-white/70')}
+          strokeWidth={2}
+          aria-hidden
+        />
         <input
           ref={inputRef}
           id="manage-dashboard-search"
@@ -232,7 +247,10 @@ export function ManageHeaderSearch() {
           autoCorrect="off"
           spellCheck={false}
           placeholder="Search…"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-white placeholder:text-white/50 outline-none"
+          className={cn(
+            'min-w-0 flex-1 bg-transparent text-[13px] outline-none',
+            isLight ? 'text-gray-900 placeholder:text-gray-400' : 'text-white placeholder:text-white/50',
+          )}
         />
       </div>
 

@@ -64,10 +64,7 @@ export function GymCurrencyPicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>
-        {label}
-        {required ? <span className="text-red-500"> *</span> : null}
-      </Label>
+      <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />

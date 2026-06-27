@@ -1106,7 +1106,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
 
               {/* Cover Image Upload */}
               <div>
-                <Label>Cover Image <span className="text-gray-400">(Optional)</span></Label>
+                <Label>Cover Image <span className="text-gray-400">(optional)</span></Label>
                 <div className="mt-1">
                   {imagePreviewUrl ? (
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200">
@@ -1185,7 +1185,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         />
                       </div>
                       <div>
-                        <Label>Start Time <span className="text-gray-400 text-xs">(Optional)</span></Label>
+                        <Label>Start Time <span className="text-gray-400 text-xs">(optional)</span></Label>
                         <Input
                           type="time"
                           value={eventStartTime}
@@ -1209,7 +1209,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         />
                       </div>
                       <div>
-                        <Label>End Time <span className="text-gray-400 text-xs">(Optional)</span></Label>
+                        <Label>End Time <span className="text-gray-400 text-xs">(optional)</span></Label>
                         <Input
                           type="time"
                           value={eventEndTime}
@@ -1278,7 +1278,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label>Description <span className="text-gray-400">(Optional)</span></Label>
+                          <Label>Description <span className="text-gray-400">(optional)</span></Label>
                           <Input
                             value={tier.description}
                             onChange={e => setTicketTiers(ticketTiers.map((t, i) => i === idx ? { ...t, description: e.target.value } : t))}
@@ -1286,7 +1286,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                           />
                         </div>
                         <div>
-                          <Label>Capacity <span className="text-gray-400">(Optional)</span></Label>
+                          <Label>Capacity <span className="text-gray-400">(optional)</span></Label>
                           <Input
                             type="number"
                             min="1"
@@ -1351,11 +1351,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         <div>
                           <Label>
                             Price per Day ({packageCurrency}){' '}
-                            {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
-                              <span className="text-red-500">*</span>
-                            ) : (
-                              <span className="text-gray-400">(Optional)</span>
-                            )}
+                            {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
+                              <span className="text-gray-400">(optional)</span>
+                            ) : null}
                           </Label>
                           <Input
                             type="number"
@@ -1368,11 +1366,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         <div>
                           <Label>
                             Price per Week ({packageCurrency}){' '}
-                            {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
-                              <span className="text-red-500">*</span>
-                            ) : (
-                              <span className="text-gray-400">(Optional)</span>
-                            )}
+                            {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
+                              <span className="text-gray-400">(optional)</span>
+                            ) : null}
                           </Label>
                           <Input
                             type="number"
@@ -1385,7 +1381,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                         <div>
                           <Label>
                             Price per Month ({packageCurrency}){' '}
-                            <span className="text-gray-400">(Optional)</span>
+                            <span className="text-gray-400">(optional)</span>
                           </Label>
                           <Input
                             type="number"
@@ -1413,7 +1409,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Once Daily price per day ({packageCurrency}){' '}
-                                <span className="text-red-500">*</span>
                               </Label>
                               <Input
                                 type="number"
@@ -1427,7 +1422,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Once Daily price per week ({packageCurrency}){' '}
-                                <span className="text-gray-400">(Optional)</span>
+                                <span className="text-gray-400">(optional)</span>
                               </Label>
                               <Input
                                 type="number"
@@ -1441,7 +1436,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Once Daily price per month ({packageCurrency}){' '}
-                                <span className="text-gray-400">(Optional)</span>
+                                <span className="text-gray-400">(optional)</span>
                               </Label>
                               <Input
                                 type="number"
@@ -1458,7 +1453,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Price per Day ({packageCurrency}){' '}
-                                <span className="text-red-500">*</span>
                               </Label>
                               <Input
                                 type="number"
@@ -1471,11 +1465,9 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Price per Week ({packageCurrency}){' '}
-                                {selectedOfferType !== 'TYPE_TRAINING_ONLY' ? (
-                                  <span className="text-red-500">*</span>
-                                ) : (
-                                  <span className="text-gray-400">(Optional)</span>
-                                )}
+                                {selectedOfferType === 'TYPE_TRAINING_ONLY' ? (
+                                  <span className="text-gray-400">(optional)</span>
+                                ) : null}
                               </Label>
                               <Input
                                 type="number"
@@ -1488,7 +1480,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                             <div>
                               <Label>
                                 Price per Month ({packageCurrency}){' '}
-                                <span className="text-gray-400">(Optional)</span>
+                                <span className="text-gray-400">(optional)</span>
                               </Label>
                               <Input
                                 type="number"
@@ -1508,7 +1500,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     <div>
                       <Label>
                         Price per Day ({packageCurrency}){' '}
-                        <span className="text-gray-400">(Optional)</span>
+                        <span className="text-gray-400">(optional)</span>
                       </Label>
                       <Input
                         type="number"
@@ -1521,7 +1513,6 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     <div>
                       <Label>
                         Price per Week ({packageCurrency}){' '}
-                        <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="number"
@@ -1534,7 +1525,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                     <div>
                       <Label>
                         Price per Month ({packageCurrency}){' '}
-                        <span className="text-gray-400">(Optional)</span>
+                        <span className="text-gray-400">(optional)</span>
                       </Label>
                       <Input
                         type="number"
@@ -1605,7 +1596,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Nightly ({packageCurrency}) <span className="text-red-500">*</span>
+                                        Nightly ({packageCurrency})
                                       </Label>
                                       <Input
                                         type="number"
@@ -1626,7 +1617,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                     </div>
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
+                                        Weekly bundle ({packageCurrency})
                                       </Label>
                                       <Input
                                         type="number"
@@ -1648,7 +1639,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                     <div>
                                       <Label className="text-xs text-gray-600">
                                         Monthly bundle ({packageCurrency}){' '}
-                                        <span className="text-gray-400">(Optional)</span>
+                                        <span className="text-gray-400">(optional)</span>
                                       </Label>
                                       <Input
                                         type="number"
@@ -1682,7 +1673,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Nightly ({packageCurrency}) <span className="text-red-500">*</span>
+                                        Nightly ({packageCurrency})
                                       </Label>
                                       <Input
                                         type="number"
@@ -1720,7 +1711,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                     </div>
                                     <div>
                                       <Label className="text-xs text-gray-600">
-                                        Weekly bundle ({packageCurrency}) <span className="text-red-500">*</span>
+                                        Weekly bundle ({packageCurrency})
                                       </Label>
                                       <Input
                                         type="number"
@@ -1759,7 +1750,7 @@ export function OfferStepper({ gymId, currency, onComplete, existingPackage, emb
                                     <div>
                                       <Label className="text-xs text-gray-600">
                                         Monthly bundle ({packageCurrency}){' '}
-                                        <span className="text-gray-400">(Optional)</span>
+                                        <span className="text-gray-400">(optional)</span>
                                       </Label>
                                       <Input
                                         type="number"
