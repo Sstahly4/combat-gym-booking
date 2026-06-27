@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { ManageGymRow } from '@/components/manage/active-gym-context'
-import { ChevronDown, CircleUser, Luggage, Menu, X } from 'lucide-react'
+import { ChevronDown, CircleUser, LayoutDashboard, Luggage, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
@@ -272,6 +272,8 @@ export function ManageTopNav({
     </Link>
   )
 
+  const isAdmin = profile?.role === 'admin'
+
   const bookATripRow = (
     <Link
       href="/"
@@ -291,6 +293,27 @@ export function ManageTopNav({
         <Luggage className="h-5 w-5" strokeWidth={1.75} aria-hidden />
       </span>
     </Link>
+  )
+
+  const hubMenuTopRow = isAdmin ? (
+    <Link
+      href="/admin"
+      onClick={(e) => {
+        e.preventDefault()
+        navigateFromMenu('/admin', closeHubMenu)
+      }}
+      className="mx-2 flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-gray-50"
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-gray-900">Back to admin dashboard</div>
+        <div className="mt-0.5 text-xs leading-snug text-gray-500">Return to the Admin Hub.</div>
+      </div>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+        <LayoutDashboard className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+      </span>
+    </Link>
+  ) : (
+    bookATripRow
   )
 
   const accountControl = (
@@ -395,7 +418,7 @@ export function ManageTopNav({
           align="right"
           className="w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
-          {bookATripRow}
+          {hubMenuTopRow}
 
           <div className="space-y-1 border-t border-gray-100 px-3 pb-2 pt-2">
             <ManageHeaderSearch theme="light" className="w-full" />
@@ -494,7 +517,7 @@ export function ManageTopNav({
     <>
       <header
         className={cn(
-          'sticky top-0 z-[100] overflow-visible border-b border-gray-200 bg-white',
+          'z-[100] shrink-0 overflow-visible border-b border-gray-200 bg-white',
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >

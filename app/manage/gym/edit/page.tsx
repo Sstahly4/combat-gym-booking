@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { GymDescriptionEditor } from '@/components/manage/gym-description-editor'
+import { GymPhotoTour, GymPhotoTourHeaderActions } from '@/components/manage/gym-photo-tour'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Gym, GymImage, Package } from '@/lib/types/database'
@@ -21,12 +22,11 @@ import { GymEditPanel } from '@/components/manage/gym-edit-section'
 import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight, ImagePlus, Loader2 } from 'lucide-react'
+import { Info, ChevronDown, ChevronUp, Search, X, ChevronRight } from 'lucide-react'
 import { ALL_GYM_COUNTRIES } from '@/lib/constants/gym-countries'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import {
-  formatGymListingPrice,
   lowestSearchPricePerDay,
   type PackageSearchPriceRow,
 } from '@/lib/manage/gym-search-listing-price'
@@ -70,7 +70,6 @@ import {
 } from '@/lib/manage/trainer-photo-upload-manager'
 import { useTrainerPhotoUploads } from '@/lib/hooks/use-trainer-photo-uploads'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
 const COUNTRY_CURRENCY_HINT: Record<string, string> = {
@@ -1260,7 +1259,7 @@ function EditGymForm() {
 
   if (errorMsg) {
     return (
-      <div className="min-h-screen bg-white py-8">
+      <div className="min-h-0 bg-white py-8">
         <div className="max-w-6xl mx-auto px-4">
           <Card className="bg-red-50 border-red-200">
             <CardContent className="p-6">
@@ -1320,8 +1319,7 @@ function EditGymForm() {
       completed: !!(
         gymName.trim() &&
         description.trim() &&
-        disciplines.length > 0 &&
-        (usesPackageSearchPrice || pricePerDay.trim())
+        disciplines.length > 0
       ),
       required: true,
     },
@@ -1339,8 +1337,22 @@ function EditGymForm() {
       gymId={gym.id}
       returnTo={returnToRaw}
       activeSection={activeSection}
+      title={activeSection === 'images' ? 'Photo tour' : undefined}
+      subtitle={
+        activeSection === 'images'
+          ? 'Manage photos that show your gym, mats, and training space. The first photo is your cover image on search and your public listing.'
+          : undefined
+      }
+      headerActions={
+        activeSection === 'images' ? (
+          <GymPhotoTourHeaderActions
+            photoCount={galleryOrder.length}
+            onAddPhotos={handleNewImageSelect}
+          />
+        ) : undefined
+      }
       sections={sectionStatus}
-      contentWidth={activeSection === 'basic' ? 'wide' : 'default'}
+      contentWidth={activeSection === 'basic' || activeSection === 'images' ? 'full' : 'default'}
       saving={saving}
       saveError={saveError}
       onSave={() => void handleSave()}
@@ -1349,19 +1361,34 @@ function EditGymForm() {
         {activeSection !== 'packages' ? (
         <form id="edit-gym-form" onSubmit={handleSave}>
           {activeSection === 'basic' ? (
-          <GymEditPanel contentClassName="space-y-0">
-            <div className="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03] lg:grid lg:grid-cols-[minmax(0,22rem)_1fr] lg:divide-x lg:divide-gray-100">
-              <div className="space-y-6 p-5 sm:p-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Gym name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={gymName}
-                    onChange={(e) => setGymName(e.target.value)}
+            <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
+              <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Label htmlFor="name">Gym name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={gymName}
+                      onChange={(e) => setGymName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <GymCurrencyPicker
+                    id="currency"
+                    value={selectedCurrencyCode}
+                    onChange={(code) => {
+                      currencyTouchedRef.current = true
+                      setSelectedCurrencyCode(code)
+                    }}
                     required
+                    compact
+                    className="w-full shrink-0 sm:w-[10.5rem]"
                   />
+                  <input type="hidden" name="currency" value={selectedCurrencyCode} required />
                 </div>
+                <input type="hidden" name="price_per_day" value={pricePerDay} />
+                <input type="hidden" name="price_per_week" value={pricePerWeek} />
 
                 <div className="space-y-2">
                   <Label htmlFor="tagline">
@@ -1381,14 +1408,14 @@ function EditGymForm() {
                   <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
                 </div>
 
-                <div className="space-y-3 border-t border-gray-100 pt-5">
+                <div className="space-y-3">
                   <div>
                     <Label>Disciplines</Label>
                     <p className="mt-1 text-xs text-gray-500">
                       What guests can train here — used for search filters.
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     {DISCIPLINES.map((d) => (
                       <label
                         key={d}
@@ -1410,95 +1437,17 @@ function EditGymForm() {
                     ))}
                   </div>
                 </div>
-
-                <div className="space-y-4 border-t border-gray-100 pt-5">
-                  <div>
-                    <Label className="text-base font-semibold">Listing currency</Label>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {usesPackageSearchPrice
-                        ? 'Search uses your lowest package rate in this currency.'
-                        : 'Set currency here; add packages to set search pricing.'}
-                    </p>
-                  </div>
-
-                  {usesPackageSearchPrice ? (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        From {formatGymListingPrice(packageSearchPrice, listingCurrency)}/day
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        <Link
-                          href={`/manage/gym/edit?id=${gym.id}&section=packages`}
-                          className="font-medium text-[#003580] hover:underline"
-                        >
-                          Edit in Packages
-                        </Link>
-                      </p>
-                    </div>
-                  ) : packageCount > 0 ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-                      Add a daily rate in {listingCurrency} under Packages, or set a starting price below.
-                    </p>
-                  ) : null}
-
-                  {!usesPackageSearchPrice ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="price_per_day">Starting price (per day)</Label>
-                        <Input
-                          id="price_per_day"
-                          name="price_per_day"
-                          type="number"
-                          step="0.01"
-                          value={pricePerDay}
-                          onChange={(e) => setPricePerDay(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="price_per_week">Per week (optional)</Label>
-                        <Input
-                          id="price_per_week"
-                          name="price_per_week"
-                          type="number"
-                          step="0.01"
-                          value={pricePerWeek}
-                          onChange={(e) => setPricePerWeek(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <input type="hidden" name="price_per_day" value={pricePerDay} />
-                      <input type="hidden" name="price_per_week" value={pricePerWeek} />
-                    </>
-                  )}
-
-                  <GymCurrencyPicker
-                    id="currency"
-                    value={selectedCurrencyCode}
-                    onChange={(code) => {
-                      currencyTouchedRef.current = true
-                      setSelectedCurrencyCode(code)
-                    }}
-                    required
-                    helperText="Native currency for this listing."
-                  />
-                  <input type="hidden" name="currency" value={selectedCurrencyCode} required />
-                </div>
               </div>
 
-              <div className="bg-gray-50/40 p-5 sm:p-6">
-                <GymDescriptionEditor
-                  id="description"
-                  name="description"
-                  value={description}
-                  onChange={setDescription}
-                  required
-                  className="h-full min-h-[min(70vh,42rem)]"
-                />
-              </div>
+              <GymDescriptionEditor
+                id="description"
+                name="description"
+                value={description}
+                onChange={setDescription}
+                required
+                className="min-h-[min(70vh,42rem)]"
+              />
             </div>
-          </GymEditPanel>
           ) : null}
 
           {activeSection === 'location' ? (
@@ -1742,139 +1691,26 @@ function EditGymForm() {
           ) : null}
 
           {activeSection === 'images' ? (
-          <GymEditPanel>
-              <p className="text-sm text-gray-600">
-                Upload up to 30 photos. The first image is your cover.
-                {imageDragEnabled ? ' Drag to reorder, then save.' : null}
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-gray-600">
-                    {galleryOrder.length}/30 photos
-                  </p>
-                  <label
-                    className={`inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 shadow-sm transition-colors ${
-                      galleryOrder.length >= 30
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'cursor-pointer hover:bg-gray-50'
-                    }`}
-                  >
-                    <ImagePlus className="h-4 w-4" aria-hidden />
-                    Add photos
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleNewImageSelect}
-                      disabled={galleryOrder.length >= 30}
-                      className="sr-only"
-                    />
-                  </label>
-                </div>
-
-                {galleryDisplayItems.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {galleryDisplayItems.map((item) => {
-                      const isDragging = draggedGalleryIndex === item.index
-                      const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
-                      const showUploadSpinner =
-                        item.kind === 'pending' &&
-                        (item.pending.status === 'uploading' || item.pending.status === 'saving')
-
-                      return (
-                        <div
-                          key={item.key}
-                          draggable={imageDragEnabled}
-                          onDragStart={imageDragEnabled ? () => handleDragStart(item.index) : undefined}
-                          onDragOver={imageDragEnabled ? handleDragOver : undefined}
-                          onDrop={imageDragEnabled ? (e) => handleGalleryDrop(e, item.index) : undefined}
-                          className={`relative aspect-video group rounded-lg overflow-hidden border touch-manipulation ${
-                            imageDragEnabled ? 'cursor-move' : 'cursor-default'
-                          } ${
-                            isDragging
-                              ? 'opacity-50 border-[#003580]'
-                              : isFailed
-                                ? 'border-red-300'
-                                : 'border-gray-200 hover:border-gray-400'
-                          } transition-colors`}
-                        >
-                          <div className="absolute inset-0">
-                            {item.kind === 'saved' ? (
-                              <ResponsiveGymImage
-                                image={item.image}
-                                alt="Gym"
-                                sizes="(max-width: 768px) 50vw, 25vw"
-                                className="object-cover"
-                              />
-                            ) : (
-                              <img
-                                src={
-                                  item.kind === 'transition'
-                                    ? item.previewUrl
-                                    : pendingPreviewUrls[item.pending.id] ?? item.pending.previewUrl
-                                }
-                                alt="Preview"
-                                className="h-full w-full object-cover pointer-events-none"
-                              />
-                            )}
-                          </div>
-
-                          {showUploadSpinner && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                              <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
-                              <span className="sr-only">Uploading</span>
-                            </div>
-                          )}
-
-                          {item.index === 0 && (
-                            <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
-                              Cover
-                            </div>
-                          )}
-
-                          <button
-                            type="button"
-                            onPointerDown={(ev) => ev.stopPropagation()}
-                            onClick={() => {
-                              if (item.kind === 'saved') {
-                                deleteExistingImage(item.image.id)
-                              } else if (item.kind === 'pending') {
-                                removePendingImage(item.pending.id)
-                              } else {
-                                deleteExistingImage(item.key)
-                              }
-                            }}
-                            className="absolute top-1.5 right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/80 touch-manipulation"
-                            aria-label="Remove image"
-                          >
-                            <X className="h-4 w-4" aria-hidden />
-                          </button>
-
-                          {item.kind === 'saved' && (
-                            <button
-                              type="button"
-                              onPointerDown={(ev) => ev.stopPropagation()}
-                              onClick={() => openFocusAdjust(item.image)}
-                              className="absolute bottom-1.5 right-1.5 z-20 rounded bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-900 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
-                            >
-                              Focus
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
-                    No photos yet. Add images to showcase your gym.
-                  </div>
-                )}
-
-                <p className="text-xs text-gray-500">
-                  Photos upload automatically in the background. You can save and leave — progress shows in the bottom-right toast.
-                </p>
-              </div>
-          </GymEditPanel>
+            <GymPhotoTour
+              items={galleryDisplayItems}
+              imageDragEnabled={imageDragEnabled}
+              draggedIndex={draggedGalleryIndex}
+              pendingPreviewUrls={pendingPreviewUrls}
+              onAddPhotos={handleNewImageSelect}
+              onRemove={(item) => {
+                if (item.kind === 'saved') {
+                  void deleteExistingImage(item.image.id)
+                } else if (item.kind === 'pending') {
+                  removePendingImage(item.pending.id)
+                } else {
+                  void deleteExistingImage(item.key)
+                }
+              }}
+              onFocus={openFocusAdjust}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleGalleryDrop}
+            />
           ) : null}
 
           {activeSection === 'schedule' ? (
@@ -2070,7 +1906,7 @@ function EditGymForm() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Trainer photos upload in the background — save anytime; progress shows in the bottom-right toast.
+                Trainer photos upload in the background — save anytime.
               </p>
               {trainers.map((trainer) => {
                 const photo = trainerPhotoDisplay(trainer)
@@ -2120,11 +1956,6 @@ function EditGymForm() {
                             No photo
                           </div>
                         )}
-                        {photo.uploading ? (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                            <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                          </span>
-                        ) : null}
                         {photo.failed ? (
                           <span className="absolute inset-x-0 bottom-0 bg-red-600/90 py-0.5 text-center text-[9px] font-semibold uppercase text-white">
                             Upload failed
@@ -2336,7 +2167,7 @@ function EditGymForm() {
 export default function EditGymPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-white py-8">
+      <div className="min-h-0 bg-white py-8">
         <div className="max-w-6xl mx-auto px-4">
           <div className="space-y-4">
             <div className="h-10 w-48 bg-gray-200 rounded animate-pulse" />

@@ -19,6 +19,8 @@ export function GymEditLayout({
   returnTo,
   activeSection,
   title,
+  subtitle,
+  headerActions,
   sections,
   saving,
   saveError,
@@ -32,23 +34,32 @@ export function GymEditLayout({
   returnTo?: string | null
   activeSection: string
   title?: string
+  subtitle?: string
+  headerActions?: ReactNode
   sections: GymEditSectionsStatus
   saving: boolean
   saveError?: string | null
   onSave?: () => void
   onCancel?: () => void
   hideSaveBar?: boolean
-  contentWidth?: 'default' | 'wide'
+  contentWidth?: 'default' | 'wide' | 'full'
   children: ReactNode
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useGymEditSidebarCollapsed()
   const sectionMeta = gymEditSectionMeta(activeSection)
   const pageTitle = title ?? sectionMeta.label
 
+  const contentMaxWidthClass =
+    contentWidth === 'full'
+      ? 'max-w-7xl'
+      : contentWidth === 'wide'
+        ? 'max-w-5xl'
+        : 'max-w-2xl'
+
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden h-full shrink-0 md:block">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="hidden h-full min-h-0 shrink-0 self-stretch md:block">
           <GymEditSectionNav
             gymId={gymId}
             returnTo={returnTo}
@@ -84,15 +95,22 @@ export function GymEditLayout({
               hideSaveBar ? 'pb-8' : 'pb-24',
             )}
           >
-            <div
-              className={cn(
-                'mx-auto w-full',
-                contentWidth === 'wide' ? 'max-w-5xl' : 'max-w-2xl',
-              )}
-            >
-              <h1 className="mb-5 text-2xl font-semibold tracking-tight text-gray-900 sm:mb-6 sm:text-[1.75rem]">
-                {pageTitle}
-              </h1>
+            <div className={cn('mx-auto w-full', contentMaxWidthClass)}>
+              <header className="mb-5 sm:mb-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-[1.75rem]">
+                      {pageTitle}
+                    </h1>
+                    {subtitle ? (
+                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-[15px]">
+                        {subtitle}
+                      </p>
+                    ) : null}
+                  </div>
+                  {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
+                </div>
+              </header>
               {children}
             </div>
           </main>
@@ -113,7 +131,7 @@ export function GymEditLayout({
             <div
               className={cn(
                 'mx-auto flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3',
-                contentWidth === 'wide' ? 'max-w-5xl' : 'max-w-2xl',
+                contentMaxWidthClass,
               )}
             >
               {saveError ? (

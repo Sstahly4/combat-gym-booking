@@ -12,7 +12,6 @@ import {
   isPartnerListingWorkspaceRoute,
 } from '@/lib/manage/manage-partner-nav'
 import { ManageNoBookingsToastHost } from '@/components/manage/manage-no-bookings-toast-host'
-import { GymImageUploadToastHost } from '@/components/manage/gym-image-upload-toast-host'
 import { ActiveGymProvider, useActiveGym } from '@/components/manage/active-gym-context'
 import { AccountClaimPrompts } from '@/components/manage/account-claim-prompts'
 import { ClaimDashboardTour } from '@/components/manage/claim-dashboard-tour'
@@ -138,22 +137,23 @@ function ManageLayoutTopNavShell({ children }: { children: React.ReactNode }) {
       <AccountClaimPrompts />
       <ClaimDashboardTour />
       <ManageNoBookingsToastHost />
-      <GymImageUploadToastHost />
-      <ManageTopNav
-        editGymHref={editGymHref}
-        gymName={gymName}
-        firstGymId={firstGymId}
-        gyms={profile?.role === 'owner' || profile?.role === 'admin' ? gyms : []}
-        activeGymId={activeGymId}
-        onSelectGym={profile?.role === 'owner' ? setActiveGymId : undefined}
-        gymContextLoading={profile?.role === 'owner' || profile?.role === 'admin' ? loading : false}
-      />
+      <div className="shrink-0">
+        <ManageTopNav
+          editGymHref={editGymHref}
+          gymName={gymName}
+          firstGymId={firstGymId}
+          gyms={profile?.role === 'owner' || profile?.role === 'admin' ? gyms : []}
+          activeGymId={activeGymId}
+          onSelectGym={profile?.role === 'owner' ? setActiveGymId : undefined}
+          gymContextLoading={profile?.role === 'owner' || profile?.role === 'admin' ? loading : false}
+        />
+      </div>
       <div
         data-manage-main-scroll
         className={cn(
           PARTNER_HUB_MAIN_CLASS,
-          'relative z-0',
-          isListingEditor ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+          'relative z-0 flex min-h-0 flex-1 flex-col',
+          isListingEditor ? 'overflow-hidden' : 'overflow-y-auto',
         )}
       >
         {children}
@@ -197,7 +197,6 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
       <>
         <PendingOwnerGuard />
         <AccountClaimPrompts />
-        <GymImageUploadToastHost />
         <ManageNoSidebarHubTitle />
         {children}
       </>
@@ -207,7 +206,9 @@ export function ManageLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <ActiveGymProvider>
       <PendingOwnerGuard />
-      <ManageLayoutTopNavShell>{children}</ManageLayoutTopNavShell>
+      <div className="flex h-svh min-h-0 flex-1 flex-col overflow-hidden">
+        <ManageLayoutTopNavShell>{children}</ManageLayoutTopNavShell>
+      </div>
     </ActiveGymProvider>
   )
 }

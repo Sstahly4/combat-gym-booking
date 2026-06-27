@@ -6,7 +6,7 @@ import { SupportHubLinks } from '@/components/help/support-hub-links'
 
 export default function ManageHelpPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-0 bg-white">
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
           Partner Help Center

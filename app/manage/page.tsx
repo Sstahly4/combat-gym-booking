@@ -534,7 +534,7 @@ export default function ManagePage() {
 
   if (authLoading || blockingAuth || profileRecoverFailed || (user && !profile) || loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-0 bg-white">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
           <div className={`${dashCard} overflow-hidden`}>
             <div className="h-12 animate-pulse border-b border-gray-200/60 bg-white" />
@@ -563,7 +563,7 @@ export default function ManagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-0 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
           {gyms.length === 0 ? (
             <Card className={`${dashCard} border-0 shadow-md`}>

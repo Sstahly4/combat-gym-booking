@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GYM_CURRENCY_OPTIONS } from '@/lib/constants/gym-currencies'
+import { cn } from '@/lib/utils'
 
 export function GymCurrencyPicker({
   id = 'currency',
@@ -13,6 +14,8 @@ export function GymCurrencyPicker({
   onChange,
   required = false,
   helperText,
+  className,
+  compact = false,
 }: {
   id?: string
   label?: string
@@ -20,6 +23,9 @@ export function GymCurrencyPicker({
   onChange: (code: string) => void
   required?: boolean
   helperText?: string
+  className?: string
+  /** Tighter field for inline rows (e.g. beside gym name). */
+  compact?: boolean
 }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -31,8 +37,11 @@ export function GymCurrencyPicker({
     return c.code.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
   })
 
-  const displayLabel =
-    GYM_CURRENCY_OPTIONS.find((c) => c.code === value)?.label ?? value
+  const displayLabel = open
+    ? search
+    : compact
+      ? value
+      : (GYM_CURRENCY_OPTIONS.find((c) => c.code === value)?.label ?? value)
 
   const closeDropdown = () => {
     if (closeTimerRef.current !== null) {
@@ -63,11 +72,16 @@ export function GymCurrencyPicker({
   }
 
   return (
-    <div className="space-y-2">
+    <div className={cn('space-y-2', className)}>
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 text-gray-400',
+              compact ? 'left-2.5 h-3.5 w-3.5' : 'left-3 h-4 w-4',
+            )}
+          />
           <Input
             id={id}
             type="text"
@@ -95,8 +109,8 @@ export function GymCurrencyPicker({
                 selectCurrency(filtered[0]!.code)
               }
             }}
-            placeholder="Search currency…"
-            className="pl-10 pr-10"
+            placeholder={compact ? 'Currency' : 'Search currency…'}
+            className={cn(compact ? 'pl-8 pr-8 text-sm' : 'pl-10 pr-10')}
             required={required}
             autoComplete="off"
           />

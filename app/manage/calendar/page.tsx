@@ -13,7 +13,7 @@ export default function ManageCalendarPage() {
   const packageVariantId = searchParams.get('package_variant_id')
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-0 bg-white">
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>

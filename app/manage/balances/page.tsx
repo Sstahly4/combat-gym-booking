@@ -323,14 +323,14 @@ export default function BalancesPage() {
 
   if (authLoading || profileRecoverFailed || (user && !profile)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-0 items-center justify-center bg-white">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-0 bg-white">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">

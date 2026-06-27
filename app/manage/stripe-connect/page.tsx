@@ -38,7 +38,7 @@ function StripeConnectRedirect() {
   }, [authLoading, user, profile, router, searchParams])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f6f9]/95 px-4 py-8">
+    <div className="flex min-h-0 flex-col items-center justify-center bg-[#f4f6f9]/95 px-4 py-8">
       <p className="text-sm text-muted-foreground">Redirecting to payout settings…</p>
     </div>
   )
@@ -48,7 +48,7 @@ export default function StripeConnectPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f6f9]/95 px-4 py-8">
+        <div className="flex min-h-0 flex-col items-center justify-center bg-[#f4f6f9]/95 px-4 py-8">
           <p className="text-sm text-muted-foreground">Loading…</p>
         </div>
       }
