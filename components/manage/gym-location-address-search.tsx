@@ -130,10 +130,10 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
   }
 
   return (
-    <div ref={wrapRef} className="space-y-2 relative">
-      <Label htmlFor="gym-address-search">Search address</Label>
+    <div ref={wrapRef} className="relative space-y-2">
+      <Label htmlFor="gym-address-search">Search for your address</Label>
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           id="gym-address-search"
           type="text"
@@ -146,17 +146,13 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Start typing street or place…"
+          placeholder="Street, neighbourhood, or place name"
         />
-        {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
-        )}
+        {loading ? (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+        ) : null}
       </div>
-      <p className="text-xs text-gray-500">
-        Pick a result to fill your address, city, and map pin. You can edit any field after — map labels may differ from
-        how guests search (e.g. Ko Lanta vs Krabi).
-      </p>
-      {searchError && <p className="text-xs text-red-600">{searchError}</p>}
+      {searchError ? <p className="text-xs text-red-600">{searchError}</p> : null}
       {cityGuidance && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
           {cityGuidance}

@@ -29,22 +29,13 @@ export function GymAmenitiesPreview({
         className,
       )}
     >
-      <div className="border-b border-gray-100 px-5 py-4">
-        <h2 className="text-base font-semibold text-gray-900">Guest preview</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          How your facilities appear on your public listing and in search filters.
-        </p>
+      <div className="border-b border-gray-100 px-5 py-3">
+        <h2 className="text-sm font-semibold text-gray-900">Preview</h2>
       </div>
 
       <div className="p-5">
         {selectedCount === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center">
-            <p className="text-sm font-medium text-gray-700">No amenities yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Add equipment and services on the left — they&apos;ll show up here as guests browse your
-              listing.
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">Amenities you add will appear here.</p>
         ) : (
           <div className="space-y-5">
             <p className="text-sm text-gray-600">

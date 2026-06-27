@@ -44,21 +44,13 @@ export function GymSchedulePreview({
         className,
       )}
     >
-      <div className="border-b border-gray-100 px-5 py-4">
-        <h2 className="text-base font-semibold text-gray-900">Guest preview</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Opening hours and class times as they appear on your public listing.
-        </p>
+      <div className="border-b border-gray-100 px-5 py-3">
+        <h2 className="text-sm font-semibold text-gray-900">Preview</h2>
       </div>
 
       <div className="space-y-5 p-5">
         {isEmpty ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center">
-            <p className="text-sm font-medium text-gray-700">Nothing scheduled yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Add opening hours or training sessions on the left to preview them here.
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">Hours and classes will appear here.</p>
         ) : null}
 
         {hasHours ? (
