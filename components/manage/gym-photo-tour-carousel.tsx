@@ -136,20 +136,13 @@ function centerMid(): CardVisual {
   }
 }
 
-/** During live drag only — side slots advance immediately for a continuous train. */
-function dragSlotIndices(activeIndex: number, count: number, progress: number) {
-  const wrap = (offset: number) => wrapIndex(activeIndex + offset, count)
-  if (progress < -0.001) return { prev: wrap(0), active: wrap(1), next: wrap(2) }
-  if (progress > 0.001) return { prev: wrap(-2), active: wrap(-1), next: wrap(0) }
-  return { prev: wrap(-1), active: wrap(0), next: wrap(1) }
-}
-
-function restSlotIndices(activeIndex: number, count: number) {
+/** Side slots for the three-card peek — stable during button/tap animations. */
+function slotIndices(activeIndex: number, count: number) {
   const wrap = (offset: number) => wrapIndex(activeIndex + offset, count)
   return { prev: wrap(-1), active: wrap(0), next: wrap(1) }
 }
 
-function getClassicCardVisual(
+function getCardVisual(
   slot: StackSlot,
   progress: number,
   cardW: number,
@@ -243,72 +236,6 @@ function getClassicCardVisual(
   }
 }
 
-function getTrainCardVisual(
-  slot: StackSlot,
-  progress: number,
-  cardW: number,
-  cardH: number,
-  dragOffsetPx: number,
-  isDragging: boolean,
-): CardVisual {
-  const peekL = peekLeft(cardW)
-  const peekR = peekRight(cardW)
-  const mid = centerMid()
-  const riseFrom = cardH * 0.07
-  const towardNext = progress < -0.001
-  const t = clamp(Math.abs(progress), 0, 1)
-
-  if (towardNext) {
-    if (slot === 'prev') {
-      return {
-        x: lerp(isDragging ? dragOffsetPx : 0, peekL.x, t),
-        y: lerp(0, peekL.y, t),
-        scale: lerp(1, peekL.scale, t),
-        opacity: lerp(1, 0.92, t),
-        z: Math.round(lerp(28, 10, t)),
-        rotate: lerp(0, peekL.rotate, t),
-        shadow: lerp(0, 1, t) > 0.4 ? peekL.shadow : mid.shadow,
-      }
-    }
-    if (slot === 'active') {
-      return {
-        x: lerp(peekR.x, 0, t),
-        y: lerp(riseFrom, 0, t),
-        scale: lerp(peekR.scale, 1, t),
-        opacity: lerp(0.9, 1, t),
-        z: Math.round(lerp(14, 30, t)),
-        rotate: lerp(peekR.rotate, 0, t),
-        shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekR.shadow,
-      }
-    }
-    return { ...peekR, opacity: lerp(0.85, 1, Math.min(t * 2, 1)) }
-  }
-
-  if (slot === 'next') {
-    return {
-      x: lerp(isDragging ? dragOffsetPx : 0, peekR.x, t),
-      y: lerp(0, peekR.y, t),
-      scale: lerp(1, peekR.scale, t),
-      opacity: lerp(1, 0.92, t),
-      z: Math.round(lerp(28, 10, t)),
-      rotate: lerp(0, peekR.rotate, t),
-      shadow: lerp(0, 1, t) > 0.4 ? peekR.shadow : mid.shadow,
-    }
-  }
-  if (slot === 'active') {
-    return {
-      x: lerp(peekL.x, 0, t),
-      y: lerp(riseFrom, 0, t),
-      scale: lerp(peekL.scale, 1, t),
-      opacity: lerp(0.9, 1, t),
-      z: Math.round(lerp(14, 30, t)),
-      rotate: lerp(peekL.rotate, 0, t),
-      shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekL.shadow,
-    }
-  }
-  return { ...peekL, opacity: lerp(0.85, 1, Math.min(t * 2, 1)) }
-}
-
 function cardStyleFromVisual(
   visual: CardVisual,
   animate: boolean,
@@ -354,10 +281,11 @@ export function GymPhotoTourCarousel({
   const dragStartProgress = useRef(0)
   const dragActive = useRef(false)
   const commitTarget = useRef<-1 | 0 | 1>(0)
+  const animatingRef = useRef(false)
+  const finishingRef = useRef(false)
   const finishCommitRef = useRef<(direction: -1 | 1) => void>(() => {})
 
   const count = items.length
-  const dragTrainMode = isDragging && !animating
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -397,28 +325,36 @@ export function GymPhotoTourCarousel({
 
   const finishCommit = useCallback(
     (direction: -1 | 1) => {
-      if (commitTarget.current === 0) return
+      if (finishingRef.current) return
+      finishingRef.current = true
       commitTarget.current = 0
+      animatingRef.current = false
       setAnimating(false)
       setProgress(0)
       setDragOffsetPx(0)
+      setIsDragging(false)
       setActiveIndex((index) => wrapIndex(index - direction, count))
+      finishingRef.current = false
     },
     [count],
   )
 
-  finishCommitRef.current = finishCommit
+  useEffect(() => {
+    finishCommitRef.current = finishCommit
+  }, [finishCommit])
 
   const animateTo = useCallback(
     (target: -1 | 0 | 1) => {
       if (count <= 1) return
 
       if (reducedMotion && target !== 0) {
+        commitTarget.current = target
         finishCommit(target)
         return
       }
 
       commitTarget.current = target
+      animatingRef.current = true
       setAnimating(true)
       setIsDragging(false)
       setDragOffsetPx(0)
@@ -434,6 +370,7 @@ export function GymPhotoTourCarousel({
     (target: number) => {
       if (target === activeIndex || animating || count <= 1) return
       commitTarget.current = 0
+      animatingRef.current = false
       setAnimating(false)
       setProgress(0)
       setDragOffsetPx(0)
@@ -444,24 +381,29 @@ export function GymPhotoTourCarousel({
 
   const onSlideTransitionEnd = useCallback(() => {
     const target = commitTarget.current
-    if (!animating) return
+    if (!animatingRef.current) return
     if (target === -1 || target === 1) {
       finishCommit(target)
       return
     }
     if (target === 0) {
+      animatingRef.current = false
       setAnimating(false)
     }
-  }, [animating, finishCommit])
+  }, [finishCommit])
 
   /** Safety net — transitionend can miss when transforms skip. */
   useEffect(() => {
     if (!animating) return
     const target = commitTarget.current
     const timer = window.setTimeout(() => {
+      if (!animatingRef.current) return
       if (commitTarget.current !== target) return
       if (target === -1 || target === 1) finishCommitRef.current(target)
-      else if (target === 0) setAnimating(false)
+      else if (target === 0) {
+        animatingRef.current = false
+        setAnimating(false)
+      }
     }, SLIDE_MS + 60)
     return () => window.clearTimeout(timer)
   }, [animating])
@@ -522,9 +464,11 @@ export function GymPhotoTourCarousel({
     setDragOffsetPx(0)
     if (reducedMotion) {
       setProgress(0)
+      animatingRef.current = false
       setAnimating(false)
       return
     }
+    animatingRef.current = true
     setAnimating(true)
     setProgress(0)
   }
@@ -576,19 +520,15 @@ export function GymPhotoTourCarousel({
 
   if (count === 0) return null
 
-  const indices = dragTrainMode
-    ? dragSlotIndices(activeIndex, count, progress)
-    : restSlotIndices(activeIndex, count)
+  const indices = slotIndices(activeIndex, count)
 
   const cardW = cardWidthPx || cardWidthRef.current
   const cardH = cardHeightPx || cardHeightRef.current || cardW
   const dragging = isDragging && !animating
 
-  const getVisual = dragTrainMode ? getTrainCardVisual : getClassicCardVisual
-
   const styleFor = (slot: StackSlot): CSSProperties =>
     cardStyleFromVisual(
-      getVisual(slot, progress, cardW, cardH, dragOffsetPx, dragging),
+      getCardVisual(slot, progress, cardW, cardH, dragOffsetPx, dragging),
       animating,
       reducedMotion,
     )
@@ -639,7 +579,11 @@ export function GymPhotoTourCarousel({
                 aria-hidden
               />
 
-              {(['prev', 'next', 'active'] as const).map((slot) => (
+              {(['prev', 'next', 'active'] as const).map((slot) => {
+                const slideItem = items[indices[slot]]
+                if (!slideItem) return null
+
+                return (
                 <div
                   key={slot}
                   className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
@@ -648,7 +592,7 @@ export function GymPhotoTourCarousel({
                   onTransitionEnd={slot === 'active' ? handleCardTransitionEnd : undefined}
                 >
                   <CarouselSlide
-                    item={items[indices[slot]]!}
+                    item={slideItem}
                     pendingPreviewUrls={pendingPreviewUrls}
                     sizes={slot === 'active' ? '(max-width: 768px) 52vw, 15rem' : '30vw'}
                     priority={slot === 'active'}
@@ -667,7 +611,8 @@ export function GymPhotoTourCarousel({
                     </div>
                   ) : null}
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="mt-4 space-y-3">
