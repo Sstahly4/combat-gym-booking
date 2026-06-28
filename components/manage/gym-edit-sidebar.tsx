@@ -186,7 +186,15 @@ export function GymEditSectionNav({
       collapsed
         ? 'mx-auto h-9 w-9 justify-center'
         : 'w-full gap-3 px-3 py-2.5',
-      isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+      isActive
+        ? 'bg-[#003580]/8 text-[#003580]'
+        : 'text-gray-600 hover:bg-[#003580]/5 hover:text-gray-900',
+    )
+
+  const linkIconClass = (isActive: boolean) =>
+    cn(
+      'h-[1.125rem] w-[1.125rem] shrink-0',
+      isActive ? 'text-[#003580]' : 'text-gray-500 group-hover:text-gray-700',
     )
 
   return (
@@ -235,17 +243,11 @@ export function GymEditSectionNav({
                 >
                   {isActive && !collapsed ? (
                     <span
-                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
+                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
                       aria-hidden
                     />
                   ) : null}
-                  <Icon
-                    className={cn(
-                      'h-[1.125rem] w-[1.125rem] shrink-0',
-                      isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700',
-                    )}
-                    aria-hidden
-                  />
+                  <Icon className={linkIconClass(isActive)} aria-hidden />
                   {!collapsed ? (
                     <>
                       <span className="min-w-0 flex-1 truncate">{section.label}</span>
@@ -273,17 +275,11 @@ export function GymEditSectionNav({
                 >
                   {isActive && !collapsed ? (
                     <span
-                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
+                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
                       aria-hidden
                     />
                   ) : null}
-                  <Icon
-                    className={cn(
-                      'h-[1.125rem] w-[1.125rem] shrink-0',
-                      isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700',
-                    )}
-                    aria-hidden
-                  />
+                  <Icon className={linkIconClass(isActive)} aria-hidden />
                   {!collapsed ? <span className="min-w-0 flex-1 truncate">{link.label}</span> : null}
                 </Link>
               </li>
@@ -299,17 +295,11 @@ export function GymEditSectionNav({
             >
               {isPreviewActive && !collapsed ? (
                 <span
-                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gray-900"
+                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
                   aria-hidden
                 />
               ) : null}
-              <Eye
-                className={cn(
-                  'h-[1.125rem] w-[1.125rem] shrink-0',
-                  isPreviewActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700',
-                )}
-                aria-hidden
-              />
+              <Eye className={linkIconClass(isPreviewActive)} aria-hidden />
               {!collapsed ? <span className="min-w-0 flex-1 truncate">View listing</span> : null}
             </Link>
           </li>

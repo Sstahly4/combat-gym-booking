@@ -137,9 +137,12 @@ function centerMid(): CardVisual {
 }
 
 /** Side slots for the three-card peek — stable during button/tap animations. */
-function slotIndices(activeIndex: number, count: number) {
-  const wrap = (offset: number) => wrapIndex(activeIndex + offset, count)
-  return { prev: wrap(-1), active: wrap(0), next: wrap(1) }
+function slotIndices(index: number, count: number) {
+  return {
+    prev: wrapIndex(index - 1, count),
+    active: wrapIndex(index, count),
+    next: wrapIndex(index + 1, count),
+  }
 }
 
 function getCardVisual(
