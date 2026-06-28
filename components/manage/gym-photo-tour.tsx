@@ -146,7 +146,7 @@ export function GymPhotoTour({
   const addInputId = 'gym-photo-tour-add'
 
   return (
-    <div id="gym-photo-tour" className="space-y-8">
+    <div id="gym-photo-tour" className="space-y-5">
       {items.length > 0 ? (
         <>
           <GymPhotoTourCarousel items={items} pendingPreviewUrls={pendingPreviewUrls} />
