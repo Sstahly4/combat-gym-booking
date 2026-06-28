@@ -35,7 +35,7 @@ function HubMenuFeaturedIcon() {
       src={BOOK_A_TRIP_MENU_ICON_SRC}
       alt=""
       aria-hidden
-      className="h-10 w-10 shrink-0 object-contain"
+      className="h-14 w-14 shrink-0 object-contain"
       decoding="async"
     />
   )

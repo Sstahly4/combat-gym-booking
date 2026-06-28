@@ -6,12 +6,18 @@ import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { cn } from '@/lib/utils'
 import type { GymPhotoTourDisplayItem } from '@/components/manage/gym-photo-tour-types'
 
-const SLIDE_MS = 460
+const SLIDE_MS = 480
 const SLIDE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const COMMIT_THRESHOLD = 0.18
+const COMMIT_THRESHOLD = 0.16
 const CLICK_MOVE_TOLERANCE_PX = 8
-/** Full swipe distance ≈ 1.05× card width — slow, playable scrubbing. */
-const DRAG_DISTANCE_RATIO = 1.05
+/** Full swipe distance ≈ 1× card width — slow, playable scrubbing. */
+const DRAG_DISTANCE_RATIO = 1
+
+/** Side cards peek outward like Airbnb listing photo stacks. */
+const PEEK_X_RATIO = 0.5
+const PEEK_ROTATE_DEG = 12
+const PEEK_SCALE = 0.92
+const PEEK_Y_PX = 8
 
 function slideImage(
   item: GymPhotoTourDisplayItem,
@@ -63,7 +69,7 @@ function CarouselSlide({
 }
 
 const CARD_SURFACE_CLASS =
-  'overflow-hidden rounded-3xl bg-gray-100 shadow-lg shadow-gray-900/10 ring-1 ring-black/5'
+  'overflow-hidden rounded-3xl bg-gray-100 ring-1 ring-black/[0.06]'
 
 const CARD_SIZE_CLASS =
   'h-[min(58vw,15rem)] w-[min(58vw,15rem)] sm:h-64 sm:w-64 md:h-72 md:w-72'
@@ -76,6 +82,8 @@ type CardVisual = {
   scale: number
   opacity: number
   z: number
+  rotate: number
+  shadow: string
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -86,78 +94,132 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
+function peekLeft(cardW: number): CardVisual {
+  return {
+    x: -cardW * PEEK_X_RATIO,
+    y: PEEK_Y_PX,
+    scale: PEEK_SCALE,
+    opacity: 1,
+    z: 10,
+    rotate: -PEEK_ROTATE_DEG,
+    shadow: '0 8px 24px -4px rgb(0 0 0 / 0.12)',
+  }
+}
+
+function peekRight(cardW: number): CardVisual {
+  return {
+    x: cardW * PEEK_X_RATIO,
+    y: PEEK_Y_PX,
+    scale: PEEK_SCALE,
+    opacity: 1,
+    z: 10,
+    rotate: PEEK_ROTATE_DEG,
+    shadow: '0 8px 24px -4px rgb(0 0 0 / 0.12)',
+  }
+}
+
+function center(cardW: number, cardH: number, dragRotate = 0): CardVisual {
+  return {
+    x: 0,
+    y: 0,
+    scale: 1,
+    opacity: 1,
+    z: 30,
+    rotate: dragRotate,
+    shadow: '0 20px 40px -8px rgb(0 0 0 / 0.18)',
+  }
+}
+
 /**
- * Flat cover-flow peek at rest (no rotate/skew).
- * progress −1…1 scrubs: outgoing lifts up + fades, incoming rises from the peek.
+ * Fanned three-card stack — side photos lean outward at rest; drag scrubs the deck
+ * with lift-and-slide transitions inspired by Airbnb + image-stack UX.
  */
-function getCardVisual(slot: StackSlot, progress: number, cardW: number, cardH: number): CardVisual {
-  const peekL: CardVisual = { x: -cardW / 2, y: 0, scale: 1, opacity: 1, z: 10 }
-  const peekR: CardVisual = { x: cardW / 2, y: 0, scale: 1, opacity: 1, z: 10 }
-  const center: CardVisual = { x: 0, y: 0, scale: 1, opacity: 1, z: 30 }
-  const riseFrom = cardH * 0.09
+function getCardVisual(
+  slot: StackSlot,
+  progress: number,
+  cardW: number,
+  cardH: number,
+): CardVisual {
+  const peekL = peekLeft(cardW)
+  const peekR = peekRight(cardW)
+  const mid = center(cardW, cardH)
+  const riseFrom = cardH * 0.07
 
   if (Math.abs(progress) < 0.0001) {
     if (slot === 'prev') return peekL
-    if (slot === 'active') return center
+    if (slot === 'active') return mid
     return peekR
   }
 
   const towardNext = progress < 0
   const t = clamp(Math.abs(progress), 0, 1)
-  const fingerX = progress * cardW * 0.38
+  const fingerX = progress * cardW * 0.44
+  const dragTilt = progress * -7
 
   if (towardNext) {
     if (slot === 'active') {
       return {
         x: fingerX,
-        y: -cardH * 0.5 * t,
-        scale: lerp(1, 0.96, t),
+        y: -cardH * 0.42 * t,
+        scale: lerp(1, 0.95, t),
         opacity: lerp(1, 0, t),
         z: 40,
+        rotate: dragTilt,
+        shadow: mid.shadow,
       }
     }
     if (slot === 'next') {
       return {
         x: lerp(peekR.x, 0, t),
         y: lerp(riseFrom, 0, t),
-        scale: lerp(0.99, 1, t),
-        opacity: lerp(0.9, 1, t),
+        scale: lerp(peekR.scale, 1, t),
+        opacity: lerp(0.88, 1, t),
         z: Math.round(lerp(12, 28, t)),
+        rotate: lerp(peekR.rotate, 0, t),
+        shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekR.shadow,
       }
     }
     return {
-      x: lerp(peekL.x, peekL.x - cardW * 0.1, t),
-      y: 0,
-      scale: 1,
-      opacity: lerp(1, 0.3, t),
+      x: lerp(peekL.x, peekL.x - cardW * 0.08, t),
+      y: peekL.y,
+      scale: lerp(peekL.scale, peekL.scale * 0.96, t),
+      opacity: lerp(1, 0.35, t),
       z: 8,
+      rotate: lerp(peekL.rotate, peekL.rotate - 2, t),
+      shadow: peekL.shadow,
     }
   }
 
   if (slot === 'active') {
     return {
       x: fingerX,
-      y: -cardH * 0.5 * t,
-      scale: lerp(1, 0.96, t),
+      y: -cardH * 0.42 * t,
+      scale: lerp(1, 0.95, t),
       opacity: lerp(1, 0, t),
       z: 40,
+      rotate: dragTilt,
+      shadow: mid.shadow,
     }
   }
   if (slot === 'prev') {
     return {
       x: lerp(peekL.x, 0, t),
       y: lerp(riseFrom, 0, t),
-      scale: lerp(0.99, 1, t),
-      opacity: lerp(0.9, 1, t),
+      scale: lerp(peekL.scale, 1, t),
+      opacity: lerp(0.88, 1, t),
       z: Math.round(lerp(12, 28, t)),
+      rotate: lerp(peekL.rotate, 0, t),
+      shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekL.shadow,
     }
   }
   return {
-    x: lerp(peekR.x, peekR.x + cardW * 0.1, t),
-    y: 0,
-    scale: 1,
-    opacity: lerp(1, 0.3, t),
+    x: lerp(peekR.x, peekR.x + cardW * 0.08, t),
+    y: peekR.y,
+    scale: lerp(peekR.scale, peekR.scale * 0.96, t),
+    opacity: lerp(1, 0.35, t),
     z: 8,
+    rotate: lerp(peekR.rotate, peekR.rotate + 2, t),
+    shadow: peekR.shadow,
   }
 }
 
@@ -169,17 +231,18 @@ function cardStyleFromVisual(
   return {
     zIndex: visual.z,
     opacity: visual.opacity,
-    transform: `translate3d(calc(-50% + ${visual.x}px), calc(-50% + ${visual.y}px), 0) scale(${visual.scale})`,
-    transformStyle: 'flat',
+    boxShadow: visual.shadow,
+    transform: `translate3d(calc(-50% + ${visual.x}px), calc(-50% + ${visual.y}px), 0) rotate(${visual.rotate}deg) scale(${visual.scale})`,
+    transformStyle: 'preserve-3d',
     transition:
       animate && !reducedMotion
-        ? `transform ${SLIDE_MS}ms ${SLIDE_EASE}, opacity ${SLIDE_MS}ms ${SLIDE_EASE}`
+        ? `transform ${SLIDE_MS}ms ${SLIDE_EASE}, opacity ${SLIDE_MS}ms ${SLIDE_EASE}, box-shadow ${SLIDE_MS}ms ${SLIDE_EASE}`
         : 'none',
     willChange: animate ? 'transform, opacity' : undefined,
   }
 }
 
-/** Stacked deck preview — flat cover-flow peek + Airbnb-style lift transitions. */
+/** Stacked deck preview — fanned side peeks + drag-to-cycle guest order. */
 export function GymPhotoTourCarousel({
   items,
   pendingPreviewUrls,
@@ -274,6 +337,17 @@ export function GymPhotoTourCarousel({
 
   const goPrev = useCallback(() => animateTo(1), [animateTo])
   const goNext = useCallback(() => animateTo(-1), [animateTo])
+
+  const goToIndex = useCallback(
+    (target: number) => {
+      if (target === activeIndex || animating || count <= 1) return
+      commitTarget.current = 0
+      setAnimating(false)
+      setProgress(0)
+      setActiveIndex(target)
+    },
+    [activeIndex, animating, count],
+  )
 
   const onSlideTransitionEnd = useCallback(() => {
     const target = commitTarget.current
@@ -380,8 +454,8 @@ export function GymPhotoTourCarousel({
     const rect = stackRef.current?.getBoundingClientRect()
     if (!rect) return
     const relativeX = event.clientX - rect.left
-    if (relativeX < rect.width * 0.3) goPrev()
-    else if (relativeX > rect.width * 0.7) goNext()
+    if (relativeX < rect.width * 0.28) goPrev()
+    else if (relativeX > rect.width * 0.72) goNext()
   }
 
   const onPointerCancel = () => {
@@ -410,7 +484,7 @@ export function GymPhotoTourCarousel({
       <div className="mb-5 text-center sm:mb-6">
         <p className="text-sm font-medium text-gray-900">Preview guest order</p>
         <p className="mt-1 text-sm text-gray-500">
-          Drag the center photo to browse — it lifts away as the next one slides in.
+          Drag the stack or tap the side photos to browse in order.
         </p>
       </div>
 
@@ -424,9 +498,9 @@ export function GymPhotoTourCarousel({
             ref={stackRef}
             className={cn(
               'relative isolate mx-auto touch-none select-none cursor-grab active:cursor-grabbing',
-              'h-[min(58vw,15rem)] w-[min(116vw,30rem)] sm:h-64 sm:w-[32rem] md:h-72 md:w-[36rem]',
+              'h-[min(58vw,15rem)] w-[min(124vw,34rem)] sm:h-64 sm:w-[36rem] md:h-72 md:w-[40rem]',
             )}
-            style={{ perspective: 'none' }}
+            style={{ perspective: '1400px', perspectiveOrigin: '50% 55%' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -495,7 +569,10 @@ export function GymPhotoTourCarousel({
           </div>
         ) : (
           <div className="relative mx-auto flex justify-center">
-            <div className={cn('relative', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}>
+            <div
+              className={cn('relative', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
+              style={{ boxShadow: '0 20px 40px -8px rgb(0 0 0 / 0.18)' }}
+            >
               <CarouselSlide
                 item={activeItem}
                 pendingPreviewUrls={pendingPreviewUrls}
@@ -505,7 +582,7 @@ export function GymPhotoTourCarousel({
               />
               <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-sm">
-                  {count} photo
+                  1 photo
                 </span>
                 <span className="rounded-full bg-gray-900/85 px-3 py-1 text-xs font-semibold text-white shadow-sm">
                   Cover
@@ -516,28 +593,50 @@ export function GymPhotoTourCarousel({
         )}
 
         {count > 1 ? (
-          <div className="mt-5 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={animating}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
-              aria-label="Previous photo"
-            >
-              <ChevronLeft className="h-5 w-5" aria-hidden />
-            </button>
-            <p className="min-w-[5.5rem] text-center text-sm font-medium tabular-nums text-gray-600">
-              {activeIndex + 1} / {count}
-            </p>
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={animating}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
-              aria-label="Next photo"
-            >
-              <ChevronRight className="h-5 w-5" aria-hidden />
-            </button>
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-center gap-1.5" role="tablist" aria-label="Photo position">
+              {items.map((item, index) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={index === activeIndex}
+                  aria-label={`Photo ${index + 1}${index === 0 ? ', cover' : ''}`}
+                  disabled={animating}
+                  onClick={() => goToIndex(index)}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all duration-300 disabled:opacity-50',
+                    index === activeIndex
+                      ? 'w-6 bg-gray-900'
+                      : 'w-1.5 bg-gray-300 hover:bg-gray-400',
+                  )}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={animating}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden />
+              </button>
+              <p className="min-w-[5.5rem] text-center text-sm font-medium tabular-nums text-gray-600">
+                {activeIndex + 1} / {count}
+              </p>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={animating}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
