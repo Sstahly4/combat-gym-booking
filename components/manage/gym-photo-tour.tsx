@@ -24,6 +24,9 @@ type GymPhotoTourProps = {
   onDrop: (event: DragEvent, dropIndex: number) => void
 }
 
+const PHOTO_TILE_SURFACE =
+  'relative aspect-square overflow-hidden rounded-xl bg-gray-100 shadow-sm ring-1 ring-black/[0.06] transition-all duration-300'
+
 function PhotoTile({
   item,
   imageDragEnabled,
@@ -46,6 +49,8 @@ function PhotoTile({
   onDrop: (event: DragEvent) => void
 }) {
   const isFailed = item.kind === 'pending' && item.pending.status === 'failed'
+  const photoLabel =
+    item.index === 0 ? 'Cover photo' : `Photo ${item.index + 1}`
 
   return (
     <div
@@ -54,9 +59,10 @@ function PhotoTile({
       onDragOver={imageDragEnabled ? onDragOver : undefined}
       onDrop={imageDragEnabled ? onDrop : undefined}
       className={cn(
-        'group relative aspect-square overflow-hidden rounded-2xl bg-gray-100 touch-manipulation',
+        PHOTO_TILE_SURFACE,
+        'group touch-manipulation hover:shadow-md hover:ring-black/[0.08]',
         imageDragEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
-        isDragging && 'opacity-60 ring-2 ring-[#003580] ring-offset-2',
+        isDragging && 'scale-[0.98] opacity-60 ring-2 ring-[#003580] ring-offset-2',
         isFailed && 'ring-2 ring-red-300',
       )}
     >
@@ -65,10 +71,10 @@ function PhotoTile({
           <ResponsiveGymImage
             image={item.image}
             alt="Gym photo"
-            sizes="(max-width: 640px) 50vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             context="hero"
             aspect="fill"
-            className="object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <img
@@ -78,16 +84,25 @@ function PhotoTile({
                 : pendingPreviewUrls[item.pending.id] ?? item.pending.previewUrl
             }
             alt="Photo preview"
-            className="h-full w-full object-cover pointer-events-none"
+            className="pointer-events-none h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
         )}
       </div>
 
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        aria-hidden
+      />
+
       {item.index === 0 ? (
-        <div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-900 shadow-sm">
+        <div className="absolute left-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-900 shadow-sm">
           Cover
         </div>
-      ) : null}
+      ) : (
+        <div className="absolute bottom-3 left-3 z-20 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-gray-700 opacity-0 shadow-sm transition-opacity duration-300 group-hover:opacity-100">
+          {photoLabel}
+        </div>
+      )}
 
       <button
         type="button"
@@ -138,7 +153,7 @@ export function GymPhotoTour({
 
           <div
             id="gym-photo-tour-grid"
-            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"
+            className="grid grid-cols-2 gap-4 md:grid-cols-4"
           >
           {items.map((item) => (
             <PhotoTile
@@ -160,9 +175,13 @@ export function GymPhotoTour({
           {!atLimit ? (
             <label
               htmlFor={addInputId}
-              className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+              className={cn(
+                PHOTO_TILE_SURFACE,
+                'flex cursor-pointer flex-col items-center justify-center gap-2.5 border-2 border-dashed border-gray-200/90 bg-gray-50/60 text-gray-500',
+                'hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 hover:shadow-md',
+              )}
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/[0.04]">
                 <Plus className="h-5 w-5" aria-hidden />
               </span>
               <span className="text-sm font-medium">Add photos</span>
@@ -198,7 +217,9 @@ export function GymPhotoTour({
       />
 
       {items.length > 0 && imageDragEnabled ? (
-        <p className="text-sm text-gray-500">Drag photos to reorder, then save.</p>
+        <p className="text-center text-sm text-gray-500 md:text-left">
+          Drag photos to reorder — the first image is your cover on search.
+        </p>
       ) : null}
     </div>
   )

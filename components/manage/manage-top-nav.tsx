@@ -19,7 +19,7 @@ import {
 } from '@/lib/manage/manage-partner-nav'
 
 /** Featured hub menu rows — preload so the PNG does not flash in after the menu opens. */
-const BOOK_A_TRIP_MENU_ICON_SRC = '/ChatGPT Image Jun 28, 2026 at 10_48_56 AM.png'
+const BOOK_A_TRIP_MENU_ICON_SRC = '/plane.png'
 
 let bookATripMenuIconPreloadStarted = false
 function preloadBookATripMenuIcon() {

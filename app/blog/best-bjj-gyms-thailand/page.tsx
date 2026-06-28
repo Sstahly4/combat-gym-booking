@@ -29,7 +29,7 @@ const SEO_TITLE = 'Best BJJ Gyms in Thailand 2026 [Prices + Reviews]'
 const PATH = '/blog/best-bjj-gyms-thailand'
 const DATE_PUBLISHED = '2025-10-15'
 const DATE_MODIFIED = '2026-04-20'
-const HERO_IMAGE = '/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png'
+const HERO_IMAGE = '/fighter.png'
 const DESCRIPTION =
   'Brazilian Jiu-Jitsu gyms in Thailand: ranked by reviews, with gi/no-gi tips, pricing signals, and discipline-only filtering, not generic fight camp lists.'
 

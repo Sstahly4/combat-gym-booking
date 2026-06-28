@@ -31,7 +31,7 @@ import { useIsReviewCheckoutChromeHidden } from '@/lib/contexts/review-checkout-
 const OWNER_INQUIRIES_HREF = '/manage/bookings#book-needs-your-response'
 
 /** Featured “List your gym” / “Finish your listing” row — preload so the PNG does not appear after the menu opens. */
-const LIST_YOUR_GYM_MENU_ICON_SRC = '/ChatGPT Image Mar 18, 2026 at 05_02_15 PM.png'
+const LIST_YOUR_GYM_MENU_ICON_SRC = '/fighter.png'
 
 let listYourGymMenuIconPreloadStarted = false
 function preloadListYourGymMenuIcon() {
