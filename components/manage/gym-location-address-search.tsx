@@ -131,7 +131,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
 
   return (
     <div ref={wrapRef} className="relative space-y-2">
-      <Label htmlFor="gym-address-search">Search for your address</Label>
+      <Label htmlFor="gym-address-search">Search address</Label>
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
@@ -146,7 +146,7 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Street, neighbourhood, or place name"
+          placeholder="Start typing street or place…"
         />
         {loading ? (
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />

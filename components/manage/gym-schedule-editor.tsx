@@ -47,58 +47,76 @@ export function GymScheduleEditor({
 }) {
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
-      <div className="flex flex-col gap-6">
-        <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-900">Opening hours</Label>
-          <div className="grid gap-3 sm:grid-cols-2">
-          {TRAINING_SCHEDULE_DAYS.map((day) => (
-            <div key={day} className="space-y-1.5">
-              <Label htmlFor={`hours-${day}`} className="text-sm font-medium text-gray-700">
-                {DAY_LABELS[day] ?? day}
-              </Label>
-              <Input
-                id={`hours-${day}`}
-                value={openingHours[day] || ''}
-                onChange={(e) =>
-                  onOpeningHoursChange({ ...openingHours, [day]: e.target.value })
-                }
-                placeholder="e.g. 07:00–20:00"
-              />
-            </div>
-          ))}
+      <div className="flex min-h-0 flex-col gap-8 lg:max-h-[min(72vh,calc(100dvh-11rem))] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Opening hours</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              When your gym is open to the public. Leave a day blank if it doesn&apos;t apply.
+            </p>
           </div>
-        </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {TRAINING_SCHEDULE_DAYS.map((day) => (
+              <div key={day} className="space-y-1.5">
+                <Label htmlFor={`hours-${day}`} className="capitalize text-sm font-medium text-gray-700">
+                  {DAY_LABELS[day] ?? day}
+                </Label>
+                <Input
+                  id={`hours-${day}`}
+                  value={openingHours[day] || ''}
+                  onChange={(e) =>
+                    onOpeningHoursChange({ ...openingHours, [day]: e.target.value })
+                  }
+                  placeholder="e.g. 07:00–20:00 or Closed"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
 
         <div className="lg:hidden">
           <GymSchedulePreview openingHours={openingHours} trainingSchedule={trainingSchedule} />
         </div>
 
-        <TrainingScheduleImportPanel
-          gymId={gymId}
-          currentSchedule={trainingSchedule}
-          isAdmin={isAdmin}
-          onApply={(schedule: TrainingSchedule) => {
-            onTrainingScheduleChange(schedule)
-            onTrainingScheduleExpandedChange(true)
-            onExpandedDaysChange((prev) => {
-              const next = { ...prev }
-              for (const day of TRAINING_SCHEDULE_DAYS) {
-                if (schedule[day]?.some((session) => session.time.trim())) {
-                  next[day] = true
+        <section className="space-y-5 border-t border-gray-100 pt-8">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Import from photo</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Upload a timetable photo — we&apos;ll read the sessions for you to review.
+            </p>
+          </div>
+          <TrainingScheduleImportPanel
+            gymId={gymId}
+            currentSchedule={trainingSchedule}
+            isAdmin={isAdmin}
+            onApply={(schedule: TrainingSchedule) => {
+              onTrainingScheduleChange(schedule)
+              onTrainingScheduleExpandedChange(true)
+              onExpandedDaysChange((prev) => {
+                const next = { ...prev }
+                for (const day of TRAINING_SCHEDULE_DAYS) {
+                  if (schedule[day]?.some((session) => session.time.trim())) {
+                    next[day] = true
+                  }
                 }
-              }
-              return next
-            })
-          }}
-        />
+                return next
+              })
+            }}
+          />
+        </section>
 
-        <div className="space-y-3">
+        <section className="space-y-4 border-t border-gray-100 pt-8">
           <button
             type="button"
             onClick={() => onTrainingScheduleExpandedChange(!trainingScheduleExpanded)}
             className="-m-2 flex w-full items-center justify-between rounded-lg p-2 text-left transition-colors hover:bg-gray-50"
           >
-            <span className="text-sm font-semibold text-gray-900">Class schedule</span>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Enter sessions by day</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Review imported times or add classes manually.
+              </p>
+            </div>
             {trainingScheduleExpanded ? (
               <ChevronUp className="ml-4 h-5 w-5 shrink-0 text-gray-500" aria-hidden />
             ) : (
@@ -234,10 +252,10 @@ export function GymScheduleEditor({
               })}
             </div>
           ) : null}
-        </div>
+        </section>
       </div>
 
-      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
+      <div className="hidden lg:sticky lg:top-24 lg:block lg:self-start">
         <GymSchedulePreview openingHours={openingHours} trainingSchedule={trainingSchedule} />
       </div>
     </div>

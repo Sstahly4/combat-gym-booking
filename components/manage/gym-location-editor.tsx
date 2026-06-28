@@ -53,8 +53,21 @@ export function GymLocationEditor({
 }) {
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
-      <div className="flex flex-col gap-6">
-        <GymLocationAddressSearch disabled={saving} onApply={onApplySearch} />
+      <div
+        className={cn(
+          'flex min-h-0 flex-col gap-8',
+          'lg:max-h-[min(72vh,calc(100dvh-11rem))] lg:overflow-y-auto lg:overscroll-contain lg:pr-1',
+        )}
+      >
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Find your address</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Search to fill your street address, city, and map pin — then fine-tune any field below.
+            </p>
+          </div>
+          <GymLocationAddressSearch disabled={saving} onApply={onApplySearch} />
+        </section>
 
         <div className="lg:hidden">
           <GymLocationMapPreview
@@ -67,7 +80,14 @@ export function GymLocationEditor({
           />
         </div>
 
-        <div className="space-y-4">
+        <section className="space-y-5 border-t border-gray-100 pt-8">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Address</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Shown on your listing and used for search by area.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="address">Street address</Label>
             <Input
@@ -75,9 +95,12 @@ export function GymLocationEditor({
               name="address"
               value={address}
               onChange={(e) => onAddressChange(e.target.value)}
-              placeholder="e.g. 123 Soi Bang Tao, Phuket 83110"
+              placeholder="e.g., 123 Soi Bang Tao, Bangtao Beach, Phuket 83110, Thailand"
               required
             />
+            <p className="text-xs text-gray-500">
+              Include street number, street name, and postcode when you have them.
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -89,9 +112,11 @@ export function GymLocationEditor({
                 value={city}
                 onChange={(e) => onCityChange(e.target.value)}
                 onBlur={(e) => onCityBlur(e.target.value)}
-                placeholder="e.g. Phuket"
                 required
               />
+              <p className="text-xs text-gray-500">
+                Use the name guests search for — e.g. &quot;Krabi&quot; instead of a local village.
+              </p>
               {cityNonLatinWarning ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
                   Use the English or Latin spelling so international guests can find you — e.g.
@@ -109,36 +134,48 @@ export function GymLocationEditor({
             />
             <input type="hidden" name="country" value={country} required />
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-2">
-          <Label htmlFor="google_maps_link">
-            Google Maps URL{showVerificationHints ? '' : ' (optional)'}
-          </Label>
-          <Input
-            id="google_maps_link"
-            name="google_maps_link"
-            type="url"
-            value={googleMapsLink}
-            onChange={(e) => onGoogleMapsLinkChange(e.target.value)}
-            placeholder="https://maps.google.com/..."
-            required={showVerificationHints}
-          />
-        </div>
+        <section className="space-y-4 border-t border-gray-100 pt-8">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Google Maps listing</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {showVerificationHints
+                ? 'Link to your gym’s public Google Maps page. Should match the address above.'
+                : 'Optional — should match the address above.'}
+            </p>
+          </div>
 
-        <details className="group">
+          <div className="space-y-2">
+            <Label htmlFor="google_maps_link">Google Maps URL</Label>
+            <Input
+              id="google_maps_link"
+              name="google_maps_link"
+              type="url"
+              value={googleMapsLink}
+              onChange={(e) => onGoogleMapsLinkChange(e.target.value)}
+              placeholder="https://maps.google.com/..."
+              required={showVerificationHints}
+            />
+          </div>
+        </section>
+
+        <details className="group border-t border-gray-100 pt-6">
           <summary
             className={cn(
-              'flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-gray-600',
+              'flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-gray-700',
               '[&::-webkit-details-marker]:hidden',
             )}
           >
-            <span>Map coordinates</span>
+            <span>Advanced: map coordinates</span>
             <ChevronDown
               className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
               aria-hidden
             />
           </summary>
+          <p className="mt-2 text-xs text-gray-500">
+            Usually filled automatically from search. Only edit if you need to nudge the pin.
+          </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="latitude">Latitude</Label>
@@ -149,7 +186,7 @@ export function GymLocationEditor({
                 step="any"
                 value={latitude}
                 onChange={(e) => onLatitudeChange(e.target.value)}
-                placeholder="e.g. 7.8804"
+                placeholder="e.g., 7.8804"
               />
             </div>
             <div className="space-y-2">
@@ -161,22 +198,25 @@ export function GymLocationEditor({
                 step="any"
                 value={longitude}
                 onChange={(e) => onLongitudeChange(e.target.value)}
-                placeholder="e.g. 98.3923"
+                placeholder="e.g., 98.3923"
               />
             </div>
           </div>
         </details>
       </div>
 
-      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
-        <GymLocationMapPreview
-          address={address}
-          city={city}
-          country={country}
-          latitude={latitude}
-          longitude={longitude}
-          googleMapsLink={googleMapsLink}
-        />
+      <div className="hidden lg:sticky lg:top-24 lg:block lg:self-start lg:max-h-[min(72vh,calc(100dvh-11rem))]">
+        <div className="flex min-h-[min(72vh,calc(100dvh-11rem))] items-center">
+          <GymLocationMapPreview
+            className="w-full"
+            address={address}
+            city={city}
+            country={country}
+            latitude={latitude}
+            longitude={longitude}
+            googleMapsLink={googleMapsLink}
+          />
+        </div>
       </div>
     </div>
   )

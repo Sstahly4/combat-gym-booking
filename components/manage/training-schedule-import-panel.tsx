@@ -192,9 +192,11 @@ export function TrainingScheduleImportPanel({
             <CalendarDays className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-gray-900">Import schedule from photo</h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Upload a weekly timetable to fill in class times.
+            <h3 className="text-base font-semibold tracking-tight text-gray-900">
+              Auto-generate your schedule
+            </h3>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Drop a weekly flyer or screenshot — review the class times before applying.
             </p>
           </div>
         </div>

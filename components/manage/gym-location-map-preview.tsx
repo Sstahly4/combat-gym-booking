@@ -163,6 +163,11 @@ export function GymLocationMapPreview({
 
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
+      <div className="mb-4">
+        <p className="text-base font-semibold text-gray-900">Map preview</p>
+        <p className="mt-1 text-sm text-gray-500">Updates as you edit — same map guests see on your listing.</p>
+      </div>
+
       <div className="relative aspect-[4/3] min-h-[14rem] overflow-hidden rounded-3xl bg-gray-100 shadow-lg shadow-gray-900/10 ring-1 ring-black/5 sm:min-h-[18rem]">
         {mapUrl ? (
           <iframe
@@ -187,7 +192,9 @@ export function GymLocationMapPreview({
             </span>
             <div>
               <p className="text-sm font-medium text-gray-800">No location yet</p>
-              <p className="mt-1 text-sm text-gray-500">Search above or enter your address.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Search for your gym or enter a city and country to see the map.
+              </p>
             </div>
           </div>
         )}
