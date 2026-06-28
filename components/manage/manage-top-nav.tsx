@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { ManageGymRow } from '@/components/manage/active-gym-context'
-import { CircleUser, LayoutDashboard, Luggage, Menu, X } from 'lucide-react'
+import { CircleUser, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { CurrencyModal } from '@/components/currency-modal'
@@ -17,6 +17,29 @@ import {
   withManageGymId,
   type PartnerNavTab,
 } from '@/lib/manage/manage-partner-nav'
+
+/** Featured hub menu rows — preload so the PNG does not flash in after the menu opens. */
+const BOOK_A_TRIP_MENU_ICON_SRC = '/ChatGPT Image Jun 28, 2026 at 10_48_56 AM.png'
+
+let bookATripMenuIconPreloadStarted = false
+function preloadBookATripMenuIcon() {
+  if (bookATripMenuIconPreloadStarted || typeof window === 'undefined') return
+  bookATripMenuIconPreloadStarted = true
+  const img = new Image()
+  img.src = BOOK_A_TRIP_MENU_ICON_SRC
+}
+
+function HubMenuFeaturedIcon() {
+  return (
+    <img
+      src={BOOK_A_TRIP_MENU_ICON_SRC}
+      alt=""
+      aria-hidden
+      className="h-10 w-10 shrink-0 object-contain"
+      decoding="async"
+    />
+  )
+}
 
 function TabLabel({ label, active }: { label: string; active: boolean }) {
   return (
@@ -100,6 +123,18 @@ export function ManageTopNav({
     'Account'
 
   useEffect(() => {
+    const run = () => preloadBookATripMenuIcon()
+    const handle =
+      typeof window.requestIdleCallback === 'function'
+        ? ({ kind: 'idle' as const, id: window.requestIdleCallback(run, { timeout: 2500 }) })
+        : ({ kind: 'timeout' as const, id: window.setTimeout(run, 0) })
+    return () => {
+      if (handle.kind === 'idle') window.cancelIdleCallback(handle.id)
+      else window.clearTimeout(handle.id)
+    }
+  }, [])
+
+  useEffect(() => {
     setAccountOpen(false)
     setHubMenuOpen(false)
   }, [pathname])
@@ -168,9 +203,7 @@ export function ManageTopNav({
           Search gyms and book your next training trip.
         </div>
       </div>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-        <Luggage className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-      </span>
+      <HubMenuFeaturedIcon />
     </Link>
   )
 
@@ -187,9 +220,7 @@ export function ManageTopNav({
         <div className="text-sm font-semibold text-gray-900">Back to admin dashboard</div>
         <div className="mt-0.5 text-xs leading-snug text-gray-500">Return to the Admin Hub.</div>
       </div>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-        <LayoutDashboard className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-      </span>
+      <HubMenuFeaturedIcon />
     </Link>
   ) : (
     bookATripRow
@@ -272,6 +303,7 @@ export function ManageTopNav({
           setAccountOpen(false)
           setHubMenuOpen((open) => !open)
         }}
+        onPointerEnter={preloadBookATripMenuIcon}
         className={cn(
           'inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
           hubMenuOpen
