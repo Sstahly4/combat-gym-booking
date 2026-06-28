@@ -165,7 +165,9 @@ export function GymLocationMapPreview({
     <div className={cn('flex min-h-0 flex-col', className)}>
       <div className="mb-4">
         <p className="text-base font-semibold text-gray-900">Map preview</p>
-        <p className="mt-1 text-sm text-gray-500">Updates as you edit — same map guests see on your listing.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Updates as you search or edit your address — same map guests see on your listing.
+        </p>
       </div>
 
       <div className="relative aspect-[4/3] min-h-[14rem] overflow-hidden rounded-3xl bg-gray-100 shadow-lg shadow-gray-900/10 ring-1 ring-black/5 sm:min-h-[18rem]">

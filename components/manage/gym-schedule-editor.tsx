@@ -47,7 +47,7 @@ export function GymScheduleEditor({
 }) {
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
-      <div className="flex min-h-0 flex-col gap-8 lg:max-h-[min(72vh,calc(100dvh-11rem))] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+      <div className="flex flex-col gap-8">
         <section className="space-y-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Opening hours</h2>
@@ -255,7 +255,7 @@ export function GymScheduleEditor({
         </section>
       </div>
 
-      <div className="hidden lg:sticky lg:top-24 lg:block lg:self-start">
+      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
         <GymSchedulePreview openingHours={openingHours} trainingSchedule={trainingSchedule} />
       </div>
     </div>

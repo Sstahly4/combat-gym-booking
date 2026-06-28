@@ -152,6 +152,10 @@ export function GymLocationAddressSearch({ onApply, disabled }: GymLocationAddre
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
         ) : null}
       </div>
+      <p className="text-xs text-gray-500">
+        Pick a result to fill your address, city, and map pin. You can edit any field after — map labels may differ from
+        how guests search (e.g. Ko Lanta vs Krabi).
+      </p>
       {searchError ? <p className="text-xs text-red-600">{searchError}</p> : null}
       {cityGuidance && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">

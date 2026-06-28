@@ -53,17 +53,13 @@ export function GymLocationEditor({
 }) {
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
-      <div
-        className={cn(
-          'flex min-h-0 flex-col gap-8',
-          'lg:max-h-[min(72vh,calc(100dvh-11rem))] lg:overflow-y-auto lg:overscroll-contain lg:pr-1',
-        )}
-      >
+      <div className="flex flex-col gap-8">
         <section className="space-y-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Find your address</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Search to fill your street address, city, and map pin — then fine-tune any field below.
+              Search OpenStreetMap to fill your street address, city, and map pin. You can fine-tune everything
+              afterward.
             </p>
           </div>
           <GymLocationAddressSearch disabled={saving} onApply={onApplySearch} />
@@ -84,7 +80,7 @@ export function GymLocationEditor({
           <div>
             <h2 className="text-base font-semibold text-gray-900">Address</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Shown on your listing and used for search by area.
+              This is the address guests see on your listing and what we use for search by area.
             </p>
           </div>
 
@@ -113,14 +109,16 @@ export function GymLocationEditor({
                 onChange={(e) => onCityChange(e.target.value)}
                 onBlur={(e) => onCityBlur(e.target.value)}
                 required
+                title="Prefilled from map search; edit if you prefer a different area name for guests"
               />
               <p className="text-xs text-gray-500">
-                Use the name guests search for — e.g. &quot;Krabi&quot; instead of a local village.
+                Use the name guests search for — e.g. &quot;Krabi&quot; instead of a local village if that fits your
+                listing better.
               </p>
               {cityNonLatinWarning ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
-                  Use the English or Latin spelling so international guests can find you — e.g.
-                  &quot;Koh Phangan&quot;, &quot;Tokyo&quot;, &quot;Bangkok&quot;.
+                  Use the English or Latin spelling so international guests can find you — e.g. &quot;Koh
+                  Phangan&quot;, &quot;Tokyo&quot;, &quot;Bangkok&quot;.
                 </p>
               ) : null}
             </div>
@@ -141,8 +139,8 @@ export function GymLocationEditor({
             <h2 className="text-base font-semibold text-gray-900">Google Maps listing</h2>
             <p className="mt-1 text-sm text-gray-500">
               {showVerificationHints
-                ? 'Link to your gym’s public Google Maps page. Should match the address above.'
-                : 'Optional — should match the address above.'}
+                ? 'Link to your gym’s public Google Maps page. It should match the address above and helps with listing verification.'
+                : 'Optional link to your gym’s public Google Maps page. It should match the address above.'}
             </p>
           </div>
 
@@ -174,7 +172,7 @@ export function GymLocationEditor({
             />
           </summary>
           <p className="mt-2 text-xs text-gray-500">
-            Usually filled automatically from search. Only edit if you need to nudge the pin.
+            Usually filled automatically when you pick a search result. Only edit if you need to nudge the pin.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -205,18 +203,15 @@ export function GymLocationEditor({
         </details>
       </div>
 
-      <div className="hidden lg:sticky lg:top-24 lg:block lg:self-start lg:max-h-[min(72vh,calc(100dvh-11rem))]">
-        <div className="flex min-h-[min(72vh,calc(100dvh-11rem))] items-center">
-          <GymLocationMapPreview
-            className="w-full"
-            address={address}
-            city={city}
-            country={country}
-            latitude={latitude}
-            longitude={longitude}
-            googleMapsLink={googleMapsLink}
-          />
-        </div>
+      <div className="hidden lg:sticky lg:top-6 lg:block lg:self-start">
+        <GymLocationMapPreview
+          address={address}
+          city={city}
+          country={country}
+          latitude={latitude}
+          longitude={longitude}
+          googleMapsLink={googleMapsLink}
+        />
       </div>
     </div>
   )
