@@ -336,7 +336,7 @@ export function ManageTopNav({
           </div>
 
           {gyms.length > 1 && onSelectGym ? (
-            <div className="border-t border-gray-100 px-4 py-3">
+            <div className="px-4 pb-3 pt-1">
               <label htmlFor="partner-gym-switch-hub" className="mb-1 block text-xs font-medium text-gray-500">
                 Active gym
               </label>
@@ -355,7 +355,7 @@ export function ManageTopNav({
               </select>
             </div>
           ) : activeGym?.name ? (
-            <div className="border-t border-gray-100 px-4 py-3">
+            <div className="px-4 pb-3 pt-1">
               <p className="text-xs font-medium text-gray-500">Active gym</p>
               <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{activeGym.name}</p>
             </div>

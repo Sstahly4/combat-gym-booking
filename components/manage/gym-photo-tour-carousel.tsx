@@ -10,14 +10,30 @@ const SLIDE_MS = 480
 const SLIDE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const COMMIT_THRESHOLD = 0.16
 const CLICK_MOVE_TOLERANCE_PX = 8
-/** Full swipe distance ≈ 1× card width — slow, playable scrubbing. */
 const DRAG_DISTANCE_RATIO = 1
 
-/** Side cards peek outward like Airbnb listing photo stacks. */
-const PEEK_X_RATIO = 0.5
-const PEEK_ROTATE_DEG = 12
-const PEEK_SCALE = 0.92
-const PEEK_Y_PX = 8
+const PEEK_X_RATIO = 0.52
+const PEEK_ROTATE_DEG = 11
+const PEEK_SCALE = 0.9
+const PEEK_Y_PX = 10
+
+/** Homepage search-card dot strip — sliding 5-dot viewport. */
+const DOTS_VISIBLE = 5
+const DOT_PX = 7
+const DOT_SMALL_PX = 4
+const DOT_GAP_PX = 6
+const DOT_STEP_PX = DOT_PX + DOT_GAP_PX
+
+function windowStart(active: number, slideCount: number): number {
+  if (slideCount <= DOTS_VISIBLE) return 0
+  const maxFirst = slideCount - DOTS_VISIBLE
+  const mid = Math.floor((DOTS_VISIBLE - 1) / 2)
+  return Math.min(Math.max(active - mid, 0), maxFirst)
+}
+
+function wrapIndex(index: number, count: number): number {
+  return ((index % count) + count) % count
+}
 
 function slideImage(
   item: GymPhotoTourDisplayItem,
@@ -69,10 +85,11 @@ function CarouselSlide({
 }
 
 const CARD_SURFACE_CLASS =
-  'overflow-hidden rounded-3xl bg-gray-100 ring-1 ring-black/[0.06]'
+  'overflow-hidden rounded-xl bg-gray-100 ring-1 ring-black/[0.06]'
 
+/** Match photo grid tile size: 2-col mobile, 4-col desktop. */
 const CARD_SIZE_CLASS =
-  'h-[min(58vw,15rem)] w-[min(58vw,15rem)] sm:h-64 sm:w-64 md:h-72 md:w-72'
+  'aspect-square w-[min(calc(50%-0.5rem),14rem)] sm:w-56 md:w-[min(calc(25%-0.75rem),16rem)] lg:w-64'
 
 type StackSlot = 'prev' | 'active' | 'next'
 
@@ -118,108 +135,129 @@ function peekRight(cardW: number): CardVisual {
   }
 }
 
-function center(cardW: number, cardH: number, dragRotate = 0): CardVisual {
+function centerMid(): CardVisual {
   return {
     x: 0,
     y: 0,
     scale: 1,
     opacity: 1,
     z: 30,
-    rotate: dragRotate,
+    rotate: 0,
     shadow: '0 20px 40px -8px rgb(0 0 0 / 0.18)',
   }
 }
 
 /**
- * Fanned three-card stack — side photos lean outward at rest; drag scrubs the deck
- * with lift-and-slide transitions inspired by Airbnb + image-stack UX.
+ * Slot indices rotate as a continuous train — when dragging next, the vacated side
+ * immediately shows the next photo in sequence (wraps on small sets).
  */
+function slotIndices(
+  activeIndex: number,
+  count: number,
+  progress: number,
+  dragOffsetPx: number,
+  isDragging: boolean,
+) {
+  const wrap = (offset: number) => wrapIndex(activeIndex + offset, count)
+  const towardNext =
+    progress < -0.001 || (isDragging && dragOffsetPx < -CLICK_MOVE_TOLERANCE_PX)
+  const towardPrev =
+    progress > 0.001 || (isDragging && dragOffsetPx > CLICK_MOVE_TOLERANCE_PX)
+
+  if (towardNext) {
+    return { prev: wrap(0), active: wrap(1), next: wrap(2) }
+  }
+  if (towardPrev) {
+    return { prev: wrap(-2), active: wrap(-1), next: wrap(0) }
+  }
+  return { prev: wrap(-1), active: wrap(0), next: wrap(1) }
+}
+
 function getCardVisual(
   slot: StackSlot,
   progress: number,
   cardW: number,
   cardH: number,
+  dragOffsetPx: number,
+  isDragging: boolean,
+  towardNext: boolean,
+  towardPrev: boolean,
 ): CardVisual {
   const peekL = peekLeft(cardW)
   const peekR = peekRight(cardW)
-  const mid = center(cardW, cardH)
+  const mid = centerMid()
   const riseFrom = cardH * 0.07
+  const t = clamp(Math.abs(progress), 0, 1)
 
-  if (Math.abs(progress) < 0.0001) {
+  if (!towardNext && !towardPrev) {
     if (slot === 'prev') return peekL
-    if (slot === 'active') return mid
+    if (slot === 'active') {
+      if (isDragging && Math.abs(dragOffsetPx) > 0.5) {
+        return {
+          ...mid,
+          x: dragOffsetPx,
+          rotate: dragOffsetPx * -0.025,
+        }
+      }
+      return mid
+    }
     return peekR
   }
 
-  const towardNext = progress < 0
-  const t = clamp(Math.abs(progress), 0, 1)
-  const fingerX = progress * cardW * 0.44
-  const dragTilt = progress * -7
-
   if (towardNext) {
-    if (slot === 'active') {
+    if (slot === 'prev') {
       return {
-        x: fingerX,
-        y: -cardH * 0.42 * t,
-        scale: lerp(1, 0.95, t),
-        opacity: lerp(1, 0, t),
-        z: 40,
-        rotate: dragTilt,
-        shadow: mid.shadow,
+        x: lerp(0, peekL.x, t),
+        y: lerp(0, peekL.y, t),
+        scale: lerp(1, peekL.scale, t),
+        opacity: lerp(1, 0.92, t),
+        z: Math.round(lerp(28, 10, t)),
+        rotate: lerp(0, peekL.rotate, t),
+        shadow: lerp(0, 1, t) > 0.4 ? peekL.shadow : mid.shadow,
       }
     }
-    if (slot === 'next') {
+    if (slot === 'active') {
       return {
         x: lerp(peekR.x, 0, t),
         y: lerp(riseFrom, 0, t),
         scale: lerp(peekR.scale, 1, t),
-        opacity: lerp(0.88, 1, t),
-        z: Math.round(lerp(12, 28, t)),
+        opacity: lerp(0.9, 1, t),
+        z: Math.round(lerp(14, 30, t)),
         rotate: lerp(peekR.rotate, 0, t),
         shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekR.shadow,
       }
     }
     return {
-      x: lerp(peekL.x, peekL.x - cardW * 0.08, t),
-      y: peekL.y,
-      scale: lerp(peekL.scale, peekL.scale * 0.96, t),
-      opacity: lerp(1, 0.35, t),
-      z: 8,
-      rotate: lerp(peekL.rotate, peekL.rotate - 2, t),
-      shadow: peekL.shadow,
+      ...peekR,
+      opacity: lerp(0.85, 1, Math.min(t * 2, 1)),
     }
   }
 
-  if (slot === 'active') {
+  if (slot === 'next') {
     return {
-      x: fingerX,
-      y: -cardH * 0.42 * t,
-      scale: lerp(1, 0.95, t),
-      opacity: lerp(1, 0, t),
-      z: 40,
-      rotate: dragTilt,
-      shadow: mid.shadow,
+      x: lerp(0, peekR.x, t),
+      y: lerp(0, peekR.y, t),
+      scale: lerp(1, peekR.scale, t),
+      opacity: lerp(1, 0.92, t),
+      z: Math.round(lerp(28, 10, t)),
+      rotate: lerp(0, peekR.rotate, t),
+      shadow: lerp(0, 1, t) > 0.4 ? peekR.shadow : mid.shadow,
     }
   }
-  if (slot === 'prev') {
+  if (slot === 'active') {
     return {
       x: lerp(peekL.x, 0, t),
       y: lerp(riseFrom, 0, t),
       scale: lerp(peekL.scale, 1, t),
-      opacity: lerp(0.88, 1, t),
-      z: Math.round(lerp(12, 28, t)),
+      opacity: lerp(0.9, 1, t),
+      z: Math.round(lerp(14, 30, t)),
       rotate: lerp(peekL.rotate, 0, t),
       shadow: lerp(0, 1, t) > 0.5 ? mid.shadow : peekL.shadow,
     }
   }
   return {
-    x: lerp(peekR.x, peekR.x + cardW * 0.08, t),
-    y: peekR.y,
-    scale: lerp(peekR.scale, peekR.scale * 0.96, t),
-    opacity: lerp(1, 0.35, t),
-    z: 8,
-    rotate: lerp(peekR.rotate, peekR.rotate + 2, t),
-    shadow: peekR.shadow,
+    ...peekL,
+    opacity: lerp(0.85, 1, Math.min(t * 2, 1)),
   }
 }
 
@@ -242,6 +280,69 @@ function cardStyleFromVisual(
   }
 }
 
+function PhotoDotStrip({
+  count,
+  activeIndex,
+  animating,
+  onSelect,
+}: {
+  count: number
+  activeIndex: number
+  animating: boolean
+  onSelect: (index: number) => void
+}) {
+  const first = windowStart(activeIndex, count)
+  const translateX = -(first * DOT_STEP_PX)
+  const clipW = DOTS_VISIBLE * DOT_PX + (DOTS_VISIBLE - 1) * DOT_GAP_PX
+
+  return (
+    <div
+      className="flex justify-center"
+      role="tablist"
+      aria-label="Photo position"
+    >
+      <div className="overflow-hidden" style={{ width: count <= DOTS_VISIBLE ? count * DOT_STEP_PX - DOT_GAP_PX : clipW }}>
+        <div
+          className="flex items-center transition-transform duration-200 ease-out will-change-transform"
+          style={{ gap: DOT_GAP_PX, transform: `translateX(${translateX}px)` }}
+        >
+          {Array.from({ length: count }, (_, slideIdx) => {
+            const isOn = slideIdx === activeIndex
+            const isSmallRightCue =
+              count > DOTS_VISIBLE &&
+              slideIdx === first + DOTS_VISIBLE - 1 &&
+              slideIdx < count - 1
+            const d = isSmallRightCue && !isOn ? DOT_SMALL_PX : DOT_PX
+
+            return (
+              <button
+                key={slideIdx}
+                type="button"
+                role="tab"
+                aria-selected={isOn}
+                aria-label={`Photo ${slideIdx + 1}${slideIdx === 0 ? ', cover' : ''}`}
+                disabled={animating}
+                onClick={() => onSelect(slideIdx)}
+                className="flex flex-shrink-0 items-center justify-center disabled:opacity-50"
+                style={{ width: DOT_PX, height: DOT_PX }}
+              >
+                <span
+                  className={cn(
+                    'rounded-full transition-[opacity,background-color,transform] duration-200 ease-out',
+                    isOn ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400',
+                    isSmallRightCue && !isOn ? 'opacity-70' : '',
+                  )}
+                  style={{ width: d, height: d }}
+                />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Stacked deck preview — fanned side peeks + drag-to-cycle guest order. */
 export function GymPhotoTourCarousel({
   items,
@@ -252,7 +353,9 @@ export function GymPhotoTourCarousel({
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [dragOffsetPx, setDragOffsetPx] = useState(0)
   const [animating, setAnimating] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [cardWidthPx, setCardWidthPx] = useState(0)
   const [cardHeightPx, setCardHeightPx] = useState(0)
@@ -313,7 +416,8 @@ export function GymPhotoTourCarousel({
       commitTarget.current = 0
       setAnimating(false)
       setProgress(0)
-      setActiveIndex((index) => (((index - direction) % count) + count) % count)
+      setDragOffsetPx(0)
+      setActiveIndex((index) => wrapIndex(index - direction, count))
       finishingRef.current = false
     },
     [count],
@@ -330,6 +434,8 @@ export function GymPhotoTourCarousel({
 
       commitTarget.current = target
       setAnimating(true)
+      setIsDragging(false)
+      setDragOffsetPx(0)
       setProgress(target)
     },
     [count, finishCommit, reducedMotion],
@@ -341,9 +447,20 @@ export function GymPhotoTourCarousel({
   const goToIndex = useCallback(
     (target: number) => {
       if (target === activeIndex || animating || count <= 1) return
+      const delta = target - activeIndex
+      const steps =
+        Math.abs(delta) <= count / 2
+          ? delta
+          : delta > 0
+            ? delta - count
+            : delta + count
+
+      if (steps === 0) return
+
       commitTarget.current = 0
       setAnimating(false)
       setProgress(0)
+      setDragOffsetPx(0)
       setActiveIndex(target)
     },
     [activeIndex, animating, count],
@@ -377,6 +494,7 @@ export function GymPhotoTourCarousel({
     pointerStartX.current = null
     pointerStartY.current = null
     dragActive.current = false
+    setIsDragging(false)
   }
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -402,15 +520,18 @@ export function GymPhotoTourCarousel({
         return
       }
       dragActive.current = true
+      setIsDragging(true)
     }
 
     const cardWidth = cardWidthRef.current || cardWidthPx || 1
+    setDragOffsetPx(deltaX)
     const dragProgress = -deltaX / (cardWidth * DRAG_DISTANCE_RATIO)
     setProgress(clamp(dragStartProgress.current + dragProgress, -1, 1))
   }
 
   const snapBack = () => {
     commitTarget.current = 0
+    setDragOffsetPx(0)
     if (reducedMotion) {
       setProgress(0)
       setAnimating(false)
@@ -437,6 +558,7 @@ export function GymPhotoTourCarousel({
     if (animating) return
 
     if (wasDragging) {
+      setDragOffsetPx(0)
       if (releaseProgress <= -COMMIT_THRESHOLD) {
         animateTo(-1)
         return
@@ -460,113 +582,167 @@ export function GymPhotoTourCarousel({
 
   const onPointerCancel = () => {
     resetPointer()
+    setDragOffsetPx(0)
     if (!animating) snapBack()
   }
 
   if (count === 0) return null
 
-  const prevIndex = count > 1 ? (activeIndex - 1 + count) % count : null
-  const nextIndex = count > 1 ? (activeIndex + 1) % count : null
-  const activeItem = items[activeIndex]!
+  const indices = slotIndices(activeIndex, count, progress, dragOffsetPx, isDragging && !animating)
   const cardW = cardWidthPx || cardWidthRef.current
   const cardH = cardHeightPx || cardHeightRef.current || cardW
 
+  const towardNext =
+    progress < -0.001 || (isDragging && dragOffsetPx < -CLICK_MOVE_TOLERANCE_PX)
+  const towardPrev =
+    progress > 0.001 || (isDragging && dragOffsetPx > CLICK_MOVE_TOLERANCE_PX)
+
   const styleFor = (slot: StackSlot): CSSProperties =>
-    cardStyleFromVisual(getCardVisual(slot, progress, cardW, cardH), animating, reducedMotion)
+    cardStyleFromVisual(
+      getCardVisual(
+        slot,
+        progress,
+        cardW,
+        cardH,
+        dragOffsetPx,
+        isDragging && !animating,
+        towardNext,
+        towardPrev,
+      ),
+      animating,
+      reducedMotion,
+    )
 
   const handleCardTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
     if (event.propertyName !== 'transform') return
     onSlideTransitionEnd()
   }
 
+  const displayActiveIndex = wrapIndex(
+    activeIndex + (towardNext ? 1 : towardPrev ? -1 : 0),
+    count,
+  )
+
   return (
     <section aria-label="Photo order preview" className="px-1 py-2 sm:px-2 sm:py-4">
       <div className="mb-5 text-center sm:mb-6">
         <p className="text-sm font-medium text-gray-900">Preview guest order</p>
         <p className="mt-1 text-sm text-gray-500">
-          Drag the stack or tap the side photos to browse in order.
+          Drag the stack or use the arrows to browse in order.
         </p>
       </div>
 
       <div
         ref={containerRef}
         tabIndex={count > 1 ? 0 : -1}
-        className="relative mx-auto max-w-3xl outline-none"
+        className="relative mx-auto w-full max-w-3xl outline-none"
       >
         {count > 1 ? (
-          <div
-            ref={stackRef}
-            className={cn(
-              'relative isolate mx-auto touch-none select-none cursor-grab active:cursor-grabbing',
-              'h-[min(58vw,15rem)] w-[min(124vw,34rem)] sm:h-64 sm:w-[36rem] md:h-72 md:w-[40rem]',
-            )}
-            style={{ perspective: '1400px', perspectiveOrigin: '50% 55%' }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
-            aria-roledescription="carousel"
-          >
-            <div
-              data-card-probe
-              className={cn('pointer-events-none invisible absolute', CARD_SIZE_CLASS)}
-              aria-hidden
+          <>
+            <PhotoDotStrip
+              count={count}
+              activeIndex={displayActiveIndex}
+              animating={animating}
+              onSelect={goToIndex}
             />
 
             <div
-              className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={styleFor('prev')}
-              aria-hidden
+              ref={stackRef}
+              className={cn(
+                'relative isolate mx-auto mt-5 touch-none select-none cursor-grab active:cursor-grabbing',
+                'aspect-square w-full max-w-[min(100%,42rem)]',
+              )}
+              style={{ perspective: '1400px', perspectiveOrigin: '50% 55%' }}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerCancel}
+              aria-roledescription="carousel"
             >
-              {prevIndex !== null ? (
-                <CarouselSlide
-                  item={items[prevIndex]!}
-                  pendingPreviewUrls={pendingPreviewUrls}
-                  sizes="30vw"
-                  className="pointer-events-none h-full w-full"
-                />
-              ) : null}
-            </div>
-
-            <div
-              className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={styleFor('next')}
-              aria-hidden
-            >
-              {nextIndex !== null ? (
-                <CarouselSlide
-                  item={items[nextIndex]!}
-                  pendingPreviewUrls={pendingPreviewUrls}
-                  sizes="30vw"
-                  className="pointer-events-none h-full w-full"
-                />
-              ) : null}
-            </div>
-
-            <div
-              className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
-              style={styleFor('active')}
-              onTransitionEnd={handleCardTransitionEnd}
-            >
-              <CarouselSlide
-                item={activeItem}
-                pendingPreviewUrls={pendingPreviewUrls}
-                sizes="(max-width: 768px) 58vw, 18rem"
-                priority
-                className="pointer-events-none h-full w-full"
+              <div
+                data-card-probe
+                className={cn(
+                  'pointer-events-none invisible absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+                  CARD_SIZE_CLASS,
+                )}
+                aria-hidden
               />
-              <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-sm">
-                  {count} {count === 1 ? 'photo' : 'photos'}
-                </span>
-                {activeIndex === 0 ? (
-                  <span className="rounded-full bg-gray-900/85 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                    Cover
+
+              <div
+                className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
+                style={styleFor('prev')}
+                aria-hidden
+              >
+                <CarouselSlide
+                  item={items[indices.prev]!}
+                  pendingPreviewUrls={pendingPreviewUrls}
+                  sizes="30vw"
+                  className="pointer-events-none h-full w-full"
+                />
+              </div>
+
+              <div
+                className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
+                style={styleFor('next')}
+                aria-hidden
+              >
+                <CarouselSlide
+                  item={items[indices.next]!}
+                  pendingPreviewUrls={pendingPreviewUrls}
+                  sizes="30vw"
+                  className="pointer-events-none h-full w-full"
+                />
+              </div>
+
+              <div
+                className={cn('absolute left-1/2 top-1/2', CARD_SIZE_CLASS, CARD_SURFACE_CLASS)}
+                style={styleFor('active')}
+                onTransitionEnd={handleCardTransitionEnd}
+              >
+                <CarouselSlide
+                  item={items[indices.active]!}
+                  pendingPreviewUrls={pendingPreviewUrls}
+                  sizes="(max-width: 768px) 50vw, 16rem"
+                  priority
+                  className="pointer-events-none h-full w-full"
+                />
+                <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-sm">
+                    {count} {count === 1 ? 'photo' : 'photos'}
                   </span>
-                ) : null}
+                  {displayActiveIndex === 0 ? (
+                    <span className="rounded-full bg-gray-900/85 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                      Cover
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
+
+            <div className="mt-5 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={animating}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden />
+              </button>
+              <p className="min-w-[5.5rem] text-center text-sm font-medium tabular-nums text-gray-600">
+                {displayActiveIndex + 1} / {count}
+              </p>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={animating}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+          </>
         ) : (
           <div className="relative mx-auto flex justify-center">
             <div
@@ -574,9 +750,9 @@ export function GymPhotoTourCarousel({
               style={{ boxShadow: '0 20px 40px -8px rgb(0 0 0 / 0.18)' }}
             >
               <CarouselSlide
-                item={activeItem}
+                item={items[0]!}
                 pendingPreviewUrls={pendingPreviewUrls}
-                sizes="(max-width: 768px) 58vw, 18rem"
+                sizes="(max-width: 768px) 50vw, 16rem"
                 priority
                 className="h-full w-full"
               />
@@ -591,54 +767,6 @@ export function GymPhotoTourCarousel({
             </div>
           </div>
         )}
-
-        {count > 1 ? (
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-center gap-1.5" role="tablist" aria-label="Photo position">
-              {items.map((item, index) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={index === activeIndex}
-                  aria-label={`Photo ${index + 1}${index === 0 ? ', cover' : ''}`}
-                  disabled={animating}
-                  onClick={() => goToIndex(index)}
-                  className={cn(
-                    'h-1.5 rounded-full transition-all duration-300 disabled:opacity-50',
-                    index === activeIndex
-                      ? 'w-6 bg-gray-900'
-                      : 'w-1.5 bg-gray-300 hover:bg-gray-400',
-                  )}
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={goPrev}
-                disabled={animating}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
-                aria-label="Previous photo"
-              >
-                <ChevronLeft className="h-5 w-5" aria-hidden />
-              </button>
-              <p className="min-w-[5.5rem] text-center text-sm font-medium tabular-nums text-gray-600">
-                {activeIndex + 1} / {count}
-              </p>
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={animating}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
-                aria-label="Next photo"
-              >
-                <ChevronRight className="h-5 w-5" aria-hidden />
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
     </section>
   )
