@@ -58,7 +58,7 @@ export function GymEditLayout({
         : 'max-w-2xl'
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-gray-50">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside className="hidden h-full min-h-0 shrink-0 self-stretch md:block">
           <GymEditSectionNav
@@ -71,8 +71,8 @@ export function GymEditLayout({
           />
         </aside>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="shrink-0 border-b border-gray-200/80 bg-white px-4 py-3 md:hidden">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-gray-50">
+          <div className="shrink-0 bg-gray-50 px-4 py-3 md:hidden">
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <label htmlFor="gym-edit-mobile-section" className="sr-only">
@@ -82,7 +82,7 @@ export function GymEditLayout({
               </div>
               <Link
                 href={`/manage/gym/preview?gym_id=${gymId}`}
-                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#003580]/15 bg-[#003580]/5 px-3 text-sm font-medium text-[#003580] hover:bg-[#003580]/10"
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#003580]/15 bg-white px-3 text-sm font-medium text-[#003580] shadow-sm hover:bg-[#003580]/5"
               >
                 <Eye className="h-4 w-4" aria-hidden />
                 <span className="sr-only sm:not-sr-only">View</span>
@@ -92,8 +92,8 @@ export function GymEditLayout({
 
           <main
             className={cn(
-              'min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-6',
-              hideSaveBar ? 'pb-8' : 'pb-4',
+              'min-h-0 flex-1 overflow-y-auto bg-gray-50 px-4 py-5 sm:px-8 sm:py-6',
+              hideSaveBar ? 'pb-8' : 'pb-24',
             )}
           >
             <div className={cn('mx-auto w-full', contentMaxWidthClass)}>
@@ -104,7 +104,7 @@ export function GymEditLayout({
                       {pageTitle}
                     </h1>
                     {pageSubtitle ? (
-                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-[15px]">
+                      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-gray-500 sm:text-[15px]">
                         {pageSubtitle}
                       </p>
                     ) : null}
@@ -117,10 +117,10 @@ export function GymEditLayout({
           </main>
 
           {hideSaveBar ? null : (
-            <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-3 sm:px-8">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-4 sm:px-8">
               <div
                 className={cn(
-                  'mx-auto flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3',
+                  'pointer-events-auto mx-auto flex w-full flex-col gap-2 rounded-2xl bg-white/95 px-4 py-3 shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:gap-3 sm:px-5',
                   contentMaxWidthClass,
                 )}
               >

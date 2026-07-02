@@ -19,11 +19,11 @@ import { PackageCreateShell, PackageEditShell } from '@/components/manage/packag
 import { GymAmenitiesEditor } from '@/components/manage/gym-amenities-editor'
 import { GymScheduleEditor } from '@/components/manage/gym-schedule-editor'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
-import { GymEditPanel } from '@/components/manage/gym-edit-section'
+import { GymEditPanel, GymEditSection } from '@/components/manage/gym-edit-section'
 import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronRight, Info, Link2, MessageCircle, Sparkles } from 'lucide-react'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import {
@@ -1373,86 +1373,97 @@ function EditGymForm() {
         {activeSection !== 'packages' ? (
         <form id="edit-gym-form" onSubmit={handleSave}>
           {activeSection === 'basic' ? (
-            <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-14">
-              <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Label htmlFor="name">Gym name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={gymName}
-                      onChange={(e) => setGymName(e.target.value)}
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+              <GymEditPanel>
+                <GymEditSection
+                  tinted
+                  title="Listing identity"
+                  description="Your name and tagline on search results."
+                  icon={<Info className="h-4 w-4 text-[#003580]" aria-hidden />}
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Label htmlFor="name">Gym name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={gymName}
+                        onChange={(e) => setGymName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <GymCurrencyPicker
+                      id="currency"
+                      value={selectedCurrencyCode}
+                      onChange={(code) => {
+                        currencyTouchedRef.current = true
+                        setSelectedCurrencyCode(code)
+                      }}
                       required
+                      compact
+                      className="w-full shrink-0 sm:w-[10.5rem]"
                     />
+                    <input type="hidden" name="currency" value={selectedCurrencyCode} required />
                   </div>
-                  <GymCurrencyPicker
-                    id="currency"
-                    value={selectedCurrencyCode}
-                    onChange={(code) => {
-                      currencyTouchedRef.current = true
-                      setSelectedCurrencyCode(code)
-                    }}
-                    required
-                    compact
-                    className="w-full shrink-0 sm:w-[10.5rem]"
-                  />
-                  <input type="hidden" name="currency" value={selectedCurrencyCode} required />
-                </div>
-                <input type="hidden" name="price_per_day" value={pricePerDay} />
-                <input type="hidden" name="price_per_week" value={pricePerWeek} />
+                  <input type="hidden" name="price_per_day" value={pricePerDay} />
+                  <input type="hidden" name="price_per_week" value={pricePerWeek} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="tagline">
-                    Tagline
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">(search cards)</span>
-                  </Label>
-                  <input
-                    id="tagline"
-                    name="tagline"
-                    type="text"
-                    maxLength={80}
-                    value={tagline}
-                    onChange={(e) => setTagline(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
-                  />
-                  <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="instagram_link">Instagram link</Label>
-                    <Input
-                      id="instagram_link"
-                      name="instagram_link"
-                      type="url"
-                      value={instagramLink}
-                      onChange={(e) => setInstagramLink(e.target.value)}
-                      placeholder="https://instagram.com/yourgym"
-                      required={profile?.role !== 'admin'}
+                    <Label htmlFor="tagline">
+                      Tagline
+                      <span className="ml-1.5 text-xs font-normal text-gray-400">(search cards)</span>
+                    </Label>
+                    <input
+                      id="tagline"
+                      name="tagline"
+                      type="text"
+                      maxLength={80}
+                      value={tagline}
+                      onChange={(e) => setTagline(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      placeholder="e.g. Beachside Muay Thai in the heart of Krabi"
                     />
+                    <p className="text-xs text-gray-400 tabular-nums">{tagline.length}/80</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="facebook_link">Facebook link</Label>
-                    <Input
-                      id="facebook_link"
-                      name="facebook_link"
-                      type="url"
-                      value={facebookLink}
-                      onChange={(e) => setFacebookLink(e.target.value)}
-                      placeholder="https://facebook.com/yourgym"
-                    />
-                  </div>
-                </div>
+                </GymEditSection>
 
-                <div className="space-y-3">
-                  <div>
-                    <Label>Disciplines</Label>
-                    <p className="mt-1 text-xs text-gray-500">
-                      What guests can train here — used for search filters.
-                    </p>
+                <GymEditSection
+                  title="Social links"
+                  description="Help guests find you online."
+                  icon={<Link2 className="h-4 w-4 text-[#003580]" aria-hidden />}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram_link">Instagram link</Label>
+                      <Input
+                        id="instagram_link"
+                        name="instagram_link"
+                        type="url"
+                        value={instagramLink}
+                        onChange={(e) => setInstagramLink(e.target.value)}
+                        placeholder="https://instagram.com/yourgym"
+                        required={profile?.role !== 'admin'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="facebook_link">Facebook link</Label>
+                      <Input
+                        id="facebook_link"
+                        name="facebook_link"
+                        type="url"
+                        value={facebookLink}
+                        onChange={(e) => setFacebookLink(e.target.value)}
+                        placeholder="https://facebook.com/yourgym"
+                      />
+                    </div>
                   </div>
+                </GymEditSection>
+
+                <GymEditSection
+                  title="Training styles"
+                  description="What guests can train here — used for search filters."
+                  icon={<Sparkles className="h-4 w-4 text-[#003580]" aria-hidden />}
+                >
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     {DISCIPLINES.map((d) => (
                       <label
@@ -1474,24 +1485,21 @@ function EditGymForm() {
                       </label>
                     ))}
                   </div>
-                </div>
+                </GymEditSection>
 
-                <div className="space-y-4 border-t border-gray-100 pt-8">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <Label className="text-base font-semibold text-gray-900">Guest FAQs</Label>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Questions and answers shown on your public listing.
-                      </p>
-                    </div>
+                <GymEditSection
+                  title="Guest FAQs"
+                  description="Questions and answers on your public listing."
+                  icon={<MessageCircle className="h-4 w-4 text-[#003580]" aria-hidden />}
+                  headerAction={
                     <Button type="button" variant="outline" size="sm" onClick={addFaq}>
                       Add question
                     </Button>
-                  </div>
-
-                  <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/[0.03]">
+                  }
+                >
+                  <div className="divide-y divide-gray-100">
                     {faq.map((item, index) => (
-                      <div key={index} className="space-y-3 p-4 sm:p-5">
+                      <div key={index} className="space-y-3 py-4 first:pt-0 last:pb-0">
                         <div className="flex items-center justify-between gap-3">
                           <Label htmlFor={`faq-question-${index}`} className="text-sm font-medium text-gray-900">
                             Question
@@ -1528,8 +1536,8 @@ function EditGymForm() {
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
+                </GymEditSection>
+              </GymEditPanel>
 
               <GymDescriptionEditor
                 id="description"

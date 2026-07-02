@@ -45,7 +45,7 @@ function TabLabel({ label, active }: { label: string; active: boolean }) {
   return (
     <span className="flex flex-col items-center">
       <span>{label}</span>
-      {active ? <span className="mt-1.5 h-0.5 w-5 rounded-full bg-gray-900" aria-hidden /> : null}
+      {active ? <span className="mt-1.5 h-0.5 w-5 rounded-full bg-white" aria-hidden /> : null}
     </span>
   )
 }
@@ -54,7 +54,15 @@ const tabLinkClass = (active: boolean) =>
   cn(
     'inline-flex shrink-0 items-center font-medium leading-none transition-colors',
     'px-3 py-2 text-[13px] md:px-3.5 md:py-2 md:text-[15px]',
-    active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800',
+    active ? 'text-white' : 'text-white/65 hover:text-white',
+  )
+
+const headerIconButtonClass = (open: boolean) =>
+  cn(
+    'inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+    open
+      ? 'border-white/40 bg-white/15 text-white'
+      : 'border-white/20 bg-white/10 text-white/90 hover:bg-white/15 hover:text-white',
   )
 
 function TabLink({
@@ -175,12 +183,12 @@ export function ManageTopNav({
   const brandLink = (
     <Link
       href={withManageGymId('/manage', firstGymId)}
-      className="min-w-0 shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003580]/30"
+      className="min-w-0 shrink-0 rounded-sm text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
     >
-      <span className="block truncate text-left text-lg font-bold leading-snug tracking-tight text-[#003580] sm:text-xl md:text-2xl">
+      <span className="block truncate text-left text-lg font-bold leading-snug tracking-tight text-white sm:text-xl md:text-2xl">
         CombatStay.com
       </span>
-      <span className="mt-0.5 block translate-x-px text-left text-base font-light leading-tight tracking-tight text-[#003580] sm:text-lg md:text-xl">
+      <span className="mt-0.5 block translate-x-px text-left text-base font-light leading-tight tracking-tight text-white/90 sm:text-lg md:text-xl">
         Partner Hub
       </span>
     </Link>
@@ -234,12 +242,7 @@ export function ManageTopNav({
           setHubMenuOpen(false)
           setAccountOpen((open) => !open)
         }}
-        className={cn(
-          'inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
-          accountOpen
-            ? 'border-gray-300 bg-gray-50 text-gray-900'
-            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
-        )}
+        className={headerIconButtonClass(accountOpen)}
         aria-expanded={accountOpen}
         aria-haspopup="menu"
         aria-label="Account menu"
@@ -304,12 +307,7 @@ export function ManageTopNav({
           setHubMenuOpen((open) => !open)
         }}
         onPointerEnter={preloadBookATripMenuIcon}
-        className={cn(
-          'inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
-          hubMenuOpen
-            ? 'border-gray-300 bg-gray-50 text-gray-900'
-            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
-        )}
+        className={headerIconButtonClass(hubMenuOpen)}
         aria-expanded={hubMenuOpen}
         aria-haspopup="menu"
         aria-label="Open menu"
@@ -413,7 +411,7 @@ export function ManageTopNav({
     <>
       <header
         className={cn(
-          'z-[100] shrink-0 overflow-visible border-b border-gray-200 bg-white',
+          'z-[100] shrink-0 overflow-visible bg-[#003580]',
           PARTNER_HUB_HEADER_HEIGHT_CLASS,
         )}
       >
@@ -423,7 +421,7 @@ export function ManageTopNav({
           </div>
           {centerNav}
           <div className="flex shrink-0 items-center gap-1 md:w-[11.5rem] md:justify-end lg:w-[13rem]">
-            <NotificationBell theme="light" />
+            <NotificationBell theme="dark" />
             {accountControl}
             {hubMenuButton}
           </div>

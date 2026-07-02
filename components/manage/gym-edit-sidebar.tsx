@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Eye,
+  UserPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
@@ -182,7 +183,7 @@ export function GymEditSectionNav({
 
   const linkItemClass = (isActive: boolean) =>
     cn(
-      'group relative flex items-center rounded-lg text-[15px] font-medium transition-colors',
+      'group flex items-center rounded-lg text-[15px] font-medium transition-colors',
       collapsed
         ? 'mx-auto h-9 w-9 justify-center'
         : 'w-full gap-3 px-3 py-2.5',
@@ -201,27 +202,42 @@ export function GymEditSectionNav({
     <nav
       aria-label="Listing sections"
       className={cn(
-        'flex h-full min-h-0 flex-col border-r border-gray-200/80 bg-white transition-[width] duration-200 ease-in-out motion-reduce:transition-none',
+        'flex h-full min-h-0 flex-col bg-gray-50/90 transition-[width] duration-200 ease-in-out motion-reduce:transition-none',
         collapsed ? 'w-14' : 'w-56',
       )}
     >
       <div
         className={cn(
-          'shrink-0 border-b border-gray-100',
-          collapsed ? 'flex justify-center px-2 pb-3 pt-4' : 'px-4 pb-3 pt-5',
+          'shrink-0',
+          collapsed ? 'flex justify-center px-2 pb-2 pt-4' : 'px-4 pb-2 pt-5',
         )}
       >
         {collapsed ? (
           <span
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-sm font-semibold text-gray-700"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#003580]/10 text-sm font-semibold text-[#003580]"
             title={gymName ?? 'Listing'}
           >
             {gymName ? gymName.charAt(0).toUpperCase() : 'G'}
           </span>
         ) : (
-          <p className="truncate text-sm font-semibold leading-snug text-gray-900" title={gymName ?? undefined}>
-            {gymName ?? 'Your listing'}
-          </p>
+          <div className="min-w-0 space-y-1">
+            <p className="truncate text-sm font-semibold leading-snug text-gray-900" title={gymName ?? undefined}>
+              {gymName ?? 'Your listing'}
+            </p>
+            <p className="text-xs text-gray-500">1 member</p>
+            <button
+              type="button"
+              disabled
+              title="Team invites coming soon"
+              className="mt-2 flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-medium text-gray-400"
+            >
+              <UserPlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Invite teammates
+              <span className="rounded-full bg-gray-200/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                Soon
+              </span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -241,12 +257,6 @@ export function GymEditSectionNav({
                   className={linkItemClass(isActive)}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive && !collapsed ? (
-                    <span
-                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
-                      aria-hidden
-                    />
-                  ) : null}
                   <Icon className={linkIconClass(isActive)} aria-hidden />
                   {!collapsed ? (
                     <>
@@ -273,12 +283,6 @@ export function GymEditSectionNav({
                   className={linkItemClass(isActive)}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive && !collapsed ? (
-                    <span
-                      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
-                      aria-hidden
-                    />
-                  ) : null}
                   <Icon className={linkIconClass(isActive)} aria-hidden />
                   {!collapsed ? <span className="min-w-0 flex-1 truncate">{link.label}</span> : null}
                 </Link>
@@ -293,12 +297,6 @@ export function GymEditSectionNav({
               className={linkItemClass(isPreviewActive)}
               aria-current={isPreviewActive ? 'page' : undefined}
             >
-              {isPreviewActive && !collapsed ? (
-                <span
-                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#003580]"
-                  aria-hidden
-                />
-              ) : null}
               <Eye className={linkIconClass(isPreviewActive)} aria-hidden />
               {!collapsed ? <span className="min-w-0 flex-1 truncate">View listing</span> : null}
             </Link>
@@ -306,12 +304,12 @@ export function GymEditSectionNav({
         </ul>
       </div>
 
-      <div className={cn('shrink-0 border-t border-gray-100', collapsed ? 'px-1.5 py-2' : 'px-2 py-2')}>
+      <div className={cn('mt-auto shrink-0', collapsed ? 'px-1.5 py-2' : 'px-2 py-2')}>
         <button
           type="button"
           onClick={() => onCollapsedChange(!collapsed)}
           className={cn(
-            'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800',
+            'flex items-center rounded-lg text-gray-500 transition-colors hover:bg-[#003580]/8 hover:text-[#003580]',
             collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-3 px-3 py-2.5',
           )}
           aria-expanded={!collapsed}

@@ -121,7 +121,7 @@ export function GymDescriptionEditor({
         </p>
       </div>
 
-      <div className="flex min-h-[min(70vh,42rem)] flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm shadow-gray-900/[0.03]">
+      <div className="flex min-h-[min(70vh,42rem)] flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm shadow-gray-900/[0.04] ring-1 ring-black/[0.04]">
         <div className="flex items-center gap-0.5 border-b border-gray-100 bg-gray-50/80 px-2 py-1.5">
           <ToolbarButton label="Bold" onClick={() => applyFormat('bold')}>
             <Bold className="h-4 w-4" strokeWidth={2} aria-hidden />
