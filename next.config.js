@@ -79,6 +79,9 @@ const nextConfig = {
     })).concat([
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/terms-of-service', destination: '/terms', permanent: true },
+      { source: '/help', destination: '/faq', permanent: true },
+      { source: '/help-center', destination: '/faq', permanent: true },
+      { source: '/partner-help', destination: '/owners/help', permanent: true },
     ])
   },
   async headers() {
@@ -101,7 +104,7 @@ const nextConfig = {
       // Stripe Elements iframe, Stripe Connect iframe, Google Maps embed iframe.
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com",
       // Supabase REST/Auth/Storage/Realtime, Stripe API, Vercel vitals beacon.
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com https://*.clarity.ms https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://ppm.stripe.com https://vitals.vercel-insights.com https://*.clarity.ms https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://region1.google-analytics.com https://www.google.com https://www.googletagmanager.com",
       // next/image optimised URLs (self + blob), Supabase Storage, all five
       // remotePatterns from next.config.js images section, Google Maps tiles.
       "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://static.wixstatic.com https://southeastasiabackpacker.com https://www.southeastasiabackpacker.com https://upload.wikimedia.org https://commons.wikimedia.org https://maps.googleapis.com https://maps.gstatic.com https://flagcdn.com https://hatscripts.github.io https://c.bing.com https://*.clarity.ms https://www.google-analytics.com https://www.googletagmanager.com",

@@ -15,6 +15,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 const siteUrl = canonicalSiteUrl()
 const GA_MEASUREMENT_ID = "G-7D24ZQQRDL"
+const CLARITY_PROJECT_ID = "x58294yjxc"
 const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const organizationJsonLd = {
@@ -124,11 +125,15 @@ export default function RootLayout({
         </AppRootProviders>
         <Analytics />
         <SpeedInsights />
-        <Script
-          id="microsoft-clarity"
-          strategy="afterInteractive"
-          src="https://www.clarity.ms/tag/x58294yjxc"
-        />
+        <Script id="microsoft-clarity" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
+          `}
+        </Script>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
