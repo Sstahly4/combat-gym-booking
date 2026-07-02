@@ -188,13 +188,13 @@ export function GymEditSectionNav({
         : 'w-full gap-3 px-3 py-2.5',
       isActive
         ? 'bg-[#003580]/8 text-[#003580]'
-        : 'text-gray-600 hover:bg-[#003580]/5 hover:text-gray-900',
+        : 'text-gray-600 hover:bg-[#003580]/8 hover:text-[#003580]',
     )
 
   const linkIconClass = (isActive: boolean) =>
     cn(
       'h-[1.125rem] w-[1.125rem] shrink-0',
-      isActive ? 'text-[#003580]' : 'text-gray-500 group-hover:text-gray-700',
+      isActive ? 'text-[#003580]' : 'text-gray-500 group-hover:text-[#003580]',
     )
 
   return (
