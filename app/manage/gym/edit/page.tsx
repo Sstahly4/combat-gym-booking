@@ -23,7 +23,7 @@ import { GymEditPanel, GymEditSection } from '@/components/manage/gym-edit-secti
 import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { ChevronDown, ChevronUp, ChevronRight, Info, Link2, MessageCircle, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import {
@@ -1376,10 +1376,8 @@ function EditGymForm() {
             <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
               <GymEditPanel>
                 <GymEditSection
-                  tinted
                   title="Listing identity"
                   description="Your name and tagline on search results."
-                  icon={<Info className="h-4 w-4 text-[#003580]" aria-hidden />}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -1430,7 +1428,6 @@ function EditGymForm() {
                 <GymEditSection
                   title="Social links"
                   description="Help guests find you online."
-                  icon={<Link2 className="h-4 w-4 text-[#003580]" aria-hidden />}
                 >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
@@ -1462,7 +1459,6 @@ function EditGymForm() {
                 <GymEditSection
                   title="Training styles"
                   description="What guests can train here — used for search filters."
-                  icon={<Sparkles className="h-4 w-4 text-[#003580]" aria-hidden />}
                 >
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     {DISCIPLINES.map((d) => (
@@ -1490,7 +1486,6 @@ function EditGymForm() {
                 <GymEditSection
                   title="Guest FAQs"
                   description="Questions and answers on your public listing."
-                  icon={<MessageCircle className="h-4 w-4 text-[#003580]" aria-hidden />}
                   headerAction={
                     <Button type="button" variant="outline" size="sm" onClick={addFaq}>
                       Add question

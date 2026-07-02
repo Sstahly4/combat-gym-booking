@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, type ClipboardEvent } from 'react'
 import { Bold, Heading2, Italic } from 'lucide-react'
-import { Label } from '@/components/ui/label'
 import {
   gymDescriptionElementToMarkdown,
   gymDescriptionMarkdownToHtml,
 } from '@/lib/text/gym-description-editable'
 import { structuredTextFromClipboard } from '@/lib/text/rich-paste'
 import { cn } from '@/lib/utils'
+import { listingSectionClass } from '@/components/manage/gym-edit-section'
 
 function ToolbarButton({
   label,
@@ -110,18 +110,15 @@ export function GymDescriptionEditor({
   }
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', className)}>
-      <div className="mb-3">
-        <Label htmlFor={id} className="text-base font-semibold text-gray-900">
-          Description
-        </Label>
-        <p className="mt-1 text-sm text-gray-500">
-          Tell guests what training here feels like. Use the toolbar or keyboard — formatting shows on your public
-          listing.
+    <section className={cn('flex h-full min-h-0 flex-col', listingSectionClass, className)}>
+      <header className="mb-5">
+        <h2 className="text-lg font-semibold tracking-tight text-gray-900">Description</h2>
+        <p className="mt-1 text-sm leading-relaxed text-gray-500">
+          Tell guests what training here feels like. Formatting shows on your public listing.
         </p>
-      </div>
+      </header>
 
-      <div className="flex min-h-[min(70vh,42rem)] flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm shadow-gray-900/[0.04] ring-1 ring-black/[0.04]">
+      <div className="flex min-h-[min(60vh,36rem)] flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-gray-200/90">
         <div className="flex items-center gap-0.5 border-b border-gray-100 bg-gray-50/80 px-2 py-1.5">
           <ToolbarButton label="Bold" onClick={() => applyFormat('bold')}>
             <Bold className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -150,7 +147,7 @@ export function GymDescriptionEditor({
           onPaste={handlePaste}
           data-placeholder="Describe your gym, coaches, facilities, and what makes a stay here worthwhile..."
           className={cn(
-            'min-h-0 flex-1 overflow-y-auto px-4 py-4 text-[15px] leading-relaxed text-gray-700 outline-none',
+            'min-h-0 flex-1 overflow-y-auto bg-white px-4 py-4 text-[15px] leading-relaxed text-gray-700 outline-none',
             'focus-visible:ring-0',
             '[&_p]:whitespace-pre-wrap [&_p+p]:mt-4',
             '[&_strong]:font-semibold [&_strong]:text-gray-900',
@@ -158,6 +155,6 @@ export function GymDescriptionEditor({
           )}
         />
       </div>
-    </div>
+    </section>
   )
 }
