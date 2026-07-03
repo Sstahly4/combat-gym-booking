@@ -83,10 +83,22 @@ export function DashboardSetupGuide({
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const onExpand = () => setMinimized(false)
+    const onExpand = () => {
+      setMinimized(false)
+      setOpenGroupId((prev) => {
+        if (prev) return prev
+        const firstIncomplete = GROUPS.find((g) => {
+          const items = g.keys
+            .map((k) => itemByKey(requiredReadiness, k))
+            .filter((x): x is ReadinessRequiredItem => Boolean(x))
+          return items.length > 0 && items.some((i) => !i.passed)
+        })
+        return firstIncomplete?.id ?? GROUPS[0]?.id ?? null
+      })
+    }
     window.addEventListener('dashboard-setup-guide:claim-tour-expand', onExpand)
     return () => window.removeEventListener('dashboard-setup-guide:claim-tour-expand', onExpand)
-  }, [])
+  }, [requiredReadiness])
 
   const toggleGroup = useCallback((id: string) => {
     setOpenGroupId((prev) => (prev === id ? null : id))

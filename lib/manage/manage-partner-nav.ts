@@ -73,6 +73,7 @@ export function buildPartnerNav({
         label: 'Calendar',
         icon: CalendarRange,
         isActive: (p) => p === '/manage/calendar' || p.startsWith('/manage/calendar/'),
+        tourAnchor: 'tour-calendar',
       },
       {
         id: 'listings',

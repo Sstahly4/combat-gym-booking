@@ -34,7 +34,10 @@ export function shouldHideNoBookingsToast(pathname: string): boolean {
 
 const NO_BOOKINGS_SCHEDULE_EVENT = 'cs:no-bookings-toast-schedule'
 
-const SLIDE_MS = 300
+const SLIDE_MS = 420
+const SLIDE_TRANSITION =
+  'transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform'
+const ENTRANCE_DELAY_MS = 80
 const HOLD_MS = 5000
 const RAF_STAGGER_MS = 16
 
@@ -172,29 +175,34 @@ export function ManageNoBookingsToastHost() {
 
   const idleNormal = celebration === null && nbStage === 'normal'
 
-  const [cardPeek, setCardPeek] = useState({ visible: false, entered: false })
+  const [peekVisible, setPeekVisible] = useState(false)
+  const [peekEntered, setPeekEntered] = useState(false)
 
   useEffect(() => {
     if (!showNbCardEffective || !idleNormal) {
-      setCardPeek({ visible: false, entered: false })
+      setPeekVisible(false)
+      setPeekEntered(false)
       return
     }
-    const t = window.setTimeout(() => setCardPeek((p) => ({ ...p, visible: true })), 320)
+    const t = window.setTimeout(() => setPeekVisible(true), ENTRANCE_DELAY_MS)
     return () => window.clearTimeout(t)
   }, [showNbCardEffective, idleNormal, pathname])
 
-  useEffect(() => {
-    if (!cardPeek.visible || !idleNormal) {
-      setCardPeek((p) => ({ ...p, entered: false }))
+  useLayoutEffect(() => {
+    if (!peekVisible || !idleNormal) {
+      setPeekEntered(false)
       return
     }
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setCardPeek((p) => ({ ...p, entered: true }))
-      })
+    setPeekEntered(false)
+    let frame2 = 0
+    const frame1 = window.requestAnimationFrame(() => {
+      frame2 = window.requestAnimationFrame(() => setPeekEntered(true))
     })
-    return () => cancelAnimationFrame(id)
-  }, [cardPeek.visible, idleNormal])
+    return () => {
+      window.cancelAnimationFrame(frame1)
+      if (frame2) window.cancelAnimationFrame(frame2)
+    }
+  }, [peekVisible, idleNormal])
 
   const runningRef = useRef(false)
   const sequenceIdRef = useRef(0)
@@ -256,7 +264,8 @@ export function ManageNoBookingsToastHost() {
       schedule(() => {
         if (sequenceIdRef.current !== myId) return
         setNbStage('normal')
-        setCardPeek({ visible: true, entered: true })
+        setPeekVisible(true)
+        setPeekEntered(true)
         setSeqIncludesNb(false)
         runningRef.current = false
         clearPendingTimeouts()
@@ -328,27 +337,26 @@ export function ManageNoBookingsToastHost() {
     if (narrowPartnerHub) return 'pointer-events-none opacity-0'
     if (!idleNormal) {
       if (nbStage === 'off-right') {
-        return 'translate-x-[calc(100%+28px)] opacity-0 transition-[transform,opacity] duration-300 ease-in-out'
+        return cn('translate-x-[calc(100%+1.75rem)] opacity-0', SLIDE_TRANSITION)
       }
       if (nbStage === 'return-prep') {
-        return 'translate-x-[calc(100%+28px)] opacity-100 transition-none'
+        return 'translate-x-[calc(100%+1.75rem)] opacity-100 transition-none'
       }
       if (nbStage === 'return-in') {
-        return 'translate-x-0 opacity-100 transition-[transform,opacity] duration-300 ease-in-out'
+        return cn('translate-x-0 opacity-100', SLIDE_TRANSITION)
       }
       if (showNbCard) {
-        return 'translate-x-0 opacity-100 transition-[transform,opacity] duration-300 ease-in-out'
+        return cn('translate-x-0 opacity-100', SLIDE_TRANSITION)
       }
       return 'pointer-events-none opacity-0'
     }
-    if (!showNbCardEffective) return 'pointer-events-none opacity-0'
-    if (!cardPeek.visible) {
-      return 'translate-x-2 -translate-y-2 opacity-0 transition-none'
+    if (!showNbCardEffective || !peekVisible) {
+      return 'pointer-events-none translate-x-[110%] opacity-0'
     }
-    if (!cardPeek.entered) {
-      return 'translate-x-2 -translate-y-2 opacity-0 transition-all duration-300 ease-out'
-    }
-    return 'translate-x-0 translate-y-0 opacity-100 transition-all duration-300 ease-out'
+    return cn(
+      peekEntered ? 'translate-x-0 opacity-100 pointer-events-auto' : 'translate-x-[110%] opacity-0 pointer-events-none',
+      SLIDE_TRANSITION,
+    )
   })()
 
   const successMotion = (() => {
@@ -386,9 +394,9 @@ export function ManageNoBookingsToastHost() {
     <div
       className={cn(
         'fixed z-[70]',
-        /** Desktop / tablet partner hub */
+        /** Desktop / tablet — tuck under the partner nav, aligned with dashboard content inset */
         !narrowPartnerHub &&
-          'right-4 top-[8.75rem] w-[min(100vw-2rem,24rem)] max-w-sm md:right-8',
+          'right-4 top-[calc(5rem+0.75rem)] w-[min(calc(100vw-2rem),22rem)] max-w-md sm:right-6 sm:top-[calc(5rem+1rem)]',
         /** Narrow partner hub — bottom snack tray above mobile tab bar */
         narrowPartnerHub &&
           'inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] top-auto flex w-auto max-w-none justify-center px-0',
@@ -396,7 +404,7 @@ export function ManageNoBookingsToastHost() {
       )}
       aria-live="polite"
     >
-      <div className="relative w-full max-w-lg min-h-0 md:min-h-[4.5rem]">
+      <div className="relative w-full max-w-lg min-h-0">
         {renderNbLayer ? (
           <div className={cn('w-full', nbMotion)}>
             <NoBookingsToastCard

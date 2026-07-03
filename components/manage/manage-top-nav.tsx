@@ -8,7 +8,6 @@ import { CircleUser, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { CurrencyModal } from '@/components/currency-modal'
-import { ManageHeaderSearch } from '@/components/manage/manage-header-search'
 import { NotificationBell } from '@/components/manage/notification-bell'
 import { PartnerHubDropdownPortal } from '@/components/manage/partner-hub-dropdown-portal'
 import {
@@ -328,10 +327,6 @@ export function ManageTopNav({
           className="w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white py-2 shadow-lg shadow-gray-900/10"
         >
           {hubMenuTopRow}
-
-          <div className="space-y-1 border-t border-gray-100 px-3 pb-2 pt-2">
-            <ManageHeaderSearch theme="light" className="w-full" />
-          </div>
 
           {gyms.length > 1 && onSelectGym ? (
             <div className="px-4 pb-3 pt-1">

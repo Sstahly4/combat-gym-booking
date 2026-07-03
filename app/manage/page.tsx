@@ -534,7 +534,7 @@ export default function ManagePage() {
 
   if (authLoading || blockingAuth || profileRecoverFailed || (user && !profile) || loading) {
     return (
-      <div className="min-h-0 bg-white">
+      <div className="min-h-0">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-3 sm:px-6 sm:py-8">
           <div className={`${dashCard} overflow-hidden`}>
             <div className="h-12 animate-pulse border-b border-gray-200/60 bg-white" />
@@ -563,7 +563,7 @@ export default function ManagePage() {
   }
 
   return (
-    <div className="min-h-0 bg-white">
+    <div className="min-h-0">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 sm:py-8">
           {gyms.length === 0 ? (
             <Card className={`${dashCard} border-0 shadow-md`}>
@@ -580,7 +580,7 @@ export default function ManagePage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-8 sm:space-y-16">
+            <div className="space-y-6 sm:space-y-8">
             {pendingEarnings > 0 && currencyGym ? (
               <PendingPayoutEarningsCard
                 gymId={currencyGym.id}
@@ -589,27 +589,29 @@ export default function ManagePage() {
                 preferredLanguage={profile?.preferred_language}
               />
             ) : null}
-            <DashboardTodaySection
-              metricsCurrency={bookingCurrency}
-              metrics={stats.todayMetrics}
-              comparisonDayKey={comparisonDayKey}
-              maxComparisonDayKey={maxComparisonDayKey}
-              onComparisonDayChange={setComparisonDayKey}
-              secondaryStats={[
-                {
-                  label: "Today's bookings",
-                  value: String(stats.todayBookings),
-                  href: '/manage/bookings',
-                  actionLabel: 'View',
-                },
-                {
-                  label: 'This week revenue',
-                  value: dashWeekRevenue(stats.weekRevenue),
-                  href: '/manage/balances',
-                  actionLabel: 'View',
-                },
-              ]}
-            />
+            <div className={`${dashCard} overflow-hidden px-4 py-5 sm:px-6 sm:py-7`}>
+              <DashboardTodaySection
+                metricsCurrency={bookingCurrency}
+                metrics={stats.todayMetrics}
+                comparisonDayKey={comparisonDayKey}
+                maxComparisonDayKey={maxComparisonDayKey}
+                onComparisonDayChange={setComparisonDayKey}
+                secondaryStats={[
+                  {
+                    label: "Today's bookings",
+                    value: String(stats.todayBookings),
+                    href: '/manage/bookings',
+                    actionLabel: 'View',
+                  },
+                  {
+                    label: 'This week revenue',
+                    value: dashWeekRevenue(stats.weekRevenue),
+                    href: '/manage/balances',
+                    actionLabel: 'View',
+                  },
+                ]}
+              />
+            </div>
 
             <section aria-labelledby="dash-overview-heading" className="space-y-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -623,13 +625,11 @@ export default function ManagePage() {
                 </div>
               </div>
 
-              <div className="rounded-md border border-gray-100 bg-gray-50 p-1 sm:p-1.5">
-                <DashboardOverviewMetricGrid
-                  cards={overviewCardsDisplay}
-                  currency={selectedCurrency}
-                  updatedAt={bookingsFetchedAt}
-                />
-              </div>
+              <DashboardOverviewMetricGrid
+                cards={overviewCardsDisplay}
+                currency={selectedCurrency}
+                updatedAt={bookingsFetchedAt}
+              />
             </section>
             </div>
           )}

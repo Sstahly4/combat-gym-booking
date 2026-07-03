@@ -16,12 +16,17 @@ import { cn } from '@/lib/utils'
 import { withManageGymId } from '@/lib/manage/manage-partner-nav'
 import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 
-const TOUR_ENTER_DELAY_MS = 580
+const TOUR_ENTER_DELAY_MS = 180
 const ROUTE_SETTLE_MS = 200
-/** After claim tour ends, delay the “No bookings yet” toast so it doesn’t stack on the tour. */
-export const DEFER_NO_BOOKINGS_TOAST_MS = 5000
+const SAME_ROUTE_SETTLE_MS = 0
+/** After claim tour ends, brief pause before the “No bookings yet” toast slides in. */
+export const DEFER_NO_BOOKINGS_TOAST_MS = 2200
 export const SESSION_DEFER_NO_BOOKINGS_KEY = 'cs:defer_no_bookings_toast_until'
-const SETUP_GUIDE_EXPAND_EVENT = 'dashboard-setup-guide:claim-tour-expand'
+export const SETUP_GUIDE_EXPAND_EVENT = 'dashboard-setup-guide:claim-tour-expand'
+
+function expandSetupGuide() {
+  window.dispatchEvent(new CustomEvent(SETUP_GUIDE_EXPAND_EVENT))
+}
 
 const CLAIM_TOUR_HIGHLIGHT: string[] = [
   'relative',
@@ -82,7 +87,7 @@ const STEP_DEFS: TourStepDef[] = [
     anchor: 'tour-setup-guide',
     title: 'Setup guide',
     paragraphs: [
-      'This checklist walks you through listing details, rates, photos, and payouts. Tap any row to jump straight there.',
+      'This checklist walks you through listing details, rates, photos, and preview. Tap any row to jump straight there.',
       'When every required item is done, use Review to run the final check and make your listing visible to guests.',
     ],
     paragraphsMobile: [
@@ -121,6 +126,21 @@ const STEP_DEFS: TourStepDef[] = [
       pathname.startsWith('/manage/gym/edit') && search.get('section') === 'packages',
   },
   {
+    id: 'calendar',
+    anchor: 'tour-calendar',
+    title: 'Calendar',
+    paragraphs: [
+      'Calendar in the top bar is where you set prices, spots, and closures by date. Guest bookings appear on the grid automatically.',
+      'Import or export feeds from the toolbar when you need to sync with an external calendar.',
+    ],
+    paragraphsMobile: [
+      'Tap Calendar in the top bar to manage availability, pricing, and closures by date.',
+      'Guest bookings show on the grid automatically.',
+    ],
+    path: (ctx) => withManageGymId('/manage/calendar', ctx.gymId),
+    pathMatch: (pathname) => pathname === '/manage/calendar' || pathname.startsWith('/manage/calendar/'),
+  },
+  {
     id: 'balances',
     anchor: 'tour-balances',
     title: 'Balances',
@@ -134,6 +154,21 @@ const STEP_DEFS: TourStepDef[] = [
     ],
     path: (ctx) => withManageGymId('/manage/balances', ctx.gymId),
     pathMatch: (pathname) => pathname === '/manage/balances' || pathname.startsWith('/manage/balances/'),
+  },
+  {
+    id: 'preview',
+    anchor: 'tour-view-listing',
+    title: 'Preview as a guest',
+    paragraphs: [
+      'Use Preview listing in the listing sidebar to see your page exactly as guests will.',
+      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
+    ],
+    paragraphsMobile: [
+      'From Listings, open Preview listing to see your page as guests will.',
+      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
+    ],
+    path: (ctx) => editPath(ctx.gymId, 'basic'),
+    pathMatch: (pathname) => pathname.startsWith('/manage/gym/edit'),
   },
   {
     id: 'payouts',
@@ -150,21 +185,6 @@ const STEP_DEFS: TourStepDef[] = [
     path: (ctx) => withManageGymId('/manage/settings?tab=payouts', ctx.gymId),
     pathMatch: (pathname, search) =>
       pathname.startsWith('/manage/settings') && search.get('tab') === 'payouts',
-  },
-  {
-    id: 'preview',
-    anchor: 'tour-view-listing',
-    title: 'Preview as a guest',
-    paragraphs: [
-      'Use Preview listing in the listing sidebar to see your page exactly as guests will.',
-      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
-    ],
-    paragraphsMobile: [
-      'From Listings, open Preview listing to see your page as guests will.',
-      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
-    ],
-    path: (ctx) => editPath(ctx.gymId, 'basic'),
-    pathMatch: (pathname) => pathname.startsWith('/manage/gym/edit'),
   },
 ]
 
@@ -290,19 +310,48 @@ export function ClaimDashboardTour() {
 
     navigatingRef.current = false
 
-    const timer = window.setTimeout(() => {
+    const settleMs = matches ? SAME_ROUTE_SETTLE_MS : ROUTE_SETTLE_MS
+
+    const markReady = () => {
       if (cancelled) return
       setRouteReady(true)
       if (step.onRouteReady === 'expand-setup-guide') {
-        window.dispatchEvent(new CustomEvent(SETUP_GUIDE_EXPAND_EVENT))
+        expandSetupGuide()
       }
-    }, ROUTE_SETTLE_MS)
+    }
+
+    if (settleMs === 0) {
+      const frame = window.requestAnimationFrame(markReady)
+      return () => {
+        cancelled = true
+        window.cancelAnimationFrame(frame)
+      }
+    }
+
+    const timer = window.setTimeout(markReady, settleMs)
 
     return () => {
       cancelled = true
       window.clearTimeout(timer)
     }
   }, [showTour, step, stepIndex, pathname, search, tourCtx, router])
+
+  const advanceStep = useCallback(() => {
+    const nextIndex = Math.min(steps.length - 1, stepIndex + 1)
+    if (step.id === 'welcome') {
+      expandSetupGuide()
+    }
+    const nextStep = steps[nextIndex]
+    const nextPath = nextStep?.path?.(tourCtx)
+    if (nextPath) {
+      try {
+        router.prefetch(nextPath)
+      } catch {
+        /* prefetch optional */
+      }
+    }
+    setStepIndex(nextIndex)
+  }, [step.id, stepIndex, steps, tourCtx, router])
 
   const recomputeCardPosition = useCallback(() => {
     if (narrow || !routeReady) {
@@ -512,7 +561,7 @@ export function ClaimDashboardTour() {
                 data-tour-primary="1"
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
                 disabled={submitting || !stepReady}
-                onClick={() => setStepIndex((i) => Math.min(steps.length - 1, i + 1))}
+                onClick={advanceStep}
               >
                 Next
               </Button>

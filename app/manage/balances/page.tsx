@@ -28,6 +28,9 @@ const BRAND = '#003580'
 const dashCard =
   'rounded-xl border border-gray-200/90 bg-white shadow-sm shadow-gray-900/[0.03]'
 
+const infoBanner =
+  'rounded-xl border border-gray-200/90 bg-gray-100/50 px-4 py-3 text-sm text-gray-800 shadow-sm shadow-gray-900/[0.02]'
+
 type StripePayoutRow = {
   id: string
   amount: number
@@ -323,14 +326,14 @@ export default function BalancesPage() {
 
   if (authLoading || profileRecoverFailed || (user && !profile)) {
     return (
-      <div className="flex min-h-0 items-center justify-center bg-white">
+      <div className="flex min-h-0 items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#003580] border-t-transparent" aria-hidden />
       </div>
     )
   }
 
   return (
-    <div className="min-h-0 bg-white">
+    <div className="min-h-0">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-3 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -411,30 +414,30 @@ export default function BalancesPage() {
 
         {loading && activeGymId && !error ? (
           <div className="space-y-6" aria-busy="true" aria-label="Loading balances">
-            <div className={`${dashCard} h-20 bg-gradient-to-r from-gray-50 to-gray-100/80`} />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
+            <div className={`${dashCard} h-20 animate-pulse bg-gradient-to-r from-white to-gray-50/80`} />
+            <div className={`${dashCard} grid grid-cols-1 gap-6 p-6 lg:grid-cols-[1fr_280px]`}>
               <div className="space-y-6">
-                <div className={`${dashCard} h-52 bg-gray-50/90 p-6`}>
+                <div className="h-52 animate-pulse rounded-lg bg-gray-100/70 p-6">
                   <div className="h-3 w-28 rounded bg-gray-200/90" />
-                  <div className="mt-6 h-2 w-full rounded-full bg-gray-100" />
+                  <div className="mt-6 h-2 w-full rounded-full bg-gray-200/80" />
                   <div className="mt-6 grid grid-cols-2 gap-4">
-                    <div className="h-4 w-24 rounded bg-gray-100" />
-                    <div className="ml-auto h-4 w-20 rounded bg-gray-100" />
-                    <div className="h-4 w-32 rounded bg-gray-100" />
-                    <div className="ml-auto h-4 w-24 rounded bg-gray-100" />
+                    <div className="h-4 w-24 rounded bg-gray-200/80" />
+                    <div className="ml-auto h-4 w-20 rounded bg-gray-200/80" />
+                    <div className="h-4 w-32 rounded bg-gray-200/80" />
+                    <div className="ml-auto h-4 w-24 rounded bg-gray-200/80" />
                   </div>
                 </div>
-                <div className={`${dashCard} h-36 bg-gray-50/90 p-6`}>
+                <div className="h-36 animate-pulse rounded-lg bg-gray-100/60 p-6">
                   <div className="h-3 w-36 rounded bg-gray-200/90" />
-                  <div className="mt-4 h-3 w-full rounded bg-gray-100" />
-                  <div className="mt-3 h-3 max-w-md rounded bg-gray-100" style={{ width: '80%' }} />
+                  <div className="mt-4 h-3 w-full rounded bg-gray-200/80" />
+                  <div className="mt-3 h-3 max-w-md rounded bg-gray-200/80" style={{ width: '80%' }} />
                 </div>
               </div>
-              <div className={`${dashCard} h-56 bg-gray-50/90 p-5`}>
+              <div className="h-56 animate-pulse rounded-lg bg-gray-100/60 p-5">
                 <div className="h-3 w-24 rounded bg-gray-200/90" />
                 <div className="mt-6 space-y-3">
-                  <div className="h-10 rounded-lg bg-gray-100" />
-                  <div className="h-10 rounded-lg bg-gray-100" />
+                  <div className="h-10 rounded-lg bg-gray-200/80" />
+                  <div className="h-10 rounded-lg bg-gray-200/80" />
                 </div>
               </div>
             </div>
@@ -452,9 +455,9 @@ export default function BalancesPage() {
         ) : null}
 
         {!error && payoutState === 'needs_setup' ? (
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm shadow-amber-900/5">
-            <p className="font-medium text-amber-950">Payment method not set</p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+          <div className={infoBanner}>
+            <p className="font-medium text-gray-900">Payment method not set</p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-600">
               Earnings below are tracked against your bookings, but no payout method is on file yet. Add or update
               your payout details under{' '}
               <Link
@@ -469,7 +472,7 @@ export default function BalancesPage() {
         ) : null}
 
         {!error && activeGymId && (platformSnapshot.upcomingNet > 0 || platformSnapshot.unpaidEarnedNet > 0) ? (
-          <div className="rounded-xl border border-gray-200/90 bg-gray-50/80 px-4 py-3 text-sm text-gray-800">
+          <div className={infoBanner}>
             <p className="font-medium text-gray-900">Payout schedule</p>
             <p className="mt-1 text-xs leading-relaxed text-gray-600">{PARTNER_PAYOUT_SCHEDULE_OWNER_SUMMARY}</p>
             <div className="mt-3 flex flex-wrap gap-4 text-xs tabular-nums text-gray-700">
@@ -495,7 +498,7 @@ export default function BalancesPage() {
 
 
         {showDescriptor && payoutState === 'stripe' ? (
-          <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
+          <div className={`${infoBanner} flex items-start justify-between gap-3`}>
             <div className="flex items-start gap-2 text-xs text-gray-700">
               <BarChart3 className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
               <p>
@@ -522,6 +525,7 @@ export default function BalancesPage() {
           </div>
         ) : null}
 
+        <div className={`${dashCard} p-5 sm:p-6 lg:p-7`}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
           <div className="space-y-6">
             <section>
@@ -808,7 +812,7 @@ export default function BalancesPage() {
                 ) : payoutState === 'needs_setup' ? (
                   <ul className="mt-2 space-y-1 text-xs text-gray-600">
                     <li>
-                      Method: <span className="font-medium text-amber-800">Not set</span>
+                      Method: <span className="font-medium text-gray-700">Not set</span>
                     </li>
                     <li>
                       <Link
@@ -838,6 +842,7 @@ export default function BalancesPage() {
               </div>
             </section>
           </aside>
+        </div>
         </div>
           </>
         ) : null}
