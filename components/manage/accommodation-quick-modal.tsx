@@ -700,7 +700,7 @@ export function AccommodationQuickModal({
             <DialogDescription className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
               {formOnly || mode === 'form'
                 ? 'Describe the room, set rates, photos, and what’s included. At least one price is required.'
-                : 'Rooms guests can pick for training + accommodation or all-inclusive offers.'}
+                : 'Rooms guests can pick for Train & Stay or all-inclusive offers.'}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -719,7 +719,7 @@ export function AccommodationQuickModal({
                   <BedDouble className="mx-auto mb-3 h-10 w-10 text-gray-300" aria-hidden />
                   <p className="text-sm font-medium text-gray-800">No rooms yet</p>
                   <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                    Add a room to link it to training + accommodation or all-inclusive offers.
+                    Add a room to link it to Train & Stay or all-inclusive offers.
                   </p>
                 </div>
               ) : (

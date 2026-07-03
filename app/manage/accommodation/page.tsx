@@ -56,7 +56,7 @@ export default function ManageAccommodationPage() {
     activeSection: 'accommodation',
     title: 'Accommodation',
     subtitle:
-      'Create room types guests can book with training packages. Link them to stay + train or all-inclusive offers.',
+      'Create room types guests can book with training packages. Link them to Train & Stay or all-inclusive offers.',
     sections: {},
     saving: false,
     hideSaveBar: true as const,

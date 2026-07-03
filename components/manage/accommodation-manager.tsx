@@ -158,7 +158,7 @@ export function AccommodationManager({ gymId, currency, addSignal = 0 }: Accommo
           <div>
             <p className="text-base font-semibold text-gray-900">Add your first room</p>
             <p className="mt-1 max-w-sm text-sm text-gray-500">
-              Create room types guests can book with training packages or all-inclusive stays.
+              Create room types guests can book with training packages or Train & Stay offers.
             </p>
           </div>
         </button>

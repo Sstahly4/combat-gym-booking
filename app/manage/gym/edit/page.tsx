@@ -23,7 +23,7 @@ import { GymEditPanel, GymEditSection } from '@/components/manage/gym-edit-secti
 import { resolveGymEditSection, GYM_EDIT_SIDEBAR_WIDTH_CLASS } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
-import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronRight, Plus } from 'lucide-react'
 import { normalizeGymCurrency } from '@/lib/constants/gym-currencies'
 import { cn } from '@/lib/utils'
 import {
@@ -38,6 +38,12 @@ import {
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationEditor } from '@/components/manage/gym-location-editor'
+import {
+  GymTrainersEditor,
+  newTrainerClientKey,
+  normalizeTrainerRow,
+  type TrainerFormRow,
+} from '@/components/manage/gym-trainers-editor'
 import { TRAINING_SCHEDULE_DAYS } from '@/lib/manage/training-schedule'
 import {
   serializeManagedImageRef,
@@ -139,33 +145,6 @@ type PackageEditorMode =
   | { kind: 'edit'; package: Package }
   | { kind: 'create' }
   | null
-
-type TrainerFormRow = {
-  clientKey: string
-  name: string
-  discipline: string
-  experience: string
-  photo_url?: string | null
-  description?: string
-}
-
-function newTrainerClientKey(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `trainer-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
-
-function normalizeTrainerRow(raw: unknown): TrainerFormRow {
-  const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  return {
-    clientKey: typeof row.clientKey === 'string' ? row.clientKey : newTrainerClientKey(),
-    name: typeof row.name === 'string' ? row.name : '',
-    discipline: typeof row.discipline === 'string' ? row.discipline : '',
-    experience: typeof row.experience === 'string' ? row.experience : '',
-    photo_url: typeof row.photo_url === 'string' ? row.photo_url : null,
-    description: typeof row.description === 'string' ? row.description : '',
-  }
-}
 
 function EditGymForm() {
   const router = useRouter()
@@ -282,7 +261,6 @@ function EditGymForm() {
       })
       .filter((x): x is NonNullable<typeof x> => x != null)
   }, [galleryOrder, gym, pendingUploads, pendingPreviewUrls, transitionPreviewUrls])
-  const [trainingScheduleExpanded, setTrainingScheduleExpanded] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
     monday: false,
     tuesday: false,
@@ -330,6 +308,8 @@ function EditGymForm() {
   })
   const [trainers, setTrainers] = useState<TrainerFormRow[]>([])
   const [trainerPhotoUploadIds, setTrainerPhotoUploadIds] = useState<Record<string, string>>({})
+  const [trainerAddSignal, setTrainerAddSignal] = useState(0)
+  const [packageAddSignal, setPackageAddSignal] = useState(0)
   const [faq, setFaq] = useState<Array<{ question: string; answer: string }>>([
     { question: '', answer: '' },
   ])
@@ -1341,11 +1321,27 @@ function EditGymForm() {
       gymId={gym.id}
       returnTo={returnToRaw}
       activeSection={activeSection}
-      title={activeSection === 'images' ? 'Photo tour' : undefined}
+      title={
+        activeSection === 'images'
+          ? 'Photo tour'
+          : activeSection === 'trainers'
+            ? 'Trainers'
+            : activeSection === 'schedule'
+              ? 'Schedule'
+              : activeSection === 'packages'
+                ? 'Packages'
+                : undefined
+      }
       subtitle={
         activeSection === 'images'
           ? 'Manage photos that show your gym, mats, and training space. The first photo is your cover image on search and your public listing.'
-          : undefined
+          : activeSection === 'trainers'
+            ? 'Coach profiles guests see on your listing. Add a photo, discipline, and short bio for each coach.'
+            : activeSection === 'schedule'
+              ? 'Set class times and opening hours guests see on your public listing.'
+              : activeSection === 'packages'
+                ? 'Training offers, Train & Stay, all-inclusive stays, and events guests can book on your listing.'
+                : undefined
       }
       headerActions={
         activeSection === 'images' ? (
@@ -1353,6 +1349,28 @@ function EditGymForm() {
             photoCount={galleryOrder.length}
             onAddPhotos={handleNewImageSelect}
           />
+        ) : activeSection === 'trainers' ? (
+          <button
+            type="button"
+            onClick={() => setTrainerAddSignal((n) => n + 1)}
+            className={cn(
+              'inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-900 shadow-sm transition-colors hover:bg-gray-50',
+            )}
+            aria-label="Add trainer"
+          >
+            <Plus className="h-5 w-5" aria-hidden />
+          </button>
+        ) : activeSection === 'packages' ? (
+          <button
+            type="button"
+            onClick={() => setPackageAddSignal((n) => n + 1)}
+            className={cn(
+              'inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-900 shadow-sm transition-colors hover:bg-gray-50',
+            )}
+            aria-label="Create offer"
+          >
+            <Plus className="h-5 w-5" aria-hidden />
+          </button>
         ) : undefined
       }
       sections={sectionStatus}
@@ -1361,7 +1379,9 @@ function EditGymForm() {
         activeSection === 'images' ||
         activeSection === 'location' ||
         activeSection === 'amenities' ||
-        activeSection === 'schedule'
+        activeSection === 'schedule' ||
+        activeSection === 'trainers' ||
+        activeSection === 'packages'
           ? 'full'
           : 'default'
       }
@@ -1614,132 +1634,35 @@ function EditGymForm() {
               onOpeningHoursChange={setOpeningHours}
               trainingSchedule={trainingSchedule}
               onTrainingScheduleChange={setTrainingSchedule}
-              trainingScheduleExpanded={trainingScheduleExpanded}
-              onTrainingScheduleExpandedChange={setTrainingScheduleExpanded}
               expandedDays={expandedDays}
               onExpandedDaysChange={setExpandedDays}
             />
           ) : null}
 
           {activeSection === 'trainers' ? (
-          <GymEditPanel>
-              <div className="flex items-center justify-between">
-                <Label>Trainers (optional)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addTrainer}>
-                  + Add Trainer
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Trainer photos upload in the background — save anytime.
-              </p>
-              {trainers.map((trainer) => {
-                const photo = trainerPhotoDisplay(trainer)
-                return (
-                <div key={trainer.clientKey} className="max-w-4xl space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4">
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <Input
-                      placeholder="Trainer name"
-                      value={trainer.name}
-                      onChange={(e) => updateTrainer(trainer.clientKey, 'name', e.target.value)}
-                    />
-                    <Input
-                      placeholder="Discipline"
-                      value={trainer.discipline}
-                      onChange={(e) => updateTrainer(trainer.clientKey, 'discipline', e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Experience (e.g., 10 years)"
-                        value={trainer.experience}
-                        onChange={(e) => updateTrainer(trainer.clientKey, 'experience', e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeTrainer(trainer.clientKey)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-[10rem_1fr] gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600">Photo (optional)</Label>
-                      <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        {photo.src ? (
-                          <img
-                            src={photo.src}
-                            alt={trainer.name ? `${trainer.name} photo` : 'Trainer photo'}
-                            className="h-28 w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-28 items-center justify-center text-xs text-gray-400">
-                            No photo
-                          </div>
-                        )}
-                        {photo.failed ? (
-                          <span className="absolute inset-x-0 bottom-0 bg-red-600/90 py-0.5 text-center text-[9px] font-semibold uppercase text-white">
-                            Upload failed
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] ?? null
-                            setTrainerPhotoFile(trainer.clientKey, f)
-                            e.target.value = ''
-                          }}
-                        />
-                        {photo.src ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setTrainerPhotoFile(trainer.clientKey, null)
-                              updateTrainer(trainer.clientKey, 'photo_url', '')
-                            }}
-                          >
-                            Clear
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-600">Description (optional)</Label>
-                      <Textarea
-                        placeholder="Short bio, specialties, titles, notable fights, coaching style…"
-                        value={trainer.description || ''}
-                        onChange={(e) => updateTrainer(trainer.clientKey, 'description', e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )})}
-          </GymEditPanel>
+            <GymTrainersEditor
+              trainers={trainers}
+              getPhotoDisplay={trainerPhotoDisplay}
+              onAdd={addTrainer}
+              onRemove={removeTrainer}
+              onUpdate={updateTrainer}
+              onPhotoFile={setTrainerPhotoFile}
+              addSignal={trainerAddSignal}
+            />
           ) : null}
         </form>
         ) : null}
 
         {activeSection === 'packages' && gym && gym.id ? (
-          <GymEditPanel contentClassName="space-y-0">
-            <PackagesSection
-              gymId={gym.id}
-              currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
-              isAdmin={profile?.role === 'admin'}
-              listRefreshKey={packagesListRefreshKey}
-              onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
-              onCreatePackage={() => openPackageEditor({ kind: 'create' })}
-            />
-          </GymEditPanel>
+          <PackagesSection
+            gymId={gym.id}
+            currency={normalizeGymCurrency(selectedCurrencyCode || gym.currency, 'USD')}
+            isAdmin={profile?.role === 'admin'}
+            listRefreshKey={packagesListRefreshKey}
+            onEditPackage={(pkg) => openPackageEditor({ kind: 'edit', package: pkg })}
+            onCreatePackage={() => openPackageEditor({ kind: 'create' })}
+            addSignal={packageAddSignal}
+          />
         ) : null}
 
         {profile?.role === 'admin' && gym?.id && gym.name ? (
