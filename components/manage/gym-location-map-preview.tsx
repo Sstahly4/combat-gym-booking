@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, MapPin } from 'lucide-react'
+import { listingSectionClass } from '@/components/manage/gym-edit-section'
 import { cn } from '@/lib/utils'
 
 function parseCoord(value: string): number | null {
@@ -78,6 +79,7 @@ export function GymLocationMapPreview({
   latitude,
   longitude,
   googleMapsLink,
+  embedded = false,
   className,
 }: {
   address: string
@@ -86,6 +88,8 @@ export function GymLocationMapPreview({
   latitude: string
   longitude: string
   googleMapsLink: string
+  /** Inside another card (e.g. mobile find-address section) — skip outer chrome. */
+  embedded?: boolean
   className?: string
 }) {
   const [geocoded, setGeocoded] = useState<{ lat: number; lng: number } | null>(null)
@@ -161,47 +165,42 @@ export function GymLocationMapPreview({
 
   const showLoading = Boolean(place && !mapUrl)
 
-  return (
-    <div className={cn('flex min-h-0 flex-col', className)}>
-      <div className="mb-4">
-        <p className="text-base font-semibold text-gray-900">Map preview</p>
-        <p className="mt-1 text-sm text-gray-500">
-          Updates as you search or edit your address — same map guests see on your listing.
-        </p>
-      </div>
-
-      <div className="relative aspect-[4/3] min-h-[14rem] overflow-hidden rounded-3xl bg-gray-100 shadow-lg shadow-gray-900/10 ring-1 ring-black/5 sm:min-h-[18rem]">
-        {mapUrl ? (
-          <iframe
-            title="Gym location map preview"
-            src={mapUrl}
-            className="h-full w-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        ) : showLoading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
-              <MapPin className="h-5 w-5 text-[#003580] animate-pulse" aria-hidden />
-            </span>
-            <p className="text-sm font-medium text-gray-800">{place?.query}</p>
-            <p className="text-sm text-gray-500">Loading map…</p>
+  const mapFrame = (
+    <div className="relative aspect-[4/3] min-h-[14rem] overflow-hidden rounded-xl bg-gray-100 ring-1 ring-gray-200/90 sm:min-h-[18rem]">
+      {mapUrl ? (
+        <iframe
+          title="Gym location map preview"
+          src={mapUrl}
+          className="h-full w-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : showLoading ? (
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+            <MapPin className="h-5 w-5 animate-pulse text-[#003580]" aria-hidden />
+          </span>
+          <p className="text-sm font-medium text-gray-800">{place?.query}</p>
+          <p className="text-sm text-gray-500">Loading map…</p>
+        </div>
+      ) : (
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+            <MapPin className="h-5 w-5 text-gray-500" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-gray-800">No location yet</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Search for your gym or enter a city and country to see the map.
+            </p>
           </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
-              <MapPin className="h-5 w-5 text-gray-500" aria-hidden />
-            </span>
-            <div>
-              <p className="text-sm font-medium text-gray-800">No location yet</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Search for your gym or enter a city and country to see the map.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
+  )
 
+  const mapMeta = (
+    <>
       {placeLabel ? (
         <p className="mt-3 text-sm text-gray-600">
           <span className="font-medium text-gray-800">Shown as:</span> {placeLabel}
@@ -225,6 +224,28 @@ export function GymLocationMapPreview({
           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
         </a>
       ) : null}
-    </div>
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className={cn('space-y-3 pt-1', className)}>
+        {mapFrame}
+        {mapMeta}
+      </div>
+    )
+  }
+
+  return (
+    <section className={cn('flex min-h-0 flex-col', listingSectionClass, className)}>
+      <header className="mb-5">
+        <h2 className="text-lg font-semibold tracking-tight text-gray-900">Map preview</h2>
+        <p className="mt-1 text-sm leading-relaxed text-gray-500">
+          Updates as you search or edit your address — same map guests see on your listing.
+        </p>
+      </header>
+      {mapFrame}
+      {mapMeta}
+    </section>
   )
 }
