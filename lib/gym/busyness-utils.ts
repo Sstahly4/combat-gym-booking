@@ -4,7 +4,10 @@ export const HISTORICAL_BAR_COLOR = '#003580'
 export const SELECTED_BAR_COLOR = '#1a73e8'
 export const LABEL_ACCENT_COLOR = '#1a73e8'
 export const LIVE_HISTORICAL_GHOST_OPACITY = 0.4
-export const LIVE_ALERT_COLOR = '#E87171'
+/** Live bar fill and label accent (Google-style red when showing real-time data). */
+export const LIVE_BAR_COLOR = '#E87171'
+export const LIVE_ACCENT_COLOR = '#dc2626'
+export const LIVE_ALERT_COLOR = LIVE_BAR_COLOR
 export const LIVE_NORMAL_COLOR = '#002a66'
 
 /** 100% occupancy reaches ~70% of plot height (Google leaves headroom above tallest bar). */

@@ -8,6 +8,8 @@ import {
   CHART_GRID_FRACTIONS,
   HISTORICAL_BAR_COLOR,
   LABEL_ACCENT_COLOR,
+  LIVE_ACCENT_COLOR,
+  LIVE_BAR_COLOR,
   LIVE_HISTORICAL_GHOST_OPACITY,
   SELECTED_BAR_COLOR,
   axisTicksForWindow,
@@ -19,8 +21,6 @@ import {
   getGymLocalDateTime,
   historicalSecondaryHint,
   historicalStatusLabel,
-  isLiveAlert,
-  liveForegroundColor,
   liveSecondaryHint,
   liveStatusLabel,
   percentageToBarHeight,
@@ -41,8 +41,6 @@ interface PopularTimesChartProps {
 
 const CHART_HEIGHT_PX = 96
 const HISTORICAL_BAR_W_PX = 11
-const LIVE_GHOST_W_PX = 22
-const LIVE_FOREGROUND_W_PX = 8
 /** Horizontal inset so first/last bars and labels have breathing room (matches Google). */
 const CHART_INSET_X = 'px-4 sm:px-5'
 
@@ -139,7 +137,6 @@ export function PopularTimesChart({
   const selectedHistorical = hourMap.get(selectedHour) ?? 0
   const selectedLive = resolveLivePercentage(selectedHour, selectedHistorical, liveByHour)
   const isLiveSelection = isToday && selectedHour === liveHour && barHours.includes(liveHour)
-  const liveAlert = isLiveAlert(selectedLive, selectedHistorical)
   const ticks = axisTicksForWindow(minHour, maxHour)
   const dayPercentages = useMemo(
     () => barHours.map((hour) => hourMap.get(hour) ?? 0),
@@ -193,7 +190,7 @@ export function PopularTimesChart({
       : selectedCenter >= 82
         ? 'items-end text-right'
         : 'items-center text-center'
-  const accentColor = isLiveSelection && liveAlert ? '#dc2626' : LABEL_ACCENT_COLOR
+  const accentColor = isLiveSelection ? LIVE_ACCENT_COLOR : LABEL_ACCENT_COLOR
   const secondaryHint = isLiveSelection
     ? liveSecondaryHint(selectedLive, selectedHistorical, dayPercentages)
     : historicalSecondaryHint(selectedHistorical, dayPercentages)
@@ -254,16 +251,8 @@ export function PopularTimesChart({
               {isLiveSelection ? (
                 <>
                   <span className="relative flex h-2 w-2 shrink-0">
-                    <span
-                      className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-50 ${
-                        liveAlert ? 'bg-red-400' : 'bg-blue-400'
-                      }`}
-                    />
-                    <span
-                      className={`relative inline-flex h-2 w-2 rounded-full ${
-                        liveAlert ? 'bg-red-500' : 'bg-[#003580]'
-                      }`}
-                    />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-50" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
                   </span>
                   <span className="whitespace-nowrap">
                     <span className="font-semibold" style={{ color: accentColor }}>
@@ -369,7 +358,7 @@ export function PopularTimesChart({
                       <div
                         className="absolute bottom-0 rounded-full"
                         style={{
-                          width: LIVE_GHOST_W_PX,
+                          width: HISTORICAL_BAR_W_PX,
                           height: histHeightPx,
                           backgroundColor: HISTORICAL_BAR_COLOR,
                           opacity: LIVE_HISTORICAL_GHOST_OPACITY,
@@ -379,9 +368,9 @@ export function PopularTimesChart({
                       <div
                         className="relative z-10 rounded-full transition-all duration-200"
                         style={{
-                          width: LIVE_FOREGROUND_W_PX,
+                          width: HISTORICAL_BAR_W_PX,
                           height: liveHeightPx,
-                          backgroundColor: liveForegroundColor(livePct, historicalPct),
+                          backgroundColor: LIVE_BAR_COLOR,
                         }}
                       />
                     </div>
