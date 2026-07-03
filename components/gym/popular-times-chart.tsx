@@ -9,7 +9,6 @@ import {
   HISTORICAL_BAR_COLOR,
   LABEL_ACCENT_COLOR,
   LIVE_ACCENT_COLOR,
-  LIVE_BAR_COLOR,
   LIVE_HISTORICAL_GHOST_OPACITY,
   SELECTED_BAR_COLOR,
   axisTicksForWindow,
@@ -370,7 +369,7 @@ export function PopularTimesChart({
                         style={{
                           width: HISTORICAL_BAR_W_PX,
                           height: liveHeightPx,
-                          backgroundColor: LIVE_BAR_COLOR,
+                          backgroundColor: HISTORICAL_BAR_COLOR,
                         }}
                       />
                     </div>
