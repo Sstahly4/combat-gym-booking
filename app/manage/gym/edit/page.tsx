@@ -20,7 +20,7 @@ import { GymAmenitiesEditor } from '@/components/manage/gym-amenities-editor'
 import { GymScheduleEditor } from '@/components/manage/gym-schedule-editor'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { GymEditPanel, GymEditSection } from '@/components/manage/gym-edit-section'
-import { resolveGymEditSection } from '@/components/manage/gym-edit-sidebar'
+import { resolveGymEditSection, GYM_EDIT_SIDEBAR_WIDTH_CLASS } from '@/components/manage/gym-edit-sidebar'
 import { countEnabledAmenities } from '@/lib/constants/gym-amenities'
 import { GymCurrencyPicker } from '@/components/manage/gym-currency-picker'
 import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
@@ -1244,7 +1244,7 @@ function EditGymForm() {
   if (authLoading || loading) {
     return (
       <div className="flex h-full min-h-0 flex-1 bg-white">
-        <div className="hidden w-56 shrink-0 border-r border-gray-200/80 md:block">
+        <div className={cn('hidden shrink-0 border-r border-gray-200/80 md:block', GYM_EDIT_SIDEBAR_WIDTH_CLASS)}>
           <div className="space-y-1 p-2">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100" />
