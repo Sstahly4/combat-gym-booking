@@ -369,7 +369,7 @@ export function PopularTimesChart({
                         style={{
                           width: HISTORICAL_BAR_W_PX,
                           height: liveHeightPx,
-                          backgroundColor: HISTORICAL_BAR_COLOR,
+                          backgroundColor: SELECTED_BAR_COLOR,
                         }}
                       />
                     </div>
