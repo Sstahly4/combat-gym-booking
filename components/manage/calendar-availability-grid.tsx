@@ -153,7 +153,7 @@ export function CalendarAvailabilityGrid({
     const t = new Date()
     return { year: t.getFullYear(), month: t.getMonth() }
   })
-  const [monthsVisible, setMonthsVisible] = useState<1 | 2>(2)
+  const [monthsVisible, setMonthsVisible] = useState<1 | 2>(1)
   const [data, setData] = useState<CalendarResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
