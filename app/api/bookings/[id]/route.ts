@@ -12,6 +12,10 @@ import {
   BOOKING_DATES_EXPIRED_ERROR,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
+import {
+  loadGymAvailabilityRange,
+  validateStayAgainstAvailability,
+} from '@/lib/booking/gym-availability'
 
 /**
  * Fetch a single booking with its related gym/package/variant.
@@ -180,6 +184,41 @@ export async function PATCH(
     )
     if (!priceInfo || priceInfo.price <= 0) {
       return NextResponse.json({ error: 'Invalid date range for pricing' }, { status: 400 })
+    }
+
+    const isTraining = pkg.type === 'training'
+    const adminDb = createAdminClient()
+    const { data: pkgMeta } = await adminDb
+      .from('packages')
+      .select('min_stay_days')
+      .eq('id', pkg.id)
+      .single()
+    const packageMinStay = pkgMeta?.min_stay_days ?? (isTraining ? 1 : 7)
+
+    const availabilityResult = await loadGymAvailabilityRange(adminDb, {
+      gymId: booking.gym_id,
+      from: start_date,
+      to: end_date,
+      excludeBookingId: bookingId,
+    })
+    if (!availabilityResult.ok) {
+      return NextResponse.json(
+        { error: availabilityResult.error },
+        { status: availabilityResult.status }
+      )
+    }
+    const stayCheck = validateStayAgainstAvailability(
+      availabilityResult.days,
+      start_date,
+      end_date,
+      {
+        packageMinStay,
+        isTraining,
+        gym: availabilityResult.gym,
+      }
+    )
+    if (!stayCheck.ok) {
+      return NextResponse.json({ error: stayCheck.error }, { status: 400 })
     }
 
     const total_price = priceInfo.price

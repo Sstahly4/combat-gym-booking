@@ -26,7 +26,7 @@ function SignInPageContent() {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
-  // 'signin' = default; 'signup' = auto-switched when no account found
+  // 'signin' = default; 'signup' = user-selected (never inferred from failures)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [authStep, setAuthStep] = useState<'email' | 'password'>('email')
 
@@ -184,10 +184,8 @@ function SignInPageContent() {
 
     if (signInError) {
       if (signInError.message.toLowerCase().includes('invalid login credentials')) {
-        // No account found for this email — switch to registration mode
-        setMode('signup')
-        setPassword('')
-        setError(null)
+        // Do not leak whether an account exists (and don't push users into signup).
+        setError('Invalid email or password.')
         setLoading(false)
         return
       }
@@ -272,7 +270,7 @@ function SignInPageContent() {
           {mode === 'signup' && (
             <div className="mb-5 rounded-xl border border-[#003580]/15 bg-[#003580]/[0.04] p-3.5">
               <p className="text-sm leading-snug text-gray-800">
-                No account found for <span className="font-medium">{email}</span>. Add your name and choose a password to create one.
+                Creating an account for <span className="font-medium">{email}</span>. Add your name and choose a password.
               </p>
             </div>
           )}
@@ -399,6 +397,42 @@ function SignInPageContent() {
                     : 'Log in'}
             </button>
           </form>
+
+          {authStep === 'password' ? (
+            <div className="mt-4 text-center text-sm text-gray-600">
+              {mode === 'signin' ? (
+                <>
+                  New to CombatStay?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signup')
+                      setError(null)
+                      setPasswordErrors([])
+                    }}
+                    className="font-medium text-[#003580] hover:underline"
+                  >
+                    Create an account
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin')
+                      setError(null)
+                      setPasswordErrors([])
+                    }}
+                    className="font-medium text-[#003580] hover:underline"
+                  >
+                    Sign in instead
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
 
           <div className="my-6 flex items-center gap-4">
             <div className="h-px flex-1 bg-gray-200" />

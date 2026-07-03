@@ -18,6 +18,8 @@ interface DateRangePickerProps {
   hideMobileActions?: boolean
   /** Single-day mode — one tap selects visit date (check-in = check-out). */
   mode?: 'range' | 'single'
+  /** Extra predicate to disable dates (e.g. gym closed / sold out). */
+  isDateBlocked?: (date: Date, phase: 'checkin' | 'checkout') => boolean
 }
 
 export function DateRangePicker({
@@ -31,6 +33,7 @@ export function DateRangePicker({
   embedded = false,
   hideMobileActions = false,
   mode = 'range',
+  isDateBlocked,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(forceOpen)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -301,7 +304,11 @@ export function DateRangePicker({
   const isDateDisabled = (date: Date) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return isBefore(date, today)
+    if (isBefore(date, today)) return true
+    const phase: 'checkin' | 'checkout' =
+      checkinDate && !checkoutDate ? 'checkout' : 'checkin'
+    if (isDateBlocked?.(date, phase)) return true
+    return false
   }
 
   const nextMonth = () => {

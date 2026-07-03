@@ -39,6 +39,7 @@ import {
   type TrainingTier,
 } from '@/lib/packages/training-access'
 import { TrainingSessionSheet } from '@/components/booking/training-session-picker'
+import { useGymAvailability } from '@/lib/hooks/use-gym-availability'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -179,6 +180,7 @@ export function ReviewModal({
     return 'now'
   })
   const [klarnaInfoOpen, setKlarnaInfoOpen] = useState(false)
+  const { isDateBlocked } = useGymAvailability(initialParams.gymId, !loading)
 
   useEffect(() => {
     if (payWhen === 'klarna' && !isKlarnaAvailableForCurrency(gymCurrency)) {
@@ -544,6 +546,7 @@ export function ReviewModal({
                   onClose={() => setDatePickerOpen(false)}
                   onCheckinChange={setCheckin}
                   onCheckoutChange={setCheckout}
+                  isDateBlocked={isDateBlocked}
                 />
               </div>
             </div>

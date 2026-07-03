@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { BookingModal } from '@/components/booking-modal'
+import { DateRangePicker } from '@/components/date-range-picker'
 import { useCurrency } from '@/lib/contexts/currency-context'
 import { calculatePackagePrice } from '@/lib/utils'
 import type { Gym } from '@/lib/types/database'
 import { DATES_CONFIRMED_QUERY } from '@/lib/booking-dates-intent'
 import { useBooking } from '@/lib/contexts/booking-context'
+import { useGymAvailability } from '@/lib/hooks/use-gym-availability'
 import { AlertCircle } from 'lucide-react'
 
 export function BookingSection({ gym }: { gym: Gym }) {
@@ -19,10 +19,13 @@ export function BookingSection({ gym }: { gym: Gym }) {
   const searchParams = useSearchParams()
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const { convertPrice, formatPrice } = useCurrency()
-  const { 
-    selectedPackage, 
-    checkin, setCheckin, 
-    checkout, setCheckout 
+  const { isDateBlocked } = useGymAvailability(gym.id, gym.verification_status !== 'draft')
+  const {
+    selectedPackage,
+    checkin,
+    setCheckin,
+    checkout,
+    setCheckout,
   } = useBooking()
 
   const pushConfirmedDatesToUrl = (cin: string, cout: string) => {
@@ -35,18 +38,17 @@ export function BookingSection({ gym }: { gym: Gym }) {
     router.replace(`?${params.toString()}`, { scroll: false })
   }
 
-  // Calculate duration
-  const duration = (checkin && checkout)
-    ? Math.floor((new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24))
-    : 0
+  const duration =
+    checkin && checkout
+      ? Math.floor(
+          (new Date(checkout).getTime() - new Date(checkin).getTime()) / (1000 * 60 * 60 * 24)
+        )
+      : 0
 
   const rangeIsNonNegative = duration >= 0
   const isTraining = selectedPackage?.type === 'training'
   const isAllInclusive = selectedPackage?.type === 'all_inclusive'
-  const isAccommodation = selectedPackage?.type === 'accommodation'
 
-  // Training-only supports single-day (checkin === checkout) bookings → 1 session/day.
-  // Accommodation/all-inclusive keep hotel semantics (checkout must be after checkin).
   const isValidDuration = isTraining ? rangeIsNonNegative : duration > 0
 
   const pricingDuration =
@@ -54,14 +56,14 @@ export function BookingSection({ gym }: { gym: Gym }) {
       ? duration + 1
       : duration
 
-  // Calculate Price for Selected Package (respects billing units)
-  const priceInfo = (selectedPackage && isValidDuration)
-    ? calculatePackagePrice(pricingDuration, selectedPackage.type, {
-        daily: selectedPackage.price_per_day,
-        weekly: selectedPackage.price_per_week,
-        monthly: selectedPackage.price_per_month
-      })
-    : null
+  const priceInfo =
+    selectedPackage && isValidDuration
+      ? calculatePackagePrice(pricingDuration, selectedPackage.type, {
+          daily: selectedPackage.price_per_day,
+          weekly: selectedPackage.price_per_week,
+          monthly: selectedPackage.price_per_month,
+        })
+      : null
 
   const totalPrice = priceInfo?.price || 0
   const minStay = selectedPackage?.min_stay_days ?? (selectedPackage?.type === 'training' ? 1 : 7)
@@ -71,111 +73,96 @@ export function BookingSection({ gym }: { gym: Gym }) {
 
   return (
     <>
-      <Card className="sticky top-4 border-0 shadow-lg bg-white overflow-hidden">
-        <CardHeader className="bg-[#febb02] text-[#003580] pt-6 pb-6">
+      <Card className="sticky top-4 overflow-hidden border-0 bg-white shadow-lg">
+        <CardHeader className="bg-[#febb02] pb-6 pt-6 text-[#003580]">
           {!selectedPackage ? (
             <>
-               <CardTitle className="text-xl">
-                Check Availability
-              </CardTitle>
+              <CardTitle className="text-xl">Check Availability</CardTitle>
               <CardDescription className="text-[#003580]/80">
                 Select dates and a package to see pricing
               </CardDescription>
             </>
           ) : !isValidDuration ? (
-             <>
-               <CardTitle className="text-xl">
-                {selectedPackage.name}
-              </CardTitle>
+            <>
+              <CardTitle className="text-xl">{selectedPackage.name}</CardTitle>
               <CardDescription className="text-[#003580]/80">
                 Select dates to see total price
               </CardDescription>
             </>
           ) : (
             <>
-              <CardDescription className="text-[#003580]/80 font-medium mb-1 uppercase text-xs tracking-wider">
+              <CardDescription className="mb-1 text-xs font-medium uppercase tracking-wider text-[#003580]/80">
                 Total Estimate {priceInfo ? `(${priceInfo.durationLabel})` : ''}
               </CardDescription>
               <CardTitle className="text-3xl">
                 {formatPrice(convertPrice(totalPrice, gym.currency))}
               </CardTitle>
-              <CardDescription className="text-[#003580]/80 text-xs mt-1">
-                 {selectedPackage.name}
-                 {showMinStayWarning && (
-                   <span className="block text-orange-600 mt-1 font-medium">
-                     ⚠ Minimum stay: {minStay} {minStay === 1 ? 'day' : 'days'}
-                   </span>
-                 )}
+              <CardDescription className="mt-1 text-xs text-[#003580]/80">
+                {selectedPackage.name}
+                {showMinStayWarning ? (
+                  <span className="mt-1 block font-medium text-orange-600">
+                    Minimum stay: {minStay} {minStay === 1 ? 'day' : 'days'}
+                  </span>
+                ) : null}
               </CardDescription>
             </>
           )}
         </CardHeader>
-        
-        <CardContent className="pt-6 space-y-6">
-          {/* Date Selection */}
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase text-gray-500">Dates</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Check-in</Label>
-                <Input 
-                  type="date" 
-                  value={checkin} 
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setCheckin(v)
-                    pushConfirmedDatesToUrl(v, checkout)
-                  }}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Check-out</Label>
-                <Input 
-                  type="date" 
-                  value={checkout} 
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setCheckout(v)
-                    pushConfirmedDatesToUrl(checkin, v)
-                  }}
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
+
+        <CardContent className="space-y-6 pt-6">
+          <div className="space-y-2">
+            <DateRangePicker
+              checkin={checkin}
+              checkout={checkout}
+              onCheckinChange={(v) => {
+                setCheckin(v)
+                pushConfirmedDatesToUrl(v, checkout)
+              }}
+              onCheckoutChange={(v) => {
+                setCheckout(v)
+                pushConfirmedDatesToUrl(checkin, v)
+              }}
+              isDateBlocked={isDateBlocked}
+              mode={isTraining ? 'single' : 'range'}
+            />
           </div>
 
           <div className="space-y-3 pt-2">
-            {!selectedPackage && (
-               <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-800 text-sm rounded-md mb-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Please select a package below
-               </div>
-            )}
-            
-            {showMinStayWarning && (
-              <div className="flex items-center gap-2 p-3 bg-orange-50 text-orange-800 text-sm rounded-md mb-2">
-                <AlertCircle className="w-4 h-4" />
+            {!selectedPackage ? (
+              <div className="mb-2 flex items-center gap-2 rounded-md bg-blue-50 p-3 text-sm text-blue-800">
+                <AlertCircle className="h-4 w-4" />
+                Please select a package below
+              </div>
+            ) : null}
+
+            {showMinStayWarning ? (
+              <div className="mb-2 flex items-center gap-2 rounded-md bg-orange-50 p-3 text-sm text-orange-800">
+                <AlertCircle className="h-4 w-4" />
                 This package requires a minimum stay of {minStay} {minStay === 1 ? 'day' : 'days'}
               </div>
-            )}
-            
-            {gym.verification_status === 'draft' && (
-              <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 text-sm rounded-md mb-2">
-                <AlertCircle className="w-4 h-4" />
+            ) : null}
+
+            {gym.verification_status === 'draft' ? (
+              <div className="mb-2 flex items-center gap-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+                <AlertCircle className="h-4 w-4" />
                 This gym is not yet verified and cannot accept bookings
               </div>
-            )}
+            ) : null}
             <Button
-              className="w-full h-12 text-lg font-bold bg-[#003580] hover:bg-[#003580]/90 shadow-sm"
+              className="h-12 w-full bg-[#003580] text-lg font-bold shadow-sm hover:bg-[#003580]/90"
               onClick={() => setBookingModalOpen(true)}
-              disabled={!selectedPackage || !isValidDuration || !meetsMinimumStay || gym.verification_status === 'draft'}
+              disabled={
+                !selectedPackage ||
+                !isValidDuration ||
+                !meetsMinimumStay ||
+                gym.verification_status === 'draft'
+              }
             >
               Request Booking
             </Button>
-            
-            <p className="text-xs text-center text-muted-foreground">
-              You won't be charged yet. Availability confirmed by gym.
+
+            <p className="text-center text-xs text-muted-foreground">
+              You won&apos;t be charged yet. Availability confirmed by gym.
             </p>
           </div>
         </CardContent>
@@ -189,9 +176,9 @@ export function BookingSection({ gym }: { gym: Gym }) {
           checkin,
           checkout,
           packageId: selectedPackage?.id,
-          packageVariantId: (selectedPackage as any)?.variant_id,
+          packageVariantId: (selectedPackage as { variant_id?: string })?.variant_id,
           packageName: selectedPackage?.name,
-          variantName: (selectedPackage as any)?.variant_name,
+          variantName: (selectedPackage as { variant_name?: string })?.variant_name,
           estimatedPrice: totalPrice,
           priceBreakdown: priceInfo,
           packageType: selectedPackage?.type,

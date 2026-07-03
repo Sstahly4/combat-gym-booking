@@ -8,6 +8,10 @@ import {
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
 import { resolveBookingPrice } from '@/lib/booking/resolve-booking-price'
+import {
+  loadGymAvailabilityRange,
+  validateStayAgainstAvailability,
+} from '@/lib/booking/gym-availability'
 import { readAffiliateRefCookie } from '@/lib/affiliates/cookie'
 import { affiliatePayoutAud } from '@/lib/affiliates/commission'
 import { PLATFORM_COMMISSION_RATE } from '@/lib/affiliates/constants'
@@ -109,6 +113,41 @@ export async function POST(request: NextRequest) {
 
     if (!priceResult.ok) {
       return NextResponse.json({ error: priceResult.error }, { status: priceResult.status })
+    }
+
+    const pkgType = priceResult.package.type as string
+    const isTraining = pkgType === 'training'
+
+    const { data: pkgMeta } = await supabase
+      .from('packages')
+      .select('min_stay_days')
+      .eq('id', package_id)
+      .single()
+    const packageMinStay = pkgMeta?.min_stay_days ?? (isTraining ? 1 : 7)
+
+    const availabilityResult = await loadGymAvailabilityRange(supabase, {
+      gymId: gym_id,
+      from: start_date,
+      to: end_date,
+    })
+    if (!availabilityResult.ok) {
+      return NextResponse.json(
+        { error: availabilityResult.error },
+        { status: availabilityResult.status }
+      )
+    }
+    const stayCheck = validateStayAgainstAvailability(
+      availabilityResult.days,
+      start_date,
+      end_date,
+      {
+        packageMinStay,
+        isTraining,
+        gym: availabilityResult.gym,
+      }
+    )
+    if (!stayCheck.ok) {
+      return NextResponse.json({ error: stayCheck.error }, { status: 400 })
     }
 
     const verifiedTotalPrice = priceResult.totalPrice
