@@ -38,12 +38,12 @@ import {
 } from '@/lib/constants/gym-amenities'
 import { AdminDeleteGymSection } from '@/components/admin/admin-delete-gym-section'
 import { GymLocationEditor } from '@/components/manage/gym-location-editor'
-import {
-  GymTrainersEditor,
+import { GymTrainersEditor,
   newTrainerClientKey,
   normalizeTrainerRow,
   type TrainerFormRow,
 } from '@/components/manage/gym-trainers-editor'
+import { GymListingPreviewEmbed } from '@/components/manage/gym-listing-preview-embed'
 import { TRAINING_SCHEDULE_DAYS } from '@/lib/manage/training-schedule'
 import {
   serializeManagedImageRef,
@@ -1330,7 +1330,11 @@ function EditGymForm() {
               ? 'Schedule'
               : activeSection === 'packages'
                 ? 'Packages'
-                : undefined
+                : activeSection === 'amenities'
+                  ? 'Amenities'
+                  : activeSection === 'preview'
+                    ? 'Preview listing'
+                    : undefined
       }
       subtitle={
         activeSection === 'images'
@@ -1341,7 +1345,11 @@ function EditGymForm() {
               ? 'Set class times and opening hours guests see on your public listing.'
               : activeSection === 'packages'
                 ? 'Training offers, Train & Stay, all-inclusive stays, and events guests can book on your listing.'
-                : undefined
+                : activeSection === 'amenities'
+                  ? 'Highlight equipment, facilities, and comforts guests can expect at your gym.'
+                  : activeSection === 'preview'
+                    ? 'See your listing as guests will — switch sections in the sidebar to keep editing.'
+                    : undefined
       }
       headerActions={
         activeSection === 'images' ? (
@@ -1381,16 +1389,18 @@ function EditGymForm() {
         activeSection === 'amenities' ||
         activeSection === 'schedule' ||
         activeSection === 'trainers' ||
-        activeSection === 'packages'
+        activeSection === 'packages' ||
+        activeSection === 'preview'
           ? 'full'
           : 'default'
       }
+      hideSaveBar={activeSection === 'preview'}
       saving={saving}
       saveError={saveError}
       onSave={() => void handleSave()}
       onCancel={() => router.push(afterEditPath)}
     >
-        {activeSection !== 'packages' ? (
+        {activeSection !== 'packages' && activeSection !== 'preview' ? (
         <form id="edit-gym-form" onSubmit={handleSave}>
           {activeSection === 'basic' ? (
             <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
@@ -1664,6 +1674,8 @@ function EditGymForm() {
             addSignal={packageAddSignal}
           />
         ) : null}
+
+        {activeSection === 'preview' && gym?.id ? <GymListingPreviewEmbed gymId={gym.id} /> : null}
 
         {profile?.role === 'admin' && gym?.id && gym.name ? (
           <AdminDeleteGymSection gymId={gym.id} gymName={gym.name} />

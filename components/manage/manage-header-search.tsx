@@ -64,7 +64,7 @@ export function ManageHeaderSearch({
         id: `gym-preview-${g.id}`,
         title: `Preview ${g.name}`,
         subtitle: 'Public listing preview',
-        href: withGymQuery('/manage/gym/preview', g.id),
+        href: withGymQuery('/manage/gym/edit?section=preview', g.id),
         keywords: ['preview', 'public', g.name],
       })
     }

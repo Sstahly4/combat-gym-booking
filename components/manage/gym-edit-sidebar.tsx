@@ -144,6 +144,7 @@ export const GYM_EDIT_SECTION_IDS = new Set(GYM_EDIT_SECTIONS.map((s) => s.id))
 export const DEFAULT_GYM_EDIT_SECTION = 'basic'
 
 export function resolveGymEditSection(section: string | null | undefined): string {
+  if (section === 'preview') return 'preview'
   if (section === 'disciplines' || section === 'faq') return 'basic'
   if (section && GYM_EDIT_SECTION_IDS.has(section)) return section
   return DEFAULT_GYM_EDIT_SECTION
@@ -166,8 +167,8 @@ function sectionHref(gymId: string, sectionId: string, returnTo?: string | null)
   return manageGymEditHref(gymId, { section: sectionId, returnTo })
 }
 
-function viewListingHref(gymId: string) {
-  return `/manage/gym/preview?gym_id=${gymId}`
+function viewListingHref(gymId: string, returnTo?: string | null) {
+  return manageGymEditHref(gymId, { section: 'preview', returnTo })
 }
 
 export function useGymEditSidebarCollapsed(): [boolean, (collapsed: boolean) => void] {
@@ -221,11 +222,11 @@ export function GymEditSectionNav({
   const externalActive = GYM_EDIT_SIDEBAR_LINKS.find(
     (link) => pathname === link.path || pathname.startsWith(`${link.path}/`),
   )
-  const previewHref = viewListingHref(gymId)
-  const isPreviewActive = pathname.startsWith('/manage/gym/preview')
+  const previewHref = viewListingHref(gymId, returnTo)
+  const isPreviewActive = onGymEditRoute && !externalActive && activeSection === 'preview'
 
   const isSectionActive = (sectionId: string) =>
-    onGymEditRoute && !externalActive && !isPreviewActive && activeSection === sectionId
+    onGymEditRoute && !externalActive && activeSection === sectionId
 
   const linkItemClass = (isActive: boolean) =>
     cn(
@@ -390,11 +391,10 @@ export function GymEditSectionSelect({
 }) {
   const pathname = usePathname() ?? '/manage/gym/edit'
   const searchParams = useSearchParams()
-  const isPreviewActive = pathname.startsWith('/manage/gym/preview')
   const externalActive = GYM_EDIT_SIDEBAR_LINKS.find(
     (link) => pathname === link.path || pathname.startsWith(`${link.path}/`),
   )
-  const selectValue = isPreviewActive ? 'preview' : externalActive?.id ?? activeSection
+  const selectValue = externalActive?.id ?? activeSection
 
   const labelForEntry = (entry: SidebarNavEntry): { value: string; label: string } | null => {
     if (entry.kind === 'section') {
@@ -417,7 +417,12 @@ export function GymEditSectionSelect({
       onChange={(event) => {
         const next = event.target.value
         if (next === 'preview') {
-          window.location.assign(`/manage/gym/preview?gym_id=${gymId}`)
+          const params = new URLSearchParams(searchParams?.toString() ?? '')
+          params.set('id', gymId)
+          params.set('section', 'preview')
+          if (returnTo) params.set('returnTo', returnTo)
+          else params.delete('returnTo')
+          window.location.assign(`${pathname}?${params.toString()}`)
           return
         }
         const external = GYM_EDIT_SIDEBAR_LINKS.find((link) => link.id === next)

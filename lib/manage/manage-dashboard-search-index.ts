@@ -168,9 +168,9 @@ export const MANAGE_DASHBOARD_SEARCH_STATIC: ManageDashboardSearchHit[] = [
   },
   {
     id: 'gym-preview',
-    title: 'View listing preview',
-    subtitle: 'Public page draft · /manage/gym/preview',
-    href: '/manage/gym/preview',
+    title: 'Preview listing',
+    subtitle: 'Guest view · listing editor',
+    href: '/manage/gym/edit?section=preview',
     keywords: ['preview', 'public', 'see listing'],
   },
   {
@@ -260,7 +260,10 @@ export function withGymQuery(href: string, gymId: string | null): string {
   const sep = href.includes('?') ? '&' : '?'
   if (isSettings) return `${href}${sep}gym_id=${encodeURIComponent(gymId)}`
   if (href.startsWith('/manage/gym/edit')) return `${href}${href.includes('?') ? '&' : '?'}id=${encodeURIComponent(gymId)}`
-  if (href.startsWith('/manage/gym/preview')) return `${href}${sep}gym_id=${encodeURIComponent(gymId)}`
+  if (href.includes('section=preview')) return `${href}${href.includes('?') ? '&' : '?'}id=${encodeURIComponent(gymId)}`
+  if (href.startsWith('/manage/gym/preview')) {
+    return `/manage/gym/edit?id=${encodeURIComponent(gymId)}&section=preview`
+  }
   if (href.startsWith('/manage/calendar')) return `${href}${sep}gym_id=${encodeURIComponent(gymId)}`
   if (href.startsWith('/manage/promotions')) return `${href}${sep}gym_id=${encodeURIComponent(gymId)}`
   return href

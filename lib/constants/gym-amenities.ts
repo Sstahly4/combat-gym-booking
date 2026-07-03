@@ -22,6 +22,26 @@ export type GymAmenityCategory = {
   description: string
 }
 
+/** High-impact amenities shown first in the listing editor for faster setup. */
+export const GYM_AMENITY_PRIORITY_KEYS: string[] = [
+  'wifi',
+  'showers',
+  'air_conditioning',
+  'parking',
+  'accommodation',
+  'heavy_bags',
+  'boxing_ring',
+  'mma_cage',
+  'group_classes',
+  'beginner_friendly',
+  'drinking_water',
+  'locker_room',
+  'english_speaking',
+  'open_mat_area',
+  'towel_service',
+  'partner_accommodation',
+]
+
 export const GYM_AMENITY_CATEGORIES: GymAmenityCategory[] = [
   {
     id: 'basics',

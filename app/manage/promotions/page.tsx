@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
+import { GymEditPanel, GymEditSection, listingSectionClass } from '@/components/manage/gym-edit-section'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -17,12 +18,7 @@ import {
   Pencil,
   Trash2,
   Sparkles,
-  Megaphone,
-  Info,
   X,
-  CalendarRange,
-  TrendingUp,
-  Lightbulb,
 } from 'lucide-react'
 
 const BRAND = '#003580'
@@ -109,6 +105,11 @@ export default function ManagePromotionsPage() {
   const [data, setData] = useState<PromotionsResponse | null>(null)
   const [showHint, setShowHint] = useState(true)
   const [activeTab, setActiveTab] = useState<'all' | StatusKey>('all')
+  const [addSignal, setAddSignal] = useState(0)
+
+  useEffect(() => {
+    if (addSignal > 0) openNewFromTemplate()
+  }, [addSignal])
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<GymPromotion | null>(null)
@@ -163,12 +164,6 @@ export default function ManagePromotionsPage() {
     if (activeTab === 'all') return promos
     return promos.filter((p) => statusFor(p, today).key === activeTab)
   }, [promos, activeTab, today])
-
-  const liveDiscountAvg = useMemo(() => {
-    const live = promos.filter((p) => statusFor(p, today).key === 'active')
-    if (live.length === 0) return 0
-    return Math.round(live.reduce((s, p) => s + (Number(p.discount_percent) || 0), 0) / live.length)
-  }, [promos, today])
 
   function openNewFromTemplate(t?: (typeof TEMPLATE_PRESETS)[number]) {
     setEditing(null)
@@ -270,70 +265,30 @@ export default function ManagePromotionsPage() {
   return (
     <GymEditLayout
       gymId={activeGymId ?? ''}
-      activeSection="basic"
+      activeSection="promotions"
       title="Promotions"
+      subtitle="Deals that show on your listing and apply automatically at checkout — no codes required."
       sections={{}}
       saving={false}
       hideSaveBar
-      contentWidth="wide"
+      contentWidth="full"
+      headerActions={
+        <button
+          type="button"
+          onClick={() => setAddSignal((n) => n + 1)}
+          className={cn(
+            'inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-900 shadow-sm transition-colors hover:bg-gray-50',
+          )}
+          aria-label="New promotion"
+        >
+          <Plus className="h-5 w-5" aria-hidden />
+        </button>
+      }
     >
       <div className="space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm tabular-nums text-gray-500">{counts.all} total</span>
-              {counts.active > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#003580]/10 px-2 py-0.5 text-[11px] font-medium text-[#003580] ring-1 ring-inset ring-[#003580]/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#003580]" aria-hidden />
-                  {counts.active} live
-                </span>
-              ) : null}
-              <span
-                className="group relative inline-flex"
-                tabIndex={0}
-                role="button"
-                aria-label="About promotions"
-              >
-                <Info className="h-3.5 w-3.5 text-gray-400" strokeWidth={1.75} aria-hidden />
-                <span
-                  role="tooltip"
-                  className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+8px)] z-30 w-[min(20rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[11px] font-normal leading-snug text-gray-700 shadow-md opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
-                >
-                  Promotions show as discount badges on your public listing and apply automatically at checkout
-                  when a guest meets the criteria.
-                </span>
-              </span>
-            </div>
-            <p className="max-w-2xl text-sm font-normal text-gray-500">
-              Create deals that fill quiet weeks, reward early bookers, or boost long stays.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => openNewFromTemplate()}
-              className="h-8 bg-[#003580] px-3 text-xs font-medium text-white hover:bg-[#002a66]"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-              New promotion
-            </Button>
-            <Link
-              href={
-                activeGymId
-                  ? `/manage/gym/edit?id=${encodeURIComponent(activeGymId)}&section=packages`
-                  : '/manage/gym/edit?section=packages'
-              }
-              className="inline-flex h-8 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Edit packages &amp; pricing
-            </Link>
-          </div>
-        </header>
 
         {showHint ? (
-          <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-gray-50 px-4 py-3">
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-gray-200/80 bg-white px-4 py-3 shadow-sm shadow-gray-900/[0.03] ring-1 ring-black/[0.04]">
             <div className="flex items-start gap-2 text-xs text-gray-700">
               <Sparkles className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
               <p>
@@ -365,265 +320,142 @@ export default function ManagePromotionsPage() {
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_280px]">
-          <div className="space-y-8">
-            <section>
-              <h2 className="text-sm font-semibold text-gray-900">Templates</h2>
-              <p className="mt-1 text-xs text-gray-500">Pre-filled deals you can edit and publish in seconds.</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {TEMPLATE_PRESETS.map((t) => (
+        <GymEditPanel>
+          <GymEditSection title="Quick-start templates" description="Pre-filled deals you can edit and publish in seconds.">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {TEMPLATE_PRESETS.map((t) => (
+                <button
+                  key={t.kind}
+                  type="button"
+                  onClick={() => openNewFromTemplate(t)}
+                  className={cn(listingSectionClass, 'group text-left transition-shadow hover:shadow-md')}
+                >
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{kindLabel(t.kind)}</p>
+                  <p className="mt-1 text-base font-semibold text-gray-900">{t.title}</p>
+                  <p className="mt-1 text-sm text-gray-500">{t.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-800">
+                      {t.discount_percent}% off
+                    </span>
+                    {t.min_nights ? (
+                      <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-medium text-gray-700">
+                        Min {t.min_nights} nights
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </GymEditSection>
+
+          <GymEditSection
+            title="Your promotions"
+            description={`${counts.all} total${counts.active > 0 ? ` · ${counts.active} live` : ''}`}
+            headerAction={
+              <Link
+                href={
+                  activeGymId
+                    ? `/manage/gym/edit?id=${encodeURIComponent(activeGymId)}&section=packages`
+                    : '/manage/gym/edit?section=packages'
+                }
+                className="text-sm font-medium text-[#003580] hover:underline"
+              >
+                Edit packages
+              </Link>
+            }
+          >
+            <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-4">
+              {tabs.map((tab) => {
+                const active = activeTab === tab.id
+                return (
                   <button
-                    key={t.kind}
+                    key={tab.id}
                     type="button"
-                    onClick={() => openNewFromTemplate(t)}
-                    className="group rounded-lg border border-gray-200 bg-white p-4 text-left transition hover:border-[#003580]/40 hover:bg-[#003580]/[0.02]"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors',
+                      active ? 'bg-[#003580]/10 font-medium text-[#003580]' : 'text-gray-600 hover:bg-gray-100',
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                          {kindLabel(t.kind)}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-gray-900">{t.title}</p>
-                        <p className="mt-1 text-xs text-gray-500">{t.description}</p>
-                      </div>
-                      <span
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#003580]/10 text-[#003580] transition group-hover:bg-[#003580]/15"
-                        aria-hidden
-                      >
-                        <Sparkles className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
-                        {t.discount_percent}% off
-                      </span>
-                      {t.min_nights ? (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700 ring-1 ring-inset ring-gray-200/70">
-                          Min {t.min_nights} nights
-                        </span>
-                      ) : null}
-                    </div>
+                    {tab.label}
+                    <span className="text-xs tabular-nums opacity-70">{tab.count}</span>
                   </button>
+                )
+              })}
+            </div>
+
+            {gymLoading || loading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-40 animate-pulse rounded-2xl bg-gray-100" />
                 ))}
               </div>
-            </section>
-
-            <section>
-              <h2 className="text-sm font-semibold text-gray-900">Your promotions</h2>
-              <p className="mt-1 text-xs text-gray-500">
-                Discounts can be scheduled, paused, and reused for seasonal campaigns.
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-gray-200">
-                {tabs.map((tab) => {
-                  const active = activeTab === tab.id
+            ) : !activeGymId ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-6 py-12 text-center text-sm text-gray-600">
+                Select a gym to manage promotions.
+              </div>
+            ) : promos.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => openNewFromTemplate(TEMPLATE_PRESETS[0])}
+                className="flex min-h-[14rem] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 px-6 text-center hover:border-gray-300 hover:bg-gray-50"
+              >
+                <Sparkles className="h-8 w-8 text-gray-300" aria-hidden />
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Create your first promotion</p>
+                  <p className="mt-1 text-sm text-gray-500">Start with an Early bird deal to fill future weeks.</p>
+                </div>
+              </button>
+            ) : visiblePromos.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-6 py-12 text-center text-sm text-gray-600">
+                No promotions in this group.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {visiblePromos.map((p) => {
+                  const s = statusFor(p, today)
                   return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={cn(
-                        '-mb-px inline-flex items-center gap-1.5 border-b-2 pb-2 text-sm transition-colors',
-                        active
-                          ? 'border-[#003580] font-medium text-[#003580]'
-                          : 'border-transparent text-gray-500 hover:text-gray-800'
-                      )}
-                    >
-                      <span>{tab.label}</span>
-                      <span
-                        className={cn(
-                          'rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ring-1 ring-inset',
-                          active
-                            ? 'bg-[#003580]/10 text-[#003580] ring-[#003580]/20'
-                            : 'bg-gray-100 text-gray-600 ring-gray-200/80'
-                        )}
-                      >
-                        {tab.count}
-                      </span>
-                    </button>
+                    <article key={p.id} className={cn(listingSectionClass, 'flex flex-col')}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset', badgeTone[s.tone])}>
+                          {s.label}
+                        </span>
+                        <span className="text-xs font-medium uppercase tracking-wide text-gray-400">{kindLabel(p.kind)}</span>
+                      </div>
+                      <h3 className="mt-3 text-base font-semibold text-gray-900">{p.title}</h3>
+                      {p.description ? <p className="mt-1 line-clamp-2 text-sm text-gray-500">{p.description}</p> : null}
+                      <p className="mt-3 text-sm font-medium text-[#003580]">{p.discount_percent}% off</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatDateLabel(p.starts_at)} → {formatDateLabel(p.ends_at)}
+                        {p.min_nights ? ` · Min ${p.min_nights} nights` : ''}
+                      </p>
+                      <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          disabled={saving}
+                          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void remove(p)}
+                          disabled={saving}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-red-600 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                          aria-label={`Delete ${p.title}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
+                    </article>
                   )
                 })}
               </div>
-
-              {gymLoading || loading ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Loading promotions…
-                </div>
-              ) : !activeGymId ? (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/40 px-6 py-12 text-center text-sm text-gray-600">
-                  Select a gym to manage promotions.
-                </div>
-              ) : promos.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/40 px-6 py-14 text-center">
-                  <p className="text-sm font-medium text-gray-900">No promotions yet</p>
-                  <p className="mt-1 text-xs font-normal text-gray-500">
-                    Start with an Early bird deal to fill future weeks.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => openNewFromTemplate(TEMPLATE_PRESETS[0])}
-                    className="mt-4 h-8 bg-[#003580] px-3 text-xs font-medium text-white hover:bg-[#002a66]"
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-                    Create your first promotion
-                  </Button>
-                </div>
-              ) : visiblePromos.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/40 px-6 py-12 text-center text-sm text-gray-600">
-                  No promotions in this group.
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <div className="grid grid-cols-[1fr_120px_180px_120px] gap-4 border-b border-gray-100 py-3 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                    <span>Promotion</span>
-                    <span>Discount</span>
-                    <span>Window</span>
-                    <span className="text-right">Actions</span>
-                  </div>
-
-                  <div className="divide-y divide-gray-100">
-                    {visiblePromos.map((p) => {
-                      const s = statusFor(p, today)
-                      return (
-                        <div
-                          key={p.id}
-                          className="grid grid-cols-[1fr_120px_180px_120px] items-start gap-4 py-4 text-sm"
-                        >
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={cn(
-                                  'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset',
-                                  badgeTone[s.tone]
-                                )}
-                              >
-                                {s.label}
-                              </span>
-                              <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                                {kindLabel(p.kind)}
-                              </span>
-                              <span className="font-medium text-gray-900">{p.title}</span>
-                            </div>
-                            {p.description ? (
-                              <p className="mt-1 line-clamp-2 text-xs text-gray-500">{p.description}</p>
-                            ) : null}
-                            {p.min_nights ? (
-                              <p className="mt-1 text-[11px] text-gray-500">Min {p.min_nights} nights</p>
-                            ) : null}
-                          </div>
-                          <div className="font-light tabular-nums text-gray-900">
-                            {p.discount_percent}% off
-                          </div>
-                          <div className="text-xs text-gray-700">
-                            <span className="tabular-nums">{formatDateLabel(p.starts_at)}</span>
-                            <span className="mx-1 text-gray-400">→</span>
-                            <span className="tabular-nums">{formatDateLabel(p.ends_at)}</span>
-                          </div>
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(p)}
-                              disabled={saving}
-                              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              <Pencil className="h-3 w-3" aria-hidden />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => remove(p)}
-                              disabled={saving}
-                              className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 text-[11px] font-medium text-red-600 hover:bg-red-50 hover:border-red-200 disabled:opacity-50"
-                            >
-                              <Trash2 className="h-3 w-3" aria-hidden />
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </section>
-          </div>
-
-          <aside className="space-y-6">
-            <section>
-              <h2 className="text-sm font-semibold text-gray-900">At a glance</h2>
-              <ul className="mt-3 space-y-3">
-                <li className="flex items-start gap-3">
-                  <span
-                    className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#003580]/10 ring-1 ring-[#003580]/15"
-                    aria-hidden
-                  >
-                    <TrendingUp className="h-4 w-4 text-[#003580]" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-900">
-                      {liveDiscountAvg > 0 ? `${liveDiscountAvg}% avg` : '—'}
-                    </p>
-                    <p className="text-xs text-gray-500">Live discount average</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span
-                    className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200/80"
-                    aria-hidden
-                  >
-                    <CalendarRange className="h-4 w-4 text-gray-500" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-900">{counts.scheduled}</p>
-                    <p className="text-xs text-gray-500">Scheduled to start</p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="mt-6 border-t border-gray-100 pt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Status</p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                  <li>Active: {counts.active}</li>
-                  <li>Paused: {counts.paused}</li>
-                  <li>Ended: {counts.ended}</li>
-                </ul>
-              </div>
-            </section>
-
-            <section>
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-[#003580]" strokeWidth={1.75} aria-hidden />
-                <h2 className="text-sm font-semibold text-gray-900">Playbook</h2>
-              </div>
-              <ul className="mt-3 space-y-2 text-xs text-gray-600">
-                <li>
-                  <span className="font-medium text-gray-900">Fill the future:</span> schedule an Early bird 30–90 days
-                  out.
-                </li>
-                <li>
-                  <span className="font-medium text-gray-900">Fix quiet weeks:</span> run a Last-minute deal for the
-                  next 14 days.
-                </li>
-                <li>
-                  <span className="font-medium text-gray-900">Increase length of stay:</span> add a Long stay deal with
-                  a stronger discount.
-                </li>
-              </ul>
-              <div className="mt-4">
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium hover:underline underline-offset-2"
-                  style={{ color: BRAND }}
-                >
-                  <Megaphone className="h-3.5 w-3.5" aria-hidden />
-                  Request a featured campaign
-                </Link>
-              </div>
-            </section>
-          </aside>
-        </div>
+            )}
+          </GymEditSection>
+        </GymEditPanel>
       </div>
 
       <Dialog open={open} onOpenChange={(o) => !saving && setOpen(o)}>

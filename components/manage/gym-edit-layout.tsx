@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Eye } from 'lucide-react'
+import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 import {
   GymEditSectionNav,
   GymEditSectionSelect,
@@ -81,7 +82,7 @@ export function GymEditLayout({
                 <GymEditSectionSelect gymId={gymId} returnTo={returnTo} activeSection={activeSection} />
               </div>
               <Link
-                href={`/manage/gym/preview?gym_id=${gymId}`}
+                href={manageGymEditHref(gymId, { section: 'preview', returnTo })}
                 className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#003580]/15 bg-white px-3 text-sm font-medium text-[#003580] shadow-sm hover:bg-[#003580]/5"
               >
                 <Eye className="h-4 w-4" aria-hidden />

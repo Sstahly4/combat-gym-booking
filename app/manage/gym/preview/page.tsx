@@ -1,17 +1,12 @@
-import { Suspense } from 'react'
-import { GymListingPreviewInner } from './preview-inner'
+import { redirect } from 'next/navigation'
 
-export default function ManageGymPreviewPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="px-4 py-10 max-w-6xl mx-auto space-y-6">
-          <div className="h-10 w-64 bg-gray-100 rounded animate-pulse" />
-          <div className="h-48 bg-gray-100 rounded-xl animate-pulse" />
-        </div>
-      }
-    >
-      <GymListingPreviewInner />
-    </Suspense>
-  )
+type Props = { searchParams: Promise<{ gym_id?: string }> }
+
+/** Legacy URL — keep bookmarks working by opening inline preview in the listing editor. */
+export default async function ManageGymPreviewPage({ searchParams }: Props) {
+  const { gym_id: gymId } = await searchParams
+  if (gymId) {
+    redirect(`/manage/gym/edit?id=${encodeURIComponent(gymId)}&section=preview`)
+  }
+  redirect('/manage/gym/edit?section=preview')
 }

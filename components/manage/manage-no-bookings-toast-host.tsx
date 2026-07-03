@@ -315,8 +315,8 @@ export function ManageNoBookingsToastHost() {
 
   const previewHref =
     activeGymId && activeGymId.length > 0
-      ? `/manage/gym/preview?gym_id=${activeGymId}`
-      : '/manage/gym/preview'
+      ? `/manage/gym/edit?id=${activeGymId}&section=preview`
+      : '/manage/gym/edit?section=preview'
 
   const renderNbLayer =
     showNbCardEffective ||
