@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useActiveGym } from '@/components/manage/active-gym-context'
 import { AccommodationManager } from '@/components/manage/accommodation-manager'
 import { GymEditLayout } from '@/components/manage/gym-edit-layout'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 type GymCurrencyRow = { currency: string | null }
 
@@ -13,6 +15,7 @@ export default function ManageAccommodationPage() {
   const [currency, setCurrency] = useState<string>('USD')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [addSignal, setAddSignal] = useState(0)
 
   useEffect(() => {
     if (gymLoading) return
@@ -48,19 +51,24 @@ export default function ManageAccommodationPage() {
     }
   }, [activeGymId, gymLoading])
 
+  const layoutProps = {
+    gymId: activeGymId ?? '',
+    activeSection: 'accommodation',
+    title: 'Accommodation',
+    subtitle:
+      'Create room types guests can book with training packages. Link them to stay + train or all-inclusive offers.',
+    sections: {},
+    saving: false,
+    hideSaveBar: true as const,
+    contentWidth: 'full' as const,
+  }
+
   if (gymLoading || loading) {
     return (
-      <GymEditLayout
-        gymId={activeGymId ?? ''}
-        activeSection="basic"
-        title="Accommodation"
-        sections={{}}
-        saving={false}
-        hideSaveBar
-      >
-        <div className="space-y-4">
-          <div className="h-4 w-72 animate-pulse rounded bg-gray-100" />
-          <div className="h-40 w-full animate-pulse rounded-lg bg-gray-100" />
+      <GymEditLayout {...layoutProps}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="h-72 animate-pulse rounded-2xl bg-gray-100" />
+          <div className="h-72 animate-pulse rounded-2xl bg-gray-100" />
         </div>
       </GymEditLayout>
     )
@@ -68,15 +76,8 @@ export default function ManageAccommodationPage() {
 
   if (error || !activeGymId) {
     return (
-      <GymEditLayout
-        gymId={activeGymId ?? ''}
-        activeSection="basic"
-        title="Accommodation"
-        sections={{}}
-        saving={false}
-        hideSaveBar
-      >
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+      <GymEditLayout {...layoutProps}>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           {error || 'Missing gym context.'}
         </div>
       </GymEditLayout>
@@ -85,17 +86,21 @@ export default function ManageAccommodationPage() {
 
   return (
     <GymEditLayout
-      gymId={activeGymId}
-      activeSection="basic"
-      title="Accommodation"
-      sections={{}}
-      saving={false}
-      hideSaveBar
+      {...layoutProps}
+      headerActions={
+        <button
+          type="button"
+          onClick={() => setAddSignal((n) => n + 1)}
+          className={cn(
+            'inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-900 shadow-sm transition-colors hover:bg-gray-50',
+          )}
+          aria-label="Add accommodation"
+        >
+          <Plus className="h-5 w-5" aria-hidden />
+        </button>
+      }
     >
-      <p className="text-sm text-gray-500">
-        Create room types here, then link them to training + stay or all-inclusive packages.
-      </p>
-      <AccommodationManager gymId={activeGymId} currency={currency} hideHeader />
+      <AccommodationManager gymId={activeGymId} currency={currency} hideHeader addSignal={addSignal} />
     </GymEditLayout>
   )
 }

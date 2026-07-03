@@ -4,13 +4,13 @@ import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
-  Info,
+  Building2,
   MapPin,
   Image,
-  Sparkles,
-  Clock,
+  ListChecks,
+  CalendarDays,
   Users,
-  Package,
+  Ticket,
   BedDouble,
   Tag,
   Star,
@@ -54,7 +54,7 @@ export const GYM_EDIT_SECTIONS: SidebarItem[] = [
     label: 'Property details',
     description:
       'Your gym name, tagline, training styles, listing description, and guest FAQs — what travelers see on search and your public page.',
-    icon: Info,
+    icon: Building2,
     required: true,
   },
   {
@@ -82,20 +82,20 @@ export const GYM_EDIT_SECTIONS: SidebarItem[] = [
     id: 'schedule',
     label: 'Schedule',
     description: 'Opening hours and class timetable.',
-    icon: Clock,
+    icon: CalendarDays,
   },
   {
     id: 'packages',
     label: 'Packages',
     description: 'Training offers, rates, and what guests can book.',
-    icon: Package,
+    icon: Ticket,
     required: true,
   },
   {
     id: 'amenities',
     label: 'Amenities',
     description: 'Equipment, facilities, and services guests can expect.',
-    icon: Sparkles,
+    icon: ListChecks,
   },
 ]
 

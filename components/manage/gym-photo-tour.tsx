@@ -4,7 +4,6 @@ import type { ChangeEvent, DragEvent } from 'react'
 import { ImagePlus, LayoutGrid, Plus, X } from 'lucide-react'
 import type { GymImage } from '@/lib/types/database'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
-import { GymPhotoTourCarousel } from '@/components/manage/gym-photo-tour-carousel'
 import type { GymPhotoTourDisplayItem } from '@/components/manage/gym-photo-tour-types'
 import { cn } from '@/lib/utils'
 
@@ -148,9 +147,6 @@ export function GymPhotoTour({
   return (
     <div id="gym-photo-tour" className="space-y-5">
       {items.length > 0 ? (
-        <>
-          <GymPhotoTourCarousel items={items} pendingPreviewUrls={pendingPreviewUrls} />
-
           <div
             id="gym-photo-tour-grid"
             className="grid grid-cols-2 gap-4 md:grid-cols-4"
@@ -188,7 +184,6 @@ export function GymPhotoTour({
             </label>
           ) : null}
           </div>
-        </>
       ) : (
         <label
           htmlFor={addInputId}

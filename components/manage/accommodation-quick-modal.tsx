@@ -159,6 +159,10 @@ export type AccommodationQuickModalProps = {
   currency: string
   /** Fired after create, update, or delete */
   onSaved?: () => void
+  /** When true, only show the add/edit form (for the full accommodation page). */
+  formOnly?: boolean
+  /** When `formOnly`, open directly in edit mode for this room id. */
+  editAccommodationId?: string | null
 }
 
 const fieldClass =
@@ -262,6 +266,8 @@ export function AccommodationQuickModal({
   gymId,
   currency,
   onSaved,
+  formOnly = false,
+  editAccommodationId = null,
 }: AccommodationQuickModalProps) {
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<AccommodationRow[]>([])
@@ -331,8 +337,37 @@ export function AccommodationQuickModal({
       setPhotoItems([])
       return
     }
+    if (formOnly) {
+      setMode('form')
+      if (editAccommodationId) {
+        let cancelled = false
+        ;(async () => {
+          const supabase = createClient()
+          const { data, error } = await supabase
+            .from('accommodations')
+            .select(
+              'id, gym_id, name, description, room_type, capacity, price_per_day, price_per_week, price_per_month, currency, is_active, images, amenities'
+            )
+            .eq('id', editAccommodationId)
+            .eq('gym_id', gymId)
+            .maybeSingle()
+          if (cancelled) return
+          if (error || !data) {
+            alert(error?.message ?? 'Could not load room')
+            onOpenChange(false)
+            return
+          }
+          openEdit(data as AccommodationRow)
+        })()
+        return () => {
+          cancelled = true
+        }
+      }
+      resetForm()
+      return
+    }
     void fetchRows()
-  }, [open, fetchRows])
+  }, [open, formOnly, editAccommodationId, gymId, fetchRows, onOpenChange])
 
   useEffect(() => {
     if (accUploadWasActiveRef.current && !accUploadSummary.active && open && mode === 'list') {
@@ -578,8 +613,13 @@ export function AccommodationQuickModal({
       await syncGymAccommodationFlags(supabase, gymId)
       await fetchRows()
       onSaved?.()
-      setMode('list')
-      resetForm({ cancelPendingUploads: false })
+      if (formOnly) {
+        onOpenChange(false)
+        resetForm({ cancelPendingUploads: false })
+      } else {
+        setMode('list')
+        resetForm({ cancelPendingUploads: false })
+      }
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to save')
     } finally {
@@ -607,11 +647,21 @@ export function AccommodationQuickModal({
     return '—'
   }
 
+  const closeForm = () => {
+    if (formOnly) {
+      onOpenChange(false)
+      resetForm()
+      return
+    }
+    setMode('list')
+    resetForm()
+  }
+
   const dialogWidthClass =
     'w-[calc(100vw-1.5rem)] max-w-7xl sm:w-[calc(100vw-2rem)] md:w-[calc(100vw-3rem)]'
 
   const bodyScrollClass =
-    mode === 'form'
+    mode === 'form' || formOnly
       ? 'max-h-[min(calc(100dvh-8rem),880px)] overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8 lg:px-10'
       : 'space-y-6 px-5 py-6 md:px-8 md:py-8 lg:px-10'
 
@@ -640,19 +690,23 @@ export function AccommodationQuickModal({
                 <BedDouble className="h-5 w-5" aria-hidden />
               </span>
               <span>
-                {mode === 'list' ? 'Accommodation' : editingId ? 'Edit room' : 'Add room'}
+                {formOnly || mode === 'form'
+                  ? editingId
+                    ? 'Edit room'
+                    : 'Add room'
+                  : 'Accommodation'}
               </span>
             </DialogTitle>
             <DialogDescription className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {mode === 'list'
-                ? 'Rooms guests can pick for training + accommodation or all-inclusive offers.'
-                : 'Describe the room, set rates, photos, and what’s included. At least one price is required.'}
+              {formOnly || mode === 'form'
+                ? 'Describe the room, set rates, photos, and what’s included. At least one price is required.'
+                : 'Rooms guests can pick for training + accommodation or all-inclusive offers.'}
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className={bodyScrollClass}>
-          {mode === 'list' ? (
+          {!formOnly && mode === 'list' ? (
             <>
               {loading ? (
                 <div className="space-y-3">
@@ -743,13 +797,10 @@ export function AccommodationQuickModal({
               <button
                 type="button"
                 className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
-                onClick={() => {
-                  setMode('list')
-                  resetForm()
-                }}
+                onClick={closeForm}
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden />
-                Back to list
+                {formOnly ? 'Close' : 'Back to list'}
               </button>
 
               <div className={sectionCard}>
@@ -1132,10 +1183,7 @@ export function AccommodationQuickModal({
                   variant="outline"
                   className={btnGhost}
                   disabled={saving}
-                  onClick={() => {
-                    setMode('list')
-                    resetForm()
-                  }}
+                  onClick={closeForm}
                 >
                   Cancel
                 </Button>
