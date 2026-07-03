@@ -168,6 +168,7 @@ function ManageSettingsInner({ focusSection = null }: { focusSection?: ManageSet
                       <button
                         type="button"
                         onClick={() => requestTab(tab.id)}
+                        data-claim-tour={tab.id === 'payouts' ? 'tour-settings-payouts' : undefined}
                         className={`group flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition ${
                           isActive
                             ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'

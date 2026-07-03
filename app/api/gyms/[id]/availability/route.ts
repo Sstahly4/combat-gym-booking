@@ -7,14 +7,14 @@ import { loadGymAvailabilityRange, toGuestDayList } from '@/lib/booking/gym-avai
 
 /**
  * Public gym availability for guest date pickers.
- * GET /api/gyms/[gymId]/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * GET /api/gyms/[id]/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { gymId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const gymId = params.gymId?.trim()
+    const gymId = params.id?.trim()
     if (!gymId) {
       return NextResponse.json({ error: 'Gym id required' }, { status: 400 })
     }

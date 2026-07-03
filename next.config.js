@@ -60,6 +60,10 @@ const nextConfig = {
   swcMinify: true,
   // Enable React strict mode for better performance
   reactStrictMode: true,
+  // node-ical pulls in rrule; keep it out of the webpack bundle for API routes.
+  experimental: {
+    serverComponentsExternalPackages: ['node-ical'],
+  },
   /**
    * 301 every path on configured legacy hostnames → canonical app URL (Search Console,
    * link equity, bookmarks). Only applies when those hostnames still route to this deployment

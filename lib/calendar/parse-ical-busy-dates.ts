@@ -1,5 +1,3 @@
-import ical from 'node-ical'
-
 const DATE_RX = /^\d{4}-\d{2}-\d{2}$/
 
 function toIsoDateUTC(d: Date): string {
@@ -46,7 +44,8 @@ export type ParsedIcalBlock = {
 /**
  * Parse ICS text into busy dates. Returns unique dates with optional summaries.
  */
-export function parseIcalBusyDates(icsText: string): ParsedIcalBlock[] {
+export async function parseIcalBusyDates(icsText: string): Promise<ParsedIcalBlock[]> {
+  const { default: ical } = await import('node-ical')
   const parsed = ical.parseICS(icsText)
   const byDate = new Map<string, string | null>()
 

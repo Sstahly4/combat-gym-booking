@@ -253,11 +253,13 @@ export function GymEditSectionNav({
       const sectionData = sections[section.id] || { completed: false, required: false }
       const isActive = isSectionActive(section.id)
       const href = sectionHref(gymId, section.id, returnTo)
+      const tourAnchor = section.id === 'packages' ? 'tour-packages' : undefined
 
       return (
         <li key={`section-${section.id}`} className={collapsed ? 'w-full' : undefined}>
           <Link
             href={href}
+            data-claim-tour={tourAnchor}
             title={collapsed ? section.label : undefined}
             className={linkItemClass(isActive)}
             aria-current={isActive ? 'page' : undefined}

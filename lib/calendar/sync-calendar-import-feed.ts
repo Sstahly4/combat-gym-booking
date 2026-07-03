@@ -20,7 +20,7 @@ export async function syncCalendarImportFeed(
 
   try {
     const icsText = await fetchIcalText(feed.feed_url)
-    const blocks = parseIcalBusyDates(icsText)
+    const blocks = await parseIcalBusyDates(icsText)
 
     const { error: delErr } = await supabase
       .from('calendar_import_blocks')

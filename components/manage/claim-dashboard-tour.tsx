@@ -7,13 +7,17 @@
  * runs in sequence after account claim, not for self-serve signups.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useActiveGym } from '@/components/manage/active-gym-context'
 import { useIsNarrowForManageSidebar } from '@/lib/hooks/use-is-narrow-sidebar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { withManageGymId } from '@/lib/manage/manage-partner-nav'
+import { manageGymEditHref } from '@/lib/navigation/manage-gym-edit-return'
 
 const TOUR_ENTER_DELAY_MS = 580
+const ROUTE_SETTLE_MS = 200
 /** After claim tour ends, delay the “No bookings yet” toast so it doesn’t stack on the tour. */
 export const DEFER_NO_BOOKINGS_TOAST_MS = 5000
 export const SESSION_DEFER_NO_BOOKINGS_KEY = 'cs:defer_no_bookings_toast_until'
@@ -32,125 +36,159 @@ const CLAIM_TOUR_HIGHLIGHT: string[] = [
   'motion-reduce:transition-none',
 ]
 
-type TourStep = {
+type TourContext = { gymId: string | null }
+
+type TourStepDef = {
   id: string
-  /** `data-claim-tour` value; null = centered card */
+  /** `data-claim-tour` value on desktop; null = centered card */
   anchor: string | null
   title: string
   paragraphs: string[]
+  paragraphsMobile?: string[]
+  path?: (ctx: TourContext) => string
+  pathMatch?: (pathname: string, search: URLSearchParams, ctx: TourContext) => boolean
+  /** Side effect once the step’s route has settled */
+  onRouteReady?: 'expand-setup-guide'
 }
 
-const STEPS: TourStep[] = [
+function isManageHome(pathname: string): boolean {
+  return pathname === '/manage' || pathname === '/manage/'
+}
+
+function editPath(gymId: string | null, section: string): string {
+  if (gymId) return manageGymEditHref(gymId, { section })
+  const q = new URLSearchParams({ section })
+  return `/manage/gym/edit?${q.toString()}`
+}
+
+const STEP_DEFS: TourStepDef[] = [
   {
     id: 'welcome',
     anchor: null,
-    title: 'Welcome to your partner dashboard',
+    title: 'Welcome to Partner Hub',
     paragraphs: [
-      'Your gym was pre-listed so you are not starting from zero. From here you manage your listing, bookings, and payouts when you are ready.',
-      'This short tour points to the essentials. Skip anytime — your listing stays in draft until you complete the setup guide and go live.',
+      'Your gym was pre-listed so you are not starting from zero. Home, bookings, calendar, listings, and balances are in the blue bar at the top.',
+      'This short tour walks you through the essentials. Skip anytime — your listing stays in draft until you finish the setup guide and go live.',
     ],
-  },
-  {
-    id: 'pricing',
-    anchor: null,
-    title: 'Rates and packages',
-    paragraphs: [
-      'Guests expect what they see on CombatStay to match what you offer. Review packages and pricing before you take bookings.',
-      'The setup guide links into the right wizard steps so you can confirm everything in one pass.',
+    paragraphsMobile: [
+      'Your gym was pre-listed so you are not starting from zero. Swipe the blue bar at the top for Home, Bookings, Calendar, Listings, and Balances.',
+      'This short tour covers the essentials. Skip anytime.',
     ],
-  },
-  {
-    id: 'edit-gym',
-    anchor: 'tour-edit-gym',
-    title: 'Edit gym',
-    paragraphs: [
-      'Listing details, photos, schedule, and policies are edited here (or via the guided steps in your setup checklist).',
-    ],
-  },
-  {
-    id: 'payouts',
-    anchor: 'tour-balances',
-    title: 'How you get paid',
-    paragraphs: [
-      'Use Balances in the sidebar for live totals and payout activity when you use Stripe Connect.',
-      'Set up Stripe under Settings → Payouts (gear icon at the bottom of the sidebar). You can polish your listing first; finish payment details before you start accepting paid bookings.',
-    ],
+    path: (ctx) => withManageGymId('/manage', ctx.gymId),
+    pathMatch: (pathname) => isManageHome(pathname),
   },
   {
     id: 'setup-guide',
     anchor: 'tour-setup-guide',
     title: 'Setup guide',
     paragraphs: [
-      'This checklist walks you through listing, rates, photos, and payment setup. Tap any row to jump straight there.',
+      'This checklist walks you through listing details, rates, photos, and payouts. Tap any row to jump straight there.',
       'When every required item is done, use Review to run the final check and make your listing visible to guests.',
     ],
+    paragraphsMobile: [
+      'On your phone the full checklist is easiest on a larger screen. Use Listings in the top bar (or the setup rows on Home) to finish listing, rates, photos, and payments.',
+      'When every required step is done, run the final review so guests can find you.',
+    ],
+    path: (ctx) => withManageGymId('/manage', ctx.gymId),
+    pathMatch: (pathname) => isManageHome(pathname),
+    onRouteReady: 'expand-setup-guide',
   },
   {
-    id: 'wrap-up',
+    id: 'listings',
     anchor: 'tour-edit-gym',
-    title: 'Preview as a guest',
+    title: 'Listings',
     paragraphs: [
-      'Open Listings, then use View listing in the listing sidebar to see how guests will see your page. Verification steps appear on your homepage when you are ready; help is in the menu (☰) if you need it.',
+      'Open Listings in the top bar to edit property details, photos, schedule, and policies. The sidebar groups everything guests see on your public page.',
+      'Rates and packages live under Packages in that sidebar — confirm them before you take bookings.',
     ],
-  },
-]
-
-/** Narrow screens: no sidebar anchors (nav is in a menu drawer). All steps stay centered. */
-const STEPS_MOBILE: TourStep[] = [
-  {
-    id: 'welcome',
-    anchor: null,
-    title: 'Welcome to your partner dashboard',
-    paragraphs: [
-      'Your gym was pre-listed so you are not starting from zero. From here you manage your listing, bookings, and payouts when you are ready.',
-      'Tap the menu (☰) at the top to open Balances, Edit gym, Settings, and more.',
-      'This short tour covers the essentials. Skip anytime.',
+    paragraphsMobile: [
+      'Tap Listings in the top bar to edit property details, photos, schedule, and packages.',
+      'Guests expect what they see on CombatStay to match what you offer — review packages and pricing before you take bookings.',
     ],
+    path: (ctx) => editPath(ctx.gymId, 'basic'),
+    pathMatch: (pathname) => pathname.startsWith('/manage/gym/edit'),
   },
   {
-    id: 'pricing',
-    anchor: null,
-    title: 'Rates and packages',
+    id: 'packages',
+    anchor: 'tour-packages',
+    title: 'Packages and pricing',
     paragraphs: [
-      'Guests expect what they see on CombatStay to match what you offer. Review packages and pricing before you take bookings.',
-      'Open Edit gym from the menu when you want to adjust what guests see.',
+      'Packages are what guests book — training offers, nightly rates, and what is included. Keep them aligned with what you run at the gym.',
+      'The setup guide links here if anything still needs attention.',
     ],
+    path: (ctx) => editPath(ctx.gymId, 'packages'),
+    pathMatch: (pathname, search) =>
+      pathname.startsWith('/manage/gym/edit') && search.get('section') === 'packages',
   },
   {
-    id: 'edit-gym',
-    anchor: null,
-    title: 'Edit gym',
+    id: 'balances',
+    anchor: 'tour-balances',
+    title: 'Balances',
     paragraphs: [
-      'Listing details, photos, schedule, and policies are edited from Edit gym in the menu (☰).',
+      'Balances in the top bar shows live totals and payout activity when you use Stripe Connect.',
+      'You can polish your listing first; finish payment setup before you accept paid bookings.',
     ],
+    paragraphsMobile: [
+      'Tap Balances in the top bar for live totals and payout activity when you use Stripe Connect.',
+      'Finish payment setup before you accept paid bookings.',
+    ],
+    path: (ctx) => withManageGymId('/manage/balances', ctx.gymId),
+    pathMatch: (pathname) => pathname === '/manage/balances' || pathname.startsWith('/manage/balances/'),
   },
   {
     id: 'payouts',
-    anchor: null,
-    title: 'How you get paid',
+    anchor: 'tour-settings-payouts',
+    title: 'Payout setup',
     paragraphs: [
-      'Open Balances from the menu for live totals and payout activity when you use Stripe Connect.',
-      'Set up Stripe under Settings → Payouts (gear icon). You can finish payment details before you accept paid bookings.',
+      'Connect Stripe under Settings → Payouts. Open the account icon (top right), choose Settings, then Payouts.',
+      'You only need this before accepting paid bookings — the setup guide tracks it for you.',
     ],
+    paragraphsMobile: [
+      'Tap the account icon (top right), open Settings, then Payouts to connect Stripe.',
+      'You only need this before accepting paid bookings.',
+    ],
+    path: (ctx) => withManageGymId('/manage/settings?tab=payouts', ctx.gymId),
+    pathMatch: (pathname, search) =>
+      pathname.startsWith('/manage/settings') && search.get('tab') === 'payouts',
   },
   {
-    id: 'setup-checklist-mobile',
-    anchor: null,
-    title: 'Complete setup before going live',
-    paragraphs: [
-      'The checklist is easiest on a larger screen. On your phone, use List your gym or Help from the menu to finish listing, rates, photos, and payments.',
-      'When every required step is done, run the final review so your listing can go visible to guests.',
-    ],
-  },
-  {
-    id: 'wrap-up',
-    anchor: null,
+    id: 'preview',
+    anchor: 'tour-view-listing',
     title: 'Preview as a guest',
     paragraphs: [
-      'Open Listings, then tap View listing in the listing sidebar to preview your page. Verification steps appear on your homepage when you are ready; help is in the menu (☰) if you need it.',
+      'Use Preview listing in the listing sidebar to see your page exactly as guests will.',
+      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
     ],
+    paragraphsMobile: [
+      'From Listings, open Preview listing to see your page as guests will.',
+      'Verification steps appear on Home when you are ready. Help is in the menu (☰) at the top right.',
+    ],
+    path: (ctx) => editPath(ctx.gymId, 'basic'),
+    pathMatch: (pathname) => pathname.startsWith('/manage/gym/edit'),
   },
 ]
+
+type TourStep = {
+  id: string
+  anchor: string | null
+  title: string
+  paragraphs: string[]
+  path?: (ctx: TourContext) => string
+  pathMatch?: (pathname: string, search: URLSearchParams, ctx: TourContext) => boolean
+  onRouteReady?: 'expand-setup-guide'
+}
+
+function buildSteps(narrow: boolean): TourStep[] {
+  return STEP_DEFS.map((def) => ({
+    id: def.id,
+    anchor: narrow ? null : def.anchor,
+    title: def.title,
+    paragraphs: narrow && def.paragraphsMobile ? def.paragraphsMobile : def.paragraphs,
+    path: def.path,
+    pathMatch: def.pathMatch,
+    onRouteReady: def.onRouteReady,
+  }))
+}
 
 function profileNeedsClaimPassword(profile: unknown): boolean {
   const p = profile as { placeholder_account?: boolean | null; claim_password_set?: boolean | null } | null
@@ -171,16 +209,22 @@ function useBodyScrollLock(locked: boolean) {
 
 export function ClaimDashboardTour() {
   const { profile, loading, refreshProfile } = useAuth()
+  const { activeGymId } = useActiveGym()
   const router = useRouter()
   const pathname = usePathname() ?? ''
+  const searchParams = useSearchParams()
   const narrow = useIsNarrowForManageSidebar()
-  const steps = narrow ? STEPS_MOBILE : STEPS
+  const steps = useMemo(() => buildSteps(narrow), [narrow])
+  const tourCtx = useMemo<TourContext>(() => ({ gymId: activeGymId }), [activeGymId])
+
   const [enterAllowed, setEnterAllowed] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  const [routeReady, setRouteReady] = useState(false)
   const [cardBox, setCardBox] = useState<{ top: number; left: number; maxWidth: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [dismissError, setDismissError] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const navigatingRef = useRef(false)
   const step = steps[stepIndex]
   const lastStep = stepIndex === steps.length - 1
   const dismissingRef = useRef(false)
@@ -189,6 +233,11 @@ export function ClaimDashboardTour() {
 
   const tourPending = Boolean(profile?.claim_dashboard_tour_pending)
   const isOwner = profile?.role === 'owner'
+
+  const search = useMemo(
+    () => new URLSearchParams(searchParams?.toString() ?? ''),
+    [searchParams]
+  )
 
   useEffect(() => {
     if (loading || !tourPending || !isOwner || needsPassword) {
@@ -199,19 +248,69 @@ export function ClaimDashboardTour() {
     return () => window.clearTimeout(t)
   }, [loading, tourPending, isOwner, needsPassword])
 
+  const fullScreenManageRoute =
+    pathname.startsWith('/manage/onboarding') ||
+    pathname.startsWith('/manage/security-onboarding') ||
+    pathname.startsWith('/manage/invite') ||
+    pathname.startsWith('/manage/list-your-gym')
+
+  const showTour =
+    !loading &&
+    Boolean(profile) &&
+    tourPending &&
+    isOwner &&
+    !needsPassword &&
+    enterAllowed &&
+    !fullScreenManageRoute
+
+  /** Navigate to the page for the current step, then mark route ready after layout settles. */
+  useEffect(() => {
+    if (!showTour) {
+      setRouteReady(false)
+      return
+    }
+
+    let cancelled = false
+    setRouteReady(false)
+
+    const targetPath = step.path?.(tourCtx)
+    const matches = step.pathMatch
+      ? step.pathMatch(pathname, search, tourCtx)
+      : !targetPath || pathname === targetPath.split('?')[0]
+
+    if (targetPath && !matches) {
+      if (!navigatingRef.current) {
+        navigatingRef.current = true
+        router.push(targetPath)
+      }
+      return () => {
+        cancelled = true
+      }
+    }
+
+    navigatingRef.current = false
+
+    const timer = window.setTimeout(() => {
+      if (cancelled) return
+      setRouteReady(true)
+      if (step.onRouteReady === 'expand-setup-guide') {
+        window.dispatchEvent(new CustomEvent(SETUP_GUIDE_EXPAND_EVENT))
+      }
+    }, ROUTE_SETTLE_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [showTour, step, stepIndex, pathname, search, tourCtx, router])
+
   const recomputeCardPosition = useCallback(() => {
-    if (narrow) {
+    if (narrow || !routeReady) {
       setCardBox(null)
       return
     }
     const anchorId = step.anchor
-    // Setup guide is a fixed corner panel; anchoring the dialog beside it often pushes it off-screen.
-    // We keep the highlight on the panel but show this step as a centered dialog (same as welcome/pricing).
-    if (step.id === 'setup-guide') {
-      setCardBox(null)
-      return
-    }
-    if (!anchorId) {
+    if (step.id === 'setup-guide' || !anchorId) {
       setCardBox(null)
       return
     }
@@ -232,19 +331,19 @@ export function ClaimDashboardTour() {
     const left = Math.min(Math.max(margin, ar.left), window.innerWidth - maxW - margin)
 
     setCardBox({ top, left, maxWidth: maxW })
-  }, [narrow, step.anchor, step.id])
+  }, [narrow, routeReady, step.anchor, step.id])
 
   useLayoutEffect(() => {
-    if (!enterAllowed || !tourPending) return
+    if (!showTour || !routeReady) return
     recomputeCardPosition()
-  }, [enterAllowed, tourPending, stepIndex, recomputeCardPosition])
+  }, [showTour, routeReady, stepIndex, recomputeCardPosition])
 
   useEffect(() => {
-    if (!enterAllowed || !tourPending) return
+    if (!showTour || !routeReady) return
     const onResize = () => recomputeCardPosition()
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [enterAllowed, tourPending, recomputeCardPosition])
+  }, [showTour, routeReady, recomputeCardPosition])
 
   const dismissTour = useCallback(
     async (outcome: 'finished' | 'skipped') => {
@@ -292,7 +391,7 @@ export function ClaimDashboardTour() {
   )
 
   useEffect(() => {
-    if (!enterAllowed || !tourPending) return
+    if (!showTour || !routeReady) return
     if (narrow) return
     let anchorEl: HTMLElement | null = null
     const anchorId = step.anchor
@@ -304,14 +403,14 @@ export function ClaimDashboardTour() {
     return () => {
       anchorEl?.classList.remove(...CLAIM_TOUR_HIGHLIGHT)
     }
-  }, [enterAllowed, tourPending, narrow, step.anchor, stepIndex])
+  }, [showTour, routeReady, narrow, step.anchor, stepIndex])
 
   useEffect(() => {
     setDismissError(null)
   }, [stepIndex])
 
   useEffect(() => {
-    if (!enterAllowed || !tourPending) return
+    if (!showTour) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -320,7 +419,7 @@ export function ClaimDashboardTour() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [enterAllowed, tourPending, dismissTour])
+  }, [showTour, dismissTour])
 
   const focusPrimary = useCallback(() => {
     const root = cardRef.current
@@ -330,44 +429,10 @@ export function ClaimDashboardTour() {
   }, [stepIndex])
 
   useEffect(() => {
-    if (!enterAllowed || !tourPending) return
+    if (!showTour || !routeReady) return
     const id = window.requestAnimationFrame(() => focusPrimary())
     return () => window.cancelAnimationFrame(id)
-  }, [enterAllowed, tourPending, stepIndex, focusPrimary])
-
-  const fullScreenManageRoute =
-    pathname.startsWith('/manage/onboarding') ||
-    pathname.startsWith('/manage/security-onboarding') ||
-    pathname.startsWith('/manage/invite') ||
-    pathname.startsWith('/manage/list-your-gym')
-
-  const showTour =
-    !loading &&
-    Boolean(profile) &&
-    tourPending &&
-    isOwner &&
-    !needsPassword &&
-    enterAllowed &&
-    !fullScreenManageRoute
-
-  /** Setup guide: checklist only on dashboard home — navigate there, expand panel, reposition after layout. */
-  useEffect(() => {
-    if (!showTour || step.id !== 'setup-guide' || narrow) return
-    const home = pathname === '/manage' || pathname === '/manage/'
-    if (!home) {
-      router.replace('/manage')
-      return
-    }
-    window.dispatchEvent(new CustomEvent(SETUP_GUIDE_EXPAND_EVENT))
-    const id1 = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => recomputeCardPosition())
-    })
-    const timer = window.setTimeout(() => recomputeCardPosition(), 160)
-    return () => {
-      window.cancelAnimationFrame(id1)
-      window.clearTimeout(timer)
-    }
-  }, [showTour, step.id, narrow, pathname, router, recomputeCardPosition])
+  }, [showTour, routeReady, stepIndex, focusPrimary])
 
   useBodyScrollLock(showTour)
 
@@ -375,7 +440,9 @@ export function ClaimDashboardTour() {
     return null
   }
 
-  const centered = narrow || !step.anchor || !cardBox || step.id === 'setup-guide'
+  const needsRoute = Boolean(step.path)
+  const stepReady = !needsRoute || routeReady
+  const centered = narrow || !step.anchor || !cardBox || step.id === 'setup-guide' || !stepReady
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[85] motion-safe:transition-opacity motion-reduce:transition-none">
@@ -414,6 +481,13 @@ export function ClaimDashboardTour() {
           ))}
         </div>
 
+        {!stepReady ? (
+          <p className="mt-4 flex items-center gap-2 text-sm text-stone-500">
+            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-stone-300 border-t-[#003580]" />
+            Opening this section…
+          </p>
+        ) : null}
+
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-5">
           <div className="flex flex-1 flex-wrap items-center gap-2">
             {stepIndex > 0 ? (
@@ -437,7 +511,7 @@ export function ClaimDashboardTour() {
                 type="button"
                 data-tour-primary="1"
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
-                disabled={submitting}
+                disabled={submitting || !stepReady}
                 onClick={() => setStepIndex((i) => Math.min(steps.length - 1, i + 1))}
               >
                 Next
@@ -447,7 +521,7 @@ export function ClaimDashboardTour() {
                 type="button"
                 data-tour-primary="1"
                 className="bg-[#003580] text-white hover:bg-[#002a5c]"
-                disabled={submitting}
+                disabled={submitting || !stepReady}
                 onClick={() => void dismissTour('finished')}
               >
                 {submitting ? 'Saving…' : 'Done'}

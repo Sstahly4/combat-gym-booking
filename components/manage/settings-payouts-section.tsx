@@ -4,7 +4,11 @@ import { ManagePayoutsWorkspace } from '@/components/manage/manage-payouts-works
 
 export function SettingsPayoutsSection() {
   return (
-    <div id="settings-payouts-section" className="space-y-6">
+    <div
+      id="settings-payouts-section"
+      data-claim-tour="tour-settings-payouts"
+      className="space-y-6"
+    >
       <ManagePayoutsWorkspace />
     </div>
   )
