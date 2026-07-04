@@ -33,8 +33,7 @@ import { MapPin, Sparkles } from 'lucide-react'
 
 type Params = { city: string; amenity: string }
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1519455953755-af066f52f1ea?auto=format&fit=crop&w=1400&q=80'
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 export async function generateStaticParams() {
   const cells = await getTier4MatrixCells()
@@ -62,6 +61,7 @@ export async function generateMetadata({
     title: `${seoTitle} | CombatStay`,
     description,
     alternates: { canonical: path },
+    robots: { index: false, follow: true },
     openGraph: { title: `${seoTitle} | CombatStay`, description, type: 'article' },
     twitter: { card: 'summary_large_image', title: `${seoTitle} | CombatStay`, description },
   }

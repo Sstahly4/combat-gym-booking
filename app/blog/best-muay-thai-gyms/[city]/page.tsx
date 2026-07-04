@@ -6,6 +6,11 @@ import { ArticleShell } from '@/components/guides/article-shell'
 import { RelatedGuides } from '@/components/guides/related-guides'
 import { GuideEmptyState } from '@/components/guides/guide-empty-state'
 import { getThailandGymsForGuide } from '@/lib/guides/thailand-gyms'
+import {
+  buildMuayThaiCityGuideSeo,
+  MUAY_THAI_CITY_GUIDE_DATE_MODIFIED,
+  MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED,
+} from '@/lib/guides/city-guide-seo'
 import { slugToLocation } from '@/lib/seo/location-slug'
 import {
   buildArticleLd,
@@ -14,7 +19,6 @@ import {
   buildGymItemListLd,
 } from '@/lib/seo/guide-schema'
 import { ChunkedGymGrid } from '@/components/guides/chunked-gym-grid'
-import { GuideAmenityMatrixLinks } from '@/components/guides/guide-amenity-matrix-links'
 import { GuideLogisticsBlocks } from '@/components/guides/guide-logistics-blocks'
 import {
   GuideAccentIntro,
@@ -29,15 +33,10 @@ import { Anchor, MapPin, Sun } from 'lucide-react'
 
 type Params = { city: string }
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1519455953755-af066f52f1ea?auto=format&fit=crop&w=1400&q=80'
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 function buildCopy(city: string) {
-  const TITLE = `Best Muay Thai Gyms in ${city} (2026)`
-  const SEO_TITLE = `Best Muay Thai Gyms in ${city} 2026 [Prices + Reviews]`
-  const PATH = `/blog/best-muay-thai-gyms/${encodeURIComponent(city.toLowerCase().replace(/\s+/g, '-'))}`
-  const DESCRIPTION = `Ranked Muay Thai gyms in ${city}, Thailand: verified listings, prices, photos, and reviews. Compare camps and book the best fit on CombatStay.`
-  return { TITLE, SEO_TITLE, PATH, DESCRIPTION }
+  return buildMuayThaiCityGuideSeo(city)
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -98,8 +97,8 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
     title: TITLE,
     description: DESCRIPTION,
     path: PATH,
-    datePublished: new Date().toISOString().slice(0, 10),
-    dateModified: new Date().toISOString().slice(0, 10),
+    datePublished: MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED,
+    dateModified: MUAY_THAI_CITY_GUIDE_DATE_MODIFIED,
     imagePath: HERO_IMAGE,
   })
   const faqLd = buildFaqLd(FAQ_ITEMS(city))
@@ -114,6 +113,7 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
     <ArticleShell
       title={TITLE}
       subtitle={`${city} guide built from live listings. Shortlist by reviews, then filter by dates, price, and amenities.`}
+      lastUpdated={MUAY_THAI_CITY_GUIDE_DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
@@ -292,8 +292,6 @@ export default async function BestMuayThaiGymsCityPage({ params }: { params: Pro
         <p className="mb-8 text-gray-600">{city} Muay Thai training questions that show up in search.</p>
         <GuideFaqList items={FAQ_ITEMS(city)} />
       </GuideSection>
-
-      <GuideAmenityMatrixLinks city={city} />
 
       <GuideCtaStrip
         title={`Ready to pick your ${city} Muay Thai gym?`}

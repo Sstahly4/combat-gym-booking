@@ -20,6 +20,7 @@ const FOOTER_SECTIONS = [
     links: [
       { href: '/search', label: 'Browse Gyms' },
       { href: '/destinations', label: 'Top Locations' },
+      { href: '/blog/best-muay-thai-camps-thailand-2026', label: 'Best Muay Thai Camps (Thailand)' },
       { href: '/blog', label: 'Training Guides' },
       { href: '/owners', label: 'Add Your Gym' },
     ],

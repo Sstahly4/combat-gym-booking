@@ -22,17 +22,22 @@ import {
   GuideSection,
   GuideThreeCards,
 } from '@/components/guides/guide-page-blocks'
+import {
+  buildMuayThaiCityGuideSeo,
+  MUAY_THAI_CITY_GUIDE_DATE_MODIFIED,
+  MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED,
+} from '@/lib/guides/city-guide-seo'
 import { Anchor, MapPin, Sun } from 'lucide-react'
 
 const CITY = 'Krabi'
-const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
-const PATH = '/blog/best-muay-thai-gyms-krabi'
-const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-21'
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1549973890-38b8d7b51b2a?auto=format&fit=crop&w=1400&q=80'
-const DESCRIPTION =
-  'Ranked Muay Thai camps in Krabi, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near Ao Nang and the limestone coast.'
+const { TITLE, SEO_TITLE, PATH, DESCRIPTION } = buildMuayThaiCityGuideSeo(CITY, {
+  path: '/blog/best-muay-thai-gyms-krabi',
+  description:
+    'Compare the best Muay Thai gyms in Krabi — live prices, guest reviews, and Ao Nang training tips. Updated 2026 rankings.',
+})
+const DATE_PUBLISHED = MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED
+const DATE_MODIFIED = MUAY_THAI_CITY_GUIDE_DATE_MODIFIED
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -109,6 +114,7 @@ export default async function BestMuayThaiGymsKrabiPage() {
     <ArticleShell
       title={TITLE}
       subtitle={`${CITY} pairs training with recovery: beach access, quieter routines, and a strong long-stay pace, if you choose a gym you can attend every week.`}
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

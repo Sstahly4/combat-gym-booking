@@ -22,17 +22,22 @@ import {
   GuideSection,
   GuideThreeCards,
 } from '@/components/guides/guide-page-blocks'
+import {
+  buildMuayThaiCityGuideSeo,
+  MUAY_THAI_CITY_GUIDE_DATE_MODIFIED,
+  MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED,
+} from '@/lib/guides/city-guide-seo'
 import { MapPin, Sun, Waves } from 'lucide-react'
 
 const CITY = 'Pattaya'
-const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
-const PATH = '/blog/best-muay-thai-gyms-pattaya'
-const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1400&q=80'
-const DESCRIPTION =
-  'Ranked Muay Thai camps in Pattaya, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for training near the beach.'
+const { TITLE, SEO_TITLE, PATH, DESCRIPTION } = buildMuayThaiCityGuideSeo(CITY, {
+  path: '/blog/best-muay-thai-gyms-pattaya',
+  description:
+    'Compare the best Muay Thai gyms in Pattaya — live prices, guest reviews, and beach-town training tips. Updated 2026 rankings.',
+})
+const DATE_PUBLISHED = MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED
+const DATE_MODIFIED = MUAY_THAI_CITY_GUIDE_DATE_MODIFIED
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -101,6 +106,7 @@ export default async function BestMuayThaiGymsPattayaPage() {
     <ArticleShell
       title={TITLE}
       subtitle={`Pattaya training is about routines: pick a gym you can reach consistently, then recover like an athlete so you keep improving.`}
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

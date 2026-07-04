@@ -2,7 +2,7 @@
 
 > Live rankings, real prices, and honest regional advice — built for people searching "best Muay Thai camps Thailand" who are tired of recycled top-seven lists.
 
-**Published:** 2025-10-15 | **Updated:** 2026-04-21  
+**Published:** 2025-10-15 | **Updated:** 2026-07-04  
 **Canonical URL:** https://www.combatstay.com/blog/best-muay-thai-camps-thailand-2026
 
 ---

@@ -5,10 +5,18 @@ import { locationToSlug } from '@/lib/seo/location-slug'
 import { discoverBlogSitemapPaths } from '@/lib/seo/discover-blog-paths'
 import { PUBLIC_GYM_VERIFICATION_STATUSES } from '@/lib/seo/gym-public-status'
 import { gymCanonicalPath } from '@/lib/seo/gym-canonical-path'
-import { getTier4MatrixCells } from '@/lib/guides/tier4-amenity-guides'
 import { gymListsDiscipline } from '@/lib/guides/discipline-match'
 
 const siteUrl = canonicalSiteUrl()
+
+const FLAGSHIP_GUIDE_PATH = '/blog/best-muay-thai-camps-thailand-2026'
+const FLAGSHIP_GUIDE_LAST_MODIFIED = new Date('2026-07-04T12:00:00Z')
+
+const HIGH_PRIORITY_CITY_GUIDES = new Set([
+  '/blog/best-muay-thai-gyms-bangkok',
+  '/blog/best-muay-thai-gyms-phuket',
+  '/blog/best-muay-thai-gyms-chiang-mai',
+])
 
 const MAIN_CITY_GUIDES = new Set([
   'Phuket',
@@ -55,12 +63,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${siteUrl}${path}`,
-    lastModified: now,
+    lastModified: path === FLAGSHIP_GUIDE_PATH ? FLAGSHIP_GUIDE_LAST_MODIFIED : now,
+    ...(path === FLAGSHIP_GUIDE_PATH
+      ? { priority: 0.9, changeFrequency: 'weekly' as const }
+      : path === '/'
+        ? { priority: 0.8, changeFrequency: 'weekly' as const }
+        : HIGH_PRIORITY_CITY_GUIDES.has(path)
+          ? { priority: 0.75, changeFrequency: 'weekly' as const }
+          : {}),
   }))
 
   let gymRoutes: MetadataRoute.Sitemap = []
   let muayThaiCityGuideRoutes: MetadataRoute.Sitemap = []
-  let tier4AmenityGuideRoutes: MetadataRoute.Sitemap = []
   try {
     const supabase = createPublicClient()
     const { data: gyms } = await supabase
@@ -100,15 +114,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}/blog/best-muay-thai-gyms/${locationToSlug(city)}`,
       lastModified,
     }))
-
-    const tier4Cells = await getTier4MatrixCells()
-    tier4AmenityGuideRoutes = tier4Cells.map((cell) => ({
-      url: `${siteUrl}/blog/best-muay-thai-gyms/${cell.citySlug}/${cell.amenitySlug}`,
-      lastModified: now,
-    }))
   } catch (err) {
     console.error('sitemap: failed to load gyms', err)
   }
 
-  return [...staticRoutes, ...gymRoutes, ...muayThaiCityGuideRoutes, ...tier4AmenityGuideRoutes]
+  return [...staticRoutes, ...gymRoutes, ...muayThaiCityGuideRoutes]
 }

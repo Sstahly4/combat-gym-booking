@@ -22,13 +22,17 @@ export const metadata: Metadata = {
 
 export default function DestinationsPage() {
   const destinations = [
-    { name: 'Thailand', description: 'The birthplace of Muay Thai, home to world-class training camps' },
+    {
+      name: 'Thailand',
+      description: 'The birthplace of Muay Thai, home to world-class training camps',
+      href: '/blog/best-muay-thai-camps-thailand-2026',
+    },
     { name: 'Philippines', description: 'Top boxing gyms and training facilities' },
     { name: 'Brazil', description: 'Premier BJJ and MMA training destinations' },
     { name: 'United States', description: 'Elite boxing and MMA facilities' },
     { name: 'United Kingdom', description: 'Professional boxing and combat sports training' },
     { name: 'Netherlands', description: 'Kickboxing and MMA excellence' },
-  ]
+  ] as const
 
   return (
     <div className="min-h-screen bg-white">
@@ -42,7 +46,14 @@ export default function DestinationsPage() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {destinations.map((destination) => (
-            <Link key={destination.name} href={`/search?country=${encodeURIComponent(destination.name)}`}>
+            <Link
+              key={destination.name}
+              href={
+                'href' in destination && destination.href
+                  ? destination.href
+                  : `/search?country=${encodeURIComponent(destination.name)}`
+              }
+            >
               <Card className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-full">
                 <CardContent className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">{destination.name}</h3>

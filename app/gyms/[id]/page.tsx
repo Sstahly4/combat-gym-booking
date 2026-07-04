@@ -9,6 +9,7 @@ import { PackagesList } from '@/components/packages-list'
 import { GymGallery } from '@/components/gym-gallery'
 import { GymGalleryMobileWrapper } from '@/components/gym-gallery-mobile-wrapper'
 import { GymMap } from '@/components/gym-map'
+import { GymTrainingGuidesCallout } from '@/components/gym/gym-training-guides-callout'
 import { GymFaqSection } from '@/components/gym/gym-faq-section'
 import { GymBusynessMeter } from '@/components/gym/gym-busyness-meter'
 import { getCachedGymBusyness } from '@/lib/gym/gym-busyness'
@@ -338,6 +339,12 @@ export default async function GymDetailsPage({
             <h2 className="text-lg font-semibold mb-4 text-gray-900">Available Packages</h2>
             <PackagesList packages={gym.packages} gym={gym} />
           </div>
+          <GymTrainingGuidesCallout
+            gymId={gym.id}
+            country={gym.country}
+            city={gym.city}
+            disciplines={gym.disciplines}
+          />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
@@ -349,6 +356,15 @@ export default async function GymDetailsPage({
                 reviewCount={reviewCount}
                 googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''}
               />
+
+              <div className="hidden md:block">
+                <GymTrainingGuidesCallout
+                  gymId={gym.id}
+                  country={gym.country}
+                  city={gym.city}
+                  disciplines={gym.disciplines}
+                />
+              </div>
 
               {averageRating > 0 && (
                 <Card className="hidden md:block border border-gray-200 shadow-sm">

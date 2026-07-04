@@ -27,12 +27,12 @@ import { Mountain, Sun } from 'lucide-react'
 
 const CITY = 'Chiang Mai'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const SEO_TITLE = `Best Muay Thai Gyms in Chiang Mai (2026): Ranked by Reviews`
 const PATH = '/blog/best-muay-thai-gyms-chiang-mai'
 const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
+const DATE_MODIFIED = '2026-07-04'
 const HERO_IMAGE = '/e079bedfbf7e870f827b4fda7ce2132f.avif'
-const DESCRIPTION = `Ranked Muay Thai camps in Chiang Mai, Thailand: prices, photos, reviews, and tips for training in the north.`
+const DESCRIPTION = `Compare the best Muay Thai gyms in Chiang Mai — live prices, guest reviews, and northern Thailand training tips. Updated 2026 rankings.`
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -155,6 +155,7 @@ export default async function BestMuayThaiGymsChiangMaiPage() {
     <ArticleShell
       title={TITLE}
       subtitle="Chiang Mai offers a different training rhythm than Bangkok or the islands, rankings still come from live reviews and listings."
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

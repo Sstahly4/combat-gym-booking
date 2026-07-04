@@ -22,17 +22,22 @@ import {
   GuideSection,
   GuideThreeCards,
 } from '@/components/guides/guide-page-blocks'
+import {
+  buildMuayThaiCityGuideSeo,
+  MUAY_THAI_CITY_GUIDE_DATE_MODIFIED,
+  MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED,
+} from '@/lib/guides/city-guide-seo'
 import { Anchor, Moon, Sun } from 'lucide-react'
 
 const CITY = 'Koh Phangan'
-const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
-const PATH = '/blog/best-muay-thai-gyms-koh-phangan'
-const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1400&q=80'
-const DESCRIPTION =
-  'Ranked Muay Thai camps in Koh Phangan, Thailand: verified listings, prices, photos, reviews, and long-stay planning tips for island training routines.'
+const { TITLE, SEO_TITLE, PATH, DESCRIPTION } = buildMuayThaiCityGuideSeo(CITY, {
+  path: '/blog/best-muay-thai-gyms-koh-phangan',
+  description:
+    'Compare the best Muay Thai gyms in Koh Phangan — live prices, guest reviews, and island training routines. Updated 2026 rankings.',
+})
+const DATE_PUBLISHED = MUAY_THAI_CITY_GUIDE_DATE_PUBLISHED
+const DATE_MODIFIED = MUAY_THAI_CITY_GUIDE_DATE_MODIFIED
+const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -109,6 +114,7 @@ export default async function BestMuayThaiGymsKohPhanganPage() {
     <ArticleShell
       title={TITLE}
       subtitle="Koh Phangan can support long-stay training, if you plan your schedule and protect sleep. Use this guide to shortlist verified camps and compare routines."
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

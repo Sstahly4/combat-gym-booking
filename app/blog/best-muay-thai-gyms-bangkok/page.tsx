@@ -27,12 +27,12 @@ import { Building2, Sun } from 'lucide-react'
 
 const CITY = 'Bangkok'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const SEO_TITLE = `Best Muay Thai Gyms in Bangkok (2026): Ranked by Reviews`
 const PATH = '/blog/best-muay-thai-gyms-bangkok'
 const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
+const DATE_MODIFIED = '2026-07-04'
 const HERO_IMAGE = '/1296749132.jpg'
-const DESCRIPTION = `Ranked Muay Thai camps in Bangkok: live prices, photos, reviews, and schedule snippets. Find the best gyms in Thailand’s capital.`
+const DESCRIPTION = `Compare the best Muay Thai gyms in Bangkok — live prices, guest reviews, and training schedules. Updated 2026 rankings to find your camp.`
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -152,6 +152,7 @@ export default async function BestMuayThaiGymsBangkokPage() {
     <ArticleShell
       title={TITLE}
       subtitle="Bangkok’s density of Muay Thai gyms means you can optimize for schedule, neighborhood, and budget, if you read past the headline rank."
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

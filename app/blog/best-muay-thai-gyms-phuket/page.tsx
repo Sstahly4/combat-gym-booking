@@ -27,12 +27,12 @@ import { Anchor, Sun } from 'lucide-react'
 
 const CITY = 'Phuket'
 const TITLE = `Best Muay Thai Gyms in ${CITY} (2026)`
-const SEO_TITLE = `Best Muay Thai Gyms in ${CITY} 2026 [Prices + Reviews]`
+const SEO_TITLE = `Best Muay Thai Gyms in Phuket (2026): Ranked by Reviews`
 const PATH = '/blog/best-muay-thai-gyms-phuket'
 const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-20'
+const DATE_MODIFIED = '2026-07-04'
 const HERO_IMAGE = '/IMG_3557_246c0a62-a253-4f95-abfd-9cb306228c6c.jpg'
-const DESCRIPTION = `Ranked Muay Thai camps in Phuket, Thailand: live prices, photos, schedule snippets, and reviews. Compare the best gyms before you book.`
+const DESCRIPTION = `Compare the best Muay Thai gyms in Phuket — live prices, guest reviews, and training schedules. Updated 2026 island rankings before you book.`
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -154,6 +154,7 @@ export default async function BestMuayThaiGymsPhuketPage() {
     <ArticleShell
       title={TITLE}
       subtitle={`Ranked Muay Thai training camps in ${CITY}, live listings, not recycled “top 3” blog spam.`}
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },

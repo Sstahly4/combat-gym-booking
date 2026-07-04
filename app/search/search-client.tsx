@@ -22,6 +22,8 @@ import {
   partitionLocationSearchGyms,
   type NearbySearchGym,
 } from '@/lib/search/search-location-results'
+import { ThailandMuayThaiGuideCallout } from '@/components/search/thailand-muay-thai-guide-callout'
+import { getThailandMuayThaiGuideCalloutLinks } from '@/lib/search/thailand-muay-thai-guide-callout'
 import { ResponsiveGymImage } from '@/components/responsive-gym-image'
 import { SearchResultGymImageCarousel } from '@/components/search-result-gym-image-carousel'
 import { DATES_CONFIRMED_QUERY, gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
@@ -651,6 +653,11 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
     filters.accommodation ? 'acc' : '',
   ].filter(Boolean).length
 
+  const thailandGuideLinks = useMemo(
+    () => getThailandMuayThaiGuideCalloutLinks(filters),
+    [filters.location, filters.country, filters.countries, filters.discipline, filters.disciplines],
+  )
+
   const getFallbackRating = (gymId: string) => {
     const str = String(gymId || 'gym')
     let hash = 0; for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0
@@ -1140,6 +1147,7 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
 
             {/* ── Results — ~672px max on large phones (Airbnb-style); 24px page gutters via px-6 ── */}
             <main className="flex-1 min-w-0 w-full max-w-2xl mx-auto md:max-w-none md:mx-0">
+              {thailandGuideLinks ? <ThailandMuayThaiGuideCallout links={thailandGuideLinks} /> : null}
               {/* Results header (aligned with results column); title hidden on mobile for cleaner OTA toolbar */}
               <div className="mb-3 md:mb-4">
                 <h2 className="mb-3 hidden text-xl font-bold text-gray-900 md:block">

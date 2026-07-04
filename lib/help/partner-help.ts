@@ -50,6 +50,13 @@ export const PARTNER_HELP_FAQS: PartnerHelpFaq[] = [
       'Open Listings to edit details and photos. Use View listing at the bottom of the listing sidebar to preview how travelers see your gym before it is public.',
   },
   {
+    id: 'partner-listing-bio-links',
+    category: 'listings',
+    question: 'Should I link CombatStay from my gym’s Instagram or website?',
+    answer:
+      'Yes — it helps travelers find and book you. Link your gym profile for direct bookings, and if you train Muay Thai in Thailand, also link our national guide at combatstay.com/blog/best-muay-thai-camps-thailand-2026 from your link-in-bio when you want to send people comparing camps. Homepage links (combatstay.com) work well for general “book training in Thailand” CTAs.',
+  },
+  {
     id: 'partner-listing-fees',
     category: 'listings',
     question: 'Will I need to pay any fees during sign-up?',

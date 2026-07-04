@@ -26,13 +26,13 @@ import { Check, MapPin, Shield, Sparkles } from 'lucide-react'
 
 const PATH = '/blog/best-muay-thai-camps-thailand-2026'
 const DATE_PUBLISHED = '2025-10-15'
-const DATE_MODIFIED = '2026-04-21'
+const DATE_MODIFIED = '2026-07-04'
 const HERO_IMAGE = '/Khun_3_c4e13bdce8_c0b7f8b5b5.avif'
 
 const TITLE = '25 Best Muay Thai Camps in Thailand (2026)'
-const SEO_TITLE = '25 Best Muay Thai Camps in Thailand 2026 [Prices + Reviews]'
+const SEO_TITLE = 'Best Muay Thai Camps in Thailand (2026): Ranked by Reviews'
 const DESCRIPTION =
-  'Compare real prices and book Muay Thai training camps in Thailand: Bangkok, Phuket, Chiang Mai and beyond.'
+  'Compare the best Muay Thai training camps in Thailand — live prices, guest reviews, and bookable listings in Bangkok, Phuket, Chiang Mai, and beyond. Updated July 2026.'
 
 export const metadata: Metadata = {
   title: `${SEO_TITLE} | CombatStay`,
@@ -204,6 +204,7 @@ export default async function BestMuayThaiCampsThailand2026Page() {
     <ArticleShell
       title={TITLE}
       subtitle="Live rankings, real prices, and regional advice for people searching best Muay Thai camps Thailand and tired of recycled top-seven lists."
+      lastUpdated={DATE_MODIFIED}
       breadcrumbs={[
         { label: 'Training Guides', href: '/blog' },
         { label: 'Thailand', href: '/search?country=Thailand' },
