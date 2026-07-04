@@ -219,18 +219,20 @@ export function Navbar() {
     }
   }, [isOwner, user?.id])
 
-  // Checkout steps: hide navbar on mobile; desktop shows via data-checkout-step + globals.css.
   const isCheckoutStep =
     pathname === '/bookings/summary' ||
     pathname.startsWith('/bookings/review') ||
     /^\/bookings\/[^/]+\/payment/.test(pathname ?? '')
 
+  const isMarketplaceBrowse =
+    Boolean(pathname?.startsWith('/gyms/')) || pathname === '/search'
+
   if (partnerHubUsesUnifiedHeader(pathname ?? '')) {
     return null
   }
 
-  // Gym review modal — hide global chrome (not dedicated checkout routes).
-  if (reviewChromeHidden && !isCheckoutStep) {
+  // Hide chrome during review checkout on non-gym routes (gym listings keep search + nav).
+  if (reviewChromeHidden && !isCheckoutStep && !pathname?.startsWith('/gyms/')) {
     return null
   }
 
@@ -247,7 +249,9 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4">
         <div
           className={`flex min-w-0 items-center justify-between gap-2 md:gap-3 ${
-            isManageOwnerShell || isAdminShell ? 'min-h-[5rem] py-2' : 'h-16'
+            isManageOwnerShell || isAdminShell || isMarketplaceBrowse
+              ? 'min-h-[5rem] py-2'
+              : 'h-16'
           }`}
         >
             {isManageOwnerShell || isAdminShell ? (

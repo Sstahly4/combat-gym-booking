@@ -78,7 +78,13 @@ export function purgeStaleCheckoutSessionForGym(gymId: string, slugOrId?: string
   if (!matches) clearCheckoutExitToGym()
 }
 
-/** Hide global navbar/footer while the review checkout modal is active. */
+/** Gym listing routes keep global chrome visible so travelers can search and navigate. */
+export function isGymListingPath(path?: string): boolean {
+  const p = path ?? (typeof window !== 'undefined' ? window.location.pathname : '')
+  return p.startsWith('/gyms/')
+}
+
+/** Hide global navbar/footer while the review checkout modal is active (not on gym listings). */
 export function setReviewCheckoutChromeHidden(): void {
   try {
     sessionStorage.setItem(HIDE_SITE_CHROME_KEY, 'review')
@@ -94,11 +100,9 @@ export function clearReviewCheckoutChromeHidden(): void {
 export function isReviewCheckoutChromeHidden(): boolean {
   if (typeof window === 'undefined') return false
   try {
+    if (isGymListingPath()) return false
     if (sessionStorage.getItem(HIDE_SITE_CHROME_KEY) === 'review') return true
-    const path = window.location.pathname
-    if (!path.startsWith('/gyms/')) return false
-    const sp = new URLSearchParams(window.location.search)
-    return sp.get('review') === '1' && !!sp.get('pkg')
+    return false
   } catch {
     return false
   }
@@ -120,6 +124,10 @@ export function syncCheckoutStepHtmlFlag(active: boolean): void {
 /** Sync the html flag used by globals.css to hide navbar/footer before hydration. */
 export function syncReviewCheckoutChromeHtmlFlag(hidden: boolean): void {
   if (typeof document === 'undefined') return
+  if (hidden && isGymListingPath()) {
+    document.documentElement.removeAttribute(REVIEW_CHECKOUT_HTML_ATTR)
+    return
+  }
   if (hidden) {
     document.documentElement.setAttribute(REVIEW_CHECKOUT_HTML_ATTR, '1')
   } else {
@@ -131,7 +139,7 @@ export function syncReviewCheckoutChromeHtmlFlag(hidden: boolean): void {
  * Inline boot script — runs before React hydrates so a hard reload of
  * Review and continue never flashes the site footer or mobile nav.
  */
-export const REVIEW_CHECKOUT_CHROME_BOOT_SCRIPT = `(function(){try{var d=document.documentElement;var p=new URLSearchParams(location.search);if(sessionStorage.getItem('${HIDE_SITE_CHROME_KEY}')==='review'||(location.pathname.indexOf('/gyms/')===0&&p.get('review')==='1'&&p.get('pkg'))){d.setAttribute('${REVIEW_CHECKOUT_HTML_ATTR}','1')}}catch(e){}})();`
+export const REVIEW_CHECKOUT_CHROME_BOOT_SCRIPT = `(function(){try{var d=document.documentElement;if(location.pathname.indexOf('/gyms/')===0)return;if(sessionStorage.getItem('${HIDE_SITE_CHROME_KEY}')==='review'){d.setAttribute('${REVIEW_CHECKOUT_HTML_ATTR}','1')}}catch(e){}})();`
 
 export function writeReviewModalRestore(params: ReviewModalRestoreParams): void {
   try {

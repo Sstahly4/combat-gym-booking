@@ -6,6 +6,7 @@ import {
   countEnabledAmenities,
   labelGymAmenity,
 } from '@/lib/constants/gym-amenities'
+import { GymAmenityIcon } from '@/components/gym-amenity-icon'
 import { cn } from '@/lib/utils'
 
 export function GymAmenitiesPreview({
@@ -57,7 +58,7 @@ export function GymAmenitiesPreview({
                         key={key}
                         className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2 text-sm text-gray-800"
                       >
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#003580]" aria-hidden />
+                        <GymAmenityIcon amenityKey={key} size="sm" />
                         {labelGymAmenity(key)}
                       </li>
                     ))}

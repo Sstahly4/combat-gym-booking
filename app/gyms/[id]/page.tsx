@@ -16,6 +16,7 @@ import { hasDisplayableBusyness } from '@/lib/gym/busyness-types'
 import { GymCheckoutExitCleanup } from '@/components/gym/gym-checkout-exit-cleanup'
 import { GymPageCurrencyHint } from '@/lib/contexts/currency-context'
 import { GymPageClientShell } from '@/components/gym/gym-page-client-shell'
+import { GymPageSearchHeader } from '@/components/gym/gym-page-search-header'
 import { GymReviewsCarouselSection } from '@/components/gym/gym-reviews-section'
 import { GymReviewsCarouselSkeleton } from '@/components/gym/gym-reviews-skeleton'
 import { ReserveButton } from '@/components/reserve-button'
@@ -242,7 +243,11 @@ export default async function GymDetailsPage({
   const coverPreloadSrcSet = coverImage ? gymImageSrcSet(coverImage) : undefined
 
   return (
-    <GymPageClientShell gymId={gym.id} gymSlugOrId={gymSlugOrId}>
+    <GymPageClientShell
+      gymId={gym.id}
+      gymSlugOrId={gymSlugOrId}
+      persistentHeader={<GymPageSearchHeader city={gym.city} country={gym.country} />}
+    >
       {coverPreloadHref ? (
         <link
           rel="preload"

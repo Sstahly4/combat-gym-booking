@@ -9,8 +9,7 @@ import type { Gym, GymImage } from '@/lib/types/database'
 import { Filter, X, Star, Search, ChevronDown, MapPin, Check, ChevronsUpDown, ChevronRight } from 'lucide-react'
 import { BookingProvider } from '@/lib/contexts/booking-context'
 import { useCurrency } from '@/lib/contexts/currency-context'
-import { CategoryTabs } from '@/components/category-tabs'
-import { SearchBarRedesign } from '@/components/search-bar-redesign'
+import { SiteSearchHeaderStrip } from '@/components/site-search-header-strip'
 import { SaveButton } from '@/components/save-button'
 import { parseSearchQuery, SEARCH_DISCIPLINES } from '@/lib/search/search-browse-title'
 import {
@@ -1080,29 +1079,14 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
     <BookingProvider key={category} initialCheckin={initialDates.checkin} initialCheckout={initialDates.checkout}>
       <div className="min-h-screen bg-white">
 
-        {/* ── Search strip — white on mobile; blue + overlapping pill on desktop ── */}
-        <div className="relative z-30 bg-white pt-4 pb-3 md:bg-[#003580] md:pt-5 md:pb-0">
-          <div className="max-w-6xl mx-auto px-6 md:px-4">
-            <div className="hidden md:block">
-              <CategoryTabs value={category} onChange={setCategory} />
-            </div>
-            <div className="md:translate-y-1/2">
-              <SearchBarRedesign
-                showTabs={false}
-                yellowBorder={true}
-                activeCategory={category}
-                initialQuery={filters.location}
-                onCategoryChange={setCategory}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* White spacer — absorbs the bottom half of the pill on desktop; breadcrumb desktop-only */}
-        <div className="bg-white pb-3 md:pt-10 md:pb-4">
-          <div className="max-w-6xl mx-auto px-6 md:px-4">
-            {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
-            <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
+        <SiteSearchHeaderStrip
+          initialQuery={filters.location}
+          category={category}
+          onCategoryChange={setCategory}
+        />
+        <div className="max-w-6xl mx-auto px-6 md:px-4">
+          {/* Breadcrumb — desktop only; mobile shows location + dates in the search pill */}
+          <nav className="hidden md:flex items-center flex-wrap gap-y-1 text-sm pl-6" aria-label="Breadcrumb">
               <Link href="/" className="text-[#006ce4] hover:underline">Home</Link>
               {filters.location && (
                 <>
@@ -1142,8 +1126,7 @@ function SearchPageContent({ initialPayload }: { initialPayload?: SearchServerPa
               )}
               <ChevronRight className="w-3.5 h-3.5 text-gray-400 mx-1 flex-shrink-0" />
               <span className="text-gray-500">Search results</span>
-            </nav>
-          </div>
+          </nav>
         </div>
 
         {/* ── Body ──────────────────────────────────────────────────────── */}

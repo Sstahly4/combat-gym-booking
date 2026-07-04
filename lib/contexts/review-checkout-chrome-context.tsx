@@ -12,6 +12,7 @@ import {
 import { usePathname } from 'next/navigation'
 import {
   clearReviewCheckoutChromeHidden,
+  isGymListingPath,
   isReviewCheckoutChromeHidden,
   setReviewCheckoutChromeHidden,
   shouldForceShowChromeOnGymListing,
@@ -38,10 +39,11 @@ export function ReviewCheckoutChromeProvider({ children }: { children: ReactNode
   })
 
   const hideReviewChrome = useCallback(() => {
+    if (isGymListingPath(pathname ?? '')) return
     setReviewCheckoutChromeHidden()
     setIsHidden(true)
     syncReviewCheckoutChromeHtmlFlag(true)
-  }, [])
+  }, [pathname])
 
   const showReviewChrome = useCallback(() => {
     clearReviewCheckoutChromeHidden()
@@ -51,6 +53,11 @@ export function ReviewCheckoutChromeProvider({ children }: { children: ReactNode
 
   // Keep in sync on route changes (back-nav, shared links).
   useEffect(() => {
+    if (isGymListingPath(pathname ?? '')) {
+      setIsHidden(false)
+      syncReviewCheckoutChromeHtmlFlag(false)
+      return
+    }
     if (shouldForceShowChromeOnGymListing()) {
       clearReviewCheckoutChromeHidden()
       setIsHidden(false)
@@ -63,8 +70,12 @@ export function ReviewCheckoutChromeProvider({ children }: { children: ReactNode
   }, [pathname])
 
   useLayoutEffect(() => {
+    if (isGymListingPath(pathname ?? '')) {
+      syncReviewCheckoutChromeHtmlFlag(false)
+      return
+    }
     syncReviewCheckoutChromeHtmlFlag(isHidden)
-  }, [isHidden])
+  }, [isHidden, pathname])
 
   return (
     <ReviewCheckoutChromeContext.Provider value={{ isHidden, hideReviewChrome, showReviewChrome }}>

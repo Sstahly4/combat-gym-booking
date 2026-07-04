@@ -33,15 +33,21 @@ export function GymPageClientShell({
   children,
   gymId,
   gymSlugOrId,
+  persistentHeader,
 }: {
   children: ReactNode
   gymId: string
   gymSlugOrId: string
+  persistentHeader?: ReactNode
 }) {
   return (
     <BookingProvider>
       <BookingUrlDateSyncBoundary />
-      <ReviewModalProvider gymSlugOrId={gymSlugOrId} gymId={gymId}>
+      <ReviewModalProvider
+        gymSlugOrId={gymSlugOrId}
+        gymId={gymId}
+        persistentHeader={persistentHeader}
+      >
         {children}
       </ReviewModalProvider>
     </BookingProvider>

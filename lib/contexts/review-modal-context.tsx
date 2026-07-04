@@ -112,6 +112,7 @@ export function ReviewModalProvider({
   gymSlugOrId,
   gymId,
   hasReviewIntent = false,
+  persistentHeader,
 }: {
   children: ReactNode
   gymSlugOrId: string
@@ -123,6 +124,8 @@ export function ReviewModalProvider({
    * gym page content is never visible while the modal is loading.
    */
   hasReviewIntent?: boolean
+  /** Stays visible while the review modal is open (e.g. site search header). */
+  persistentHeader?: ReactNode
 }) {
   const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
   const pathname = usePathname()
@@ -235,6 +238,7 @@ export function ReviewModalProvider({
 
   return (
     <ReviewModalContext.Provider value={{ openReviewModal }}>
+      {persistentHeader}
       <div
         className={
           hideGymListing
