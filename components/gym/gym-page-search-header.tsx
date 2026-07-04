@@ -10,5 +10,9 @@ export function GymPageSearchHeader({
   country: string
 }) {
   const initialQuery = [city, country].filter(Boolean).join(', ')
-  return <SiteSearchHeaderStrip initialQuery={initialQuery} />
+  return (
+    <div className="hidden md:block">
+      <SiteSearchHeaderStrip initialQuery={initialQuery} />
+    </div>
+  )
 }
