@@ -16,10 +16,10 @@ export function ShowOnMapLink() {
 
   return (
     <span
-      className="md:hidden text-[#003580] text-sm underline cursor-pointer"
+      className="md:hidden text-[#003580] text-sm cursor-pointer"
       onClick={handleClick}
     >
-      — Show on map
+      Show on map
     </span>
   )
 }
