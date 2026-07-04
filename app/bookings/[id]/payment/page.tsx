@@ -70,6 +70,7 @@ import { useCheckoutDesktopHeader } from '@/lib/hooks/use-checkout-desktop-heade
 import {
   clearGuestCheckoutSession,
   readGuestDetails,
+  syncCheckoutDetailsFromBooking,
   writeGuestDetails,
 } from '@/lib/utils/checkout-details-prefill'
 import { splitGuestName } from '@/lib/booking/guest-name'
@@ -1045,7 +1046,7 @@ export default function PaymentPage() {
                 ? prevImages
                 : prefillGym?.images
 
-          return {
+          const merged = {
             ...bookingApiData,
             gym: {
               ...bookingApiData.gym,
@@ -1061,6 +1062,14 @@ export default function PaymentPage() {
             },
             package: bookingApiData.package ?? prev?.package,
           } as BookingWithExtras
+
+          if (bookingApiData.gym_id) {
+            syncCheckoutDetailsFromBooking(bookingApiData.gym_id, bookingApiData, {
+              guestCount: prefillData?.guestCount,
+            })
+          }
+
+          return merged
         })
 
         if (
@@ -1277,8 +1286,17 @@ export default function PaymentPage() {
     payWhen === 'klarna' && !klarnaAvailable ? 'now' : payWhen
 
   const step2Url = booking
-    ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}&guests=${guestCount}`
+    ? `/bookings/summary?gymId=${booking.gym_id}&packageId=${booking.package_id}${booking.package_variant_id ? `&variantId=${booking.package_variant_id}` : ''}&checkin=${booking.start_date}&checkout=${booking.end_date}&guests=${guestCount}${resolvedTrainingTier !== 'twice_daily' ? `&trainingTier=${resolvedTrainingTier}` : ''}`
     : '#'
+
+  const handleBackToDetails = () => {
+    if (!booking?.gym_id) {
+      router.replace(step2Url)
+      return
+    }
+    syncCheckoutDetailsFromBooking(booking.gym_id, booking, { guestCount })
+    router.replace(step2Url)
+  }
   const cachedGuestDetails = booking?.gym_id ? readGuestDetails(booking.gym_id) : null
   const guestDisplayName =
     booking?.guest_name?.trim() ||
@@ -1344,7 +1362,7 @@ export default function PaymentPage() {
 
       <div className="md:hidden flex-shrink-0">
         <PaymentCheckoutTopBar
-          onBack={() => router.replace(step2Url)}
+          onBack={handleBackToDetails}
           onExit={handleExitToGym}
         />
       </div>
@@ -1809,7 +1827,7 @@ export default function PaymentPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <CheckoutChromeIconButton
-                onClick={() => router.replace(step2Url)}
+                onClick={handleBackToDetails}
                 aria-label="Back to your details"
               >
                 <ArrowLeft className="w-4 h-4" strokeWidth={2} />

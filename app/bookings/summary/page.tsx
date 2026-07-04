@@ -66,6 +66,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { useCheckoutDesktopHeader } from '@/lib/hooks/use-checkout-desktop-header'
 import {
   detailsFromProfile,
+  persistCheckoutFormState,
   readGuestDetails,
   readGuestFlowSession,
   writeGuestDetails,
@@ -311,24 +312,9 @@ function BookingSummaryPageContent() {
     }
   }, [])
 
-  /** Signed-in: profile only. Guest: sessionStorage as they type. */
+  /** SessionStorage first (back-nav from payment), then profile for signed-in gaps. */
   const hydrateCheckoutDetails = useCallback(
     (gymId: string, isSignedIn: boolean) => {
-      if (isSignedIn) {
-        if (profile) {
-          const d = detailsFromProfile(profile, user?.email)
-          setFirstName(d.firstName)
-          setLastName(d.lastName)
-          setEmail(d.email)
-          setPhone(d.phone)
-          setCountry(d.country)
-        } else if (user?.email) {
-          setEmail(user.email)
-        }
-        detailsHydratedRef.current = true
-        return
-      }
-
       const flow = readGuestFlowSession(gymId)
       if (flow) {
         if (flow.checkin) setCheckin(flow.checkin)
@@ -338,15 +324,17 @@ function BookingSummaryPageContent() {
       }
 
       const saved = readGuestDetails(gymId)
-      if (saved) {
-        if (saved.firstName) setFirstName(saved.firstName)
-        if (saved.lastName) setLastName(saved.lastName)
-        if (saved.email) setEmail(saved.email)
-        if (saved.phone) setPhone(saved.phone)
-        if (saved.country) setCountry(saved.country)
-        if (saved.notes !== undefined) setNotes(saved.notes)
-        if (saved.discipline) setDiscipline(saved.discipline)
-      }
+      const profileDefaults =
+        isSignedIn && profile ? detailsFromProfile(profile, user?.email) : null
+
+      setFirstName(saved?.firstName || profileDefaults?.firstName || '')
+      setLastName(saved?.lastName || profileDefaults?.lastName || '')
+      setEmail(saved?.email || profileDefaults?.email || user?.email || '')
+      setPhone(saved?.phone || profileDefaults?.phone || '')
+      setCountry(saved?.country || profileDefaults?.country || 'Australia')
+      if (saved?.notes) setNotes(saved.notes)
+      if (saved?.discipline) setDiscipline(saved.discipline)
+
       detailsHydratedRef.current = true
     },
     [profile, user?.email]
@@ -359,9 +347,9 @@ function BookingSummaryPageContent() {
     hydrateCheckoutDetails(gymId, !!user)
   }, [authLoading, user, profile, hydrateCheckoutDetails, searchParams])
 
-  // Guest only — persist Your details + flow fields for back-nav from payment.
+  // Persist Your details + flow fields for back-nav from payment (all users).
   useEffect(() => {
-    if (!sessionLoadedRef.current || !detailsHydratedRef.current || user) return
+    if (!sessionLoadedRef.current || !detailsHydratedRef.current) return
     const gymId = searchParams.get('gymId')
     if (!gymId) return
     writeGuestDetails(gymId, {
@@ -373,14 +361,14 @@ function BookingSummaryPageContent() {
       notes,
       discipline,
     })
-  }, [user, firstName, lastName, email, phone, country, notes, discipline, searchParams])
+  }, [firstName, lastName, email, phone, country, notes, discipline, searchParams])
 
   useEffect(() => {
-    if (!sessionLoadedRef.current || !detailsHydratedRef.current || user) return
+    if (!sessionLoadedRef.current || !detailsHydratedRef.current) return
     const gymId = searchParams.get('gymId')
     if (!gymId) return
     writeGuestFlowSession(gymId, { checkin, checkout, guestCount, bookingFor })
-  }, [user, checkin, checkout, guestCount, bookingFor, searchParams])
+  }, [checkin, checkout, guestCount, bookingFor, searchParams])
 
   useEffect(() => {
     if (isBookingDatesExpiredError(error) && checkin && !isBookingStartDateInPast(checkin)) {
@@ -456,8 +444,9 @@ function BookingSummaryPageContent() {
     // navigating here. If the data matches this gymId + packageId we can render
     // immediately and validate in the background.
     const prefill = readBookingPrefill(gymId, packageId)
+    const savedDiscipline = readGuestDetails(gymId)?.discipline
     if (prefill) {
-      applyGymPackageData(prefill.gym, prefill.package_, variantId, null)
+      applyGymPackageData(prefill.gym, prefill.package_, variantId, savedDiscipline)
       if (prefill.trainingTier) setTrainingTier(parseTrainingTier(prefill.trainingTier))
       setAverageRating(prefill.reviewAverage)
       setReviewCount(prefill.reviewCount)
@@ -495,7 +484,7 @@ function BookingSummaryPageContent() {
       return
     }
 
-    applyGymPackageData(gymData, packageData, variantId, null)
+    applyGymPackageData(gymData, packageData, variantId, readGuestDetails(gymId)?.discipline)
 
     // Reviews fetched on cold path only (prefill path has them from the modal)
     const [{ data: bookingReviews }, { data: manualReviews }] = await Promise.all([
@@ -639,6 +628,12 @@ function BookingSummaryPageContent() {
 
     setError(null)
     setSubmitting(true)
+
+    persistCheckoutFormState(
+      gym.id,
+      { firstName, lastName, email, phone, country, notes, discipline },
+      { checkin, checkout, guestCount, bookingFor }
+    )
 
     try {
       // Create booking request (guest checkout - no auth required)
@@ -1164,9 +1159,14 @@ function BookingSummaryPageContent() {
 
           {/* Center Column - User Details Form */}
           <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <CheckoutChromeIconButton onClick={navigateBackToReview} aria-label="Back to review">
+                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+              </CheckoutChromeIconButton>
+              <CheckoutStepTitle className="mb-0">Enter your details</CheckoutStepTitle>
+            </div>
+
             <div>
-              <CheckoutStepTitle className="mb-3">Enter your details</CheckoutStepTitle>
-              
               {/* Sign-in/Register Prompt */}
               <div className="mb-3 p-3 bg-gray-50 rounded-md border border-gray-300">
                 <p className="text-sm text-gray-700">

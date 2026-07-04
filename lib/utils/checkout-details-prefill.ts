@@ -1,4 +1,5 @@
 import type { Profile } from '@/lib/types/database'
+import { splitGuestName } from '@/lib/booking/guest-name'
 import { clearAllCheckoutReviewNudges } from '@/lib/utils/checkout-review-nudge'
 
 const GUEST_DETAILS_PREFIX = 'guest_details_'
@@ -58,6 +59,56 @@ export function detailsFromProfile(
     phone: profile.account_holder_phone?.trim() || '',
     country: profile.country_of_residence?.trim() || 'Australia',
   }
+}
+
+/** Persist Your details form + flow fields for back-nav from payment (all users). */
+export function persistCheckoutFormState(
+  gymId: string,
+  details: GuestDetailsFields,
+  flow: GuestFlowFields
+): void {
+  writeGuestDetails(gymId, details)
+  writeGuestFlowSession(gymId, flow)
+}
+
+export interface BookingCheckoutSnapshot {
+  guest_name?: string | null
+  guest_email?: string | null
+  guest_phone?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  notes?: string | null
+  discipline?: string | null
+}
+
+/** Write booking guest fields into sessionStorage so step 2 restores after back-nav. */
+export function syncCheckoutDetailsFromBooking(
+  gymId: string,
+  booking: BookingCheckoutSnapshot,
+  opts?: { guestCount?: number; bookingFor?: 'self' | 'other' }
+): void {
+  const cached = readGuestDetails(gymId)
+  const flow = readGuestFlowSession(gymId)
+  const fromName = booking.guest_name ? splitGuestName(booking.guest_name) : null
+
+  persistCheckoutFormState(
+    gymId,
+    {
+      firstName: fromName?.firstName || cached?.firstName || '',
+      lastName: fromName?.lastName || cached?.lastName || '',
+      email: booking.guest_email?.trim() || cached?.email || '',
+      phone: booking.guest_phone?.trim() || cached?.phone || '',
+      country: cached?.country ?? 'Australia',
+      notes: booking.notes?.trim() || cached?.notes || '',
+      discipline: booking.discipline?.trim() || cached?.discipline || '',
+    },
+    {
+      checkin: booking.start_date || flow?.checkin || '',
+      checkout: booking.end_date || flow?.checkout || '',
+      guestCount: opts?.guestCount ?? flow?.guestCount ?? 1,
+      bookingFor: opts?.bookingFor ?? flow?.bookingFor ?? 'self',
+    }
+  )
 }
 
 export function writeGuestDetails(gymId: string, fields: GuestDetailsFields): void {
