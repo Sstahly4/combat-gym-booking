@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
 import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { FaqCategoryPanel } from '@/components/help/faq-category-panel'
 import { FaqCategoryJsonLd } from '@/app/help/[category]/faq-category-json-ld'
@@ -102,15 +101,14 @@ export default async function HelpCategoryPage({ params }: PageProps) {
             </p>
           </div>
 
-          <SupportAudienceSwitcher active="traveler" />
+          <FaqCategoryPanel initialCategory={category as FaqCategorySlug} />
+
           <SupportHubLinks
             currentPath={helpCategoryPath(category)}
             audience="traveler"
             variant="compact"
-            className="mb-8"
+            className="mt-10"
           />
-
-          <FaqCategoryPanel initialCategory={category as FaqCategorySlug} />
         </div>
       </div>
     </>

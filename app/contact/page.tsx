@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
+import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -146,8 +146,6 @@ export default function ContactPage() {
                   : 'Bookings, payments, and account questions — send a message below. We aim to reply within one business day; include your booking reference when you have one so we can help faster.'}
           </p>
         </div>
-
-        <SupportAudienceSwitcher active={isPartnerSupport ? 'partner' : 'traveler'} />
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Main Form */}
@@ -378,6 +376,13 @@ export default function ContactPage() {
             </Card>
           </div>
         </div>
+
+        <SupportHubLinks
+          currentPath="/contact"
+          audience={isPartnerSupport ? 'partner' : 'traveler'}
+          variant="compact"
+          className="mt-10"
+        />
       </div>
     </div>
   )

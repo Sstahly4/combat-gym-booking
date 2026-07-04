@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { BRAND_NAME } from '@/lib/brand'
 
 const description =
@@ -27,12 +26,5 @@ export const metadata: Metadata = {
 }
 
 export default function ContactLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 pt-10">
-        <SupportHubLinks currentPath="/contact" audience="traveler" variant="compact" className="mb-6" />
-      </div>
-      {children}
-    </div>
-  )
+  return children
 }
