@@ -339,12 +339,6 @@ export default async function GymDetailsPage({
             <h2 className="text-lg font-semibold mb-4 text-gray-900">Available Packages</h2>
             <PackagesList packages={gym.packages} gym={gym} />
           </div>
-          <GymTrainingGuidesCallout
-            gymId={gym.id}
-            country={gym.country}
-            city={gym.city}
-            disciplines={gym.disciplines}
-          />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
@@ -356,15 +350,6 @@ export default async function GymDetailsPage({
                 reviewCount={reviewCount}
                 googleMapsKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''}
               />
-
-              <div className="hidden md:block">
-                <GymTrainingGuidesCallout
-                  gymId={gym.id}
-                  country={gym.country}
-                  city={gym.city}
-                  disciplines={gym.disciplines}
-                />
-              </div>
 
               {averageRating > 0 && (
                 <Card className="hidden md:block border border-gray-200 shadow-sm">
@@ -502,6 +487,15 @@ export default async function GymDetailsPage({
                 <GymReviewsCarouselSection gymId={gym.id} />
               </Suspense>
             )}
+          </div>
+
+          <div className="mt-6 md:mt-10">
+            <GymTrainingGuidesCallout
+              gymId={gym.id}
+              country={gym.country}
+              city={gym.city}
+              disciplines={gym.disciplines}
+            />
           </div>
 
           <GymFaqSection items={faqItems} />
