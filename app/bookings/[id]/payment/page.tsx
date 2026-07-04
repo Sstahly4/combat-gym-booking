@@ -48,9 +48,7 @@ import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { PaymentHoldExplainer } from '@/components/payment-hold-explainer'
 import { CheckoutPaymentConsent } from '@/components/booking/checkout-payment-consent'
 import { BookingTrustLine } from '@/components/booking-trust-line'
-import { BookingWhatsIncluded } from '@/components/booking/booking-whats-included'
 import { BookingSafetyPolicies } from '@/components/booking/booking-safety-policies'
-import { GoodToKnowCard } from '@/components/good-to-know-card'
 import { CheckoutGymSidebarDetails } from '@/components/booking/checkout-gym-sidebar-details'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import {
@@ -88,6 +86,7 @@ import {
   formatCheckoutDateRange,
 } from '@/components/booking/checkout-ui'
 import {
+  PriceBreakdownReceipt,
   PriceBreakdownSheet,
   PriceDetailsSheet,
   buildPriceBreakdownSummaryLabel,
@@ -1331,6 +1330,9 @@ export default function PaymentPage() {
 
   const reviewCount = booking.gym.reviewCount ?? 0
   const averageRating = booking.gym.averageRating ?? 0
+  const savedVsNightly = priceInfo?.savedVsNightly ?? 0
+  const showPriceReceipt =
+    !datesExpired && rawTotal > 0 && !!booking.start_date && !!booking.end_date
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
@@ -1352,6 +1354,22 @@ export default function PaymentPage() {
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6 pb-32">
           <CheckoutStepTitle>Confirm and pay</CheckoutStepTitle>
+
+          {showPriceReceipt && (
+            <PriceBreakdownReceipt
+              gymName={booking.gym.name}
+              checkin={booking.start_date}
+              checkout={booking.end_date}
+              pricingDuration={displayDuration}
+              isTraining={!!isTraining}
+              total={rawTotal}
+              savedVsNightly={savedVsNightly}
+              has_seasonal_overlap={hasSeasonalOverlap}
+              gymCurrency={gymCurrency}
+              displayCurrency={selectedCurrency}
+              convertPrice={convertPrice}
+            />
+          )}
 
           <div className="space-y-4">
             <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -1762,116 +1780,43 @@ export default function PaymentPage() {
               <CheckoutDatesUnavailableAlert onGoToListing={handleExitToGym} />
             ) : null}
 
-            {/* Price Summary */}
-            {!datesExpired ? (
-            <>
-            <Card className="border border-gray-300 rounded-lg shadow-sm">
-              <CardHeader className="bg-gray-50 border-b border-gray-300 pb-3">
-                <CardTitle className="text-lg font-semibold">Your price summary</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-3">
-                <div className="space-y-3 text-sm">
-                  {/* Training Package */}
-                  {booking.package?.type === 'training' && (
-                  <div className="flex justify-between">
-                      <span className="text-gray-700">
-                        Training package ({displayDuration} {displayDuration === 1 ? 'day' : 'days'})
-                    </span>
-                      <span className="font-medium text-gray-900">
-                      {formatPrice(convertPrice(rawTotal, booking.gym.currency))}
-                    </span>
-                  </div>
-                  )}
-                  
-                  {/* Accommodation Packages */}
-                  {(booking.package?.type === 'accommodation' || booking.package?.type === 'all_inclusive') && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">
-                          Training package ({duration + 1} {duration + 1 === 1 ? 'day' : 'days'})
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(Math.round(rawTotal * 0.6), booking.gym.currency))}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">
-                          Accommodation ({duration} {duration === 1 ? 'night' : 'nights'})
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          {formatPrice(convertPrice(Math.round(rawTotal * 0.4), booking.gym.currency))}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  
-                  {/* Meals */}
-                  {(booking.package?.includes_meals || booking.package?.type === 'all_inclusive') && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        Meals
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Booking Guarantee */}
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      Booking Guarantee
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-lg text-gray-900">Total</span>
-                    <span className="font-bold text-xl text-gray-900">
-                      {formatPrice(convertPrice(rawTotal, booking.gym.currency))}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Includes all taxes and charges</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {booking.package && (
+            {/* Price summary */}
+            {showPriceReceipt ? (
               <>
-                <GoodToKnowCard
-                  package_={booking.package}
-                  variant={booking.variant ?? null}
+                <PriceBreakdownReceipt
+                  gymName={booking.gym.name}
                   checkin={booking.start_date}
                   checkout={booking.end_date}
-                  gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
-                  checkoutStep="payment"
-                />
-                <BookingWhatsIncluded
-                  package_={booking.package}
-                  duration={duration}
                   pricingDuration={displayDuration}
-                  gym={booking.gym}
-                  variant={booking.variant}
-                  className="rounded-lg border border-gray-300 bg-white p-5 space-y-4"
+                  isTraining={!!isTraining}
+                  total={rawTotal}
+                  savedVsNightly={savedVsNightly}
+                  has_seasonal_overlap={hasSeasonalOverlap}
+                  gymCurrency={gymCurrency}
+                  displayCurrency={selectedCurrency}
+                  convertPrice={convertPrice}
                 />
                 <BookingSafetyPolicies
-                  package_={booking.package}
-                  checkin={booking.start_date}
-                  gymPolicyTone={booking.gym.cancellation_policy_tone ?? null}
                   gym={booking.gym}
                   className="rounded-lg border border-gray-300 bg-white p-5 space-y-3"
                 />
               </>
-            )}
-            </>
             ) : null}
           </div>
 
           {/* Right Column - Payment Form */}
           {!datesExpired ? (
           <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <CheckoutChromeIconButton
+                onClick={() => router.replace(step2Url)}
+                aria-label="Back to your details"
+              >
+                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+              </CheckoutChromeIconButton>
+              <CheckoutStepTitle className="mb-0">Pay online</CheckoutStepTitle>
+            </div>
             <div>
-              <CheckoutStepTitle className="mb-3">Pay online</CheckoutStepTitle>
               <p className="text-gray-600 mb-1">You&apos;ll pay when you complete this booking.</p>
               <PaymentHoldExplainer className="text-xs text-gray-500 mb-3" />
             </div>

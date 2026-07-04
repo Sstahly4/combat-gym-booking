@@ -1,67 +1,42 @@
 'use client'
 
 import { Check } from 'lucide-react'
-import type { Gym, Package } from '@/lib/types/database'
-import type { GymCancellationPolicyTone } from '@/lib/booking/cancellation-policy'
-import { getCancellationMarketingLines } from '@/lib/booking/cancellation-policy'
-import { GUEST_ARRIVAL_ACCEPTANCE_POLICY } from '@/lib/legal/guest-arrival-policy'
+import type { Gym } from '@/lib/types/database'
+import { GYM_AMENITY_BY_CATEGORY, labelGymAmenity } from '@/lib/constants/gym-amenities'
+import { GUEST_ARRIVAL_ACCEPTANCE_POLICY_SHORT } from '@/lib/legal/guest-arrival-policy'
 
 type BookingSafetyPoliciesProps = {
-  package_: Package
-  checkin: string
-  gymPolicyTone?: GymCancellationPolicyTone | null
   gym: Pick<Gym, 'amenities'>
   className?: string
 }
 
+function buildGymSafetyLines(gym: Pick<Gym, 'amenities'>): string[] {
+  const amenities = gym.amenities as Record<string, boolean> | null | undefined
+  if (!amenities) return []
+
+  return GYM_AMENITY_BY_CATEGORY.safety_access
+    .filter((key) => amenities[key] === true)
+    .map((key) => labelGymAmenity(key))
+}
+
 export function BookingSafetyPolicies({
-  package_,
-  checkin,
-  gymPolicyTone,
   gym,
   className = 'space-y-3 pb-6 border-b border-gray-200',
 }: BookingSafetyPoliciesProps) {
-  const amenities = gym.amenities as Record<string, boolean> | null | undefined
-  const { safetyPoliciesLine } = getCancellationMarketingLines({
-    startDate: checkin,
-    packageCancellationPolicyDays: package_.cancellation_policy_days,
-    gymPolicyTone: gymPolicyTone ?? null,
-  })
+  const policyLines = [...buildGymSafetyLines(gym), GUEST_ARRIVAL_ACCEPTANCE_POLICY_SHORT]
+
+  if (policyLines.length === 0) return null
 
   return (
     <div className={className}>
       <h3 className="text-base font-bold text-gray-900">Safety &amp; policies</h3>
       <div className="space-y-2 text-sm text-gray-700 mt-3">
-        <div className="flex items-start gap-2">
-          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-          <span>Booking Guarantee</span>
-        </div>
-        {safetyPoliciesLine ? (
-          <div className="flex items-start gap-2">
-            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-            <span>{safetyPoliciesLine}</span>
+        {policyLines.map((line) => (
+          <div key={line} className="flex items-start gap-2">
+            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" aria-hidden />
+            <span>{line}</span>
           </div>
-        ) : null}
-        <div className="flex items-start gap-2">
-          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-          <span>{GUEST_ARRIVAL_ACCEPTANCE_POLICY}</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-          <span>Secure payment processing</span>
-        </div>
-        {amenities?.fire_safety && (
-          <div className="flex items-start gap-2">
-            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-            <span>Fire safety compliant</span>
-          </div>
-        )}
-        {amenities?.first_aid && (
-          <div className="flex items-start gap-2">
-            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-            <span>First aid facilities available</span>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   )
