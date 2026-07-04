@@ -27,17 +27,11 @@ import { primaryGymImageCardSrc, primaryGymImageHeroSrc } from '@/lib/images/gym
 import {
   ArrowLeft,
   ArrowRight,
-  Building2,
-  Car,
   ChevronRight,
   CreditCard,
   Check,
-  Dumbbell,
-  Droplets,
   MapPin,
   Star,
-  UtensilsCrossed,
-  Wifi,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -57,6 +51,7 @@ import { BookingTrustLine } from '@/components/booking-trust-line'
 import { BookingWhatsIncluded } from '@/components/booking/booking-whats-included'
 import { BookingSafetyPolicies } from '@/components/booking/booking-safety-policies'
 import { GoodToKnowCard } from '@/components/good-to-know-card'
+import { CheckoutGymSidebarDetails } from '@/components/booking/checkout-gym-sidebar-details'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import {
   readBookingPrefill,
@@ -81,6 +76,8 @@ import {
 import { splitGuestName } from '@/lib/booking/guest-name'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
+  CHECKOUT_CHROME_ICON_BUTTON_CLASS,
+  CheckoutChromeIconButton,
   CHECKOUT_WALLET_BUTTON_HEIGHT,
   CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
@@ -222,23 +219,13 @@ function PaymentCheckoutTopBar({
   onExit: () => void
 }) {
   return (
-    <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Back to your details"
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4 text-gray-900" />
-      </button>
-      <button
-        type="button"
-        onClick={onExit}
-        aria-label="Return to gym listing"
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-      >
-        <X className="w-4 h-4 text-gray-900" />
-      </button>
+    <div className="md:hidden flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
+      <CheckoutChromeIconButton onClick={onBack} aria-label="Back to your details">
+        <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+      </CheckoutChromeIconButton>
+      <CheckoutChromeIconButton onClick={onExit} aria-label="Return to gym listing">
+        <X className="w-4 h-4" strokeWidth={2} />
+      </CheckoutChromeIconButton>
     </div>
   )
 }
@@ -1359,24 +1346,23 @@ export default function PaymentPage() {
       </div>
 
       <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-between">
-        <button
+        <CheckoutChromeIconButton
           type="button"
           onClick={() => router.replace(step2Url)}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          aria-label="Back to your details"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
-        </button>
+          <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+        </CheckoutChromeIconButton>
         <Link
           href={gymListingHref}
           onClick={(e) => {
             e.preventDefault()
             handleExitToGym()
           }}
-          className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          className={CHECKOUT_CHROME_ICON_BUTTON_CLASS}
           aria-label="Return to gym listing"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" strokeWidth={2} />
         </Link>
       </div>
 
@@ -1721,52 +1707,14 @@ export default function PaymentPage() {
                   </div>
                 )}
 
-                {/* Amenities */}
-                {booking.gym.amenities && (
-                  <div className="flex flex-wrap gap-3 mb-3">
-                    {booking.gym.amenities.wifi && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Wifi className="w-4 h-4" />
-                        <span>Free WiFi</span>
-                      </div>
-                    )}
-                    {booking.gym.amenities.parking && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Car className="w-4 h-4" />
-                        <span>Parking</span>
-                      </div>
-                    )}
-                    {booking.gym.amenities.meals && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <UtensilsCrossed className="w-4 h-4" />
-                        <span>Restaurant</span>
-                      </div>
-                    )}
-                    {booking.gym.amenities.showers && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Droplets className="w-4 h-4" />
-                        <span>Showers</span>
-                      </div>
-                    )}
-                    {booking.gym.amenities.accommodation && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Building2 className="w-4 h-4" />
-                        <span>Accommodation</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Disciplines */}
-                {booking.gym.disciplines && booking.gym.disciplines.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-                    {booking.gym.disciplines.slice(0, 2).map((d: string, idx: number) => (
-                    <span key={idx} className="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
-                      <Dumbbell className="w-3 h-3 text-[#003580]" />
-                      {d}
-                    </span>
-                  ))}
-                </div>
+                {booking.package && booking.start_date && (
+                  <CheckoutGymSidebarDetails
+                    package_={booking.package}
+                    gym={booking.gym}
+                    variant={booking.variant ?? null}
+                    checkin={booking.start_date}
+                    checkoutStep="payment"
+                  />
                 )}
               </CardContent>
             </Card>

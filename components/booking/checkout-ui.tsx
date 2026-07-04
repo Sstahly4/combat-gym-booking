@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -6,6 +6,22 @@ import {
   BOOKING_DATES_EXPIRED_HEADING,
   BOOKING_DATES_EXPIRED_LISTING_LINK,
 } from '@/lib/booking/validate-booking-dates'
+
+/** Circular back / close control used in checkout chrome (mobile + desktop). */
+export const CHECKOUT_CHROME_ICON_BUTTON_CLASS =
+  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-colors hover:bg-gray-200 active:bg-gray-200'
+
+export function CheckoutChromeIconButton({
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button type="button" className={cn(CHECKOUT_CHROME_ICON_BUTTON_CLASS, className)} {...props}>
+      {children}
+    </button>
+  )
+}
 
 /** Primary checkout CTA — card confirm, step 2 continue, etc. */
 export const CHECKOUT_PAY_BUTTON_CLASS =

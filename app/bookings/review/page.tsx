@@ -16,6 +16,8 @@ import {
   formatBookingDateRange,
   normalizeBookingCheckout,
 } from '@/lib/booking/booking-date-range'
+import { BookingProgressBar } from '@/components/booking-progress-bar'
+import { CHECKOUT_CHROME_ICON_BUTTON_CLASS, CHECKOUT_PAY_BUTTON_CLASS } from '@/components/booking/checkout-ui'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -249,11 +251,14 @@ function ReviewPageContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto pb-36">
-          <div className="flex items-center justify-end px-5 pt-4 pb-2">
+        <div className="hidden md:block flex-shrink-0">
+          <BookingProgressBar currentStep={1} loading />
+        </div>
+        <div className="flex-1 overflow-y-auto pb-36 md:pb-8">
+          <div className="flex items-center justify-end px-5 pt-4 pb-2 md:hidden">
             <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
           </div>
-          <div className="px-4 space-y-4 pt-2">
+          <div className="px-4 md:max-w-7xl md:mx-auto md:px-4 space-y-4 pt-2">
           <div className="flex gap-3">
             <div className="w-20 h-20 rounded-xl bg-gray-200 animate-pulse shrink-0" />
             <div className="flex-1 space-y-2 pt-1">
@@ -271,7 +276,7 @@ function ReviewPageContent() {
           ))}
           </div>
         </div>
-        <div className="fixed bottom-0 left-0 right-0 px-4 pb-8 pt-4 space-y-3 bg-white border-t border-gray-100 z-40">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 px-4 pb-8 pt-4 space-y-3 bg-white border-t border-gray-100 z-40">
           <StepProgressBar step={1} />
           <div className="h-13 w-full bg-gray-200 rounded-xl animate-pulse" />
         </div>
@@ -292,17 +297,31 @@ function ReviewPageContent() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto pb-36">
-        <div className="flex items-center justify-end px-5 pt-4 pb-2">
+      <div className="hidden md:block flex-shrink-0">
+        <BookingProgressBar currentStep={1} />
+      </div>
+
+      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-end flex-shrink-0">
+        <Link
+          href={`/gyms/${gymSlugOrId}`}
+          className={CHECKOUT_CHROME_ICON_BUTTON_CLASS}
+          aria-label="Exit to gym listing"
+        >
+          <X className="w-4 h-4" strokeWidth={2} />
+        </Link>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-36 md:pb-8">
+        <div className="flex items-center justify-end px-5 pt-4 pb-2 md:hidden">
           <Link
             href={`/gyms/${gymSlugOrId}`}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            className={CHECKOUT_CHROME_ICON_BUTTON_CLASS}
             aria-label="Exit to gym listing"
           >
-            <X className="w-4 h-4 text-gray-700" />
+            <X className="w-4 h-4" strokeWidth={2} />
           </Link>
         </div>
-        <div className="px-4 pt-2">
+        <div className="px-4 md:max-w-7xl md:mx-auto md:px-4 pt-2">
         <h1 className="text-3xl font-bold text-gray-900 mb-5">Review and continue</h1>
         {/* ── Gym + booking summary card ─────────────────────────────── */}
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
@@ -386,11 +405,22 @@ function ReviewPageContent() {
             )}
           </div>
         </div>
+
+        {/* Desktop CTA */}
+        <div className="hidden md:block mt-6 max-w-lg">
+          <Button
+            onClick={() => router.push(buildContinueUrl())}
+            className={CHECKOUT_PAY_BUTTON_CLASS}
+          >
+            Continue
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
         </div>
       </div>
 
-      {/* ── Fixed bottom: progress + CTA ────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 pb-5 space-y-3 z-40" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
+      {/* Mobile: fixed bottom progress + CTA */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-3 pb-5 space-y-3 z-40" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
         <StepProgressBar step={1} />
         <Button
           onClick={() => router.push(buildContinueUrl())}

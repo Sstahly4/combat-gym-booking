@@ -15,7 +15,7 @@ import { useCurrency } from '@/lib/contexts/currency-context'
 import type { PriceBreakdown } from '@/lib/utils'
 import type { Gym, Package, PackageVariant } from '@/lib/types/database'
 import { primaryGymImageCardSrc, primaryGymImageHeroSrc } from '@/lib/images/gym-image-variants'
-import { ArrowLeft, MapPin, AlertCircle, Dumbbell, Star, Wifi, Car, UtensilsCrossed, Droplets, Building2, X } from 'lucide-react'
+import { ArrowLeft, MapPin, AlertCircle, Star, X } from 'lucide-react'
 import Link from 'next/link'
 import { LoadingOverlay } from '@/components/loading-overlay'
 import {
@@ -49,13 +49,16 @@ import {
   isBookingDatesExpiredError,
   isBookingStartDateInPast,
 } from '@/lib/booking/validate-booking-dates'
+import { BookingProgressBar } from '@/components/booking-progress-bar'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
+  CheckoutChromeIconButton,
   CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
   CheckoutSummaryFieldError,
 } from '@/components/booking/checkout-ui'
 import { PriceBreakdownReceipt } from '@/components/booking/price-details-sheet'
+import { CheckoutGymSidebarDetails } from '@/components/booking/checkout-gym-sidebar-details'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -113,7 +116,7 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
   const router = useRouter()
   const { showReviewChrome } = useReviewCheckoutChrome()
 
-  if (!gym) return <div className="w-8 h-8 shrink-0" aria-hidden />
+  if (!gym) return <div className="h-10 w-10 shrink-0" aria-hidden />
 
   const handleExit = () => {
     prepareCheckoutExitToGym(gym)
@@ -122,14 +125,9 @@ function CheckoutExitButton({ gym }: { gym: { slug?: string | null; id: string }
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleExit}
-      className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-      aria-label="Return to gym listing"
-    >
-      <X className="w-4 h-4 text-gray-900" />
-    </button>
+    <CheckoutChromeIconButton onClick={handleExit} aria-label="Return to gym listing">
+      <X className="w-4 h-4" strokeWidth={2} />
+    </CheckoutChromeIconButton>
   )
 }
 
@@ -141,15 +139,10 @@ function CheckoutTopBar({
   onBack: () => void
 }) {
   return (
-    <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Back to review"
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4 text-gray-900" />
-      </button>
+    <div className="md:hidden flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
+      <CheckoutChromeIconButton onClick={onBack} aria-label="Back to review">
+        <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+      </CheckoutChromeIconButton>
       <CheckoutExitButton gym={gym} />
     </div>
   )
@@ -168,7 +161,7 @@ function CheckoutBottomBar({
 }) {
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
+      className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-4 pt-2 space-y-2 z-50"
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
       <StepProgressBar step={submitting ? 3 : 2} />
@@ -716,6 +709,9 @@ function BookingSummaryPageContent() {
     return (
       <div className="min-h-screen bg-white flex flex-col overflow-hidden">
         <LoadingOverlay show={true} />
+        <div className="hidden md:block flex-shrink-0">
+          <BookingProgressBar currentStep={2} loading />
+        </div>
         <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
         <CheckoutBottomBar
           error={error}
@@ -751,9 +747,23 @@ function BookingSummaryPageContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
       <LoadingOverlay show={submitting} zClass="z-[60]" />
+
+      <div className="hidden md:block flex-shrink-0">
+        <BookingProgressBar currentStep={submitting ? 3 : 2} />
+      </div>
+
       <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
 
-      <div className="flex-1 overflow-y-auto pb-36">
+      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-between flex-shrink-0">
+        <CheckoutChromeIconButton onClick={navigateBackToReview} aria-label="Back to review">
+          <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+        </CheckoutChromeIconButton>
+        <CheckoutChromeIconButton onClick={goToGymListing} aria-label="Return to gym listing">
+          <X className="w-4 h-4" strokeWidth={2} />
+        </CheckoutChromeIconButton>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-36 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
         <div className="md:hidden space-y-6">
@@ -988,9 +998,9 @@ function BookingSummaryPageContent() {
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden md:grid lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] gap-6 items-start">
+        <div className="hidden md:grid lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] gap-6 items-start">
           {/* Left Sidebar - Booking Summary */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-4 self-start">
             {/* Gym Summary Box */}
             <Card className="overflow-hidden border border-gray-300 rounded-lg shadow-sm">
               {heroImage && (
@@ -1044,52 +1054,14 @@ function BookingSummaryPageContent() {
                   </div>
                 )}
 
-                {/* Amenities */}
-                {gym.amenities && (
-                  <div className="flex flex-wrap gap-3 mb-3">
-                    {gym.amenities.wifi && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Wifi className="w-4 h-4" />
-                        <span>Free WiFi</span>
-                      </div>
-                    )}
-                    {gym.amenities.parking && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Car className="w-4 h-4" />
-                        <span>Parking</span>
-                      </div>
-                    )}
-                    {gym.amenities.meals && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <UtensilsCrossed className="w-4 h-4" />
-                        <span>Restaurant</span>
-                      </div>
-                    )}
-                    {gym.amenities.showers && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Droplets className="w-4 h-4" />
-                        <span>Showers</span>
-                      </div>
-                    )}
-                    {gym.amenities.accommodation && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                        <Building2 className="w-4 h-4" />
-                        <span>Accommodation</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Disciplines */}
-                {gym.disciplines && gym.disciplines.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-                  {gym.disciplines.slice(0, 2).map((d, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
-                      <Dumbbell className="w-3 h-3 text-[#003580]" />
-                      {d}
-                    </span>
-                  ))}
-                </div>
+                {checkin && package_ && (
+                  <CheckoutGymSidebarDetails
+                    package_={package_}
+                    gym={gym}
+                    variant={variant}
+                    checkin={checkin}
+                    checkoutStep="details"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -1387,8 +1359,8 @@ function BookingSummaryPageContent() {
 
           </div>
 
-          {/* Right column — pricing receipt (sticky) */}
-          <div className="lg:sticky lg:top-6 space-y-4">
+          {/* Price summary — below booking details, full content width */}
+          <div className="col-span-full w-full mx-auto">
             {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay ? (
               <PriceBreakdownReceipt
                 gymName={gym.name}
@@ -1402,16 +1374,33 @@ function BookingSummaryPageContent() {
                 gymCurrency={gym.currency ?? 'USD'}
                 displayCurrency={selectedCurrency}
                 convertPrice={convertPrice}
+                className="w-full rounded-xl border border-gray-200 bg-white px-6 py-6 shadow-sm"
               />
             ) : (
-              <Card className="border border-gray-300 rounded-lg shadow-sm">
-                <CardContent className="p-5 text-sm text-gray-600">
+              <Card className="w-full border border-gray-300 rounded-lg shadow-sm">
+                <CardContent className="p-5 text-sm text-gray-600 text-center">
                   {checkin && checkout
                     ? 'Select valid dates that meet the minimum stay to see pricing.'
                     : 'Select dates to see your pricing breakdown.'}
                 </CardContent>
               </Card>
             )}
+          </div>
+
+          {/* Desktop CTA */}
+          <div className="hidden md:block col-span-full space-y-3 pt-2">
+            {error && !isBookingDatesExpiredError(error) && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            <Button
+              onClick={handleSubmit}
+              disabled={submitDisabled || submitting}
+              className={CHECKOUT_PAY_BUTTON_CLASS}
+            >
+              Final Steps
+            </Button>
           </div>
         </div>
       </div>

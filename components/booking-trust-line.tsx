@@ -74,7 +74,7 @@ function getInlineText(
 
 // ─── Featured (two-line) ──────────────────────────────────────────────────────
 
-interface TrustSignal {
+export interface TrustSignal {
   mainText: string
   subText: ReactNode
 }
@@ -88,7 +88,7 @@ const POLICY_LINK = (
   </a>
 )
 
-function getFeaturedSignal(
+export function getFeaturedTrustSignal(
   pkg: BookingTrustLineProps['pkg'],
   gym: BookingTrustLineProps['gym'],
   checkin: string
@@ -184,7 +184,7 @@ export function BookingTrustLine({
   if (!checkin) return null
 
   if (variant === 'featured') {
-    const signal = getFeaturedSignal(pkg, gym, checkin)
+    const signal = getFeaturedTrustSignal(pkg, gym, checkin)
     if (!signal) return null
     const { mainText, subText } = signal
     return (
