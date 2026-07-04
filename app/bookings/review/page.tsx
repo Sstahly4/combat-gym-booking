@@ -18,6 +18,7 @@ import {
 } from '@/lib/booking/booking-date-range'
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import { CHECKOUT_CHROME_ICON_BUTTON_CLASS, CHECKOUT_PAY_BUTTON_CLASS } from '@/components/booking/checkout-ui'
+import { useCheckoutDesktopHeader } from '@/lib/hooks/use-checkout-desktop-header'
 
 // ─── Thin 3-step progress bar ─────────────────────────────────────────────────
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -124,6 +125,7 @@ function Row({
 // ─── Page content ──────────────────────────────────────────────────────────────
 function ReviewPageContent() {
   const router = useRouter()
+  useCheckoutDesktopHeader()
   const searchParams = useSearchParams()
   const { convertPrice, formatPrice } = useCurrency()
 
@@ -299,16 +301,6 @@ function ReviewPageContent() {
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
       <div className="hidden md:block flex-shrink-0">
         <BookingProgressBar currentStep={1} />
-      </div>
-
-      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-end flex-shrink-0">
-        <Link
-          href={`/gyms/${gymSlugOrId}`}
-          className={CHECKOUT_CHROME_ICON_BUTTON_CLASS}
-          aria-label="Exit to gym listing"
-        >
-          <X className="w-4 h-4" strokeWidth={2} />
-        </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-36 md:pb-8">

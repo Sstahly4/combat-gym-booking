@@ -52,6 +52,7 @@ import {
 import { BookingProgressBar } from '@/components/booking-progress-bar'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
+  CHECKOUT_DESKTOP_GRID_CLASS,
   CheckoutChromeIconButton,
   CheckoutDatesUnavailableAlert,
   CheckoutStepTitle,
@@ -62,6 +63,7 @@ import { CheckoutGymSidebarDetails } from '@/components/booking/checkout-gym-sid
 import { DateRangePicker } from '@/components/date-range-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useCheckoutDesktopHeader } from '@/lib/hooks/use-checkout-desktop-header'
 import {
   detailsFromProfile,
   readGuestDetails,
@@ -187,6 +189,7 @@ function BookingSummaryPageContent() {
   const { user, profile, loading: authLoading } = useAuth()
   const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
   const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
+  useCheckoutDesktopHeader()
 
   const initialPrefill = readSummaryPrefillFromUrl()
 
@@ -754,15 +757,6 @@ function BookingSummaryPageContent() {
 
       <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
 
-      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-between flex-shrink-0">
-        <CheckoutChromeIconButton onClick={navigateBackToReview} aria-label="Back to review">
-          <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-        </CheckoutChromeIconButton>
-        <CheckoutChromeIconButton onClick={goToGymListing} aria-label="Return to gym listing">
-          <X className="w-4 h-4" strokeWidth={2} />
-        </CheckoutChromeIconButton>
-      </div>
-
       <div className="flex-1 overflow-y-auto pb-36 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
@@ -998,7 +992,7 @@ function BookingSummaryPageContent() {
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden md:grid lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] gap-6 items-start">
+        <div className={CHECKOUT_DESKTOP_GRID_CLASS}>
           {/* Left Sidebar - Booking Summary */}
           <div className="lg:col-span-1 space-y-4 self-start">
             {/* Gym Summary Box */}
@@ -1140,6 +1134,31 @@ function BookingSummaryPageContent() {
                 </Link>
               </CardContent>
             </Card>
+
+            {/* Price summary — left column, below booking details */}
+            {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay ? (
+              <PriceBreakdownReceipt
+                gymName={gym.name}
+                checkin={checkin}
+                checkout={checkout}
+                pricingDuration={pricingDuration}
+                isTraining={isTraining}
+                total={calculatedPriceBreakdown.price}
+                savedVsNightly={calculatedPriceBreakdown.savedVsNightly}
+                has_seasonal_overlap={hasSeasonalOverlap}
+                gymCurrency={gym.currency ?? 'USD'}
+                displayCurrency={selectedCurrency}
+                convertPrice={convertPrice}
+              />
+            ) : (
+              <Card className="border border-gray-300 rounded-lg shadow-sm">
+                <CardContent className="p-5 text-sm text-gray-600">
+                  {checkin && checkout
+                    ? 'Select valid dates that meet the minimum stay to see pricing.'
+                    : 'Select dates to see your pricing breakdown.'}
+                </CardContent>
+              </Card>
+            )}
 
           </div>
 
@@ -1356,51 +1375,22 @@ function BookingSummaryPageContent() {
               </CardContent>
             </Card>
 
+            {/* Desktop CTA */}
+            <div className="hidden md:block space-y-3 pt-2">
+              {error && !isBookingDatesExpiredError(error) && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  {error}
+                </div>
+              )}
+              <Button
+                onClick={handleSubmit}
+                disabled={submitDisabled || submitting}
+                className={CHECKOUT_PAY_BUTTON_CLASS}
+              >
+                Final Steps
+              </Button>
+            </div>
 
-          </div>
-
-          {/* Price summary — below booking details, full content width */}
-          <div className="col-span-full w-full mx-auto">
-            {calculatedPriceBreakdown && isValidDuration && meetsMinimumStay ? (
-              <PriceBreakdownReceipt
-                gymName={gym.name}
-                checkin={checkin}
-                checkout={checkout}
-                pricingDuration={pricingDuration}
-                isTraining={isTraining}
-                total={calculatedPriceBreakdown.price}
-                savedVsNightly={calculatedPriceBreakdown.savedVsNightly}
-                has_seasonal_overlap={hasSeasonalOverlap}
-                gymCurrency={gym.currency ?? 'USD'}
-                displayCurrency={selectedCurrency}
-                convertPrice={convertPrice}
-                className="w-full rounded-xl border border-gray-200 bg-white px-6 py-6 shadow-sm"
-              />
-            ) : (
-              <Card className="w-full border border-gray-300 rounded-lg shadow-sm">
-                <CardContent className="p-5 text-sm text-gray-600 text-center">
-                  {checkin && checkout
-                    ? 'Select valid dates that meet the minimum stay to see pricing.'
-                    : 'Select dates to see your pricing breakdown.'}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:block col-span-full space-y-3 pt-2">
-            {error && !isBookingDatesExpiredError(error) && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {error}
-              </div>
-            )}
-            <Button
-              onClick={handleSubmit}
-              disabled={submitDisabled || submitting}
-              className={CHECKOUT_PAY_BUTTON_CLASS}
-            >
-              Final Steps
-            </Button>
           </div>
         </div>
       </div>

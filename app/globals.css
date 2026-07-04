@@ -184,3 +184,17 @@ html[data-review-checkout] [data-site-chrome='navbar'],
 html[data-review-checkout] [data-site-chrome='mobile-nav'] {
   display: none !important;
 }
+
+/* Dedicated checkout routes: hide navbar on mobile only; show on desktop for trust. */
+@media (max-width: 767px) {
+  html[data-checkout-step] [data-site-chrome='navbar'] {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  html[data-checkout-step] [data-site-chrome='navbar'],
+  html[data-review-checkout][data-checkout-step] [data-site-chrome='navbar'] {
+    display: block !important;
+  }
+}

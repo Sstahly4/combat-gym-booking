@@ -105,6 +105,17 @@ export function isReviewCheckoutChromeHidden(): boolean {
 }
 
 export const REVIEW_CHECKOUT_HTML_ATTR = 'data-review-checkout'
+export const CHECKOUT_STEP_HTML_ATTR = 'data-checkout-step'
+
+/** Mark dedicated checkout routes so desktop can show the site navbar. */
+export function syncCheckoutStepHtmlFlag(active: boolean): void {
+  if (typeof document === 'undefined') return
+  if (active) {
+    document.documentElement.setAttribute(CHECKOUT_STEP_HTML_ATTR, '1')
+  } else {
+    document.documentElement.removeAttribute(CHECKOUT_STEP_HTML_ATTR)
+  }
+}
 
 /** Sync the html flag used by globals.css to hide navbar/footer before hydration. */
 export function syncReviewCheckoutChromeHtmlFlag(hidden: boolean): void {

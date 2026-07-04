@@ -219,17 +219,18 @@ export function Navbar() {
     }
   }, [isOwner, user?.id])
 
-  // Checkout steps use the thin in-flow progress strip — no global navbar or menu.
+  // Checkout steps: hide navbar on mobile; desktop shows via data-checkout-step + globals.css.
   const isCheckoutStep =
     pathname === '/bookings/summary' ||
     pathname.startsWith('/bookings/review') ||
     /^\/bookings\/[^/]+\/payment/.test(pathname ?? '')
 
-  if (isCheckoutStep || reviewChromeHidden) {
+  if (partnerHubUsesUnifiedHeader(pathname ?? '')) {
     return null
   }
 
-  if (partnerHubUsesUnifiedHeader(pathname ?? '')) {
+  // Gym review modal — hide global chrome (not dedicated checkout routes).
+  if (reviewChromeHidden && !isCheckoutStep) {
     return null
   }
 
@@ -238,7 +239,9 @@ export function Navbar() {
     {isOwnersPage && <div className="h-16" aria-hidden="true" />}
     <div
       data-site-chrome="navbar"
-      className={`${isOwnersPage ? 'fixed inset-x-0 top-0' : 'sticky top-0'} z-50`}
+      className={`${isOwnersPage ? 'fixed inset-x-0 top-0' : 'sticky top-0'} z-50${
+        isCheckoutStep ? ' hidden md:block' : ''
+      }`}
     >
     <nav className={isOwnersPage ? 'bg-transparent' : 'bg-[#003580]'}>
       <div className="max-w-6xl mx-auto px-4">

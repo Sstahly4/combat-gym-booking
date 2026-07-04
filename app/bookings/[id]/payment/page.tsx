@@ -68,6 +68,7 @@ import {
 } from '@/lib/booking/validate-booking-dates'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import { prepareCheckoutExitToGym } from '@/lib/utils/review-checkout-chrome'
+import { useCheckoutDesktopHeader } from '@/lib/hooks/use-checkout-desktop-header'
 import {
   clearGuestCheckoutSession,
   readGuestDetails,
@@ -76,7 +77,7 @@ import {
 import { splitGuestName } from '@/lib/booking/guest-name'
 import {
   CHECKOUT_PAY_BUTTON_CLASS,
-  CHECKOUT_CHROME_ICON_BUTTON_CLASS,
+  CHECKOUT_DESKTOP_GRID_CLASS,
   CheckoutChromeIconButton,
   CHECKOUT_WALLET_BUTTON_HEIGHT,
   CheckoutDatesUnavailableAlert,
@@ -605,6 +606,7 @@ export default function PaymentPage() {
   const params = useParams()
   const router = useRouter()
   const { showReviewChrome } = useReviewCheckoutChrome()
+  useCheckoutDesktopHeader()
   const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
   const bookingId = params.id as string
   const [clientSecret, setClientSecret] = useState<string | null>(() => {
@@ -1345,27 +1347,6 @@ export default function PaymentPage() {
         />
       </div>
 
-      <div className="hidden md:flex max-w-7xl mx-auto w-full px-4 pt-3 pb-1 items-center justify-between">
-        <CheckoutChromeIconButton
-          type="button"
-          onClick={() => router.replace(step2Url)}
-          aria-label="Back to your details"
-        >
-          <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-        </CheckoutChromeIconButton>
-        <Link
-          href={gymListingHref}
-          onClick={(e) => {
-            e.preventDefault()
-            handleExitToGym()
-          }}
-          className={CHECKOUT_CHROME_ICON_BUTTON_CLASS}
-          aria-label="Return to gym listing"
-        >
-          <X className="w-4 h-4" strokeWidth={2} />
-        </Link>
-      </div>
-
       <div ref={scrollRootRef} className="flex-1 overflow-y-auto md:pb-0">
         <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Mobile Layout */}
@@ -1651,9 +1632,9 @@ export default function PaymentPage() {
         </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:grid lg:grid-cols-3 gap-6">
+      <div className={CHECKOUT_DESKTOP_GRID_CLASS}>
           {/* Left Sidebar - Booking Summary */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="space-y-4">
             {/* Gym Summary Box */}
             <Card className="overflow-hidden border border-gray-300 rounded-lg shadow-sm">
               {heroImage && (
@@ -1888,7 +1869,7 @@ export default function PaymentPage() {
 
           {/* Right Column - Payment Form */}
           {!datesExpired ? (
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4">
             <div>
               <CheckoutStepTitle className="mb-3">Pay online</CheckoutStepTitle>
               <p className="text-gray-600 mb-1">You&apos;ll pay when you complete this booking.</p>

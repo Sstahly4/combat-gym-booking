@@ -23,6 +23,10 @@ export function CheckoutChromeIconButton({
   )
 }
 
+/** Two-column desktop checkout layout — wider left summary rail. */
+export const CHECKOUT_DESKTOP_GRID_CLASS =
+  'hidden md:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-8 items-start'
+
 /** Primary checkout CTA — card confirm, step 2 continue, etc. */
 export const CHECKOUT_PAY_BUTTON_CLASS =
   'w-full h-11 bg-[#003580] hover:bg-[#003580]/90 text-white font-semibold text-base rounded-xl'
