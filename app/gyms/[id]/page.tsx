@@ -282,7 +282,7 @@ export default async function GymDetailsPage({
           </div>
         )}
 
-        <div className="bg-white border-b border-gray-200 py-4 md:py-6">
+        <div className="bg-white py-4 md:py-6">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 md:gap-4">
               <div className="flex-1 min-w-0">

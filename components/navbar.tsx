@@ -249,9 +249,11 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4">
         <div
           className={`flex min-w-0 items-center justify-between gap-2 md:gap-3 ${
-            isManageOwnerShell || isAdminShell || isMarketplaceBrowse
+            isManageOwnerShell || isAdminShell
               ? 'min-h-[5rem] py-2'
-              : 'h-16'
+              : isMarketplaceBrowse
+                ? 'min-h-[4.5rem] py-1.5'
+                : 'h-16'
           }`}
         >
             {isManageOwnerShell || isAdminShell ? (

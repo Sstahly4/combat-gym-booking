@@ -30,7 +30,7 @@ export function SiteSearchHeaderStrip({
   return (
     <>
       <div
-        className={`relative z-30 bg-white pt-4 pb-3 md:bg-[#003580] md:pt-6 md:pb-0 ${className}`}
+        className={`relative z-30 bg-white pt-4 pb-3 md:bg-[#003580] md:pt-5 md:pb-0 ${className}`}
       >
         <div className="max-w-6xl mx-auto px-4 md:px-4">
           {showCategoryTabs ? (
@@ -51,7 +51,7 @@ export function SiteSearchHeaderStrip({
       </div>
 
       {/* White spacer — absorbs the bottom half of the pill on desktop */}
-      <div className="bg-white pb-3 md:pt-12 md:pb-4" aria-hidden />
+      <div className="bg-white pb-3 md:pt-10 md:pb-4" aria-hidden />
     </>
   )
 }
