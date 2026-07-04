@@ -252,7 +252,7 @@ export function Navbar() {
             isManageOwnerShell || isAdminShell
               ? 'min-h-[5rem] py-2'
               : isMarketplaceBrowse
-                ? 'min-h-[4.5rem] py-1.5'
+                ? 'min-h-[4rem] py-1'
                 : 'h-16'
           }`}
         >
