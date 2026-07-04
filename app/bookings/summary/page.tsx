@@ -38,8 +38,8 @@ import {
 } from '@/components/booking/training-session-picker'
 import { useReviewCheckoutChrome } from '@/lib/contexts/review-checkout-chrome-context'
 import {
+  clearReviewModalRestore,
   prepareCheckoutExitToGym,
-  writeReviewModalRestore,
 } from '@/lib/utils/review-checkout-chrome'
 import { gymHrefWithOptionalDates } from '@/lib/booking-dates-intent'
 import { getMarketplaceAttribution } from '@/lib/marketplace/search-session'
@@ -74,31 +74,6 @@ import {
 } from '@/lib/utils/checkout-details-prefill'
 
 const DISCIPLINES = ['Muay Thai', 'MMA', 'BJJ', 'Boxing', 'Wrestling', 'Kickboxing']
-
-/** Step 2 → Step 1: reopen the review modal on the gym listing. */
-function buildReviewBackHref(
-  gymSlugOrId: string,
-  packageId: string,
-  opts: {
-    variantId?: string
-    checkin?: string
-    checkout?: string
-    guests?: number
-    trainingTier?: TrainingTier
-  }
-): string {
-  const p = new URLSearchParams()
-  p.set('review', '1')
-  p.set('pkg', packageId)
-  if (opts.variantId) p.set('variant', opts.variantId)
-  if (opts.checkin) p.set('checkin', opts.checkin)
-  if (opts.checkout) p.set('checkout', opts.checkout)
-  p.set('guests', String(opts.guests ?? 1))
-  if (opts.trainingTier && opts.trainingTier !== 'twice_daily') {
-    p.set('tier', opts.trainingTier)
-  }
-  return `/gyms/${gymSlugOrId}?${p.toString()}`
-}
 
 // Thin 3-segment progress bar — matches review modal
 function StepProgressBar({ step }: { step: 1 | 2 | 3 }) {
@@ -143,7 +118,7 @@ function CheckoutTopBar({
 }) {
   return (
     <div className="md:hidden flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
-      <CheckoutChromeIconButton onClick={onBack} aria-label="Back to review">
+      <CheckoutChromeIconButton onClick={onBack} aria-label="Back to gym listing">
         <ArrowLeft className="w-4 h-4" strokeWidth={2} />
       </CheckoutChromeIconButton>
       <CheckoutExitButton gym={gym} />
@@ -189,7 +164,7 @@ function BookingSummaryPageContent() {
   const searchParams = useSearchParams()
   const { user, profile, loading: authLoading } = useAuth()
   const { convertPrice, formatPrice, selectedCurrency } = useCurrency()
-  const { hideReviewChrome, showReviewChrome } = useReviewCheckoutChrome()
+  const { showReviewChrome } = useReviewCheckoutChrome()
   useCheckoutDesktopHeader()
 
   const initialPrefill = readSummaryPrefillFromUrl()
@@ -250,13 +225,12 @@ function BookingSummaryPageContent() {
     }
   }
 
-  const navigateBackToReview = () => {
+  const navigateBackToGym = () => {
     const gymId = searchParams.get('gymId')
     const packageId = searchParams.get('packageId')
     const slugOrId = gym?.slug || gym?.id || gymId
     const pkgId = package_?.id || packageId
     if (slugOrId && pkgId && gym && package_) {
-      // Keep booking_prefill fresh so the review modal paints instantly on back-nav.
       const backCheckin = checkin || searchParams.get('checkin') || ''
       const backCheckout = checkout || searchParams.get('checkout') || ''
       const backVariantId = variant?.id || searchParams.get('variantId') || undefined
@@ -278,22 +252,12 @@ function BookingSummaryPageContent() {
         reviewCount,
         reviewAverage: averageRating,
       })
-      writeReviewModalRestore({
-        gymId: gym.id,
-        packageId: pkgId,
-        variantId: backVariantId,
-        trainingTier: backTrainingTier,
-        checkin: backCheckin,
-        checkout: backCheckout,
-        guestCount,
-      })
-      hideReviewChrome()
-      const backHref = buildReviewBackHref(slugOrId, pkgId, {
-        variantId: backVariantId,
+      clearReviewModalRestore()
+      showReviewChrome()
+      const backHref = gymHrefWithOptionalDates(slugOrId, {
         checkin: backCheckin || undefined,
         checkout: backCheckout || undefined,
-        guests: guestCount,
-        trainingTier: backTrainingTier,
+        datesConfirmed: !!(backCheckin && backCheckout),
       })
       router.prefetch(backHref)
       router.replace(backHref)
@@ -710,7 +674,7 @@ function BookingSummaryPageContent() {
         <div className="hidden md:block flex-shrink-0">
           <BookingProgressBar currentStep={2} loading />
         </div>
-        <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
+        <CheckoutTopBar gym={gym} onBack={navigateBackToGym} />
         <CheckoutBottomBar
           error={error}
           submitting={submitting}
@@ -750,7 +714,7 @@ function BookingSummaryPageContent() {
         <BookingProgressBar currentStep={submitting ? 3 : 2} />
       </div>
 
-      <CheckoutTopBar gym={gym} onBack={navigateBackToReview} />
+      <CheckoutTopBar gym={gym} onBack={navigateBackToGym} />
 
       <div className="flex-1 overflow-y-auto pb-36 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
@@ -1160,7 +1124,7 @@ function BookingSummaryPageContent() {
           {/* Center Column - User Details Form */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <CheckoutChromeIconButton onClick={navigateBackToReview} aria-label="Back to review">
+              <CheckoutChromeIconButton onClick={navigateBackToGym} aria-label="Back to gym listing">
                 <ArrowLeft className="w-4 h-4" strokeWidth={2} />
               </CheckoutChromeIconButton>
               <CheckoutStepTitle className="mb-0">Enter your details</CheckoutStepTitle>
