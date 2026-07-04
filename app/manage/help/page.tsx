@@ -27,16 +27,16 @@ export default function ManageHelpPage() {
           .
         </p>
 
+        <div className="mt-6">
+          <PartnerHelpPanel hubMode initialCategory="listings" showTravelerLink />
+        </div>
+
         <SupportHubLinks
           currentPath="/manage/help"
           audience="partner"
           variant="compact"
-          className="mt-6"
+          className="mt-10"
         />
-
-        <div className="mt-6">
-          <PartnerHelpPanel hubMode initialCategory="listings" showTravelerLink />
-        </div>
       </div>
     </div>
   )

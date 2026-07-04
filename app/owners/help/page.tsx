@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
 import { PartnerHelpPanel } from '@/components/help/partner-help-panel'
 import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { PartnerHelpJsonLd } from '@/app/owners/help/partner-help-json-ld'
@@ -45,9 +44,6 @@ export default function OwnersHelpPage() {
           </p>
         </div>
 
-        <SupportAudienceSwitcher active="partner" />
-        <SupportHubLinks currentPath="/owners/help" audience="partner" />
-
         <nav aria-label="Partner help topics" className="mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Browse by topic
@@ -67,6 +63,13 @@ export default function OwnersHelpPage() {
         </nav>
 
         <PartnerHelpPanel hubMode initialCategory="listings" />
+
+        <SupportHubLinks
+          currentPath="/owners/help"
+          audience="partner"
+          variant="compact"
+          className="mt-10"
+        />
       </div>
     </div>
     </>

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
 import { PartnerHelpPanel } from '@/components/help/partner-help-panel'
 import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { buildFaqLd } from '@/lib/seo/guide-schema'
@@ -133,10 +132,14 @@ export default async function OwnersHelpCategoryPage({ params }: PageProps) {
             </p>
           </div>
 
-          <SupportAudienceSwitcher active="partner" />
-          <SupportHubLinks currentPath={path} audience="partner" variant="compact" className="mb-8" />
-
           <PartnerHelpPanel initialCategory={category} />
+
+          <SupportHubLinks
+            currentPath={path}
+            audience="partner"
+            variant="compact"
+            className="mt-10"
+          />
         </div>
       </div>
     </>

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { HelpCircle, Menu } from 'lucide-react'
-import { SupportAudienceSwitcher } from '@/components/help/support-audience-switcher'
 import { SupportHubLinks } from '@/components/help/support-hub-links'
 import { LegalDocHelpfulFeedback } from '@/components/legal/legal-doc-helpful-feedback'
 import { LegalDocSidebar } from '@/components/legal/legal-doc-sidebar'
@@ -82,9 +81,6 @@ export function LegalDocLayout({
 
             {callout ? <div className="mb-8">{callout}</div> : null}
 
-            <SupportAudienceSwitcher active="traveler" />
-            <SupportHubLinks currentPath={currentPath} audience="traveler" variant="compact" className="mb-8" />
-
             {children}
 
             <LegalDocHelpfulFeedback articleSlug={articleSlug} />
@@ -110,6 +106,13 @@ export function LegalDocLayout({
             {lastUpdated ? (
               <p className="mt-8 text-sm text-gray-500">Last updated: {lastUpdated}</p>
             ) : null}
+
+            <SupportHubLinks
+              currentPath={currentPath}
+              audience="traveler"
+              variant="compact"
+              className="mt-10"
+            />
           </article>
 
           <div className="mt-10 border-t border-gray-200 pt-8 lg:mt-0 lg:border-0 lg:pt-0">
