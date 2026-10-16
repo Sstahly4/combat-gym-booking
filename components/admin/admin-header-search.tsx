@@ -41,6 +41,7 @@ const STATIC_HITS: Hit[] = [
   { id: 'admin-bookings', title: 'Bookings', subtitle: 'Admin · recent bookings across gyms', href: '/admin/bookings', keywords: ['bookings', 'reservations', 'orders', 'b2b'] },
   { id: 'admin-bulk-import', title: 'Bulk import gyms', subtitle: 'Admin · CSV draft gyms', href: '/admin/gyms/bulk-import', keywords: ['bulk', 'import', 'csv', 'spreadsheet', 'draft'] },
   { id: 'admin-claim', title: 'Claim links', subtitle: 'Admin · owner handoff', href: '/admin/orphan-gyms', keywords: ['claim', 'links', 'orphan', 'handoff', 'placeholder'] },
+  { id: 'admin-login-links', title: 'Owner login links', subtitle: 'Admin · generate /go links on All gyms', href: '/admin/gyms', keywords: ['login', 'link', 'go', 'whatsapp', 'sign in', 'owner'] },
   { id: 'admin-reviews', title: 'Reviews', subtitle: 'Admin · manual reviews', href: '/admin/reviews', keywords: ['reviews', 'manual', 'backfill'] },
   { id: 'admin-offers', title: 'Offers', subtitle: 'Admin · homepage promos', href: '/admin/offers', keywords: ['offers', 'promotions', 'promos', 'homepage'] },
   { id: 'admin-affiliates', title: 'Affiliates', subtitle: 'Admin · referral partners', href: '/admin/affiliates', keywords: ['affiliates', 'referral', 'partners', 'commission'] },

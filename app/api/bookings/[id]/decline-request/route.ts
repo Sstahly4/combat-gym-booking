@@ -127,7 +127,7 @@ export async function POST(
               const ownerEmail = ownerAuth?.user?.email
               if (!ownerEmail) return false
               const bookingRef = booking.booking_reference || bookingId
-              const actionUrl = await mintOwnerLoginLink(supabase, {
+              const minted = await mintOwnerLoginLink(supabase, {
                 userId: gym.owner_id,
                 redirectPath: `/manage/bookings?ref=${encodeURIComponent(bookingRef)}`,
                 bookingId,
@@ -141,7 +141,7 @@ export async function POST(
                 startDate: booking.start_date,
                 endDate: booking.end_date,
                 reason: reason ?? undefined,
-                actionUrl,
+                actionUrl: minted?.url ?? null,
               })
             } catch (err) {
               console.warn('[decline-request] owner email lookup failed', err)

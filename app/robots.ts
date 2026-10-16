@@ -16,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           '/bookings',
           '/saved',
           '/claim',
-          '/ol',
+          '/go',
           '/api',
           '/samples',
         ],

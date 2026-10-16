@@ -1,42 +1,42 @@
 /**
- * Public landing for invalid / expired owner login links.
+ * Public landing for invalid / expired owner login links (/go/…).
  */
 const REASONS: Record<string, { title: string; body: string }> = {
   not_found: {
     title: 'This sign-in link is not valid',
-    body: 'The link you opened is not recognised. Open the latest email from CombatStay, or sign in to Partner Hub with your email and password.',
+    body: 'The link you opened is not recognised. Ask CombatStay for a fresh link, or sign in to Partner Hub with your email and password.',
   },
   revoked: {
     title: 'This sign-in link has been revoked',
-    body: 'This link is no longer active. Sign in at Partner Hub, or wait for the next booking email with a fresh link.',
+    body: 'This link is no longer active. Ask for a new link, or sign in at Partner Hub.',
   },
   expired: {
     title: 'This sign-in link has expired',
-    body: 'For your security, email sign-in links only work for a limited time. Sign in to Partner Hub with your password, or use Forgot password if you need a reset.',
+    body: 'For your security, sign-in links only work for a limited time. Ask for a fresh link, or sign in with your password.',
   },
   missing: {
     title: 'This sign-in link is incomplete',
-    body: 'The URL is missing its security token. Open the original link from your email again.',
+    body: 'The URL is missing its code. Open the original link again.',
   },
   owner_missing: {
     title: 'This sign-in link is not valid',
-    body: 'We could not find the account for this link. Contact CombatStay support if you need help accessing Partner Hub.',
+    body: 'We could not find the account for this link. Contact CombatStay support if you need help.',
   },
   not_owner: {
     title: 'This sign-in link is not valid',
-    body: 'This link is only for gym partner accounts. Sign in with the email on your Partner Hub account.',
+    body: 'This link is only for gym partner accounts.',
   },
   use_claim_link: {
     title: 'Finish claiming your gym first',
-    body: 'Your listing is still on a claim link. Open the claim link we sent you to set your password, then you can use booking sign-in links.',
+    body: 'Your listing is still on a claim link. Open the claim link we sent you to set your password first.',
   },
   link_failed: {
     title: 'Could not start your session',
-    body: 'Something went wrong creating a secure session. Try again from your email, or sign in at Partner Hub with your password.',
+    body: 'Something went wrong creating a secure session. Try again, or sign in at Partner Hub with your password.',
   },
   session_failed: {
     title: 'Could not sign you in',
-    body: 'The secure session could not be established. Try the link again, or sign in at Partner Hub with your password.',
+    body: 'The secure session could not be established. Try the link again, or sign in with your password.',
   },
   misconfigured: {
     title: 'Sign-in links are temporarily unavailable',

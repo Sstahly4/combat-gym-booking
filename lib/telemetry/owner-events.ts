@@ -30,6 +30,7 @@ export type OwnerTelemetryEventType =
   | 'gym_claim_link_redeemed'
   | 'gym_claim_password_set'
   | 'gym_claim_email_updated'
+  | 'owner_login_link_generated'
   | 'owner_login_link_redeemed'
   | 'payouts_details_set'
   | 'claim_dashboard_tour_finished'

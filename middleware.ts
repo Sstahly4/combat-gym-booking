@@ -2,13 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Skip session refresh entirely for /claim/* and /ol/* — those route
+  // Skip session refresh entirely for /claim/* and /go/* — those route
   // handlers manage their own Supabase session swap (signing the owner in via
   // a generated OTP) and any extra cookie writes from middleware can clobber
   // it, leaving the user with their previous session.
   if (
     request.nextUrl.pathname.startsWith('/claim/') ||
-    request.nextUrl.pathname.startsWith('/ol/')
+    request.nextUrl.pathname.startsWith('/go/')
   ) {
     return NextResponse.next()
   }
@@ -75,6 +75,6 @@ export const config = {
     '/bookings/:path*',
     '/saved/:path*',
     '/claim/:path*',
-    '/ol/:path*',
+    '/go/:path*',
   ],
 }

@@ -1,16 +1,14 @@
 /**
- * GET /ol/<token>
+ * GET /go/<token>
  *
- * Public owner login link (OTA-style). The owner clicks the CTA in a booking
- * notification email; we:
+ * Short OTA-style owner login link. Owner taps the URL from WhatsApp/email; we:
  *   1. Hash the token and look it up in owner_login_tokens.
  *   2. Verify it's not revoked or expired (multi-use until expiry).
  *   3. Confirm the profile is still an owner.
- *   4. Generate a recovery OTP for their auth email and verify it server-side
- *      so the response sets session cookies.
- *   5. Redirect to the token's Partner Hub path (e.g. /manage/bookings?ref=…).
+ *   4. Sign them in via recovery OTP (server-side cookie set).
+ *   5. Redirect to Partner Hub (usually /manage/bookings).
  *
- * Failures redirect to /ol/invalid?reason=… with a friendly message.
+ * Failures → /go/invalid?reason=…
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,8 +31,8 @@ interface Params {
 }
 
 function fail(request: NextRequest, reason: string, detail?: unknown) {
-  console.warn('[ol] redirect to /ol/invalid', { reason, detail })
-  const url = new URL('/ol/invalid', request.url)
+  console.warn('[go] redirect to /go/invalid', { reason, detail })
+  const url = new URL('/go/invalid', request.url)
   url.searchParams.set('reason', reason)
   return NextResponse.redirect(url)
 }
@@ -57,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (!plain) return fail(request, 'missing')
 
   if (isOwnerLoginProduction() && !isOwnerLoginTokenPepperConfigured()) {
-    console.error('[ol] redeem blocked:', OWNER_LOGIN_TOKEN_PEPPER_HELP)
+    console.error('[go] redeem blocked:', OWNER_LOGIN_TOKEN_PEPPER_HELP)
     return fail(request, 'misconfigured')
   }
 
@@ -90,7 +88,6 @@ export async function GET(request: NextRequest, { params }: Params) {
     return fail(request, 'not_owner')
   }
   if (profile.placeholder_account) {
-    // Placeholder accounts should use the claim flow, not login links.
     return fail(request, 'use_claim_link')
   }
 
@@ -122,8 +119,6 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   clearSupabaseAuthCookies(request, redirectResponse)
 
-  // Recovery OTP: works for already-confirmed owner emails (same pattern as
-  // /claim). Magiclink hashed_tokens are unreliable for confirmed users.
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email: ownerEmail,

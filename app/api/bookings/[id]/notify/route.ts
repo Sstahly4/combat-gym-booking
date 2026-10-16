@@ -118,7 +118,7 @@ export async function POST(
               const ownerEmail = ownerAuth?.user?.email
               if (!ownerEmail) return false
               const bookingRef = booking.booking_reference || bookingId
-              const actionUrl = await mintOwnerLoginLink(adminSb, {
+              const minted = await mintOwnerLoginLink(adminSb, {
                 userId: ownerId,
                 redirectPath: `/manage/bookings?ref=${encodeURIComponent(bookingRef)}`,
                 bookingId,
@@ -133,7 +133,7 @@ export async function POST(
                 endDate: booking.end_date,
                 totalPrice: typeof booking.total_price === 'number' ? booking.total_price : undefined,
                 currency: gym.currency || 'USD',
-                actionUrl,
+                actionUrl: minted?.url ?? null,
               })
             } catch (err) {
               console.warn('[bookings/notify] owner email lookup failed', err)

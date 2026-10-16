@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { KeyRound, PlusCircle, Sparkles, Upload } from 'lucide-react'
+import { KeyRound, LogIn, PlusCircle, Sparkles, Upload } from 'lucide-react'
 import { AdminGymStripeSync } from '@/components/admin/admin-gym-stripe-sync'
 import { gymImageCardSrc } from '@/lib/images/gym-image-variants'
 import { ADMIN_CREATE_GYM_ONBOARDING_HREF } from '@/lib/admin/admin-routes'
@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { ViewerMoneyLine } from '@/components/admin/viewer-money-line'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Gym, GymImage } from '@/lib/types/database'
 
 interface GymWithImage extends Gym {
@@ -47,6 +48,51 @@ export default function AdminGymsPage() {
   const [loading, setLoading] = useState(true)
   const [adminOwnerIds, setAdminOwnerIds] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<AdminGymsFilter>('all')
+  const [loginBusyId, setLoginBusyId] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginModal, setLoginModal] = useState<{
+    gymName: string
+    url: string
+    expiresAt: string | null
+    ownerEmail: string | null
+  } | null>(null)
+  const [loginCopied, setLoginCopied] = useState(false)
+
+  async function generateLoginLink(gymId: string, gymName: string) {
+    setLoginBusyId(gymId)
+    setLoginError(null)
+    setLoginCopied(false)
+    try {
+      const res = await fetch(`/api/admin/gyms/${gymId}/login-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expires_in_days: 7, redirect_path: '/manage/bookings' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Failed to generate (HTTP ${res.status})`)
+      if (!data?.url) throw new Error('Server did not return a login link URL')
+      setLoginModal({
+        gymName: data.gym_name || gymName,
+        url: data.url,
+        expiresAt: data.expires_at ?? null,
+        ownerEmail: data.owner_email ?? null,
+      })
+    } catch (err: any) {
+      setLoginError(err?.message || 'Failed to generate login link')
+    } finally {
+      setLoginBusyId(null)
+    }
+  }
+
+  async function copyLoginUrl(url: string) {
+    try {
+      await navigator.clipboard?.writeText(url)
+      setLoginCopied(true)
+      setTimeout(() => setLoginCopied(false), 2000)
+    } catch {
+      /* user can select the input */
+    }
+  }
 
   const fetchGyms = useCallback(async () => {
     setLoading(true)
@@ -122,13 +168,16 @@ export default function AdminGymsPage() {
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">All gyms</h1>
           <p className="mt-1 text-sm text-stone-600">
-            Browse and edit listings. Admin-owned gyms are automatically{' '}
-            <span className="font-medium">pre-listed</span> — issue claim links from{' '}
+            Browse and edit listings. Admin-owned gyms use{' '}
             <Link href="/admin/orphan-gyms" className="text-[#003580] underline-offset-2 hover:underline">
-              /admin/orphan-gyms
+              claim links
             </Link>
-            .
+            . Owner-owned gyms can get a short <span className="font-medium">/go/…</span> login
+            link to paste into WhatsApp.
           </p>
+          {loginError ? (
+            <p className="mt-2 text-sm text-red-600">{loginError}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -289,7 +338,7 @@ export default function AdminGymsPage() {
                       </Button>
                     </Link>
                   </div>
-                  {isAdminOwned && (
+                  {isAdminOwned ? (
                     <Link href="/admin/orphan-gyms" className="w-full">
                       <Button
                         variant="outline"
@@ -299,6 +348,16 @@ export default function AdminGymsPage() {
                         Issue claim link
                       </Button>
                     </Link>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full border-[#003580]/30 text-[#003580] hover:bg-[#003580]/5"
+                      disabled={loginBusyId === gym.id}
+                      onClick={() => void generateLoginLink(gym.id, gym.name)}
+                    >
+                      <LogIn className="mr-1.5 h-4 w-4" />
+                      {loginBusyId === gym.id ? 'Generating…' : 'Generate login link'}
+                    </Button>
                   )}
                   <AdminGymStripeSync
                     gymId={gym.id}
@@ -320,6 +379,61 @@ export default function AdminGymsPage() {
           })}
         </div>
       )}
+
+      <Dialog
+        open={loginModal !== null}
+        onOpenChange={(open) => {
+          if (!open) setLoginModal(null)
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Login link ready</DialogTitle>
+            <DialogDescription>
+              Copy and send this short link to the owner of{' '}
+              <span className="font-medium text-stone-900">{loginModal?.gymName}</span>
+              {loginModal?.ownerEmail ? (
+                <>
+                  {' '}
+                  (<span className="break-all">{loginModal.ownerEmail}</span>)
+                </>
+              ) : null}
+              . It signs them into Partner Hub → Bookings.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={loginModal?.url ?? ''}
+                  className="flex-1 rounded border border-emerald-300 bg-white px-2 py-2 font-mono text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => loginModal?.url && void copyLoginUrl(loginModal.url)}
+                  className="rounded bg-[#003580] text-white hover:bg-[#002a5c]"
+                >
+                  {loginCopied ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+            </div>
+            {loginModal?.expiresAt ? (
+              <p className="text-xs text-stone-500">
+                Expires {new Date(loginModal.expiresAt).toLocaleString()} · reusable until then
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <Button variant="outline" onClick={() => setLoginModal(null)} className="rounded-full">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

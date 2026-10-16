@@ -14,16 +14,18 @@ describe('owner-login-link helpers', () => {
     vi.unstubAllEnvs()
   })
 
-  it('generates 64-char hex tokens', () => {
+  it('generates short base64url tokens (~22 chars)', () => {
     const t = generateOwnerLoginTokenPlain()
-    expect(t).toMatch(/^[0-9a-f]{64}$/)
+    expect(t).toMatch(/^[A-Za-z0-9_-]{20,24}$/)
+    expect(t.length).toBeLessThanOrEqual(24)
   })
 
-  it('hashes deterministically and case/whitespace-insensitively', () => {
+  it('hashes deterministically after trim (case-sensitive)', () => {
     vi.stubEnv('CLAIM_TOKEN_PEPPER', 'test-pepper-value-at-least-32-chars!!')
-    const a = hashOwnerLoginToken('abc123')
-    const b = hashOwnerLoginToken('  ABC123  ')
+    const a = hashOwnerLoginToken('AbC123_-xy')
+    const b = hashOwnerLoginToken('  AbC123_-xy  ')
     expect(a).toBe(b)
+    expect(hashOwnerLoginToken('abc123_-xy')).not.toBe(a)
     expect(a).toMatch(/^[0-9a-f]{64}$/)
   })
 
@@ -33,9 +35,13 @@ describe('owner-login-link helpers', () => {
     expect(hashOwnerLoginToken('one')).not.toBe(hashOwnerLoginToken('two'))
   })
 
-  it('builds /ol URL without trailing slash duplication', () => {
-    expect(buildOwnerLoginUrl('https://x.com/', 'tok')).toBe('https://x.com/ol/tok')
-    expect(buildOwnerLoginUrl('https://x.com', 'tok')).toBe('https://x.com/ol/tok')
+  it('builds short /go URL without trailing slash duplication', () => {
+    expect(buildOwnerLoginUrl('https://combatstay.com/', 'xK9mP2nQvR8sT1uW3yZaBc')).toBe(
+      'https://combatstay.com/go/xK9mP2nQvR8sT1uW3yZaBc',
+    )
+    expect(buildOwnerLoginUrl('https://combatstay.com', 'tok')).toBe(
+      'https://combatstay.com/go/tok',
+    )
   })
 
   it('sanitizes redirect paths to Partner Hub only', () => {
@@ -54,12 +60,12 @@ describe('owner-login-link helpers', () => {
     expect(new Date(iso).getTime()).toBeGreaterThan(Date.now())
   })
 
-  it('appends ol=1 hydration flag once', () => {
+  it('appends go=1 hydration flag once', () => {
     expect(withOwnerLoginHydrationFlag('/manage/bookings?ref=CS-1')).toBe(
-      '/manage/bookings?ref=CS-1&ol=1',
+      '/manage/bookings?ref=CS-1&go=1',
     )
-    expect(withOwnerLoginHydrationFlag('/manage/bookings')).toBe('/manage/bookings?ol=1')
-    expect(withOwnerLoginHydrationFlag('/manage/bookings?ol=1')).toBe('/manage/bookings?ol=1')
+    expect(withOwnerLoginHydrationFlag('/manage/bookings')).toBe('/manage/bookings?go=1')
+    expect(withOwnerLoginHydrationFlag('/manage/bookings?go=1')).toBe('/manage/bookings?go=1')
   })
 
   it('detects pepper configuration', () => {

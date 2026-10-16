@@ -1,21 +1,22 @@
 /**
- * Owner login-link helpers — OTA-style deep links in partner emails that sign
- * an existing gym owner into Partner Hub and land them on a specific page
- * (usually bookings). Pure helpers (no Supabase) for unit tests.
+ * Owner login-link helpers — OTA-style deep links in partner emails / admin
+ * handoff that sign an existing gym owner into Partner Hub.
  *
- * Plaintext tokens are 32 bytes hex (64 chars). We store SHA-256 of the token
- * with a namespaced pepper; plaintext only appears in the emailed URL.
+ * URL shape (industry-short): https://combatstay.com/go/<22-char-code>
+ * Token is 16 random bytes as base64url (no padding). We store SHA-256 of the
+ * token with a namespaced pepper; plaintext only appears in the shared URL.
  */
 import { createHash, randomBytes } from 'crypto'
 
-export const OWNER_LOGIN_TOKEN_BYTES = 32
-/** How long a booking-alert login link stays clickable (multi-use until then). */
+/** 16 bytes → 22-char base64url; ~128 bits of entropy. */
+export const OWNER_LOGIN_TOKEN_BYTES = 16
+/** How long a login link stays clickable (multi-use until then). */
 export const OWNER_LOGIN_TOKEN_DEFAULT_EXPIRY_DAYS = 7
 
 const MANAGE_PREFIX = '/manage'
 
 export function generateOwnerLoginTokenPlain(): string {
-  return randomBytes(OWNER_LOGIN_TOKEN_BYTES).toString('hex')
+  return randomBytes(OWNER_LOGIN_TOKEN_BYTES).toString('base64url')
 }
 
 function ownerLoginPepper(): string {
@@ -27,7 +28,8 @@ function ownerLoginPepper(): string {
 }
 
 export function hashOwnerLoginToken(plain: string): string {
-  const normalised = plain.trim().toLowerCase()
+  // base64url is case-sensitive — only trim whitespace.
+  const normalised = plain.trim()
   return createHash('sha256')
     .update(`owner-login:${ownerLoginPepper()}:${normalised}`)
     .digest('hex')
@@ -35,7 +37,7 @@ export function hashOwnerLoginToken(plain: string): string {
 
 export function buildOwnerLoginUrl(appUrl: string, plain: string): string {
   const base = appUrl.replace(/\/$/, '')
-  return `${base}/ol/${plain}`
+  return `${base}/go/${plain}`
 }
 
 export function expiryDaysFromNowIso(days = OWNER_LOGIN_TOKEN_DEFAULT_EXPIRY_DAYS): string {
@@ -58,14 +60,14 @@ export function sanitizeOwnerLoginRedirectPath(path: string | null | undefined):
 }
 
 /**
- * Mark the destination so Partner Hub waits for cookie hydration after /ol
+ * Mark the destination so Partner Hub waits for cookie hydration after /go
  * (same race as claim links → /manage?claimed=1).
  */
 export function withOwnerLoginHydrationFlag(path: string): string {
   const safe = sanitizeOwnerLoginRedirectPath(path)
   const q = safe.includes('?') ? '&' : '?'
-  if (/[?&]ol=1(?:&|$)/.test(safe)) return safe
-  return `${safe}${q}ol=1`
+  if (/[?&]go=1(?:&|$)/.test(safe)) return safe
+  return `${safe}${q}go=1`
 }
 
 export function isOwnerLoginTokenPepperConfigured(): boolean {
