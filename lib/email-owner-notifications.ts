@@ -42,8 +42,11 @@ export async function sendOwnerBookingCreatedEmail(data: {
   endDate: string
   totalPrice?: number
   currency?: string
+  /** OTA-style login deep link; falls back to plain Partner Hub URL. */
+  actionUrl?: string | null
 }): Promise<boolean> {
-  const dashboard = `${APP_URL()}/manage/bookings?ref=${encodeURIComponent(data.bookingReference)}`
+  const fallback = `${APP_URL()}/manage/bookings?ref=${encodeURIComponent(data.bookingReference)}`
+  const dashboard = data.actionUrl?.trim() || fallback
   const payoutLine =
     data.totalPrice && data.currency
       ? formatMoney(data.totalPrice, data.currency)
@@ -54,7 +57,7 @@ export async function sendOwnerBookingCreatedEmail(data: {
     paragraph(
       `<strong>${escape(data.guestName)}</strong> has requested ${escape(formatDate(data.startDate))} → ${escape(formatDate(data.endDate))}. The guest's card is authorized — accept or decline from the Partner Hub.`,
     ),
-    primaryButton(dashboard, 'Open in Partner Hub'),
+    primaryButton(dashboard, 'Review & respond'),
     panel(
       uppercaseLabel('Request') +
         detailRows([
@@ -85,7 +88,7 @@ Guest:     ${data.guestName}
 Stay:      ${formatDate(data.startDate)} → ${formatDate(data.endDate)}
 Reference: ${data.bookingReference}
 ${payoutLine ? `Payout:    ${payoutLine} (after fees)\n` : ''}
-Review and respond in Partner Hub:
+Review and respond (signs you into Partner Hub):
 ${dashboard}
 
 Respond within 24 hours for the best guest experience.
@@ -112,8 +115,11 @@ export async function sendOwnerBookingCancelledEmail(data: {
   startDate: string
   endDate: string
   reason?: string
+  /** OTA-style login deep link; falls back to plain Partner Hub URL. */
+  actionUrl?: string | null
 }): Promise<boolean> {
-  const dashboard = `${APP_URL()}/manage/bookings?ref=${encodeURIComponent(data.bookingReference)}`
+  const fallback = `${APP_URL()}/manage/bookings?ref=${encodeURIComponent(data.bookingReference)}`
+  const dashboard = data.actionUrl?.trim() || fallback
 
   const innerHtml = [
     heading(`Booking cancelled · ${data.gymName}`),
@@ -129,7 +135,7 @@ export async function sendOwnerBookingCancelledEmail(data: {
           }),
         ]
       : []),
-    primaryButton(dashboard, 'View in Partner Hub'),
+    primaryButton(dashboard, 'View booking'),
     panel(
       uppercaseLabel('Cancelled booking') +
         detailRows([

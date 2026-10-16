@@ -46,6 +46,7 @@ A Next.js web application for booking combat sports training camps, inspired by 
    PLATFORM_COMMISSION_RATE=0.15
 
    # Gym claim links (admin → pre-listed gym handoff; migration 044). Required in production.
+   # Also peppers owner login links in booking emails (/ol/<token>) unless OWNER_LOGIN_TOKEN_PEPPER is set.
    # Generate once: openssl rand -hex 32 — do not rotate after issuing links.
    CLAIM_TOKEN_PEPPER=
    ```
@@ -74,7 +75,7 @@ Set at minimum:
 | Variable | Notes |
 |----------|--------|
 | `NEXT_PUBLIC_APP_URL` | Canonical site origin (e.g. `https://combatstay.com`). Used when building gym claim URLs and other absolute links so they are not tied to a random request host. |
-| `CLAIM_TOKEN_PEPPER` | **Required in production** for gym claim links: random string **≥ 32 characters** (e.g. output of `openssl rand -hex 32`). Mixed into SHA-256 of claim tokens. **Do not change after links are issued** — rotation invalidates outstanding URLs. If unset in production, generating or redeeming claim links returns HTTP 503 / a safe error page. |
+| `CLAIM_TOKEN_PEPPER` | **Required in production** for gym claim links and owner login links (`/ol/<token>` in booking emails): random string **≥ 32 characters** (e.g. output of `openssl rand -hex 32`). Mixed into SHA-256 of tokens. **Do not change after links are issued** — rotation invalidates outstanding URLs. Optional override: `OWNER_LOGIN_TOKEN_PEPPER`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Already required for admin APIs and webhooks; keep server-only. |
 
 Local/dev may omit `CLAIM_TOKEN_PEPPER` (tokens still work; hashes use an empty pepper — fine for local testing only).

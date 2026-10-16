@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { differenceInCalendarDays, format, formatDistanceToNow, isSameDay } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/use-auth'
@@ -237,6 +237,9 @@ function BookingCard({
 
 export default function BookingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const deepLinkRef = (searchParams.get('ref') || '').trim()
+  const deepLinkHandled = useRef<string | null>(null)
   const { user, profile, loading: authLoading } = useAuth()
   const [bookings, setBookings] = useState<OwnerBookingRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -253,6 +256,29 @@ export default function BookingsPage() {
   const [dateTo, setDateTo] = useState('')
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [activityTab, setActivityTab] = useState<'all' | BookingCategory>('all')
+
+  // OTA-style email deep link: /manage/bookings?ref=CS-… opens that booking.
+  useEffect(() => {
+    if (!deepLinkRef || loading || bookings.length === 0) return
+    if (deepLinkHandled.current === deepLinkRef) return
+
+    const needle = deepLinkRef.toLowerCase()
+    const match = bookings.find((b) => {
+      const ref = (b.booking_reference || '').trim().toLowerCase()
+      return ref === needle || b.id === deepLinkRef
+    })
+    if (!match) {
+      setSearchTerm(deepLinkRef)
+      deepLinkHandled.current = deepLinkRef
+      return
+    }
+
+    deepLinkHandled.current = deepLinkRef
+    setSearchTerm(match.booking_reference || deepLinkRef)
+    setActivityTab(categorizeBooking(match, new Date()))
+    setDetailBooking(match)
+    setDetailOpen(true)
+  }, [deepLinkRef, loading, bookings])
 
   useEffect(() => {
     const id = setInterval(() => setNowTick(Date.now()), 30_000)

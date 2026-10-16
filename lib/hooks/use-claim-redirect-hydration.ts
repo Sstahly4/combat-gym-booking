@@ -8,20 +8,23 @@ const POLL_MS = 400
 const MAX_POLLS = 10
 
 /**
- * After `/claim/<token>` redirects to `/manage?claimed=1`, give the browser client
- * a few chances to read the fresh Supabase cookies before treating the owner as
- * signed out and sending them to `/auth/signin`.
+ * After `/claim/<token>` → `/manage?claimed=1` or `/ol/<token>` →
+ * `/manage/...?ol=1`, give the browser client a few chances to read the fresh
+ * Supabase cookies before treating the owner as signed out and sending them to
+ * `/auth/signin`.
  */
 export function useClaimRedirectHydration() {
   const searchParams = useSearchParams()
   const justClaimed = searchParams?.get('claimed') === '1'
+  const justOwnerLogin = searchParams?.get('ol') === '1'
+  const awaitingFlag = justClaimed || justOwnerLogin
   const { user, loading: authLoading, revalidateSession } = useAuth()
   const [awaitingClaimSession, setAwaitingClaimSession] = useState(
-    () => justClaimed,
+    () => awaitingFlag,
   )
 
   useEffect(() => {
-    if (!justClaimed || user) {
+    if (!awaitingFlag || user) {
       setAwaitingClaimSession(false)
       return
     }
@@ -45,10 +48,10 @@ export function useClaimRedirectHydration() {
     return () => {
       cancelled = true
     }
-  }, [justClaimed, user, authLoading, revalidateSession])
+  }, [awaitingFlag, user, authLoading, revalidateSession])
 
   const blockingAuth =
-    justClaimed && awaitingClaimSession && !user && !authLoading
+    awaitingFlag && awaitingClaimSession && !user && !authLoading
 
   return { justClaimed, blockingAuth }
 }

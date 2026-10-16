@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { sendAdminBookingEmail, sendUserConfirmationEmail } from '@/lib/email'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
 import { sendOwnerBookingCreatedEmail } from '@/lib/email-owner-notifications'
+import { mintOwnerLoginLink } from '@/lib/auth/mint-owner-login-link'
 
 /**
  * Send email notifications for new bookings
@@ -116,15 +117,23 @@ export async function POST(
               const { data: ownerAuth } = await adminSb.auth.admin.getUserById(ownerId)
               const ownerEmail = ownerAuth?.user?.email
               if (!ownerEmail) return false
+              const bookingRef = booking.booking_reference || bookingId
+              const actionUrl = await mintOwnerLoginLink(adminSb, {
+                userId: ownerId,
+                redirectPath: `/manage/bookings?ref=${encodeURIComponent(bookingRef)}`,
+                bookingId,
+                purpose: 'booking_created',
+              })
               return await sendOwnerBookingCreatedEmail({
                 ownerEmail,
                 gymName: gym.name || 'your gym',
-                bookingReference: booking.booking_reference || bookingId,
+                bookingReference: bookingRef,
                 guestName: booking.guest_name || 'A guest',
                 startDate: booking.start_date,
                 endDate: booking.end_date,
                 totalPrice: typeof booking.total_price === 'number' ? booking.total_price : undefined,
                 currency: gym.currency || 'USD',
+                actionUrl,
               })
             } catch (err) {
               console.warn('[bookings/notify] owner email lookup failed', err)

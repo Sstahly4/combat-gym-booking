@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingRequestDeclinedEmail } from '@/lib/email'
 import { sendOwnerBookingCancelledEmail } from '@/lib/email-owner-notifications'
 import { recordOwnerNotification } from '@/lib/notifications/owner-notifications'
+import { mintOwnerLoginLink } from '@/lib/auth/mint-owner-login-link'
 import { getOwnerAccessContext } from '@/lib/auth/owner-guard'
 import {
   BOOKING_STATUS_CANCELLED_BY_GYM,
@@ -125,14 +126,22 @@ export async function POST(
               const { data: ownerAuth } = await supabase.auth.admin.getUserById(gym.owner_id)
               const ownerEmail = ownerAuth?.user?.email
               if (!ownerEmail) return false
+              const bookingRef = booking.booking_reference || bookingId
+              const actionUrl = await mintOwnerLoginLink(supabase, {
+                userId: gym.owner_id,
+                redirectPath: `/manage/bookings?ref=${encodeURIComponent(bookingRef)}`,
+                bookingId,
+                purpose: 'booking_cancelled',
+              })
               return await sendOwnerBookingCancelledEmail({
                 ownerEmail,
                 gymName: gym.name || 'your gym',
-                bookingReference: booking.booking_reference || bookingId,
+                bookingReference: bookingRef,
                 guestName: booking.guest_name || 'Guest',
                 startDate: booking.start_date,
                 endDate: booking.end_date,
                 reason: reason ?? undefined,
+                actionUrl,
               })
             } catch (err) {
               console.warn('[decline-request] owner email lookup failed', err)
