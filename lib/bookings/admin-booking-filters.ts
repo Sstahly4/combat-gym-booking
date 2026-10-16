@@ -10,13 +10,19 @@ import { parseBookingDay, startOfLocalDay } from '@/lib/booking/validate-booking
  */
 export type AdminBookingListFilter = 'live' | 'funnel' | 'completed' | 'cancelled' | 'all'
 
-export const DEFAULT_ADMIN_BOOKING_FILTER: AdminBookingListFilter = 'live'
+/** Default to full list so pending request-to-book stays (authorized card) are never hidden. */
+export const DEFAULT_ADMIN_BOOKING_FILTER: AdminBookingListFilter = 'all'
 
 export const ADMIN_BOOKING_FILTER_OPTIONS: {
   value: AdminBookingListFilter
   label: string
   hint: string
 }[] = [
+  {
+    value: 'all',
+    label: 'All statuses',
+    hint: 'Every booking — including pending requests waiting on the gym',
+  },
   {
     value: 'live',
     label: 'Live & upcoming',
@@ -36,11 +42,6 @@ export const ADMIN_BOOKING_FILTER_OPTIONS: {
     value: 'cancelled',
     label: 'Cancelled & disputes',
     hint: 'Declined, cancelled, refunded, or disputed',
-  },
-  {
-    value: 'all',
-    label: 'All statuses',
-    hint: 'Full diagnostic view',
   },
 ]
 
@@ -70,8 +71,16 @@ export const BOOKING_CANCELLED_DB_STATUSES = [
   'disputed',
 ] as const
 
-/** Real bookings for admin activity bell / notifications (excludes funnel noise). */
+/**
+ * Bookings for the admin activity bell.
+ * Includes `pending` because request-to-book stays sit there after card auth until
+ * the gym accepts — previously those never dinged the admin bell.
+ * Abandoned / unpaid drafts are filtered out in the activity-feed query via
+ * stripe_payment_intent_id IS NOT NULL.
+ */
 export const ADMIN_ACTIVITY_BOOKING_STATUSES = [
+  'pending',
+  'pending_confirmation',
   'confirmed',
   'paid',
   'completed',

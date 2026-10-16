@@ -7,12 +7,14 @@ import {
 } from '@/lib/bookings/admin-booking-filters'
 
 describe('parseAdminBookingFilter', () => {
-  it('defaults to live', () => {
-    expect(parseAdminBookingFilter(null)).toBe('live')
-    expect(parseAdminBookingFilter('nope')).toBe('live')
+  it('defaults to all statuses', () => {
+    expect(parseAdminBookingFilter(null)).toBe('all')
+    expect(parseAdminBookingFilter('nope')).toBe('all')
   })
 
   it('parses known filters', () => {
+    expect(parseAdminBookingFilter('all')).toBe('all')
+    expect(parseAdminBookingFilter('live')).toBe('live')
     expect(parseAdminBookingFilter('funnel')).toBe('funnel')
     expect(parseAdminBookingFilter('cancelled')).toBe('cancelled')
   })

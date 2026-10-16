@@ -34,9 +34,11 @@ export async function GET() {
   const [bookingsRes, gymsRes, claimRes, payoutsRes, affiliatesRes] = await Promise.all([
     supabase
       .from('bookings')
-      .select('id, created_at, status, total_price, gym_id, guest_name')
+      .select('id, created_at, status, total_price, gym_id, guest_name, booking_reference, stripe_payment_intent_id')
       .gte('created_at', sinceIso)
       .in('status', [...ADMIN_ACTIVITY_BOOKING_STATUSES])
+      // Real requests only — exclude abandoned checkout rows with no card auth.
+      .not('stripe_payment_intent_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(45),
     supabase
@@ -106,6 +108,7 @@ export async function GET() {
     total_price: number | null
     gym_id: string
     guest_name: string | null
+    booking_reference: string | null
   }[]
 
   const gymIds = [...new Set(bookingRows.map((b) => b.gym_id).filter(Boolean))]
@@ -136,19 +139,23 @@ export async function GET() {
     const loc =
       gm?.city && gm?.country ? `${gm.city}, ${gm.country}` : gm?.country || gm?.city || null
     const guest = r.guest_name?.trim()
+    const ref = r.booking_reference?.trim()
+    const isPendingRequest =
+      r.status === 'pending' || r.status === 'pending_confirmation'
     const subtitleParts = [
       gymName,
       loc,
       guest ? `Guest: ${guest}` : null,
+      ref ? `Ref ${ref}` : null,
       r.status ? `Status: ${r.status}` : null,
     ].filter(Boolean)
     items.push({
       kind: 'booking',
       id: r.id,
       created_at: r.created_at,
-      title: 'New booking',
+      title: isPendingRequest ? 'New booking request' : 'New booking',
       subtitle: subtitleParts.length ? subtitleParts.join(' · ') : null,
-      href: `/admin/bookings?booking_id=${encodeURIComponent(r.id)}`,
+      href: `/admin/bookings?filter=all&booking_id=${encodeURIComponent(r.id)}`,
       gym_name: gymName,
       status: r.status,
     })

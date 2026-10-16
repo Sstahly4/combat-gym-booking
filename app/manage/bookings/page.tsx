@@ -216,6 +216,11 @@ function BookingCard({
             <p className="text-xs font-light text-gray-500">
               {booking.discipline || 'Training'}
               {booking.package?.name ? ` · ${booking.package.name}` : ''}
+              {booking.variant?.name
+                ? ` · ${booking.variant.name}`
+                : booking.variant?.accommodation?.name
+                  ? ` · ${booking.variant.accommodation.name}`
+                  : ''}
             </p>
             <p className="text-[11px] font-light tabular-nums text-gray-400">Updated {updatedRel}</p>
           </div>
@@ -275,7 +280,9 @@ export default function BookingsPage() {
 
     deepLinkHandled.current = deepLinkRef
     setSearchTerm(match.booking_reference || deepLinkRef)
-    setActivityTab(categorizeBooking(match, new Date()))
+    // Stay on All so deep-linked bookings aren't hidden behind a narrower tab.
+    setActivityTab('all')
+    setStatusFilter('all')
     setDetailBooking(match)
     setDetailOpen(true)
   }, [deepLinkRef, loading, bookings])
@@ -315,8 +322,22 @@ export default function BookingsPage() {
         `
         *,
         gym:gyms(*),
-        package:packages(id, name, sport, offer_type),
-        variant:package_variants(id, name)
+        package:packages(id, name, sport, offer_type, includes_accommodation, accommodation_name),
+        variant:package_variants(
+          id,
+          name,
+          description,
+          room_type,
+          capacity,
+          accommodation_id,
+          accommodation:accommodations(
+            id,
+            name,
+            description,
+            room_type,
+            capacity
+          )
+        )
       `
       )
       .in('gym_id', gymIds)

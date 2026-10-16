@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   generateClaimTokenPlain,
   hashClaimToken,
+  hashClaimTokenCandidates,
   buildClaimUrl,
   buildPlaceholderEmail,
   isPlaceholderEmail,
@@ -11,15 +12,17 @@ import {
 import { PLACEHOLDER_EMAIL_DOMAIN } from '@/lib/admin/gym-claim-constants'
 
 describe('gym-claim helpers', () => {
-  it('generates 64-char hex tokens by default', () => {
+  it('generates short base64url tokens (~22 chars)', () => {
     const t = generateClaimTokenPlain()
-    expect(t).toMatch(/^[0-9a-f]{64}$/)
+    expect(t).toMatch(/^[A-Za-z0-9_-]{20,24}$/)
+    expect(t.length).toBeLessThanOrEqual(24)
   })
 
-  it('hashes deterministically and case/whitespace-insensitively', () => {
-    const a = hashClaimToken('abc123')
-    const b = hashClaimToken('  ABC123  ')
+  it('hashes deterministically after trim (case-sensitive)', () => {
+    const a = hashClaimToken('AbC123_-xy')
+    const b = hashClaimToken('  AbC123_-xy  ')
     expect(a).toBe(b)
+    expect(hashClaimToken('abc123_-xy')).not.toBe(a)
     expect(a).toMatch(/^[0-9a-f]{64}$/)
   })
 
@@ -27,9 +30,22 @@ describe('gym-claim helpers', () => {
     expect(hashClaimToken('one')).not.toBe(hashClaimToken('two'))
   })
 
-  it('builds claim URL without trailing slash duplication', () => {
-    expect(buildClaimUrl('https://x.com/', 'tok')).toBe('https://x.com/claim/tok')
-    expect(buildClaimUrl('https://x.com', 'tok')).toBe('https://x.com/claim/tok')
+  it('candidates include lowercase fallback for legacy hex links', () => {
+    const hex = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'
+    expect(hashClaimTokenCandidates(hex)).toEqual([hashClaimToken(hex)])
+    const mixed = 'AbCdEf'
+    const cands = hashClaimTokenCandidates(mixed)
+    expect(cands).toHaveLength(2)
+    expect(cands[0]).toBe(hashClaimToken(mixed))
+  })
+
+  it('builds short claim URL without trailing slash duplication', () => {
+    expect(buildClaimUrl('https://combatstay.com/', 'xK9mP2nQvR8sT1uW3yZaBc')).toBe(
+      'https://combatstay.com/claim/xK9mP2nQvR8sT1uW3yZaBc',
+    )
+    expect(buildClaimUrl('https://combatstay.com', 'tok')).toBe(
+      'https://combatstay.com/claim/tok',
+    )
   })
 
   it('builds and detects placeholder emails', () => {

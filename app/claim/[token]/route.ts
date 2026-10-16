@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hashClaimToken } from '@/lib/admin/gym-claim'
+import { hashClaimTokenCandidates } from '@/lib/admin/gym-claim'
 import { isClaimSetupPending } from '@/lib/admin/claim-setup-pending'
 import { detectClaimLinkOpenerKind } from '@/lib/admin/detect-claim-link-opener'
 import {
@@ -69,14 +69,16 @@ export async function GET(request: NextRequest, { params }: Params) {
     return fail(request, 'misconfigured')
   }
 
-  const tokenHash = hashClaimToken(plain)
+  const tokenHashes = hashClaimTokenCandidates(plain)
   const admin = createAdminClient()
 
-  const { data: token, error: tokenErr } = await admin
+  const { data: tokenRows, error: tokenErr } = await admin
     .from('gym_claim_tokens')
     .select('id, gym_id, created_at, expires_at, claimed_at, revoked_at')
-    .eq('token_hash', tokenHash)
-    .maybeSingle()
+    .in('token_hash', tokenHashes)
+    .limit(1)
+
+  const token = tokenRows?.[0] ?? null
 
   if (tokenErr || !token) return fail(request, 'not_found', tokenErr?.message)
   if (token.claimed_at) return fail(request, 'used')

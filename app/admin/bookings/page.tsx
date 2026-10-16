@@ -174,8 +174,8 @@ export default function AdminBookingsPage() {
           </h1>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-stone-600">
-          Bookings across all gyms (last 90 days). Default view is live &amp; upcoming — switch filters to
-          diagnose checkout drop-off, cancellations, or disputes.
+          Bookings across all gyms (last 90 days). Defaults to <span className="font-medium">All statuses</span>{' '}
+          so pending requests are never hidden — narrow with filters when you need a specific slice.
         </p>
       </header>
 
