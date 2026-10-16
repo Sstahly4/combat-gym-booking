@@ -49,19 +49,26 @@ export default function AdminGymsPage() {
   const [adminOwnerIds, setAdminOwnerIds] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<AdminGymsFilter>('all')
   const [loginBusyId, setLoginBusyId] = useState<string | null>(null)
-  const [loginError, setLoginError] = useState<string | null>(null)
   const [loginModal, setLoginModal] = useState<{
     gymName: string
-    url: string
+    url: string | null
     expiresAt: string | null
     ownerEmail: string | null
+    error: string | null
   } | null>(null)
   const [loginCopied, setLoginCopied] = useState(false)
 
   async function generateLoginLink(gymId: string, gymName: string) {
     setLoginBusyId(gymId)
-    setLoginError(null)
     setLoginCopied(false)
+    // Open immediately so the click always shows feedback (success or error).
+    setLoginModal({
+      gymName,
+      url: null,
+      expiresAt: null,
+      ownerEmail: null,
+      error: null,
+    })
     try {
       const res = await fetch(`/api/admin/gyms/${gymId}/login-link`, {
         method: 'POST',
@@ -69,16 +76,29 @@ export default function AdminGymsPage() {
         body: JSON.stringify({ expires_in_days: 7, redirect_path: '/manage/bookings' }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || `Failed to generate (HTTP ${res.status})`)
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            data?.help ||
+            `Failed to generate login link (HTTP ${res.status})`,
+        )
+      }
       if (!data?.url) throw new Error('Server did not return a login link URL')
       setLoginModal({
         gymName: data.gym_name || gymName,
         url: data.url,
         expiresAt: data.expires_at ?? null,
         ownerEmail: data.owner_email ?? null,
+        error: null,
       })
     } catch (err: any) {
-      setLoginError(err?.message || 'Failed to generate login link')
+      setLoginModal({
+        gymName,
+        url: null,
+        expiresAt: null,
+        ownerEmail: null,
+        error: err?.message || 'Failed to generate login link',
+      })
     } finally {
       setLoginBusyId(null)
     }
@@ -175,9 +195,6 @@ export default function AdminGymsPage() {
             . Owner-owned gyms can get a short <span className="font-medium">/go/…</span> login
             link to paste into WhatsApp.
           </p>
-          {loginError ? (
-            <p className="mt-2 text-sm text-red-600">{loginError}</p>
-          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -350,10 +367,15 @@ export default function AdminGymsPage() {
                     </Link>
                   ) : (
                     <Button
+                      type="button"
                       variant="outline"
                       className="w-full rounded-full border-[#003580]/30 text-[#003580] hover:bg-[#003580]/5"
                       disabled={loginBusyId === gym.id}
-                      onClick={() => void generateLoginLink(gym.id, gym.name)}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void generateLoginLink(gym.id, gym.name)
+                      }}
                     >
                       <LogIn className="mr-1.5 h-4 w-4" />
                       {loginBusyId === gym.id ? 'Generating…' : 'Generate login link'}
@@ -385,50 +407,87 @@ export default function AdminGymsPage() {
         onOpenChange={(open) => {
           if (!open) setLoginModal(null)
         }}
+        stackClassName="z-[200]"
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl border border-stone-200 bg-white shadow-xl">
           <DialogHeader>
-            <DialogTitle>Login link ready</DialogTitle>
+            <DialogTitle>
+              {loginModal?.error
+                ? 'Could not generate login link'
+                : loginModal?.url
+                  ? 'Login link ready'
+                  : 'Generating login link…'}
+            </DialogTitle>
             <DialogDescription>
-              Copy and send this short link to the owner of{' '}
-              <span className="font-medium text-stone-900">{loginModal?.gymName}</span>
-              {loginModal?.ownerEmail ? (
+              {loginModal?.error ? (
+                <span className="text-red-700">{loginModal.error}</span>
+              ) : loginModal?.url ? (
                 <>
-                  {' '}
-                  (<span className="break-all">{loginModal.ownerEmail}</span>)
+                  Copy and send this short link to the owner of{' '}
+                  <span className="font-medium text-stone-900">{loginModal.gymName}</span>
+                  {loginModal.ownerEmail ? (
+                    <>
+                      {' '}
+                      (<span className="break-all">{loginModal.ownerEmail}</span>)
+                    </>
+                  ) : null}
+                  . It signs them into Partner Hub → Bookings.
                 </>
-              ) : null}
-              . It signs them into Partner Hub → Bookings.
+              ) : (
+                <>Creating a short /go link for {loginModal?.gymName}…</>
+              )}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 space-y-3">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <div className="flex items-center gap-2">
-                <input
-                  readOnly
-                  value={loginModal?.url ?? ''}
-                  className="flex-1 rounded border border-emerald-300 bg-white px-2 py-2 font-mono text-xs"
-                  onFocus={(e) => e.currentTarget.select()}
-                />
-                <Button
-                  size="sm"
-                  onClick={() => loginModal?.url && void copyLoginUrl(loginModal.url)}
-                  className="rounded bg-[#003580] text-white hover:bg-[#002a5c]"
-                >
-                  {loginCopied ? 'Copied!' : 'Copy'}
-                </Button>
+          {loginModal?.url ? (
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={loginModal.url}
+                    className="min-w-0 flex-1 rounded border border-emerald-300 bg-white px-2 py-2 font-mono text-xs text-stone-900"
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void copyLoginUrl(loginModal.url!)}
+                    className="shrink-0 rounded bg-[#003580] text-white hover:bg-[#002a5c]"
+                  >
+                    {loginCopied ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
               </div>
+              {loginModal.expiresAt ? (
+                <p className="text-xs text-stone-500">
+                  Expires {new Date(loginModal.expiresAt).toLocaleString()} · reusable until then
+                </p>
+              ) : null}
             </div>
-            {loginModal?.expiresAt ? (
-              <p className="text-xs text-stone-500">
-                Expires {new Date(loginModal.expiresAt).toLocaleString()} · reusable until then
-              </p>
-            ) : null}
-          </div>
+          ) : null}
 
-          <div className="mt-5 flex justify-end">
-            <Button variant="outline" onClick={() => setLoginModal(null)} className="rounded-full">
+          <div className="mt-5 flex justify-end gap-2">
+            {loginModal?.error ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => {
+                  const name = loginModal.gymName
+                  const match = gyms.find((g) => g.name === name)
+                  if (match) void generateLoginLink(match.id, match.name)
+                }}
+              >
+                Try again
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLoginModal(null)}
+              className="rounded-full"
+            >
               Close
             </Button>
           </div>
